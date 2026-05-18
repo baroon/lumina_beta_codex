@@ -4,6 +4,7 @@ import { useDiscoveryResults } from "@/features/discovery/hooks/useDiscovery";
 import { useDiscoveryProgress } from "@/features/discovery/hooks/useDiscoveryProgress";
 import { DiscoveryProgressScreen } from "@/features/discovery/components/DiscoveryProgressScreen";
 import { DiscoveryConfirmationScreen } from "@/features/discovery/components/DiscoveryConfirmationScreen";
+import { DiscoveryCompleteScreen } from "@/features/discovery/components/DiscoveryCompleteScreen";
 import { LoadingPage } from "@/components/feedback/LoadingPage";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -48,6 +49,14 @@ export function DiscoveryPage() {
   if (discovery.isLoading) return <LoadingPage />;
 
   if (discovery.data) {
+    if (discovery.data.status === "Completed") {
+      return (
+        <DiscoveryCompleteScreen
+          brandName={discovery.data.brandName}
+          brandId={discovery.data.brandId}
+        />
+      );
+    }
     return <DiscoveryConfirmationScreen results={discovery.data} />;
   }
 

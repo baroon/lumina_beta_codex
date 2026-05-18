@@ -24,9 +24,9 @@ export function AddBrandForm() {
   };
 
   return (
-    <Card className="mx-auto max-w-lg">
+    <Card className="w-full max-w-lg">
       <CardHeader>
-        <CardTitle>Add a Brand</CardTitle>
+        <CardTitle>Add Brand</CardTitle>
         <CardDescription>
           Enter your brand details and we'll analyze your website to discover key information.
         </CardDescription>
