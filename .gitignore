@@ -47,6 +47,9 @@ storybook-static/
 *.log
 logs/
 
+# Claude Code
+.claude/
+
 # Misc
 *.tsbuildinfo
 .turbo/
