@@ -2,6 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { useBrand } from "@/features/brands/hooks/useBrands";
 import { useDiscoveryResults } from "@/features/discovery/hooks/useDiscovery";
 import { useDiscoveryProgress } from "@/features/discovery/hooks/useDiscoveryProgress";
+import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryProgressScreen } from "@/features/discovery/components/DiscoveryProgressScreen";
 import { DiscoveryConfirmationScreen } from "@/features/discovery/components/DiscoveryConfirmationScreen";
 import { DiscoveryCompleteScreen } from "@/features/discovery/components/DiscoveryCompleteScreen";
@@ -19,7 +20,7 @@ export function DiscoveryPage() {
   if (brand.isError) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Failed to load brand information.</AlertDescription>
+        <AlertDescription>{DISCOVERY_COPY.errors.loadBrandFailed}</AlertDescription>
       </Alert>
     );
   }
@@ -40,7 +41,7 @@ export function DiscoveryPage() {
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          Discovery failed. Please try again or contact support.
+          {DISCOVERY_COPY.errors.discoveryFailed}
         </AlertDescription>
       </Alert>
     );

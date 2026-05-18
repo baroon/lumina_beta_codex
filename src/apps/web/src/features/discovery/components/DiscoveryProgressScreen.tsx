@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryStepProgress } from "./DiscoveryStepProgress";
 
 interface DiscoveryProgressScreenProps {
@@ -19,10 +20,9 @@ export function DiscoveryProgressScreen({
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-600">
             <Search className="h-6 w-6" />
           </div>
-          <CardTitle>Discovering your brand</CardTitle>
+          <CardTitle>{DISCOVERY_COPY.progress.title}</CardTitle>
           <CardDescription>
-            We're analyzing your website to build a complete brand profile.
-            This usually wraps up in under a minute.
+            {DISCOVERY_COPY.progress.subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent>

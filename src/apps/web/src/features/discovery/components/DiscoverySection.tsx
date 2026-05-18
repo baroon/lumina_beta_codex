@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DISCOVERY_COPY } from "@/content/discovery";
 import { SuggestionCard } from "./SuggestionCard";
 import { AddCustomItemForm } from "./AddCustomItemForm";
 import { ManualFallbackPrompt } from "./ManualFallbackPrompt";
@@ -51,7 +52,9 @@ export function DiscoverySection({
           </div>
         </div>
         <span className="text-sm text-neutral-500">
-          {selectedCount}/{candidates.length} selected
+          {DISCOVERY_COPY.confirmation.selectedCount
+            .replace("{selected}", String(selectedCount))
+            .replace("{total}", String(candidates.length))}
         </span>
       </button>
 
@@ -69,9 +72,9 @@ export function DiscoverySection({
                   className="gap-1 text-xs"
                 >
                   {allSelected ? (
-                    <><Square className="h-3 w-3" /> Deselect All</>
+                    <><Square className="h-3 w-3" /> {DISCOVERY_COPY.buttons.deselectAll}</>
                   ) : (
-                    <><CheckSquare className="h-3 w-3" /> Select All</>
+                    <><CheckSquare className="h-3 w-3" /> {DISCOVERY_COPY.buttons.selectAll}</>
                   )}
                 </Button>
               </div>

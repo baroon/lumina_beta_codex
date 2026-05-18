@@ -38,9 +38,48 @@ export const DISCOVERY_COPY = {
   },
   progress: {
     title: "Discovering your brand",
+    subtitle: "We're analyzing your website to build a complete brand profile. This usually wraps up in under a minute.",
     awaitingConfirmation: "Review and confirm the discovered information.",
     completed: "Discovery complete!",
     failed: "Something went wrong during discovery.",
+    stepLabel: "Step",
+    ofLabel: "of",
+    done: "Done",
+    defaultEncouragement: "Working on it...",
+  },
+  steps: [
+    { label: "Crawling website", encouragement: "Reading your website so we don't have to ask you a hundred questions..." },
+    { label: "Analyzing brand", encouragement: "Our AI is studying your brand identity and market positioning..." },
+    { label: "Extracting entities", encouragement: "Mapping out your products, audiences, and markets..." },
+    { label: "Suggesting topics", encouragement: "Figuring out what people search for when they need a brand like yours..." },
+    { label: "Finding competitors", encouragement: "Scouting the competitive landscape to see who you're up against..." },
+  ],
+  complete: {
+    title: "Discovery complete",
+    description: "We've built a complete profile for {brandName}. You're ready to create your Visibility Tracker.",
+    createTracker: "Create Visibility Tracker",
+    comingSoon: "Tracker setup is coming soon.",
+  },
+  confirmation: {
+    title: "Confirm Discovery: {brandName}",
+    industryLabel: "Industry",
+    confirming: "Confirming...",
+    selectedCount: "{selected}/{total} selected",
+  },
+  labels: {
+    aiSource: "AI",
+  },
+  confidence: {
+    high: "High",
+    medium: "Medium",
+    low: "Low",
+  },
+  fallback: {
+    noItemsDetected: "No items detected",
+  },
+  customItem: {
+    add: "Add",
+    cancel: "Cancel",
   },
   buttons: {
     confirm: "Confirm Selections",
@@ -48,5 +87,11 @@ export const DISCOVERY_COPY = {
     dismiss: "Dismiss",
     selectAll: "Select All",
     deselectAll: "Deselect All",
+  },
+  errors: {
+    loadBrandFailed: "Failed to load brand information.",
+    discoveryFailed: "Discovery failed. Please try again or contact support.",
+    confirmFailed: "Failed to confirm",
+    createBrandFailed: "Failed to create brand",
   },
 } as const;

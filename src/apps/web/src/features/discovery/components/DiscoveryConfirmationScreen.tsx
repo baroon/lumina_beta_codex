@@ -126,7 +126,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Confirm Discovery: ${results.brandName}`}
+        title={DISCOVERY_COPY.confirmation.title.replace("{brandName}", results.brandName)}
         description={DISCOVERY_COPY.progress.awaitingConfirmation}
       />
 
@@ -135,7 +135,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
           <h3 className="font-semibold text-neutral-900">{DISCOVERY_COPY.sections.brandProfile.title}</h3>
           <p className="mt-1 text-sm text-neutral-500">{results.brandProfile.shortDescription}</p>
           {results.brandProfile.industry && (
-            <p className="mt-1 text-xs text-neutral-400">Industry: {results.brandProfile.industry}</p>
+            <p className="mt-1 text-xs text-neutral-400">{DISCOVERY_COPY.confirmation.industryLabel}: {results.brandProfile.industry}</p>
           )}
         </div>
       )}
@@ -162,14 +162,14 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       {confirmMutation.isError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {confirmMutation.error instanceof Error ? confirmMutation.error.message : "Failed to confirm"}
+            {confirmMutation.error instanceof Error ? confirmMutation.error.message : DISCOVERY_COPY.errors.confirmFailed}
           </AlertDescription>
         </Alert>
       )}
 
       <div className="flex justify-end">
         <Button onClick={handleConfirm} disabled={confirmMutation.isPending} size="lg">
-          {confirmMutation.isPending ? "Confirming..." : DISCOVERY_COPY.buttons.confirm}
+          {confirmMutation.isPending ? DISCOVERY_COPY.confirmation.confirming : DISCOVERY_COPY.buttons.confirm}
         </Button>
       </div>
     </div>

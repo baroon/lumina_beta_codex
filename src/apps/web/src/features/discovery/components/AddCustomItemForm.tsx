@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
+import { DISCOVERY_COPY } from "@/content/discovery";
 
 interface AddCustomItemFormProps {
   placeholder: string;
@@ -25,7 +26,7 @@ export function AddCustomItemForm({ placeholder, onAdd }: AddCustomItemFormProps
     return (
       <Button variant="ghost" size="sm" onClick={() => setIsOpen(true)} className="gap-1">
         <Plus className="h-3 w-3" />
-        Add Custom
+        {DISCOVERY_COPY.buttons.addCustom}
       </Button>
     );
   }
@@ -40,7 +41,7 @@ export function AddCustomItemForm({ placeholder, onAdd }: AddCustomItemFormProps
         autoFocus
       />
       <Button type="submit" size="sm" className="h-8" disabled={!value.trim()}>
-        Add
+        {DISCOVERY_COPY.customItem.add}
       </Button>
       <Button
         type="button"
@@ -52,7 +53,7 @@ export function AddCustomItemForm({ placeholder, onAdd }: AddCustomItemFormProps
           setValue("");
         }}
       >
-        Cancel
+        {DISCOVERY_COPY.customItem.cancel}
       </Button>
     </form>
   );

@@ -1,5 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { DISCOVERY_COPY } from "@/content/discovery";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";
 import type { CandidateDto } from "@/types/api";
@@ -32,7 +33,7 @@ export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCard
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>
           <ConfidenceTag confidence={candidate.confidence} />
           {candidate.source === "LLMSuggested" && (
-            <Badge variant="outline" className="text-xs">AI</Badge>
+            <Badge variant="outline" className="text-xs">{DISCOVERY_COPY.labels.aiSource}</Badge>
           )}
         </div>
         {candidate.description && (

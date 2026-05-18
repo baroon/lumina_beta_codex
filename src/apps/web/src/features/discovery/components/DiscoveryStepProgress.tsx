@@ -9,34 +9,9 @@ import {
   Swords,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { DISCOVERY_COPY } from "@/content/discovery";
 
-const STEPS = [
-  {
-    label: "Crawling website",
-    icon: Globe,
-    encouragement: "Reading your website so we don't have to ask you a hundred questions...",
-  },
-  {
-    label: "Analyzing brand",
-    icon: Sparkles,
-    encouragement: "Our AI is studying your brand identity and market positioning...",
-  },
-  {
-    label: "Extracting entities",
-    icon: Package,
-    encouragement: "Mapping out your products, audiences, and markets...",
-  },
-  {
-    label: "Suggesting topics",
-    icon: MessageSquareText,
-    encouragement: "Figuring out what people search for when they need a brand like yours...",
-  },
-  {
-    label: "Finding competitors",
-    icon: Swords,
-    encouragement: "Scouting the competitive landscape to see who you're up against...",
-  },
-];
+const STEP_ICONS = [Globe, Sparkles, Package, MessageSquareText, Swords];
 
 interface DiscoveryStepProgressProps {
   step: number;
@@ -49,18 +24,18 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
   const percent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
   // Get the encouragement message for the active step
-  const activeStepDef = STEPS[step - 1];
-  const encouragement = activeStepDef?.encouragement ?? "Working on it...";
+  const activeStepDef = DISCOVERY_COPY.steps[step - 1];
+  const encouragement = activeStepDef?.encouragement ?? DISCOVERY_COPY.progress.defaultEncouragement;
 
   return (
     <div className="space-y-6">
       {/* Step list */}
       <div className="space-y-1">
-        {STEPS.map((s, i) => {
+        {DISCOVERY_COPY.steps.map((s, i) => {
           const stepNum = i + 1;
           const isCompleted = stepNum < step;
           const isActive = stepNum === step;
-          const StepIcon = s.icon;
+          const StepIcon = STEP_ICONS[i];
 
           return (
             <div
@@ -108,7 +83,7 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
 
               {/* Completed badge */}
               {isCompleted && (
-                <span className="ml-auto text-xs text-green-600">Done</span>
+                <span className="ml-auto text-xs text-green-600">{DISCOVERY_COPY.progress.done}</span>
               )}
             </div>
           );
@@ -124,7 +99,7 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
       <div className="space-y-1.5">
         <Progress value={percent} className="h-2" />
         <div className="flex justify-between text-xs text-neutral-400">
-          <span>Step {step} of {totalSteps}</span>
+          <span>{DISCOVERY_COPY.progress.stepLabel} {step} {DISCOVERY_COPY.progress.ofLabel} {totalSteps}</span>
           <span>{percent}%</span>
         </div>
       </div>
