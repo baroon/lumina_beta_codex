@@ -1,0 +1,19 @@
+{
+  "name": "lumina",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "dotnet watch run --project apps/api/AIVisibility.Api/AIVisibility.Api.csproj",
+    "build:web": "pnpm --filter web build",
+    "build:api": "dotnet build apps/api/AIVisibility.sln",
+    "test:web": "pnpm --filter web test",
+    "test:api": "dotnet test apps/api/AIVisibility.sln",
+    "storybook": "pnpm --filter web storybook",
+    "tokens:generate": "node design-tokens/generate-css.js"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

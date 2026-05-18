@@ -1,0 +1,814 @@
+{
+  "$schema": "https://lumina.dev/component-manifest.schema.json",
+  "$version": "1.0.0",
+  "$description": "Lumina AI Visibility Platform — Component Manifest",
+  "categories": [
+    {
+      "name": "Layout",
+      "description": "Application layout and structural components that define the overall page structure, navigation, and content areas.",
+      "components": [
+        {
+          "name": "AppShell",
+          "category": "Layout",
+          "path": "src/components/layout/AppShell.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Sidebar", "TopBar"],
+          "notes": "Main application shell with sidebar + topbar + content area."
+        },
+        {
+          "name": "Sidebar",
+          "category": "Layout",
+          "path": "src/components/layout/Sidebar.tsx",
+          "status": "planned",
+          "variants": ["expanded", "collapsed"],
+          "dependencies": ["SidebarNavItem"],
+          "notes": "Collapsible sidebar navigation (240px expanded, 48px collapsed)."
+        },
+        {
+          "name": "SidebarNavItem",
+          "category": "Layout",
+          "path": "src/components/layout/SidebarNavItem.tsx",
+          "status": "planned",
+          "variants": ["default", "active", "collapsed"],
+          "dependencies": ["Tooltip"],
+          "notes": "Individual nav item with icon, label, and active state."
+        },
+        {
+          "name": "TopBar",
+          "category": "Layout",
+          "path": "src/components/layout/TopBar.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DropdownMenu", "Command", "Avatar"],
+          "notes": "Top bar with workspace switcher, search, and user menu."
+        },
+        {
+          "name": "PageHeader",
+          "category": "Layout",
+          "path": "src/components/layout/PageHeader.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["BreadcrumbNav", "Button"],
+          "notes": "Page title, breadcrumbs, and optional actions."
+        },
+        {
+          "name": "PageContent",
+          "category": "Layout",
+          "path": "src/components/layout/PageContent.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Content wrapper with max-width and padding."
+        },
+        {
+          "name": "BreadcrumbNav",
+          "category": "Layout",
+          "path": "src/components/layout/BreadcrumbNav.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Breadcrumb navigation component."
+        }
+      ]
+    },
+    {
+      "name": "Core UI",
+      "description": "Foundational UI primitives based on shadcn/ui. These are the building blocks used across the entire application.",
+      "components": [
+        {
+          "name": "Button",
+          "category": "Core UI",
+          "path": "src/components/ui/Button.tsx",
+          "status": "planned",
+          "variants": ["default", "secondary", "outline", "ghost", "destructive", "link", "sm", "md", "lg", "icon"],
+          "dependencies": ["CVA"],
+          "notes": "Primary action button with multiple visual variants and sizes."
+        },
+        {
+          "name": "Input",
+          "category": "Core UI",
+          "path": "src/components/ui/Input.tsx",
+          "status": "planned",
+          "variants": ["default", "error"],
+          "dependencies": [],
+          "notes": "Text input field with default and error states."
+        },
+        {
+          "name": "Textarea",
+          "category": "Core UI",
+          "path": "src/components/ui/Textarea.tsx",
+          "status": "planned",
+          "variants": ["default", "error"],
+          "dependencies": [],
+          "notes": "Multi-line text input with default and error states."
+        },
+        {
+          "name": "Select",
+          "category": "Core UI",
+          "path": "src/components/ui/Select.tsx",
+          "status": "planned",
+          "variants": ["default", "error"],
+          "dependencies": ["Popover"],
+          "notes": "Dropdown select control with popover-based options list."
+        },
+        {
+          "name": "Checkbox",
+          "category": "Core UI",
+          "path": "src/components/ui/Checkbox.tsx",
+          "status": "planned",
+          "variants": ["default", "indeterminate"],
+          "dependencies": [],
+          "notes": "Checkbox input with default and indeterminate states."
+        },
+        {
+          "name": "RadioGroup",
+          "category": "Core UI",
+          "path": "src/components/ui/RadioGroup.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Radio button group for single-selection options."
+        },
+        {
+          "name": "Switch",
+          "category": "Core UI",
+          "path": "src/components/ui/Switch.tsx",
+          "status": "planned",
+          "variants": ["default", "sm"],
+          "dependencies": [],
+          "notes": "Toggle switch for boolean settings."
+        },
+        {
+          "name": "Badge",
+          "category": "Core UI",
+          "path": "src/components/ui/Badge.tsx",
+          "status": "planned",
+          "variants": ["default", "secondary", "outline", "destructive"],
+          "dependencies": ["CVA"],
+          "notes": "Small label badge for status, categories, and counts."
+        },
+        {
+          "name": "Avatar",
+          "category": "Core UI",
+          "path": "src/components/ui/Avatar.tsx",
+          "status": "planned",
+          "variants": ["sm", "md", "lg"],
+          "dependencies": [],
+          "notes": "User avatar with image or initials fallback in multiple sizes."
+        },
+        {
+          "name": "Tooltip",
+          "category": "Core UI",
+          "path": "src/components/ui/Tooltip.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Popover"],
+          "notes": "Hover tooltip for additional context on elements."
+        },
+        {
+          "name": "Popover",
+          "category": "Core UI",
+          "path": "src/components/ui/Popover.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Floating popover container for menus, tooltips, and selects."
+        },
+        {
+          "name": "Dialog",
+          "category": "Core UI",
+          "path": "src/components/ui/Dialog.tsx",
+          "status": "planned",
+          "variants": ["default", "destructive"],
+          "dependencies": [],
+          "notes": "Modal dialog for focused user interactions."
+        },
+        {
+          "name": "Sheet",
+          "category": "Core UI",
+          "path": "src/components/ui/Sheet.tsx",
+          "status": "planned",
+          "variants": ["left", "right", "top", "bottom"],
+          "dependencies": [],
+          "notes": "Slide-over drawer panel anchored to a screen edge."
+        },
+        {
+          "name": "DropdownMenu",
+          "category": "Core UI",
+          "path": "src/components/ui/DropdownMenu.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Popover"],
+          "notes": "Contextual dropdown menu triggered by a button or icon."
+        },
+        {
+          "name": "Command",
+          "category": "Core UI",
+          "path": "src/components/ui/Command.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Dialog"],
+          "notes": "Command palette and searchable list for quick actions and search."
+        },
+        {
+          "name": "Tabs",
+          "category": "Core UI",
+          "path": "src/components/ui/Tabs.tsx",
+          "status": "planned",
+          "variants": ["default", "underline"],
+          "dependencies": [],
+          "notes": "Tab navigation for switching between content panels."
+        },
+        {
+          "name": "Accordion",
+          "category": "Core UI",
+          "path": "src/components/ui/Accordion.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Collapsible accordion sections for progressive disclosure."
+        },
+        {
+          "name": "Card",
+          "category": "Core UI",
+          "path": "src/components/ui/Card.tsx",
+          "status": "planned",
+          "variants": ["default", "interactive"],
+          "dependencies": [],
+          "notes": "Container card with optional hover/click interactivity."
+        },
+        {
+          "name": "Separator",
+          "category": "Core UI",
+          "path": "src/components/ui/Separator.tsx",
+          "status": "planned",
+          "variants": ["horizontal", "vertical"],
+          "dependencies": [],
+          "notes": "Visual separator line between content sections."
+        },
+        {
+          "name": "Skeleton",
+          "category": "Core UI",
+          "path": "src/components/ui/Skeleton.tsx",
+          "status": "planned",
+          "variants": ["text", "circle", "rect"],
+          "dependencies": [],
+          "notes": "Loading placeholder that mimics content shape while data loads."
+        },
+        {
+          "name": "Progress",
+          "category": "Core UI",
+          "path": "src/components/ui/Progress.tsx",
+          "status": "planned",
+          "variants": ["default", "success", "warning", "error"],
+          "dependencies": [],
+          "notes": "Progress bar with semantic color variants."
+        },
+        {
+          "name": "Alert",
+          "category": "Core UI",
+          "path": "src/components/ui/Alert.tsx",
+          "status": "planned",
+          "variants": ["default", "success", "warning", "error", "info"],
+          "dependencies": [],
+          "notes": "Inline alert banner for contextual messages and warnings."
+        },
+        {
+          "name": "AlertDialog",
+          "category": "Core UI",
+          "path": "src/components/ui/AlertDialog.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Dialog"],
+          "notes": "Confirmation dialog requiring explicit user acknowledgement."
+        },
+        {
+          "name": "Toast",
+          "category": "Core UI",
+          "path": "src/components/ui/Toast.tsx",
+          "status": "planned",
+          "variants": ["default", "success", "error", "warning"],
+          "dependencies": [],
+          "notes": "Ephemeral notification toast that appears and auto-dismisses."
+        },
+        {
+          "name": "ScrollArea",
+          "category": "Core UI",
+          "path": "src/components/ui/ScrollArea.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Custom scrollable container with styled scrollbar."
+        }
+      ]
+    },
+    {
+      "name": "Data Display",
+      "description": "Components for presenting data, metrics, statuses, and loading states in structured visual formats.",
+      "components": [
+        {
+          "name": "DataTable",
+          "category": "Data Display",
+          "path": "src/components/data-display/DataTable.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["TanStack Table", "Checkbox", "Button", "Select", "Skeleton"],
+          "notes": "Generic data table with sorting, filtering, and pagination."
+        },
+        {
+          "name": "MetricCard",
+          "category": "Data Display",
+          "path": "src/components/data-display/MetricCard.tsx",
+          "status": "planned",
+          "variants": ["default", "compact"],
+          "dependencies": ["Card"],
+          "notes": "Single metric display with label, value, and trend indicator."
+        },
+        {
+          "name": "StatusBadge",
+          "category": "Data Display",
+          "path": "src/components/data-display/StatusBadge.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Badge"],
+          "notes": "Status indicator with color-coded dot mapped to status tokens."
+        },
+        {
+          "name": "SeverityBadge",
+          "category": "Data Display",
+          "path": "src/components/data-display/SeverityBadge.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Badge"],
+          "notes": "Severity level indicator mapped to severity design tokens."
+        },
+        {
+          "name": "PriorityBadge",
+          "category": "Data Display",
+          "path": "src/components/data-display/PriorityBadge.tsx",
+          "status": "planned",
+          "variants": ["critical", "high", "medium", "low"],
+          "dependencies": ["Badge"],
+          "notes": "Priority level indicator with semantic color coding."
+        },
+        {
+          "name": "ConfidenceIndicator",
+          "category": "Data Display",
+          "path": "src/components/data-display/ConfidenceIndicator.tsx",
+          "status": "planned",
+          "variants": ["inline", "detailed"],
+          "dependencies": ["Progress"],
+          "notes": "Confidence percentage display with visual progress bar."
+        },
+        {
+          "name": "EmptyState",
+          "category": "Data Display",
+          "path": "src/components/data-display/EmptyState.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Button"],
+          "notes": "Empty state placeholder with icon, title, description, and CTA."
+        },
+        {
+          "name": "LoadingSkeleton",
+          "category": "Data Display",
+          "path": "src/components/data-display/LoadingSkeleton.tsx",
+          "status": "planned",
+          "variants": ["table", "cards", "detail"],
+          "dependencies": ["Skeleton"],
+          "notes": "Page-level skeleton layout for loading states."
+        }
+      ]
+    },
+    {
+      "name": "Charts",
+      "description": "Chart wrapper components built on top of Nivo for consistent data visualization styling and theming.",
+      "components": [
+        {
+          "name": "BarChartWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/BarChartWrapper.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["@nivo/bar"],
+          "notes": "Nivo bar chart wrapper with Lumina theming applied."
+        },
+        {
+          "name": "PieChartWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/PieChartWrapper.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["@nivo/pie"],
+          "notes": "Nivo pie chart wrapper with Lumina theming applied."
+        },
+        {
+          "name": "LineChartWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/LineChartWrapper.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["@nivo/line"],
+          "notes": "Nivo line chart wrapper with Lumina theming applied."
+        },
+        {
+          "name": "StackedBarWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/StackedBarWrapper.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["@nivo/bar"],
+          "notes": "Nivo stacked bar chart wrapper with Lumina theming applied."
+        },
+        {
+          "name": "SentimentDonut",
+          "category": "Charts",
+          "path": "src/components/charts/SentimentDonut.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["@nivo/pie"],
+          "notes": "Sentiment distribution donut chart for positive/neutral/negative breakdown."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Discovery",
+      "description": "Components for the website discovery and crawl flow, including AI-suggested pages, topics, and manual fallback entry.",
+      "components": [
+        {
+          "name": "DiscoveryConfirmationScreen",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/DiscoveryConfirmationScreen.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "Button", "SuggestionCard"],
+          "notes": "Post-crawl review screen with suggested pages and topics."
+        },
+        {
+          "name": "DiscoverySection",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/DiscoverySection.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "Accordion"],
+          "notes": "Collapsible section within the discovery confirmation screen."
+        },
+        {
+          "name": "SuggestionCard",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/SuggestionCard.tsx",
+          "status": "planned",
+          "variants": ["page", "topic"],
+          "dependencies": ["Card", "Checkbox", "ConfidenceTag"],
+          "notes": "Individual crawl suggestion card for a page or topic."
+        },
+        {
+          "name": "ConfidenceTag",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/ConfidenceTag.tsx",
+          "status": "planned",
+          "variants": ["high", "medium", "low"],
+          "dependencies": ["Badge"],
+          "notes": "AI confidence level tag with color-coded severity."
+        },
+        {
+          "name": "CrawlProgressIndicator",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/CrawlProgressIndicator.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Progress", "SignalR"],
+          "notes": "Real-time crawl progress indicator with live updates via SignalR."
+        },
+        {
+          "name": "ManualFallbackPrompt",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/ManualFallbackPrompt.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Input", "Button"],
+          "notes": "Manual entry prompt shown when crawl yields low results."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Tracker",
+      "description": "Components for creating, editing, and managing visibility trackers including prompt configuration and platform selection.",
+      "components": [
+        {
+          "name": "TrackerNameEditor",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/TrackerNameEditor.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Input"],
+          "notes": "Inline editable tracker name field."
+        },
+        {
+          "name": "PromptCard",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PromptCard.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "Badge", "DropdownMenu"],
+          "notes": "Individual prompt display card with metadata and actions."
+        },
+        {
+          "name": "PromptReviewList",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PromptReviewList.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["PromptCard", "ScrollArea"],
+          "notes": "Scrollable list of prompts for review before tracker creation."
+        },
+        {
+          "name": "PlatformSelector",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PlatformSelector.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Checkbox", "Badge"],
+          "notes": "Multi-select control for choosing target AI platforms."
+        },
+        {
+          "name": "CadenceSelector",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/CadenceSelector.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Select", "RadioGroup"],
+          "notes": "Scan frequency selector for scheduling tracker runs."
+        },
+        {
+          "name": "PromptRegenerateMenu",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PromptRegenerateMenu.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DropdownMenu", "Button"],
+          "notes": "Dropdown menu with AI prompt regeneration options."
+        },
+        {
+          "name": "TrackerStatusBadge",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/TrackerStatusBadge.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["StatusBadge"],
+          "notes": "Tracker lifecycle status indicator badge."
+        },
+        {
+          "name": "ReadyToCreateScreen",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/ReadyToCreateScreen.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "Button", "PromptReviewList"],
+          "notes": "Pre-creation summary and confirmation screen for new trackers."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Scan",
+      "description": "Components for scan execution, real-time progress monitoring, and scan result summaries.",
+      "components": [
+        {
+          "name": "ScanProgressScreen",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/ScanProgressScreen.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Progress", "PlatformStatusCard", "RotatingProgressMessage", "SignalR"],
+          "notes": "Real-time scan execution progress screen with live updates."
+        },
+        {
+          "name": "ScanCheckCounter",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/ScanCheckCounter.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Animated counter displaying completed scan checks."
+        },
+        {
+          "name": "PlatformStatusCard",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/PlatformStatusCard.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "StatusBadge", "Progress"],
+          "notes": "Per-platform scan status card showing progress and state."
+        },
+        {
+          "name": "RotatingProgressMessage",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/RotatingProgressMessage.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Rotating motivational status messages displayed during scan execution."
+        },
+        {
+          "name": "ScanSummaryHeader",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/ScanSummaryHeader.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["MetricCard"],
+          "notes": "Post-scan summary statistics bar with key metrics."
+        },
+        {
+          "name": "ScanStatusBanner",
+          "category": "Feature — Scan",
+          "path": "src/features/scans/components/ScanStatusBanner.tsx",
+          "status": "planned",
+          "variants": ["running", "completed", "failed", "partial"],
+          "dependencies": ["Alert"],
+          "notes": "Contextual banner showing current scan status."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Findings & Actions",
+      "description": "Components for displaying AI visibility findings, evidence summaries, and recommended content actions.",
+      "components": [
+        {
+          "name": "FindingCard",
+          "category": "Feature — Findings & Actions",
+          "path": "src/features/findings/components/FindingCard.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "StatusBadge", "SeverityBadge", "ConfidenceIndicator"],
+          "notes": "Individual finding summary card with severity and confidence."
+        },
+        {
+          "name": "ContentActionCard",
+          "category": "Feature — Findings & Actions",
+          "path": "src/features/findings/components/ContentActionCard.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "Badge", "Button"],
+          "notes": "Content action recommendation card with actionable steps."
+        },
+        {
+          "name": "FindingDetailDrawer",
+          "category": "Feature — Findings & Actions",
+          "path": "src/features/findings/components/FindingDetailDrawer.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Sheet", "EvidenceSummaryBlock", "Tabs"],
+          "notes": "Full finding details displayed in a right-side drawer."
+        },
+        {
+          "name": "ContentActionDetailDrawer",
+          "category": "Feature — Findings & Actions",
+          "path": "src/features/findings/components/ContentActionDetailDrawer.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Sheet", "Tabs"],
+          "notes": "Full content action details displayed in a drawer."
+        },
+        {
+          "name": "EvidenceSummaryBlock",
+          "category": "Feature — Findings & Actions",
+          "path": "src/features/findings/components/EvidenceSummaryBlock.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Card", "ScrollArea"],
+          "notes": "AI evidence summary block with source citations."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Reporting",
+      "description": "Components for tracker dashboards, performance tables, evidence views, and scan run history.",
+      "components": [
+        {
+          "name": "CoreMetricsRow",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CoreMetricsRow.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["MetricCard"],
+          "notes": "Horizontal row of core visibility metric cards."
+        },
+        {
+          "name": "PromptEvidenceTable",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/PromptEvidenceTable.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DataTable", "ConfidenceIndicator"],
+          "notes": "Table of prompts with corresponding AI answers and confidence."
+        },
+        {
+          "name": "FullAnswerDrawer",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/FullAnswerDrawer.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Sheet", "ScrollArea"],
+          "notes": "Drawer displaying the full AI-generated answer text."
+        },
+        {
+          "name": "TopicPerformanceRow",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/TopicPerformanceRow.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DataTable", "Badge"],
+          "notes": "Topic-level performance display with metrics per topic."
+        },
+        {
+          "name": "CompetitorPerformanceRow",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CompetitorPerformanceRow.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DataTable", "Badge"],
+          "notes": "Competitor comparison display showing relative performance."
+        },
+        {
+          "name": "SourceCitationRow",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/SourceCitationRow.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DataTable"],
+          "notes": "Source and citation tracking display table."
+        },
+        {
+          "name": "TrackerDashboard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/TrackerDashboard.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["CoreMetricsRow", "BarChartWrapper", "LineChartWrapper", "Tabs"],
+          "notes": "Main tracker dashboard view with metrics, charts, and tabbed content."
+        },
+        {
+          "name": "RecentScanRunsTable",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/RecentScanRunsTable.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["DataTable", "StatusBadge"],
+          "notes": "Table of recent scan runs with status and summary data."
+        }
+      ]
+    },
+    {
+      "name": "Status & Feedback",
+      "description": "Cross-cutting components for empty states, error handling, loading screens, and user feedback messages.",
+      "components": [
+        {
+          "name": "EmptyStatePanel",
+          "category": "Status & Feedback",
+          "path": "src/components/feedback/EmptyStatePanel.tsx",
+          "status": "planned",
+          "variants": ["no-data", "first-time", "error"],
+          "dependencies": ["EmptyState"],
+          "notes": "Contextual empty state panel with guidance and next steps."
+        },
+        {
+          "name": "PartialResultsWarning",
+          "category": "Status & Feedback",
+          "path": "src/components/feedback/PartialResultsWarning.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Alert"],
+          "notes": "Warning banner displayed when data is incomplete or partial."
+        },
+        {
+          "name": "ErrorBoundary",
+          "category": "Status & Feedback",
+          "path": "src/components/feedback/ErrorBoundary.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Alert", "Button"],
+          "notes": "React error boundary with fallback UI and retry action."
+        },
+        {
+          "name": "PageNotFound",
+          "category": "Status & Feedback",
+          "path": "src/components/feedback/PageNotFound.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["EmptyState"],
+          "notes": "404 page not found screen."
+        },
+        {
+          "name": "LoadingPage",
+          "category": "Status & Feedback",
+          "path": "src/components/feedback/LoadingPage.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["LoadingSkeleton"],
+          "notes": "Full-page loading state with skeleton layout."
+        }
+      ]
+    }
+  ]
+}

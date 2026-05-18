@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lumina
+      POSTGRES_PASSWORD: lumina_dev
+      POSTGRES_DB: lumina
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: lumina
+      RABBITMQ_DEFAULT_PASS: lumina_dev
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
