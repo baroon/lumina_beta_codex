@@ -1,5 +1,7 @@
+import { Providers } from "./app/providers";
+
 function App() {
-  return <div>Lumina</div>;
+  return <Providers />;
 }
 
 export default App;

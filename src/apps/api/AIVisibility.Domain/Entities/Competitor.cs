@@ -1,0 +1,17 @@
+using AIVisibility.Domain.Enums;
+
+namespace AIVisibility.Domain.Entities;
+
+public class Competitor
+{
+    public Guid Id { get; set; }
+    public Guid BrandId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Domain { get; set; }
+    public string? Description { get; set; }
+    public double Confidence { get; set; }
+    public CandidateSource Source { get; set; }
+    public CandidateStatus Status { get; set; }
+
+    public Brand Brand { get; set; } = null!;
+}
