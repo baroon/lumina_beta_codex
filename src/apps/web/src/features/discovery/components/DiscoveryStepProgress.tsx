@@ -46,7 +46,7 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
             >
               {/* Status indicator */}
               {isCompleted ? (
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-semantic-success-100 text-semantic-success-600">
                   <Check className="h-4 w-4" strokeWidth={2.5} />
                 </div>
               ) : isActive ? (
@@ -63,7 +63,7 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
               <StepIcon
                 className={`h-4 w-4 shrink-0 ${
                   isCompleted
-                    ? "text-green-500"
+                    ? "text-semantic-success-500"
                     : isActive
                       ? "text-primary-600"
                       : "text-neutral-300"
@@ -83,7 +83,7 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
 
               {/* Completed badge */}
               {isCompleted && (
-                <span className="ml-auto text-xs text-green-600">{DISCOVERY_COPY.progress.done}</span>
+                <span className="ml-auto text-xs text-semantic-success-600">{DISCOVERY_COPY.progress.done}</span>
               )}
             </div>
           );

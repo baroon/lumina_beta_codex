@@ -4,7 +4,6 @@ import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryStepProgress } from "./DiscoveryStepProgress";
 
 interface DiscoveryProgressScreenProps {
-  message: string;
   step: number;
   totalSteps: number;
 }

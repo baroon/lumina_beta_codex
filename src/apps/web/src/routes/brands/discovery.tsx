@@ -30,7 +30,6 @@ export function DiscoveryPage() {
   if (status === "Pending" || status === "Crawling" || status === "Extracting") {
     return (
       <DiscoveryProgressScreen
-        message={progress.message}
         step={progress.step}
         totalSteps={progress.totalSteps}
       />

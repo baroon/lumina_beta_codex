@@ -13,7 +13,7 @@ export function DiscoveryCompleteScreen({ brandName }: DiscoveryCompleteScreenPr
     <div className="flex min-h-[400px] items-center justify-center p-4">
       <Card className="w-full max-w-md text-center">
         <CardHeader>
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-semantic-success-100 text-semantic-success-600">
             <PartyPopper className="h-6 w-6" />
           </div>
           <CardTitle>{DISCOVERY_COPY.complete.title}</CardTitle>
