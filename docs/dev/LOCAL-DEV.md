@@ -40,9 +40,20 @@ After running `pnpm install` in `src/`, Husky installs a pre-commit hook automat
 
 1. **Prettier** — auto-formats staged `.ts`, `.tsx`, `.css`, `.json`, `.md` files
 2. **ESLint** — checks architectural boundary rules (layer imports, deprecated paths, cross-feature bans)
-3. **Manifest sync** — validates that component files match `component-manifest.json` entries
+3. **Manifest sync** — validates five checks:
+   - `MISSING_MANIFEST_ENTRY` — component file has no manifest entry (ERROR)
+   - `ORPHAN_MANIFEST_ENTRY` — manifest entry points to missing file (ERROR)
+   - `DEPRECATED_DIRECTORY` — file in deprecated directory (ERROR)
+   - `MISSING_STORY_FILE` — shared component has no `.stories.tsx` (ERROR)
+   - `MISSING_TEST_FILE` — shared component has no `.test.tsx` (WARN, non-blocking)
 
 If a commit is rejected, fix the reported violations and commit again. See `docs/dev/COMMANDS.md` for manual commands.
+
+**Before marking work complete**, run:
+
+```bash
+pnpm check:all    # ESLint → TypeScript type-check → Vitest tests → manifest sync
+```
 
 **First-time setup note:** If pre-commit hooks don't run, execute `pnpm run prepare` from `src/` to initialize Husky.
 

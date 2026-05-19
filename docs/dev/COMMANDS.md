@@ -37,11 +37,12 @@ dotnet ef database update \
 pnpm format              # Auto-fix formatting with Prettier
 pnpm format:check        # Check formatting without modifying (CI-friendly)
 pnpm lint:web            # Run ESLint on frontend (includes boundary rules)
-pnpm manifest:check      # Validate component manifest sync
+pnpm manifest:check      # Validate component manifest sync (includes story/test checks)
 pnpm --filter web typecheck  # Run TypeScript type-check (not in pre-commit)
+pnpm check:all           # Full CI validation: ESLint → typecheck → tests → manifest sync
 ```
 
-All formatting and lint checks run automatically on `git commit` via Husky pre-commit hooks. Run them manually for immediate feedback before committing.
+All formatting and lint checks run automatically on `git commit` via Husky pre-commit hooks. Run `pnpm check:all` before marking work as complete — it chains all validation into a single command.
 
 ## Local Infra
 

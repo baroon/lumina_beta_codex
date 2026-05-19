@@ -36,11 +36,11 @@
     reportsApi.ts
 
   /components
-    /ui
-    /layout
-    /charts
-    /status
-    /empty-states
+    /atoms              UI primitives (Button, Input, Card, Badge, etc.)
+    /molecules          Composed components (PageHeader, ErrorPage, LoadingPage)
+    /organisms          Complex sections (AppShell, Sidebar, ErrorBoundary)
+    /data-display       DataTable, MetricCard, StatusBadge, KPITile, etc.
+    /charts             Nivo chart wrappers (BarChartWrapper, etc.)
 
   /features
     /brands
@@ -61,6 +61,40 @@
   /types
   /content
 ```
+
+> **Note:** The deprecated `/components/ui/`, `/components/layout/`, and `/components/feedback/` directories must not be used. ESLint blocks imports from these paths. All shared components use the atomic design structure above.
+
+## Shared Component File Convention
+
+Every shared component in `/components/` (atoms, molecules, organisms, data-display, charts) must include these files:
+
+```text
+ComponentName.tsx           ← Implementation (CVA variants, cn() merging, design tokens)
+ComponentName.stories.tsx   ← Storybook stories (one per variant, required)
+ComponentName.test.tsx      ← Unit tests (Vitest + React Testing Library, required)
+index.ts                    ← Barrel export (named exports only)
+```
+
+The pre-commit hook enforces this:
+
+- Missing `.stories.tsx` → `MISSING_STORY_FILE` ERROR (blocks commit)
+- Missing `.test.tsx` → `MISSING_TEST_FILE` WARN (non-blocking during test backlog phase)
+- Missing manifest entry → `MISSING_MANIFEST_ENTRY` ERROR (blocks commit)
+
+Register every new shared component in `agent-system/component-manifest.json` before implementing.
+
+## Code Quality Enforcement
+
+A four-layer pre-commit system prevents architectural drift from day one:
+
+1. **Prettier** — auto-formats staged files
+2. **ESLint boundary rules** — enforces atomic design layer boundaries and cross-feature isolation
+3. **Manifest sync** — validates component files, story/test existence, and manifest consistency
+4. **Husky + lint-staged** — gates every commit through all three layers
+
+Run `pnpm check:all` before marking work complete (chains ESLint → typecheck → tests → manifest sync).
+
+See `src/agent-system/project-structure.md` § Pre-Commit Enforcement System for full details.
 
 ## Frontend Rules
 

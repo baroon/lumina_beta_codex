@@ -154,9 +154,16 @@ Agents cannot bypass these gates. They exist to prevent architectural drift.
 
 ## Before Completing Work
 
-Run relevant checks:
+Run `pnpm check:all` before marking any frontend work as complete. This single command chains:
 
-- frontend typecheck/lint/test/build for frontend changes
+1. ESLint (structural boundaries)
+2. TypeScript type-check
+3. Vitest tests
+4. Manifest sync (including story/test existence checks)
+
+For backend-only changes, run:
+
 - backend build/test for backend changes
 - migrations validation for schema changes
-- Storybook build for reusable UI changes where practical
+
+For UI component changes, also verify Storybook builds where practical.

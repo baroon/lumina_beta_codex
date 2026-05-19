@@ -105,4 +105,20 @@ Adapter mapping:
 - Azure Key Vault ↔ local secrets/env
 - Hangfire uses PostgreSQL in both environments (no adapter swap needed)
 
-Rule: same application workflows locally and in Azure. Only infrastructure adapters change by configuration.
+## Code Quality Enforcement
+
+Set up from day one alongside Docker Compose infrastructure.
+
+`pnpm install` in `src/` triggers the `prepare` script, which installs Husky pre-commit hooks. Every `git commit` runs:
+
+1. **Prettier** — auto-formats staged files
+2. **ESLint** — enforces architectural boundaries (layer imports, deprecated paths, cross-feature bans)
+3. **Manifest sync** — validates component files against `component-manifest.json`, checks for missing stories (ERROR) and missing tests (WARN)
+
+Run `pnpm check:all` before marking work complete — chains ESLint, TypeScript type-check, Vitest tests, and manifest sync.
+
+See `src/agent-system/project-structure.md` § Pre-Commit Enforcement System for full configuration details.
+
+## Rule
+
+Same application workflows locally and in Azure. Only infrastructure adapters change by configuration.

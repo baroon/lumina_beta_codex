@@ -3,17 +3,19 @@
 /**
  * manifest-sync-lite.mjs — Lightweight manifest sync validation
  *
- * Three checks:
+ * Five checks:
  *   MISSING_MANIFEST_ENTRY  — .tsx file in shared component dirs has no manifest entry
  *   ORPHAN_MANIFEST_ENTRY   — manifest entry with status:"implemented" points to missing file
  *   DEPRECATED_DIRECTORY    — .tsx file exists in deprecated directories (ui/, layout/, feedback/)
+ *   MISSING_STORY_FILE      — shared component .tsx has no matching .stories.tsx (ERROR)
+ *   MISSING_TEST_FILE       — shared component .tsx has no matching .test.tsx (WARN, non-blocking)
  *
  * Usage:
  *   node scripts/manifest-sync-lite.mjs            # validate all files
  *   node scripts/manifest-sync-lite.mjs --staged    # validate only staged files
  *
  * Exit codes:
- *   0 — all checks pass
+ *   0 — all checks pass (warnings do not affect exit code)
  *   1 — one or more errors found
  */
 
@@ -185,6 +187,62 @@ function checkDeprecatedDirectories(filesToCheck) {
   return errors;
 }
 
+function checkMissingStoryFiles(filesToCheck) {
+  const errors = [];
+
+  let tsxFiles;
+  if (filesToCheck) {
+    tsxFiles = filesToCheck.filter((f) =>
+      SHARED_COMPONENT_DIRS.some((dir) => f.startsWith(dir + "/")),
+    );
+    tsxFiles = tsxFiles.filter((f) => !f.endsWith(".test.tsx") && !f.endsWith(".stories.tsx"));
+  } else {
+    tsxFiles = SHARED_COMPONENT_DIRS.flatMap(collectTsxFiles);
+  }
+
+  for (const file of tsxFiles) {
+    const storyFile = file.replace(/\.tsx$/, ".stories.tsx");
+    const absStoryFile = join(WEB_ROOT, storyFile);
+    if (!existsSync(absStoryFile)) {
+      errors.push({
+        check: "MISSING_STORY_FILE",
+        file,
+        message: `Component file has no matching story: ${file} (expected: ${storyFile})`,
+      });
+    }
+  }
+
+  return errors;
+}
+
+function checkMissingTestFiles(filesToCheck) {
+  const warnings = [];
+
+  let tsxFiles;
+  if (filesToCheck) {
+    tsxFiles = filesToCheck.filter((f) =>
+      SHARED_COMPONENT_DIRS.some((dir) => f.startsWith(dir + "/")),
+    );
+    tsxFiles = tsxFiles.filter((f) => !f.endsWith(".test.tsx") && !f.endsWith(".stories.tsx"));
+  } else {
+    tsxFiles = SHARED_COMPONENT_DIRS.flatMap(collectTsxFiles);
+  }
+
+  for (const file of tsxFiles) {
+    const testFile = file.replace(/\.tsx$/, ".test.tsx");
+    const absTestFile = join(WEB_ROOT, testFile);
+    if (!existsSync(absTestFile)) {
+      warnings.push({
+        check: "MISSING_TEST_FILE",
+        file,
+        message: `Component file has no matching test: ${file} (expected: ${testFile})`,
+      });
+    }
+  }
+
+  return warnings;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -203,7 +261,19 @@ function main() {
     ...checkMissingManifestEntries(manifest, stagedFiles),
     ...checkOrphanManifestEntries(manifest),
     ...checkDeprecatedDirectories(stagedFiles),
+    ...checkMissingStoryFiles(stagedFiles),
   ];
+
+  const allWarnings = checkMissingTestFiles(stagedFiles);
+
+  // Print warnings (non-blocking)
+  if (allWarnings.length > 0) {
+    console.warn(`\nmanifest-sync-lite: ${allWarnings.length} warning(s):\n`);
+    for (const warning of allWarnings) {
+      console.warn(`  WARN  [${warning.check}] ${warning.message}`);
+    }
+    console.warn("");
+  }
 
   if (allErrors.length === 0) {
     console.log("manifest-sync-lite: All checks passed.");

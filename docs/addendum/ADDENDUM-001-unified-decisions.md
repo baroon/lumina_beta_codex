@@ -214,7 +214,7 @@ Reasoning: ASP.NET Core native, WebSocket with automatic fallback, hub-based gro
 Architecture:
 - **Layer 1 — Prettier:** Consistent formatting (semi, double quotes, 100 char width, LF)
 - **Layer 2 — ESLint boundary rules:** `no-restricted-imports` enforces atomic design layer boundaries, deprecated path bans, and cross-feature isolation. No custom plugins needed.
-- **Layer 3 — Manifest sync validation:** Zero-dependency Node.js script validates component files against `component-manifest.json` (missing entries, orphaned entries, deprecated directories)
+- **Layer 3 — Manifest sync validation:** Zero-dependency Node.js script validates component files against `component-manifest.json` (5 checks: missing entries, orphaned entries, deprecated directories, missing story files, missing test files)
 - **Layer 4 — Husky + lint-staged:** Pre-commit hook gates every `git commit` through all three layers. Prettier auto-fixes; ESLint and manifest errors block the commit.
 
 Tooling:
@@ -222,17 +222,30 @@ Tooling:
 - `eslint-config-prettier` — disables ESLint formatting rules that conflict with Prettier
 - `husky` — Git hook management, configured to bridge git root and workspace root
 - `lint-staged` — runs checks only on staged files for fast feedback
-- `scripts/manifest-sync-lite.mjs` — lightweight manifest validation (3 checks, zero external deps)
+- `scripts/manifest-sync-lite.mjs` — lightweight manifest validation (5 checks, zero external deps)
 
-Reasoning: After the atomic design restructure (v1.1.0), governance documents defined layer boundaries but nothing enforced them at commit time. Agents and developers could still import from deprecated paths, violate layer boundaries, or create components without manifest entries. This system catches the critical violations automatically without the overhead of AST parsing or dependency graph analysis — appropriate for 18 implemented components in early beta.
+Manifest sync checks:
+- `MISSING_MANIFEST_ENTRY` — component file has no manifest entry (ERROR)
+- `ORPHAN_MANIFEST_ENTRY` — manifest entry points to missing file (ERROR)
+- `DEPRECATED_DIRECTORY` — file in deprecated directory (ERROR)
+- `MISSING_STORY_FILE` — shared component has no `.stories.tsx` (ERROR)
+- `MISSING_TEST_FILE` — shared component has no `.test.tsx` (WARN, non-blocking)
+
+CI validation script:
+- `pnpm check:all` — chains ESLint → TypeScript type-check → Vitest tests → manifest sync. Agents run this before marking work complete.
+
+Reasoning: After the atomic design restructure (v1.1.0), governance documents defined layer boundaries but nothing enforced them at commit time. Agents and developers could still import from deprecated paths, violate layer boundaries, or create components without manifest entries or stories. This system catches the critical violations automatically without the overhead of AST parsing or dependency graph analysis — appropriate for the current component count in early beta.
 
 **Files updated:**
 - `project-structure.md` (§ Pre-Commit Enforcement System)
 - `CHAINS.md` (§ Review & Lint checks)
-- `AGENTS.md` (§ Commit Enforcement)
+- `AGENTS.md` (§ Commit Enforcement, § Before Completing Work)
 - `COMMANDS.md` (§ Code Quality & Formatting)
 - `LOCAL-DEV.md` (§ Code Quality & Pre-Commit Hooks)
 - `tech-stack.decisions.md` (§ Code Quality Enforcement)
+- `08-agent-handoff-instructions.md` (§ Code quality enforcement)
+- `ARCH-003-frontend-architecture.md` (§ Component File Convention, § Code Quality Enforcement)
+- `ARCH-010-deployment-local-dev.md` (§ Code Quality Enforcement)
 
 ---
 
@@ -317,5 +330,5 @@ The following original decisions were reviewed and explicitly kept:
 | Cloud | Azure (Container Apps, ACR, Key Vault) |
 | CI/CD | GitHub Actions |
 | Package Manager | pnpm |
-| Code Quality | **Prettier + ESLint boundaries + Husky + lint-staged** (added) — pre-commit enforcement |
+| Code Quality | **Prettier + ESLint boundaries + Husky + lint-staged + manifest sync (5 checks)** (added) — pre-commit enforcement + `check:all` CI script |
 | Agent System | **BOLD framework adaptation** (added) — manifest, chains, protected changes |

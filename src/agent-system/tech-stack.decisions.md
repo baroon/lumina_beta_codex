@@ -3,7 +3,7 @@
 ## Lumina AI Visibility Platform
 
 **Status:** Decided
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Date:** 2026-05-18
 **Owner:** Chief Technical Architect
 
@@ -2004,12 +2004,12 @@ public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
 
 **What it enforces at commit time:**
 
-| Layer | Tool                           | What it catches                                                           |
-| ----- | ------------------------------ | ------------------------------------------------------------------------- |
-| 1     | Prettier                       | Inconsistent formatting (auto-fixed)                                      |
-| 2     | ESLint `no-restricted-imports` | Layer boundary violations, deprecated path imports, cross-feature imports |
-| 3     | `manifest-sync-lite.mjs`       | Missing manifest entries, orphaned entries, files in deprecated dirs      |
-| 4     | Husky + lint-staged            | Orchestrates layers 1-3 on staged files only                              |
+| Layer | Tool                           | What it catches                                                                             |
+| ----- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| 1     | Prettier                       | Inconsistent formatting (auto-fixed)                                                        |
+| 2     | ESLint `no-restricted-imports` | Layer boundary violations, deprecated path imports, cross-feature imports                   |
+| 3     | `manifest-sync-lite.mjs`       | Missing manifest entries, orphaned entries, deprecated dirs, missing stories (ERROR), missing tests (WARN) |
+| 4     | Husky + lint-staged            | Orchestrates layers 1-3 on staged files only                                                |
 
 **Config files (workspace root `src/`):**
 
@@ -2031,14 +2031,16 @@ public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
 **Constraints this places on agents:**
 
 - Agents cannot bypass pre-commit hooks. Violations block the commit.
-- When creating a new shared component, add the manifest entry first.
+- When creating a new shared component, add the manifest entry and a `.stories.tsx` file first — the `MISSING_STORY_FILE` check blocks commits.
+- Missing `.test.tsx` files produce a warning but do not block commits (test backlog phase).
 - When moving a component between directories, update the manifest path.
 - Formatting is auto-fixed — agents don't need to worry about style, just commit.
 - `eslint-config-prettier` is the last ESLint config entry to prevent formatting conflicts.
+- Run `pnpm check:all` before marking work as complete — chains ESLint, TypeScript type-check, tests, and manifest sync.
 
 **What is deliberately excluded from pre-commit:**
 
-- TypeScript type-check (`tsc --noEmit`) — too slow; run manually via `pnpm --filter web typecheck`
+- TypeScript type-check (`tsc --noEmit`) — too slow; run manually via `pnpm --filter web typecheck` or `pnpm check:all`
 - AST-based validation — overkill for current component count
 - Commit message linting — adds cognitive overhead without proportional value
 
@@ -2123,3 +2125,4 @@ This section consolidates the agent rules from all decisions above into a single
 | ------- | ---------- | ----------------------------------------------------------------------------------------- | ----------- |
 | 1.0.0   | 2026-05-18 | Initial decisions recorded — adapted from BOLD framework for Lumina platform              | CTA         |
 | 1.1.0   | 2026-05-19 | Added code quality enforcement decision (Prettier, ESLint boundaries, Husky, lint-staged) | CTA         |
+| 1.2.0   | 2026-05-19 | Story/test existence checks, check:all CI script, updated enforcement table                | CTA         |

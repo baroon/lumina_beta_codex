@@ -3,7 +3,7 @@
 ## Lumina AI Visibility Platform
 
 **Status:** Decided
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Date:** 2026-05-19
 **Owner:** Chief Technical Architect
 
@@ -698,6 +698,7 @@ packages:
     "format:check": "prettier --check .",
     "lint:web": "pnpm --filter web lint",
     "manifest:check": "node scripts/manifest-sync-lite.mjs",
+    "check:all": "pnpm lint:web && pnpm --filter web typecheck && pnpm --filter web test && pnpm manifest:check",
     "prepare": "cd .. && husky src/.husky",
   },
 }
@@ -753,15 +754,18 @@ pnpm lint:web       # run ESLint on the web app
 
 **Script:** `src/scripts/manifest-sync-lite.mjs` — zero external dependencies (Node.js builtins only).
 
-| Check                    | What                                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------- |
-| `MISSING_MANIFEST_ENTRY` | `.tsx` file in atoms/molecules/organisms/data-display/charts exists but has no manifest entry |
-| `ORPHAN_MANIFEST_ENTRY`  | Manifest entry with `status: "implemented"` points to non-existent file                       |
-| `DEPRECATED_DIRECTORY`   | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
+| Check                    | Severity | What                                                                                          |
+| ------------------------ | -------- | --------------------------------------------------------------------------------------------- |
+| `MISSING_MANIFEST_ENTRY` | ERROR    | `.tsx` file in atoms/molecules/organisms/data-display/charts exists but has no manifest entry |
+| `ORPHAN_MANIFEST_ENTRY`  | ERROR    | Manifest entry with `status: "implemented"` points to non-existent file                       |
+| `DEPRECATED_DIRECTORY`   | ERROR    | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
+| `MISSING_STORY_FILE`     | ERROR    | Shared component `.tsx` has no matching `.stories.tsx` in the same directory                   |
+| `MISSING_TEST_FILE`      | WARN     | Shared component `.tsx` has no matching `.test.tsx` in the same directory (non-blocking)       |
 
 ```bash
-pnpm manifest:check          # validate all files
+pnpm manifest:check          # validate all files (includes story/test existence checks)
 node scripts/manifest-sync-lite.mjs --staged   # validate only staged files (used in pre-commit)
+pnpm check:all               # full CI validation: ESLint → TypeScript → tests → manifest sync
 ```
 
 ### Layer 4: Husky + lint-staged (pre-commit gating)
@@ -781,7 +785,8 @@ node scripts/manifest-sync-lite.mjs --staged   # validate only staged files (use
 
 - The pre-commit hook runs automatically. Agents do not need to run these checks manually before committing.
 - If a commit fails due to ESLint errors, fix the violation — do not bypass the hook.
-- When creating a new shared component, always add a manifest entry first or the `MISSING_MANIFEST_ENTRY` check will fail.
+- When creating a new shared component, always add a manifest entry first or the `MISSING_MANIFEST_ENTRY` check will fail. You must also create a `.stories.tsx` file or the `MISSING_STORY_FILE` check will block the commit.
+- Run `pnpm check:all` before marking work as complete. This chains ESLint, TypeScript type-check, tests, and manifest sync into a single command.
 
 ### What's deliberately excluded
 
@@ -801,3 +806,4 @@ node scripts/manifest-sync-lite.mjs --staged   # validate only staged files (use
 | 1.0.0   | 2026-05-18 | Initial structure defined                                                                           | CTA         |
 | 1.1.0   | 2026-05-19 | Atomic design restructure (atoms/molecules/organisms), CVA standardization, Storybook configuration | CTA         |
 | 1.2.0   | 2026-05-19 | Pre-commit enforcement system (Prettier, ESLint boundaries, manifest sync, Husky)                   | CTA         |
+| 1.3.0   | 2026-05-19 | Story/test existence checks (MISSING_STORY_FILE, MISSING_TEST_FILE) and check:all CI script         | CTA         |

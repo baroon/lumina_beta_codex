@@ -1141,8 +1141,8 @@ escalating to human.
 | 7. Named exports only                  | No         | Manual review                                                           |
 | 8. File in correct location            | Partial    | ESLint deprecated path ban + manifest sync `DEPRECATED_DIRECTORY` check |
 | 9. Manifest entry exists               | Yes        | manifest-sync-lite `MISSING_MANIFEST_ENTRY` + `ORPHAN_MANIFEST_ENTRY`   |
-| 10. Test coverage adequate             | No         | Manual review                                                           |
-| 11. One story per variant              | No         | Manual review                                                           |
+| 10. Test coverage adequate             | Partial    | manifest-sync-lite `MISSING_TEST_FILE` (WARN) — file existence only    |
+| 11. One story per variant              | Partial    | manifest-sync-lite `MISSING_STORY_FILE` (ERROR) — file existence only  |
 | 12. Charts use wrapper pattern         | No         | Manual review                                                           |
 | 13. Forms use React Hook Form + Zod    | No         | Manual review                                                           |
 | 14. URL search params for filters      | No         | Manual review                                                           |
