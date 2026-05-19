@@ -35,4 +35,20 @@ public class DiscoveryController : ControllerBase
         await _mediator.Send(command, cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("resuggest")]
+    [ProducesResponseType(typeof(ResuggestResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Resuggest(Guid brandId, [FromBody] ResuggestRequest request, CancellationToken cancellationToken)
+    {
+        var command = new ResuggestCommand(
+            brandId,
+            request.Industry,
+            request.Category,
+            request.Products,
+            request.Audiences,
+            request.Markets);
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
 }

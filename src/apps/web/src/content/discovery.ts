@@ -106,6 +106,19 @@ export const DISCOVERY_COPY = {
     add: "Add",
     cancel: "Cancel",
   },
+  wizard: {
+    steps: [
+      { label: "Brand Identity" },
+      { label: "Products" },
+      { label: "Audiences & Markets" },
+      { label: "Competitive Landscape" },
+      { label: "Review & Confirm" },
+    ],
+    next: "Next",
+    back: "Back",
+    confirmAndFinish: "Confirm & Finish",
+    resuggestingMessage: "Improving suggestions based on your selections...",
+  },
   buttons: {
     confirm: "Confirm Selections",
     addCustom: "Add Custom",

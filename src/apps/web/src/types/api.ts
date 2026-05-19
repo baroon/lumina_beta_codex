@@ -78,6 +78,27 @@ export interface ConfirmDiscoveryRequest {
   dismissedIds: string[];
 }
 
+export interface ResuggestRequest {
+  industry: string | null;
+  category: string | null;
+  products: string[];
+  audiences: string[];
+  markets: string[];
+}
+
+export interface ResuggestCandidateDto {
+  name: string;
+  description: string | null;
+  confidence: number;
+  source: CandidateSource;
+  metadata: Record<string, string>;
+}
+
+export interface ResuggestResponse {
+  competitors: ResuggestCandidateDto[];
+  topics: ResuggestCandidateDto[];
+}
+
 export interface DiscoveryProgressMessage {
   brandId: string;
   status: DiscoveryStatus;

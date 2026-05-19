@@ -104,7 +104,8 @@ apps/web/
 │   │   │   └── types.ts               Brand types
 │   │   ├── discovery/
 │   │   │   ├── components/             DiscoveryConfirmationScreen, SuggestionCard, etc.
-│   │   │   ├── hooks/                  useDiscovery, useCrawlProgress
+│   │   │   │   └── wizard/            Wizard step components (BrandIdentity, Products, AudiencesMarkets, CompetitiveLandscape, Review)
+│   │   │   ├── hooks/                  useDiscovery, useResuggestDiscovery, useCrawlProgress
 │   │   │   └── types.ts
 │   │   ├── trackers/
 │   │   │   ├── components/             TrackerNameEditor, PromptCard, PlatformSelector, etc.

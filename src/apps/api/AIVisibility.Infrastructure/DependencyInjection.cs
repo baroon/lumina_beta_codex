@@ -37,6 +37,9 @@ public static class DependencyInjection
         // Competitors (now via OpenAI)
         services.AddScoped<ICompetitorSuggestionService, OpenAiCompetitorSuggestionService>();
 
+        // Re-suggestion (enriched competitors + topics using confirmed data)
+        services.AddScoped<IResuggestService, OpenAiResuggestService>();
+
         // Crawling
         services.AddHttpClient("Crawler", client =>
         {

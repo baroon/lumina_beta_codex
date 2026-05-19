@@ -327,6 +327,15 @@
           "variants": [],
           "dependencies": ["EmptyState"],
           "notes": "404 page not found screen."
+        },
+        {
+          "name": "Stepper",
+          "category": "Molecules",
+          "path": "src/components/molecules/Stepper.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Button"],
+          "notes": "Reusable wizard stepper with horizontal numbered steps, connecting lines, checkmarks for completed steps, and Back/Next navigation."
         }
       ]
     },
@@ -511,8 +520,15 @@
           "path": "src/features/discovery/components/DiscoveryConfirmationScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "Button", "SuggestionCard"],
-          "notes": "Post-crawl review screen with suggested pages and topics."
+          "dependencies": [
+            "Stepper",
+            "WizardStepBrandIdentity",
+            "WizardStepProducts",
+            "WizardStepAudiencesMarkets",
+            "WizardStepCompetitiveLandscape",
+            "WizardStepReview"
+          ],
+          "notes": "5-step discovery confirmation wizard. Orchestrates wizard state, re-suggestion API call at step 3→4 transition, and final confirmation."
         },
         {
           "name": "DiscoverySection",
@@ -594,6 +610,51 @@
           "variants": [],
           "dependencies": ["Input", "Button"],
           "notes": "Form for manually adding custom pages or topics to the discovery list."
+        },
+        {
+          "name": "WizardStepBrandIdentity",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/wizard/WizardStepBrandIdentity.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "ConfidenceTag"],
+          "notes": "Wizard step 1: read-only brand profile card showing description, industry, category, positioning, and confidence."
+        },
+        {
+          "name": "WizardStepProducts",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/wizard/WizardStepProducts.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["DiscoverySection"],
+          "notes": "Wizard step 2: single DiscoverySection for products with select/deselect/add-custom controls."
+        },
+        {
+          "name": "WizardStepAudiencesMarkets",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/wizard/WizardStepAudiencesMarkets.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["DiscoverySection"],
+          "notes": "Wizard step 3: two DiscoverySection instances for audiences and markets."
+        },
+        {
+          "name": "WizardStepCompetitiveLandscape",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/wizard/WizardStepCompetitiveLandscape.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["DiscoverySection"],
+          "notes": "Wizard step 4: three DiscoverySection instances for topics, competitors, and trust signals. Shows loading overlay during re-suggestion."
+        },
+        {
+          "name": "WizardStepReview",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/wizard/WizardStepReview.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge"],
+          "notes": "Wizard step 5: compact summary of all selections across all sections with chip-style badges. Confirm button triggers final save."
         }
       ]
     },

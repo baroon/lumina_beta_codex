@@ -1,5 +1,10 @@
 import { apiClient } from "./apiClient";
-import type { ConfirmDiscoveryRequest, DiscoveryResultsDto } from "@/types/api";
+import type {
+  ConfirmDiscoveryRequest,
+  DiscoveryResultsDto,
+  ResuggestRequest,
+  ResuggestResponse,
+} from "@/types/api";
 
 export const discoveryApi = {
   getResults: (brandId: string) =>
@@ -7,4 +12,7 @@ export const discoveryApi = {
 
   confirm: (brandId: string, data: ConfirmDiscoveryRequest) =>
     apiClient.post<void>(`/api/brands/${brandId}/discovery/confirm`, data),
+
+  resuggest: (brandId: string, data: ResuggestRequest) =>
+    apiClient.post<ResuggestResponse>(`/api/brands/${brandId}/discovery/resuggest`, data),
 };

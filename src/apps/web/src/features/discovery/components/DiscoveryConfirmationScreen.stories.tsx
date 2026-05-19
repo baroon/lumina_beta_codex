@@ -110,6 +110,68 @@ const meta: Meta<typeof DiscoveryConfirmationScreen> = {
 export default meta;
 type Story = StoryObj<typeof DiscoveryConfirmationScreen>;
 
+/** Wizard starts at step 1 (Brand Identity) */
 export const Default: Story = {
   args: { results: mockResults },
+};
+
+/** With no brand profile detected */
+export const NoBrandProfile: Story = {
+  args: {
+    results: {
+      ...mockResults,
+      brandProfile: null,
+    },
+  },
+};
+
+/** With many items across all sections */
+export const RichData: Story = {
+  args: {
+    results: {
+      ...mockResults,
+      products: [
+        ...mockResults.products,
+        {
+          id: "p3",
+          name: "Data Pipeline",
+          description: "ETL service for data teams.",
+          confidence: 0.5,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+        {
+          id: "p4",
+          name: "Auth Service",
+          description: "Identity and access management.",
+          confidence: 0.4,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+      ],
+      competitors: [
+        ...mockResults.competitors,
+        {
+          id: "c2",
+          name: "Rival Inc",
+          description: "Competing cloud platform.",
+          confidence: 0.8,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+        {
+          id: "c3",
+          name: "AltCloud",
+          description: "Budget alternative.",
+          confidence: 0.45,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+      ],
+    },
+  },
 };

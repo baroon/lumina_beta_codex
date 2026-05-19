@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { discoveryApi } from "@/api/discoveryApi";
-import type { ConfirmDiscoveryRequest } from "@/types/api";
+import type { ConfirmDiscoveryRequest, ResuggestRequest } from "@/types/api";
 
 export function useDiscoveryResults(brandId: string) {
   return useQuery({
@@ -19,5 +19,11 @@ export function useConfirmDiscovery(brandId: string) {
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
       queryClient.invalidateQueries({ queryKey: ["brands", brandId] });
     },
+  });
+}
+
+export function useResuggestDiscovery(brandId: string) {
+  return useMutation({
+    mutationFn: (data: ResuggestRequest) => discoveryApi.resuggest(brandId, data),
   });
 }
