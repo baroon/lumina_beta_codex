@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
 
 interface ConfidenceTagProps {

@@ -1,5 +1,5 @@
 import { Providers } from "./app/providers";
-import { ErrorBoundary } from "./components/feedback/ErrorBoundary";
+import { ErrorBoundary } from "./components/organisms/ErrorBoundary";
 
 function App() {
   return (

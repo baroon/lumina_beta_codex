@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/atoms/button";
+import { Input } from "@/components/atoms/input";
 import { Plus } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 

@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryStepProgress } from "./DiscoveryStepProgress";
 

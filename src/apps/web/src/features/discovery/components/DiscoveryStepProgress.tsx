@@ -8,7 +8,7 @@ import {
   MessageSquareText,
   Swords,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Progress } from "@/components/atoms/progress";
 import { DISCOVERY_COPY } from "@/content/discovery";
 
 const STEP_ICONS = [Globe, Sparkles, Package, MessageSquareText, Swords];

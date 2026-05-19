@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, CheckSquare, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/atoms/button";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { SuggestionCard } from "./SuggestionCard";
 import { AddCustomItemForm } from "./AddCustomItemForm";

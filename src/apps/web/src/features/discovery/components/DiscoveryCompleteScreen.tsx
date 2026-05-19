@@ -1,6 +1,6 @@
 import { PartyPopper, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/atoms/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { DISCOVERY_COPY } from "@/content/discovery";
 
 interface DiscoveryCompleteScreenProps {

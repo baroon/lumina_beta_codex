@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/atoms/button";
 import { APP_COPY } from "@/content/app";
 
 interface ErrorPageProps {

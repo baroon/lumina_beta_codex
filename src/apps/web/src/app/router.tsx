@@ -1,6 +1,6 @@
 import { createRouter, createRootRoute, createRoute, redirect, Outlet } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
-import { ErrorPage } from "@/components/feedback/ErrorPage";
+import { AppShell } from "@/components/organisms/AppShell";
+import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { NewBrandPage } from "@/routes/brands/new";
 import { DiscoveryPage } from "@/routes/brands/discovery";
 

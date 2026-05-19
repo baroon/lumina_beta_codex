@@ -1,5 +1,5 @@
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/atoms/checkbox";
+import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";

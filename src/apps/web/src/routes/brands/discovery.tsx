@@ -6,8 +6,8 @@ import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryProgressScreen } from "@/features/discovery/components/DiscoveryProgressScreen";
 import { DiscoveryConfirmationScreen } from "@/features/discovery/components/DiscoveryConfirmationScreen";
 import { DiscoveryCompleteScreen } from "@/features/discovery/components/DiscoveryCompleteScreen";
-import { LoadingPage } from "@/components/feedback/LoadingPage";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LoadingPage } from "@/components/molecules/LoadingPage";
+import { Alert, AlertDescription } from "@/components/atoms/alert";
 
 export function DiscoveryPage() {
   const { brandId } = useParams({ from: "/brands/$brandId/discovery" });

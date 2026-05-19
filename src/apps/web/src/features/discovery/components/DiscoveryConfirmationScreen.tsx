@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/atoms/button";
+import { Alert, AlertDescription } from "@/components/atoms/alert";
 import { DiscoverySection } from "./DiscoverySection";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { PageHeader } from "@/components/molecules/PageHeader";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { useConfirmDiscovery } from "../hooks/useDiscovery";
 import type { DiscoveryResultsDto, CandidateDto } from "@/types/api";
