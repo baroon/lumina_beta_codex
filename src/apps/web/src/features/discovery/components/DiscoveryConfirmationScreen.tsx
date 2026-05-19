@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/atoms/button";
 import { Alert, AlertDescription } from "@/components/atoms/alert";
 import { DiscoverySection } from "./DiscoverySection";
+import { ConfidenceTag } from "./ConfidenceTag";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { useConfirmDiscovery } from "../hooks/useDiscovery";
@@ -103,6 +104,10 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     const confirmedIds: string[] = [];
     const dismissedIds: string[] = [];
 
+    if (results.brandProfile) {
+      confirmedIds.push(results.brandProfile.id);
+    }
+
     for (const { key } of SECTIONS) {
       const candidates = results[key] as CandidateDto[];
       const selected = selections.get(key) || new Set<string>();
@@ -133,15 +138,46 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
       {results.brandProfile && (
         <div className="rounded-lg border border-neutral-200 bg-surface-card p-4">
-          <h3 className="font-semibold text-neutral-900">
-            {DISCOVERY_COPY.sections.brandProfile.title}
-          </h3>
-          <p className="mt-1 text-sm text-neutral-500">{results.brandProfile.shortDescription}</p>
-          {results.brandProfile.industry && (
-            <p className="mt-1 text-xs text-neutral-400">
-              {DISCOVERY_COPY.confirmation.industryLabel}: {results.brandProfile.industry}
-            </p>
-          )}
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-neutral-900">
+              {DISCOVERY_COPY.sections.brandProfile.title}
+            </h3>
+            <ConfidenceTag confidence={results.brandProfile.confidence} />
+          </div>
+          <dl className="mt-3 space-y-2 text-sm">
+            {results.brandProfile.shortDescription && (
+              <div>
+                <dt className="text-xs font-medium text-neutral-400">
+                  {DISCOVERY_COPY.confirmation.descriptionLabel}
+                </dt>
+                <dd className="text-neutral-700">{results.brandProfile.shortDescription}</dd>
+              </div>
+            )}
+            {results.brandProfile.industry && (
+              <div>
+                <dt className="text-xs font-medium text-neutral-400">
+                  {DISCOVERY_COPY.confirmation.industryLabel}
+                </dt>
+                <dd className="text-neutral-700">{results.brandProfile.industry}</dd>
+              </div>
+            )}
+            {results.brandProfile.category && (
+              <div>
+                <dt className="text-xs font-medium text-neutral-400">
+                  {DISCOVERY_COPY.confirmation.categoryLabel}
+                </dt>
+                <dd className="text-neutral-700">{results.brandProfile.category}</dd>
+              </div>
+            )}
+            {results.brandProfile.positioning && (
+              <div>
+                <dt className="text-xs font-medium text-neutral-400">
+                  {DISCOVERY_COPY.confirmation.positioningLabel}
+                </dt>
+                <dd className="text-neutral-700">{results.brandProfile.positioning}</dd>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 

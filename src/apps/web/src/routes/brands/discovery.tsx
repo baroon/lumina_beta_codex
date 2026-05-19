@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useBrand } from "@/features/brands/hooks/useBrands";
 import { useDiscoveryResults } from "@/features/discovery/hooks/useDiscovery";
@@ -8,12 +9,15 @@ import { DiscoveryConfirmationScreen } from "@/features/discovery/components/Dis
 import { DiscoveryCompleteScreen } from "@/features/discovery/components/DiscoveryCompleteScreen";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { Alert, AlertDescription } from "@/components/atoms/alert";
+import { Button } from "@/components/atoms/button";
+import type { DiscoveryResultsDto } from "@/types/api";
 
 export function DiscoveryPage() {
   const { brandId } = useParams({ from: "/brands/$brandId/discovery" });
   const brand = useBrand(brandId);
   const discovery = useDiscoveryResults(brandId);
   const progress = useDiscoveryProgress(brandId);
+  const [manualMode, setManualMode] = useState(false);
 
   if (brand.isLoading) return <LoadingPage />;
 
@@ -32,10 +36,39 @@ export function DiscoveryPage() {
   }
 
   if (status === "Failed") {
+    if (manualMode) {
+      const emptyResults: DiscoveryResultsDto = {
+        brandId,
+        brandName: brand.data?.name ?? "",
+        status: "AwaitingConfirmation",
+        brandProfile: null,
+        products: [],
+        audiences: [],
+        markets: [],
+        topics: [],
+        competitors: [],
+        trustSignals: [],
+      };
+      return <DiscoveryConfirmationScreen results={emptyResults} />;
+    }
+
     return (
-      <Alert variant="destructive">
-        <AlertDescription>{DISCOVERY_COPY.errors.discoveryFailed}</AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <Alert variant="destructive">
+          <AlertDescription>{DISCOVERY_COPY.errors.discoveryFailed}</AlertDescription>
+        </Alert>
+        <div className="rounded-lg border border-neutral-200 bg-surface-card p-6 text-center">
+          <h2 className="text-lg font-semibold text-neutral-900">
+            {DISCOVERY_COPY.fallback.crawlFailedTitle}
+          </h2>
+          <p className="mt-2 text-sm text-neutral-500">
+            {DISCOVERY_COPY.fallback.crawlFailedDescription}
+          </p>
+          <Button className="mt-4" onClick={() => setManualMode(true)}>
+            {DISCOVERY_COPY.fallback.continueManually}
+          </Button>
+        </div>
+      </div>
     );
   }
 

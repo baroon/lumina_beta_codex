@@ -80,7 +80,10 @@ export const DISCOVERY_COPY = {
   },
   confirmation: {
     title: "Confirm Discovery: {brandName}",
+    descriptionLabel: "Description",
     industryLabel: "Industry",
+    categoryLabel: "Category",
+    positioningLabel: "Positioning",
     confirming: "Confirming...",
     selectedCount: "{selected}/{total} selected",
   },
@@ -94,6 +97,10 @@ export const DISCOVERY_COPY = {
   },
   fallback: {
     noItemsDetected: "No items detected",
+    crawlFailedTitle: "Website crawl failed",
+    crawlFailedDescription:
+      "We couldn't crawl your website, but you can still set up your brand manually.",
+    continueManually: "Continue Manually",
   },
   customItem: {
     add: "Add",
