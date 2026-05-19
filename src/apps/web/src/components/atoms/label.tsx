@@ -13,17 +13,16 @@ const labelVariants = cva(
       },
     },
     defaultVariants: { labelSize: "default" },
-  }
+  },
 );
 
 export interface LabelProps
-  extends React.LabelHTMLAttributes<HTMLLabelElement>,
-    VariantProps<typeof labelVariants> {}
+  extends React.LabelHTMLAttributes<HTMLLabelElement>, VariantProps<typeof labelVariants> {}
 
 const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, labelSize, ...props }, ref) => (
     <label ref={ref} className={cn(labelVariants({ labelSize, className }))} {...props} />
-  )
+  ),
 );
 Label.displayName = "Label";
 

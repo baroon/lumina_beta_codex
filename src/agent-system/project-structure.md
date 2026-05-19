@@ -3,8 +3,8 @@
 ## Lumina AI Visibility Platform
 
 **Status:** Decided
-**Version:** 1.0.0
-**Date:** 2026-05-18
+**Version:** 1.2.0
+**Date:** 2026-05-19
 **Owner:** Chief Technical Architect
 
 > This document is the canonical folder structure reference.
@@ -30,14 +30,17 @@
 **Purpose:** The monorepo root organizes the Lumina AI Visibility Platform into clearly separated frontend, backend, agent infrastructure, design system, and documentation layers.
 
 **Ownership rules:**
+
 - Root-level config files (pnpm-workspace.yaml, docker-compose.yml, .editorconfig, etc.) are shared infrastructure and must not contain application logic.
 - Each top-level directory has its own ownership rules defined below.
 
 **File naming conventions:**
+
 - Config files use kebab-case (e.g., `docker-compose.yml`, `pnpm-workspace.yaml`).
 - No application source code lives at the root level.
 
 **Agent instructions:**
+
 - Always determine which top-level directory your change belongs in before creating files.
 - If a file does not clearly fit into one of these directories, stop and consult this document.
 
@@ -50,10 +53,12 @@ This is the React + Vite single-page application. It provides the user interface
 **Purpose:** All frontend application code, including routing, API communication, shared components, feature modules, and utilities.
 
 **Ownership rules:**
+
 - The frontend depends on `design-tokens/` for visual tokens but never imports from `apps/api/`.
 - Communication with the backend is exclusively through HTTP calls defined in `src/api/` and SignalR connections defined in `src/hooks/`.
 
 **File naming conventions:**
+
 - React components: PascalCase (e.g., `TrackerNameEditor.tsx`)
 - Hooks: camelCase prefixed with `use` (e.g., `useTrackers.ts`)
 - API modules: camelCase suffixed with `Api` (e.g., `trackersApi.ts`)
@@ -61,9 +66,10 @@ This is the React + Vite single-page application. It provides the user interface
 - Utility files: camelCase (e.g., `formatters.ts`)
 
 **Agent instructions:**
+
 - Before creating a new component, check whether an existing component in `components/` or the relevant `features/` module already covers the need.
 - Every new feature module must follow the `components/`, `hooks/`, `types.ts` structure.
-- Never place domain-specific logic in `components/ui/` or `components/layout/`.
+- Never place domain-specific logic in `components/atoms/`, `components/molecules/`, or `components/organisms/`.
 
 ```
 apps/web/
@@ -85,11 +91,11 @@ apps/web/
 │   │   └── reportsApi.ts              Report/analytics endpoints
 │   │
 │   ├── components/
-│   │   ├── ui/                         shadcn/ui components (Button, Input, Dialog, etc.)
-│   │   ├── layout/                     AppShell, Sidebar, TopBar, PageHeader, etc.
+│   │   ├── atoms/                      UI primitives (Button, Input, Card, Badge, etc.)
+│   │   ├── molecules/                  Composed components (PageHeader, ErrorPage, LoadingPage)
+│   │   ├── organisms/                  Complex sections (AppShell, Sidebar, ErrorBoundary)
 │   │   ├── data-display/              DataTable, MetricCard, StatusBadge, etc.
-│   │   ├── charts/                     Nivo chart wrappers (BarChartWrapper, etc.)
-│   │   └── feedback/                   EmptyState, ErrorBoundary, LoadingPage, etc.
+│   │   └── charts/                     Nivo chart wrappers (BarChartWrapper, etc.)
 │   │
 │   ├── features/
 │   │   ├── brands/
@@ -160,35 +166,49 @@ apps/web/
 
 Each component subdirectory under `src/components/` has strict ownership rules that agents must respect.
 
-#### `components/ui/`
+#### `components/atoms/`
 
-**Purpose:** Low-level UI primitives sourced from shadcn/ui. These are the atomic building blocks of the interface: Button, Input, Dialog, Select, Tooltip, etc.
+**Purpose:** Low-level UI primitives sourced from shadcn/ui with CVA for variants. These are the smallest building blocks of the interface: Button, Input, Card, Badge, Tooltip, Label, etc.
 
 **Ownership rules:**
+
 - No domain knowledge. These components know nothing about brands, trackers, findings, or any Lumina concept.
 - No API calls. No fetch, no SignalR, no side effects.
 - No feature imports. Must never import from `features/`, `api/`, or `hooks/`.
 - May import from `lib/` (e.g., `cn()` utility).
 
-**Agent instructions:** When modifying a shadcn/ui component, preserve its generic interface. If you need domain-specific behavior, wrap it in a feature component instead.
+**Agent instructions:** When modifying an atom, preserve its generic interface. If you need domain-specific behavior, wrap it in a feature component instead. All atoms use CVA for variant management.
 
-#### `components/layout/`
+#### `components/molecules/`
 
-**Purpose:** Application shell components that define the page structure: AppShell, Sidebar, TopBar, PageHeader, Breadcrumbs, etc.
+**Purpose:** Composed components built from 2+ atoms. These handle small, reusable patterns: PageHeader, ErrorPage, LoadingPage, etc.
 
 **Ownership rules:**
-- May reference `components/ui/` for basic UI elements.
-- No feature imports. Must not import from `features/`.
-- May use shared hooks from `hooks/` for navigation or layout state.
 
-**Agent instructions:** Layout components define structure, not content. Feature-specific page content belongs in `features/{name}/components/`.
+- No domain knowledge. No API calls. No feature imports.
+- May import from `components/atoms/` and `lib/`.
+
+**Agent instructions:** Molecules combine atoms into reusable patterns but remain generic. Feature-specific page content belongs in `features/{name}/components/`.
+
+#### `components/organisms/`
+
+**Purpose:** Complex, often stateful sections that compose atoms and molecules: AppShell, Sidebar, ErrorBoundary, etc.
+
+**Ownership rules:**
+
+- May compose `components/atoms/` and `components/molecules/`.
+- May use shared hooks from `hooks/` for navigation or layout state.
+- No feature imports. Must not import from `features/`.
+
+**Agent instructions:** Organisms define application-level structure, not domain content. Feature-specific page content belongs in `features/{name}/components/`.
 
 #### `components/data-display/`
 
 **Purpose:** Reusable data presentation components: DataTable, MetricCard, StatusBadge, KPITile, etc.
 
 **Ownership rules:**
-- May reference `components/ui/` for visual primitives.
+
+- May reference `components/atoms/` for visual primitives.
 - No feature imports. Must not import from `features/`.
 - Receives all data as props. No direct API calls.
 
@@ -199,20 +219,11 @@ Each component subdirectory under `src/components/` has strict ownership rules t
 **Purpose:** Nivo chart wrappers that provide consistent styling and responsive behavior: BarChartWrapper, LineChartWrapper, PieChartWrapper, etc.
 
 **Ownership rules:**
+
 - Receive data as props. No API calls. No feature imports.
 - May reference design tokens for consistent chart theming.
 
 **Agent instructions:** Chart components accept pre-formatted data arrays and configuration props. Data fetching and transformation belong in the feature hooks, not in chart components.
-
-#### `components/feedback/`
-
-**Purpose:** User feedback and state components: EmptyState, ErrorBoundary, LoadingPage, LoadingSpinner, ConfirmationDialog, etc.
-
-**Ownership rules:**
-- May reference `components/ui/` for visual elements.
-- No feature imports. Must not import from `features/`.
-
-**Agent instructions:** These are generic feedback patterns. Feature-specific empty states should compose these base components with feature-specific copy from `content/`.
 
 ### Feature Module Structure
 
@@ -221,15 +232,18 @@ Each directory under `src/features/` encapsulates a single domain concept.
 **Purpose:** Feature modules contain all components, hooks, and types specific to one domain area of Lumina (brands, trackers, findings, reports, etc.).
 
 **Ownership rules:**
+
 - May import from `components/`, `hooks/`, `lib/`, `types/`, and `api/`.
 - Must NOT import from other feature modules. Cross-feature communication goes through shared hooks, shared types, or URL parameters.
 - Each feature module must contain `components/`, `hooks/`, and `types.ts`.
 
 **File naming conventions:**
+
 - Feature directories use kebab-case (e.g., `scan-progress/`, `content-actions/`).
 - Components within features use PascalCase (e.g., `ScanProgressScreen.tsx`).
 
 **Agent instructions:**
+
 - When adding a new feature, create the full directory structure: `components/`, `hooks/`, `types.ts`.
 - If you find yourself importing from another feature, refactor the shared logic into `hooks/`, `lib/`, or `types/` at the `src/` level instead.
 
@@ -238,6 +252,7 @@ Each directory under `src/features/` encapsulates a single domain concept.
 **Purpose:** HTTP client and endpoint functions that communicate with the ASP.NET Core backend.
 
 **Ownership rules:**
+
 - API functions only. No React. No components. No hooks.
 - Each file corresponds to a backend controller (e.g., `trackersApi.ts` maps to `TrackersController.cs`).
 - All functions use the shared `apiClient.ts` for HTTP communication.
@@ -249,6 +264,7 @@ Each directory under `src/features/` encapsulates a single domain concept.
 **Purpose:** React hooks shared across multiple features.
 
 **Ownership rules:**
+
 - May import from `api/` and `lib/`.
 - No component imports. Hooks return data and callbacks, not JSX.
 
@@ -259,6 +275,7 @@ Each directory under `src/features/` encapsulates a single domain concept.
 **Purpose:** Pure utility functions with no React or API dependencies.
 
 **Ownership rules:**
+
 - No React. No API. No component imports.
 - Pure functions only. Must be testable without any React testing infrastructure.
 
@@ -273,11 +290,13 @@ The backend is an ASP.NET Core solution following Clean Architecture (Domain, Ap
 **Purpose:** All server-side code including the REST API, domain logic, data access, external provider integrations (OpenAI, Anthropic, Google, Perplexity), background job processing, and tests.
 
 **File naming conventions:**
+
 - C# files: PascalCase matching the class name (e.g., `BrandsController.cs`, `Brand.cs`)
 - Directories: PascalCase (e.g., `Controllers/`, `Commands/`, `Entities/`)
 - Test files: PascalCase suffixed with `Tests` (e.g., `BrandServiceTests.cs`)
 
 **Agent instructions:**
+
 - Always determine which project layer a change belongs in before creating files.
 - Follow the dependency rules strictly: Domain has no dependencies, Application depends on Domain, Infrastructure depends on Domain and Application, Api depends on Application, Worker depends on Application and Infrastructure.
 
@@ -367,6 +386,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** Core business entities, enums, value objects, and domain rules. This is the innermost layer that everything else depends on.
 
 **Ownership rules:**
+
 - No dependencies on other projects. Pure C# only.
 - No NuGet packages that impose infrastructure concerns (no EF Core, no HTTP, no serialization attributes).
 - Entities define behavior and invariants, not data shapes.
@@ -378,6 +398,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** Application logic layer containing CQRS commands/queries with their handlers, validators, and interface definitions.
 
 **Ownership rules:**
+
 - Depends on Domain only.
 - Defines interfaces (e.g., `IScanService`, `IProviderFactory`) that Infrastructure implements.
 - Contains no concrete implementations of external services.
@@ -389,6 +410,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** Concrete implementations of all external concerns: database access, AI provider adapters, crawling, storage, email, and messaging.
 
 **Ownership rules:**
+
 - Depends on Domain and Application.
 - Implements interfaces defined in Application.
 - Contains all EF Core configuration, migrations, and DbContext.
@@ -400,6 +422,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** The ASP.NET Core web API project. Thin controllers that delegate to Application handlers via MediatR.
 
 **Ownership rules:**
+
 - Depends on Application only (Infrastructure is registered via DI in `Program.cs`).
 - Controllers are thin. No business logic in controllers.
 - DTOs in `DTOs/` define the HTTP contract. They are mapped to/from Application commands and queries.
@@ -411,6 +434,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** Background processing host for long-running jobs and message consumers.
 
 **Ownership rules:**
+
 - Depends on Application and Infrastructure.
 - MassTransit consumers in `Consumers/` handle async message processing for scans, analysis, and report generation.
 - Hangfire jobs in `Jobs/` handle scheduled tasks like discovery crawls and recurring scans.
@@ -422,6 +446,7 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** All automated tests for the backend solution.
 
 **Ownership rules:**
+
 - `Unit/` — Tests for Domain entities, Application handlers, and validators. No external dependencies.
 - `Integration/` — Tests that verify Infrastructure implementations against real or containerized services.
 - `Api/` — End-to-end API tests using `WebApplicationFactory` to spin up the full HTTP pipeline.
@@ -437,10 +462,12 @@ Each project in the solution has strict dependency rules that enforce Clean Arch
 **Purpose:** AI agent infrastructure that governs how agents interact with the Lumina codebase. Contains decision trees, structural references, architectural decisions, and component registries.
 
 **Ownership rules:**
+
 - This directory is the single source of truth for agent behavior.
 - Changes to files here affect how all agents operate across the entire codebase.
 
 **File naming conventions:**
+
 - Markdown files: UPPER-CASE or kebab-case (e.g., `CHAINS.md`, `tech-stack.decisions.md`)
 - JSON files: kebab-case (e.g., `component-manifest.json`)
 
@@ -452,6 +479,9 @@ agent-system/
 ├── project-structure.md                This file
 ├── tech-stack.decisions.md             Immutable architecture decisions
 └── component-manifest.json             UI component registry
+
+scripts/
+└── manifest-sync-lite.mjs             Manifest sync validation (pre-commit)
 ```
 
 ### Design Tokens (`design-tokens/`)
@@ -459,11 +489,13 @@ agent-system/
 **Purpose:** The single source of truth for all visual design tokens consumed by the frontend via CSS custom properties and Tailwind configuration.
 
 **Ownership rules:**
+
 - `tokens.json` is the source of truth. All other files are generated from it.
 - `tokens.css` and `tailwind-tokens.js` are generated outputs — do not edit them directly.
 - Changes to tokens must start in `tokens.json` and be regenerated via `generate-css.js`.
 
 **File naming conventions:**
+
 - Token files: kebab-case (e.g., `tokens.json`, `tokens.css`)
 - Scripts: kebab-case (e.g., `generate-css.js`)
 
@@ -483,6 +515,7 @@ design-tokens/
 **Purpose:** Architecture decision records, agent documentation, developer guides, and UX foundations.
 
 **Ownership rules:**
+
 - `architecture/` contains numbered architecture decision records (ARCH-001 through ARCH-010).
 - `agents/` contains agent behavior documentation (AGENTS.md, PLANS.md).
 - `addendum/` contains follow-up decisions that amend existing architecture records.
@@ -490,6 +523,7 @@ design-tokens/
 - `ux/` contains UX foundations and design principles.
 
 **File naming conventions:**
+
 - Architecture records: `ARCH-NNN-description.md`
 - Agent docs: UPPER-CASE (e.g., `AGENTS.md`, `PLANS.md`)
 - Dev guides: UPPER-CASE (e.g., `LOCAL-DEV.md`, `COMMANDS.md`)
@@ -520,11 +554,11 @@ Is it a domain entity, enum, or value object?  → apps/api/AIVisibility.Domain/
 Is it a database, provider, or external adapter? → apps/api/AIVisibility.Infrastructure/
 Is it a background job or message consumer?    → apps/api/AIVisibility.Worker/
 
-Is it a generic UI primitive (Button, Input)?  → apps/web/src/components/ui/
-Is it an app shell element (Sidebar, TopBar)?  → apps/web/src/components/layout/
+Is it a generic UI primitive (Button, Input)?  → apps/web/src/components/atoms/
+Does it compose 2+ atoms (PageHeader)?         → apps/web/src/components/molecules/
+Is it a complex section (AppShell, Sidebar)?   → apps/web/src/components/organisms/
 Is it a reusable data component (DataTable)?   → apps/web/src/components/data-display/
 Is it a chart wrapper?                         → apps/web/src/components/charts/
-Is it a loading/error/empty state?             → apps/web/src/components/feedback/
 Is it specific to one domain feature?          → apps/web/src/features/{feature}/components/
 Is it an API call function?                    → apps/web/src/api/
 Is it a shared React hook?                     → apps/web/src/hooks/
@@ -539,28 +573,28 @@ Is it an agent behavior rule?                  → agent-system/
 ### Frontend Import Rules
 
 ```typescript
-// Shared component importing from ui — CORRECT
-import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
+// Shared component importing from atoms — CORRECT
+import { Button } from "@/components/atoms/button";
+import { cn } from "@/lib/utils";
 
 // Feature importing from shared components — CORRECT
-import { DataTable } from '@/components/data-display/DataTable'
-import { MetricCard } from '@/components/data-display/MetricCard'
+import { DataTable } from "@/components/data-display/DataTable";
+import { MetricCard } from "@/components/data-display/MetricCard";
 
 // Feature importing from shared hooks — CORRECT
-import { useSignalR } from '@/hooks/useSignalR'
+import { useSignalR } from "@/hooks/useSignalR";
 
 // Feature importing from API layer — CORRECT
-import { getTrackers } from '@/api/trackersApi'
+import { getTrackers } from "@/api/trackersApi";
 
 // Feature importing from another feature — NEVER ALLOWED
-import { useBrand } from '@/features/brands/hooks/useBrand' // WRONG from trackers feature
+import { useBrand } from "@/features/brands/hooks/useBrand"; // WRONG from trackers feature
 
-// UI component importing from features — NEVER ALLOWED
-import { useFindings } from '@/features/findings/hooks/useFindings' // WRONG in components/ui/
+// Atom/molecule/organism importing from features — NEVER ALLOWED
+import { useFindings } from "@/features/findings/hooks/useFindings"; // WRONG in components/atoms/
 
 // API layer importing React — NEVER ALLOWED
-import { useState } from 'react' // WRONG in api/ files
+import { useState } from "react"; // WRONG in api/ files
 ```
 
 ### Backend Import Rules
@@ -617,6 +651,8 @@ index.ts                    ← Barrel export
 
 Agents must never create a shared component without the accompanying test and story files.
 
+> **Note:** Story files (`.stories.tsx`) already exist for all 18 currently implemented shared components (12 atoms, 3 molecules, 3 organisms).
+
 ### Backend Handler Conventions
 
 When creating a new command or query handler, follow these conventions:
@@ -642,8 +678,8 @@ Each command and query is a separate class. Handlers implement `IRequestHandler<
 ```yaml
 # pnpm-workspace.yaml
 packages:
-  - 'apps/*'
-  - 'design-tokens'
+  - "apps/*"
+  - "design-tokens"
 ```
 
 ```jsonc
@@ -657,26 +693,111 @@ packages:
     "test:web": "pnpm --filter web test",
     "test:api": "dotnet test apps/api/AIVisibility.Tests",
     "storybook": "pnpm --filter web storybook",
-    "tokens:generate": "node design-tokens/generate-css.js"
-  }
+    "tokens:generate": "node design-tokens/generate-css.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:web": "pnpm --filter web lint",
+    "manifest:check": "node scripts/manifest-sync-lite.mjs",
+    "prepare": "cd .. && husky src/.husky",
+  },
 }
 ```
 
 ```typescript
 // apps/web/tailwind.config.ts — extends design tokens
-import tokens from '../../design-tokens/tailwind-tokens.js'
+import tokens from "../../design-tokens/tailwind-tokens.js";
 
 export default {
   presets: [tokens],
-  content: ['./src/**/*.{ts,tsx}'],
+  content: ["./src/**/*.{ts,tsx}"],
   // No new tokens here — all tokens live in design-tokens/
-}
+};
 ```
+
+---
+
+## Pre-Commit Enforcement System
+
+Lumina uses a four-layer enforcement system to prevent structural drift. All checks run automatically on `git commit` via a Husky pre-commit hook.
+
+### Layer 1: Prettier (formatting consistency)
+
+**Config:** `src/.prettierrc.json` — semi, double quotes, 100 char width, LF line endings.
+**Ignore:** `src/.prettierignore` — skips generated files (routeTree.gen.ts, tokens.css, tailwind-tokens.js).
+
+```bash
+pnpm format         # auto-fix all files
+pnpm format:check   # check without modifying (CI-friendly)
+```
+
+### Layer 2: ESLint structural rules
+
+The ESLint config (`apps/web/eslint.config.js`) enforces architectural boundaries using `no-restricted-imports`. No custom plugins required.
+
+| Rule Group                | Scope                                                | What it prevents                                                                  |
+| ------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Deprecated path ban       | All files                                            | Imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/` |
+| Atom boundary             | `components/atoms/**`                                | Imports from molecules, organisms, data-display, charts, features, api, hooks     |
+| Molecule boundary         | `components/molecules/**`                            | Imports from organisms, features, api                                             |
+| Organism boundary         | `components/organisms/**`                            | Imports from features, api                                                        |
+| Shared component boundary | `components/data-display/**`, `components/charts/**` | Imports from features, api                                                        |
+| Cross-feature ban         | Each `features/{name}/**`                            | Imports from any other feature directory                                          |
+
+```bash
+pnpm lint:web       # run ESLint on the web app
+```
+
+**Important:** ESLint flat config replaces `no-restricted-imports` when multiple config objects match the same file. Each layer-specific rule group includes the deprecated path patterns alongside its boundary patterns.
+
+### Layer 3: Manifest sync validation
+
+**Script:** `src/scripts/manifest-sync-lite.mjs` — zero external dependencies (Node.js builtins only).
+
+| Check                    | What                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| `MISSING_MANIFEST_ENTRY` | `.tsx` file in atoms/molecules/organisms/data-display/charts exists but has no manifest entry |
+| `ORPHAN_MANIFEST_ENTRY`  | Manifest entry with `status: "implemented"` points to non-existent file                       |
+| `DEPRECATED_DIRECTORY`   | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
+
+```bash
+pnpm manifest:check          # validate all files
+node scripts/manifest-sync-lite.mjs --staged   # validate only staged files (used in pre-commit)
+```
+
+### Layer 4: Husky + lint-staged (pre-commit gating)
+
+**Hook:** `src/.husky/pre-commit` runs on every commit:
+
+1. `lint-staged` — Prettier auto-fix + ESLint fix on staged files
+2. `manifest-sync-lite.mjs --staged` — manifest validation on staged files
+
+**lint-staged config** (`src/.lintstagedrc.json`):
+
+- `apps/web/**/*.{ts,tsx}` → Prettier write + ESLint fix
+- `apps/web/**/*.{css,json,md}` → Prettier write
+- `agent-system/component-manifest.json` → Prettier write
+
+**Agent instructions:**
+
+- The pre-commit hook runs automatically. Agents do not need to run these checks manually before committing.
+- If a commit fails due to ESLint errors, fix the violation — do not bypass the hook.
+- When creating a new shared component, always add a manifest entry first or the `MISSING_MANIFEST_ENTRY` check will fail.
+
+### What's deliberately excluded
+
+| Not included                        | Reason                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| TypeScript type-check in pre-commit | `tsc --noEmit` is slow; use `pnpm --filter web typecheck` manually or in CI |
+| AST-based validation                | Overkill for 18 components; `no-restricted-imports` covers critical cases   |
+| Dependency graph builder            | Useful at 100+ components; ESLint covers import boundaries now              |
+| Commit message linting              | Adds cognitive overhead; can add later                                      |
 
 ---
 
 ## Change Log
 
-| Version | Date       | Change                    | Approved By |
-| ------- | ---------- | ------------------------- | ----------- |
-| 1.0.0   | 2026-05-18 | Initial structure defined | CTA         |
+| Version | Date       | Change                                                                                              | Approved By |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0.0   | 2026-05-18 | Initial structure defined                                                                           | CTA         |
+| 1.1.0   | 2026-05-19 | Atomic design restructure (atoms/molecules/organisms), CVA standardization, Storybook configuration | CTA         |
+| 1.2.0   | 2026-05-19 | Pre-commit enforcement system (Prettier, ESLint boundaries, manifest sync, Husky)                   | CTA         |

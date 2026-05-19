@@ -1,70 +1,259 @@
 {
   "$schema": "https://lumina.dev/component-manifest.schema.json",
-  "$version": "1.0.0",
-  "$description": "Lumina AI Visibility Platform — Component Manifest",
+  "$version": "1.1.0",
+  "$description": "Lumina AI Visibility Platform — Component Manifest (Atomic Design)",
   "categories": [
     {
-      "name": "Layout",
-      "description": "Application layout and structural components that define the overall page structure, navigation, and content areas.",
+      "name": "Atoms",
+      "description": "Low-level UI primitives based on shadcn/ui with CVA variants. No domain knowledge, no API calls, no feature imports. May import from lib/.",
       "components": [
         {
-          "name": "AppShell",
-          "category": "Layout",
-          "path": "src/components/layout/AppShell.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["Sidebar", "TopBar"],
-          "notes": "Main application shell with sidebar + topbar + content area."
+          "name": "Button",
+          "category": "Atoms",
+          "path": "src/components/atoms/button.tsx",
+          "status": "implemented",
+          "variants": ["default", "secondary", "outline", "ghost", "destructive", "link"],
+          "dependencies": ["CVA"],
+          "notes": "Primary action button. Sizes via separate CVA dimension: default, sm, lg, icon."
         },
         {
-          "name": "Sidebar",
-          "category": "Layout",
-          "path": "src/components/layout/Sidebar.tsx",
+          "name": "Input",
+          "category": "Atoms",
+          "path": "src/components/atoms/input.tsx",
+          "status": "implemented",
+          "variants": ["default", "error"],
+          "dependencies": [],
+          "notes": "Text input field. inputSize variants: sm, default, lg."
+        },
+        {
+          "name": "Checkbox",
+          "category": "Atoms",
+          "path": "src/components/atoms/checkbox.tsx",
+          "status": "implemented",
+          "variants": ["default", "indeterminate"],
+          "dependencies": [],
+          "notes": "Checkbox input. checkboxSize variants: sm, default, lg."
+        },
+        {
+          "name": "Badge",
+          "category": "Atoms",
+          "path": "src/components/atoms/badge.tsx",
+          "status": "implemented",
+          "variants": ["default", "secondary", "outline", "destructive", "success", "warning"],
+          "dependencies": ["CVA"],
+          "notes": "Small label badge for status, categories, and counts."
+        },
+        {
+          "name": "Tooltip",
+          "category": "Atoms",
+          "path": "src/components/atoms/tooltip.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Hover tooltip for additional context on elements."
+        },
+        {
+          "name": "Card",
+          "category": "Atoms",
+          "path": "src/components/atoms/card.tsx",
+          "status": "implemented",
+          "variants": ["default", "outline", "ghost"],
+          "dependencies": [],
+          "notes": "Container card with variant-based styling."
+        },
+        {
+          "name": "Separator",
+          "category": "Atoms",
+          "path": "src/components/atoms/separator.tsx",
+          "status": "implemented",
+          "variants": ["horizontal", "vertical"],
+          "dependencies": [],
+          "notes": "Visual separator line. Orientation managed via CVA."
+        },
+        {
+          "name": "Skeleton",
+          "category": "Atoms",
+          "path": "src/components/atoms/skeleton.tsx",
+          "status": "implemented",
+          "variants": ["text", "circle", "rect"],
+          "dependencies": [],
+          "notes": "Loading placeholder that mimics content shape while data loads."
+        },
+        {
+          "name": "Progress",
+          "category": "Atoms",
+          "path": "src/components/atoms/progress.tsx",
+          "status": "implemented",
+          "variants": ["default", "success", "warning", "error"],
+          "dependencies": [],
+          "notes": "Progress bar with semantic color variants. progressSize variants: sm, default, lg."
+        },
+        {
+          "name": "Alert",
+          "category": "Atoms",
+          "path": "src/components/atoms/alert.tsx",
+          "status": "implemented",
+          "variants": ["default", "success", "warning", "error", "info"],
+          "dependencies": [],
+          "notes": "Inline alert banner for contextual messages and warnings."
+        },
+        {
+          "name": "ScrollArea",
+          "category": "Atoms",
+          "path": "src/components/atoms/scroll-area.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Custom scrollable container with styled scrollbar."
+        },
+        {
+          "name": "Label",
+          "category": "Atoms",
+          "path": "src/components/atoms/label.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Form label element. labelSize variants: sm, default, lg."
+        },
+        {
+          "name": "Textarea",
+          "category": "Atoms",
+          "path": "src/components/atoms/Textarea.tsx",
           "status": "planned",
-          "variants": ["expanded", "collapsed"],
-          "dependencies": ["SidebarNavItem"],
-          "notes": "Collapsible sidebar navigation (240px expanded, 48px collapsed)."
+          "variants": ["default", "error"],
+          "dependencies": [],
+          "notes": "Multi-line text input with default and error states."
+        },
+        {
+          "name": "Select",
+          "category": "Atoms",
+          "path": "src/components/atoms/Select.tsx",
+          "status": "planned",
+          "variants": ["default", "error"],
+          "dependencies": ["Popover"],
+          "notes": "Dropdown select control with popover-based options list."
+        },
+        {
+          "name": "RadioGroup",
+          "category": "Atoms",
+          "path": "src/components/atoms/RadioGroup.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Radio button group for single-selection options."
+        },
+        {
+          "name": "Switch",
+          "category": "Atoms",
+          "path": "src/components/atoms/Switch.tsx",
+          "status": "planned",
+          "variants": ["default", "sm"],
+          "dependencies": [],
+          "notes": "Toggle switch for boolean settings."
+        },
+        {
+          "name": "Avatar",
+          "category": "Atoms",
+          "path": "src/components/atoms/Avatar.tsx",
+          "status": "planned",
+          "variants": ["sm", "md", "lg"],
+          "dependencies": [],
+          "notes": "User avatar with image or initials fallback in multiple sizes."
+        },
+        {
+          "name": "Popover",
+          "category": "Atoms",
+          "path": "src/components/atoms/Popover.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Floating popover container for menus, tooltips, and selects."
+        },
+        {
+          "name": "Dialog",
+          "category": "Atoms",
+          "path": "src/components/atoms/Dialog.tsx",
+          "status": "planned",
+          "variants": ["default", "destructive"],
+          "dependencies": [],
+          "notes": "Modal dialog for focused user interactions."
+        },
+        {
+          "name": "Sheet",
+          "category": "Atoms",
+          "path": "src/components/atoms/Sheet.tsx",
+          "status": "planned",
+          "variants": ["left", "right", "top", "bottom"],
+          "dependencies": [],
+          "notes": "Slide-over drawer panel anchored to a screen edge."
+        },
+        {
+          "name": "DropdownMenu",
+          "category": "Atoms",
+          "path": "src/components/atoms/DropdownMenu.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Popover"],
+          "notes": "Contextual dropdown menu triggered by a button or icon."
+        },
+        {
+          "name": "Command",
+          "category": "Atoms",
+          "path": "src/components/atoms/Command.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Dialog"],
+          "notes": "Command palette and searchable list for quick actions and search."
+        },
+        {
+          "name": "Tabs",
+          "category": "Atoms",
+          "path": "src/components/atoms/Tabs.tsx",
+          "status": "planned",
+          "variants": ["default", "underline"],
+          "dependencies": [],
+          "notes": "Tab navigation for switching between content panels."
+        },
+        {
+          "name": "Accordion",
+          "category": "Atoms",
+          "path": "src/components/atoms/Accordion.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Collapsible accordion sections for progressive disclosure."
+        },
+        {
+          "name": "AlertDialog",
+          "category": "Atoms",
+          "path": "src/components/atoms/AlertDialog.tsx",
+          "status": "planned",
+          "variants": [],
+          "dependencies": ["Dialog"],
+          "notes": "Confirmation dialog requiring explicit user acknowledgement."
+        },
+        {
+          "name": "Toast",
+          "category": "Atoms",
+          "path": "src/components/atoms/Toast.tsx",
+          "status": "planned",
+          "variants": ["default", "success", "error", "warning"],
+          "dependencies": [],
+          "notes": "Ephemeral notification toast that appears and auto-dismisses."
         },
         {
           "name": "SidebarNavItem",
-          "category": "Layout",
-          "path": "src/components/layout/SidebarNavItem.tsx",
+          "category": "Atoms",
+          "path": "src/components/atoms/SidebarNavItem.tsx",
           "status": "planned",
           "variants": ["default", "active", "collapsed"],
           "dependencies": ["Tooltip"],
           "notes": "Individual nav item with icon, label, and active state."
         },
         {
-          "name": "TopBar",
-          "category": "Layout",
-          "path": "src/components/layout/TopBar.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["DropdownMenu", "Command", "Avatar"],
-          "notes": "Top bar with workspace switcher, search, and user menu."
-        },
-        {
-          "name": "PageHeader",
-          "category": "Layout",
-          "path": "src/components/layout/PageHeader.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["BreadcrumbNav", "Button"],
-          "notes": "Page title, breadcrumbs, and optional actions."
-        },
-        {
-          "name": "PageContent",
-          "category": "Layout",
-          "path": "src/components/layout/PageContent.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": [],
-          "notes": "Content wrapper with max-width and padding."
-        },
-        {
           "name": "BreadcrumbNav",
-          "category": "Layout",
-          "path": "src/components/layout/BreadcrumbNav.tsx",
+          "category": "Atoms",
+          "path": "src/components/atoms/BreadcrumbNav.tsx",
           "status": "planned",
           "variants": [],
           "dependencies": [],
@@ -73,233 +262,113 @@
       ]
     },
     {
-      "name": "Core UI",
-      "description": "Foundational UI primitives based on shadcn/ui. These are the building blocks used across the entire application.",
+      "name": "Molecules",
+      "description": "Composed components built from 2+ atoms. No domain knowledge, no API calls, no feature imports. May import from atoms/ and lib/.",
       "components": [
         {
-          "name": "Button",
-          "category": "Core UI",
-          "path": "src/components/ui/Button.tsx",
-          "status": "planned",
-          "variants": ["default", "secondary", "outline", "ghost", "destructive", "link", "sm", "md", "lg", "icon"],
-          "dependencies": ["CVA"],
-          "notes": "Primary action button with multiple visual variants and sizes."
+          "name": "PageHeader",
+          "category": "Molecules",
+          "path": "src/components/molecules/PageHeader.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["BreadcrumbNav", "Button"],
+          "notes": "Page title, breadcrumbs, and optional actions."
         },
         {
-          "name": "Input",
-          "category": "Core UI",
-          "path": "src/components/ui/Input.tsx",
-          "status": "planned",
-          "variants": ["default", "error"],
-          "dependencies": [],
-          "notes": "Text input field with default and error states."
+          "name": "LoadingPage",
+          "category": "Molecules",
+          "path": "src/components/molecules/LoadingPage.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Skeleton"],
+          "notes": "Full-page loading state with skeleton layout."
         },
         {
-          "name": "Textarea",
-          "category": "Core UI",
-          "path": "src/components/ui/Textarea.tsx",
-          "status": "planned",
-          "variants": ["default", "error"],
-          "dependencies": [],
-          "notes": "Multi-line text input with default and error states."
+          "name": "ErrorPage",
+          "category": "Molecules",
+          "path": "src/components/molecules/ErrorPage.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Alert", "Button"],
+          "notes": "Full-page error state with message and retry action."
         },
         {
-          "name": "Select",
-          "category": "Core UI",
-          "path": "src/components/ui/Select.tsx",
-          "status": "planned",
-          "variants": ["default", "error"],
-          "dependencies": ["Popover"],
-          "notes": "Dropdown select control with popover-based options list."
-        },
-        {
-          "name": "Checkbox",
-          "category": "Core UI",
-          "path": "src/components/ui/Checkbox.tsx",
-          "status": "planned",
-          "variants": ["default", "indeterminate"],
-          "dependencies": [],
-          "notes": "Checkbox input with default and indeterminate states."
-        },
-        {
-          "name": "RadioGroup",
-          "category": "Core UI",
-          "path": "src/components/ui/RadioGroup.tsx",
+          "name": "PageContent",
+          "category": "Molecules",
+          "path": "src/components/molecules/PageContent.tsx",
           "status": "planned",
           "variants": [],
           "dependencies": [],
-          "notes": "Radio button group for single-selection options."
+          "notes": "Content wrapper with max-width and padding."
         },
         {
-          "name": "Switch",
-          "category": "Core UI",
-          "path": "src/components/ui/Switch.tsx",
+          "name": "EmptyStatePanel",
+          "category": "Molecules",
+          "path": "src/components/molecules/EmptyStatePanel.tsx",
           "status": "planned",
-          "variants": ["default", "sm"],
-          "dependencies": [],
-          "notes": "Toggle switch for boolean settings."
+          "variants": ["no-data", "first-time", "error"],
+          "dependencies": ["EmptyState"],
+          "notes": "Contextual empty state panel with guidance and next steps."
         },
         {
-          "name": "Badge",
-          "category": "Core UI",
-          "path": "src/components/ui/Badge.tsx",
-          "status": "planned",
-          "variants": ["default", "secondary", "outline", "destructive"],
-          "dependencies": ["CVA"],
-          "notes": "Small label badge for status, categories, and counts."
-        },
-        {
-          "name": "Avatar",
-          "category": "Core UI",
-          "path": "src/components/ui/Avatar.tsx",
-          "status": "planned",
-          "variants": ["sm", "md", "lg"],
-          "dependencies": [],
-          "notes": "User avatar with image or initials fallback in multiple sizes."
-        },
-        {
-          "name": "Tooltip",
-          "category": "Core UI",
-          "path": "src/components/ui/Tooltip.tsx",
+          "name": "PartialResultsWarning",
+          "category": "Molecules",
+          "path": "src/components/molecules/PartialResultsWarning.tsx",
           "status": "planned",
           "variants": [],
-          "dependencies": ["Popover"],
-          "notes": "Hover tooltip for additional context on elements."
+          "dependencies": ["Alert"],
+          "notes": "Warning banner displayed when data is incomplete or partial."
         },
         {
-          "name": "Popover",
-          "category": "Core UI",
-          "path": "src/components/ui/Popover.tsx",
+          "name": "PageNotFound",
+          "category": "Molecules",
+          "path": "src/components/molecules/PageNotFound.tsx",
           "status": "planned",
           "variants": [],
-          "dependencies": [],
-          "notes": "Floating popover container for menus, tooltips, and selects."
+          "dependencies": ["EmptyState"],
+          "notes": "404 page not found screen."
+        }
+      ]
+    },
+    {
+      "name": "Organisms",
+      "description": "Complex, often stateful sections. May compose atoms and molecules. May use shared hooks for navigation/layout state. No feature imports.",
+      "components": [
+        {
+          "name": "AppShell",
+          "category": "Organisms",
+          "path": "src/components/organisms/AppShell.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Sidebar", "TopBar"],
+          "notes": "Main application shell with sidebar + topbar + content area."
         },
         {
-          "name": "Dialog",
-          "category": "Core UI",
-          "path": "src/components/ui/Dialog.tsx",
-          "status": "planned",
-          "variants": ["default", "destructive"],
-          "dependencies": [],
-          "notes": "Modal dialog for focused user interactions."
+          "name": "Sidebar",
+          "category": "Organisms",
+          "path": "src/components/organisms/Sidebar.tsx",
+          "status": "implemented",
+          "variants": ["expanded", "collapsed"],
+          "dependencies": ["SidebarNavItem"],
+          "notes": "Collapsible sidebar navigation (240px expanded, 48px collapsed)."
         },
         {
-          "name": "Sheet",
-          "category": "Core UI",
-          "path": "src/components/ui/Sheet.tsx",
-          "status": "planned",
-          "variants": ["left", "right", "top", "bottom"],
-          "dependencies": [],
-          "notes": "Slide-over drawer panel anchored to a screen edge."
+          "name": "ErrorBoundary",
+          "category": "Organisms",
+          "path": "src/components/organisms/ErrorBoundary.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Alert", "Button"],
+          "notes": "React error boundary with fallback UI and retry action."
         },
         {
-          "name": "DropdownMenu",
-          "category": "Core UI",
-          "path": "src/components/ui/DropdownMenu.tsx",
+          "name": "TopBar",
+          "category": "Organisms",
+          "path": "src/components/organisms/TopBar.tsx",
           "status": "planned",
           "variants": [],
-          "dependencies": ["Popover"],
-          "notes": "Contextual dropdown menu triggered by a button or icon."
-        },
-        {
-          "name": "Command",
-          "category": "Core UI",
-          "path": "src/components/ui/Command.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["Dialog"],
-          "notes": "Command palette and searchable list for quick actions and search."
-        },
-        {
-          "name": "Tabs",
-          "category": "Core UI",
-          "path": "src/components/ui/Tabs.tsx",
-          "status": "planned",
-          "variants": ["default", "underline"],
-          "dependencies": [],
-          "notes": "Tab navigation for switching between content panels."
-        },
-        {
-          "name": "Accordion",
-          "category": "Core UI",
-          "path": "src/components/ui/Accordion.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": [],
-          "notes": "Collapsible accordion sections for progressive disclosure."
-        },
-        {
-          "name": "Card",
-          "category": "Core UI",
-          "path": "src/components/ui/Card.tsx",
-          "status": "planned",
-          "variants": ["default", "interactive"],
-          "dependencies": [],
-          "notes": "Container card with optional hover/click interactivity."
-        },
-        {
-          "name": "Separator",
-          "category": "Core UI",
-          "path": "src/components/ui/Separator.tsx",
-          "status": "planned",
-          "variants": ["horizontal", "vertical"],
-          "dependencies": [],
-          "notes": "Visual separator line between content sections."
-        },
-        {
-          "name": "Skeleton",
-          "category": "Core UI",
-          "path": "src/components/ui/Skeleton.tsx",
-          "status": "planned",
-          "variants": ["text", "circle", "rect"],
-          "dependencies": [],
-          "notes": "Loading placeholder that mimics content shape while data loads."
-        },
-        {
-          "name": "Progress",
-          "category": "Core UI",
-          "path": "src/components/ui/Progress.tsx",
-          "status": "planned",
-          "variants": ["default", "success", "warning", "error"],
-          "dependencies": [],
-          "notes": "Progress bar with semantic color variants."
-        },
-        {
-          "name": "Alert",
-          "category": "Core UI",
-          "path": "src/components/ui/Alert.tsx",
-          "status": "planned",
-          "variants": ["default", "success", "warning", "error", "info"],
-          "dependencies": [],
-          "notes": "Inline alert banner for contextual messages and warnings."
-        },
-        {
-          "name": "AlertDialog",
-          "category": "Core UI",
-          "path": "src/components/ui/AlertDialog.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["Dialog"],
-          "notes": "Confirmation dialog requiring explicit user acknowledgement."
-        },
-        {
-          "name": "Toast",
-          "category": "Core UI",
-          "path": "src/components/ui/Toast.tsx",
-          "status": "planned",
-          "variants": ["default", "success", "error", "warning"],
-          "dependencies": [],
-          "notes": "Ephemeral notification toast that appears and auto-dismisses."
-        },
-        {
-          "name": "ScrollArea",
-          "category": "Core UI",
-          "path": "src/components/ui/ScrollArea.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": [],
-          "notes": "Custom scrollable container with styled scrollbar."
+          "dependencies": ["DropdownMenu", "Command", "Avatar"],
+          "notes": "Top bar with workspace switcher, search, and user menu."
         }
       ]
     },
@@ -440,7 +509,7 @@
           "name": "DiscoveryConfirmationScreen",
           "category": "Feature — Discovery",
           "path": "src/features/discovery/components/DiscoveryConfirmationScreen.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "Button", "SuggestionCard"],
           "notes": "Post-crawl review screen with suggested pages and topics."
@@ -449,7 +518,7 @@
           "name": "DiscoverySection",
           "category": "Feature — Discovery",
           "path": "src/features/discovery/components/DiscoverySection.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "Accordion"],
           "notes": "Collapsible section within the discovery confirmation screen."
@@ -458,7 +527,7 @@
           "name": "SuggestionCard",
           "category": "Feature — Discovery",
           "path": "src/features/discovery/components/SuggestionCard.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": ["page", "topic"],
           "dependencies": ["Card", "Checkbox", "ConfidenceTag"],
           "notes": "Individual crawl suggestion card for a page or topic."
@@ -467,10 +536,19 @@
           "name": "ConfidenceTag",
           "category": "Feature — Discovery",
           "path": "src/features/discovery/components/ConfidenceTag.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": ["high", "medium", "low"],
           "dependencies": ["Badge"],
           "notes": "AI confidence level tag with color-coded severity."
+        },
+        {
+          "name": "ManualFallbackPrompt",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/ManualFallbackPrompt.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Input", "Button"],
+          "notes": "Manual entry prompt shown when crawl yields low results."
         },
         {
           "name": "CrawlProgressIndicator",
@@ -482,13 +560,55 @@
           "notes": "Real-time crawl progress indicator with live updates via SignalR."
         },
         {
-          "name": "ManualFallbackPrompt",
+          "name": "DiscoveryProgressScreen",
           "category": "Feature — Discovery",
-          "path": "src/features/discovery/components/ManualFallbackPrompt.tsx",
-          "status": "planned",
+          "path": "src/features/discovery/components/DiscoveryProgressScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Progress", "Card"],
+          "notes": "Discovery progress screen shown during crawl execution."
+        },
+        {
+          "name": "DiscoveryCompleteScreen",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/DiscoveryCompleteScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "Button"],
+          "notes": "Discovery complete screen shown after crawl finishes."
+        },
+        {
+          "name": "DiscoveryStepProgress",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/DiscoveryStepProgress.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Progress"],
+          "notes": "Step-by-step progress indicator for the discovery workflow."
+        },
+        {
+          "name": "AddCustomItemForm",
+          "category": "Feature — Discovery",
+          "path": "src/features/discovery/components/AddCustomItemForm.tsx",
+          "status": "implemented",
           "variants": [],
           "dependencies": ["Input", "Button"],
-          "notes": "Manual entry prompt shown when crawl yields low results."
+          "notes": "Form for manually adding custom pages or topics to the discovery list."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Brands",
+      "description": "Components for brand management including creation, editing, and brand-level configuration.",
+      "components": [
+        {
+          "name": "AddBrandForm",
+          "category": "Feature — Brands",
+          "path": "src/features/brands/components/AddBrandForm.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Input", "Button"],
+          "notes": "Form for adding a new brand with name and website URL."
         }
       ]
     },
@@ -756,57 +876,6 @@
           "variants": [],
           "dependencies": ["DataTable", "StatusBadge"],
           "notes": "Table of recent scan runs with status and summary data."
-        }
-      ]
-    },
-    {
-      "name": "Status & Feedback",
-      "description": "Cross-cutting components for empty states, error handling, loading screens, and user feedback messages.",
-      "components": [
-        {
-          "name": "EmptyStatePanel",
-          "category": "Status & Feedback",
-          "path": "src/components/feedback/EmptyStatePanel.tsx",
-          "status": "planned",
-          "variants": ["no-data", "first-time", "error"],
-          "dependencies": ["EmptyState"],
-          "notes": "Contextual empty state panel with guidance and next steps."
-        },
-        {
-          "name": "PartialResultsWarning",
-          "category": "Status & Feedback",
-          "path": "src/components/feedback/PartialResultsWarning.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["Alert"],
-          "notes": "Warning banner displayed when data is incomplete or partial."
-        },
-        {
-          "name": "ErrorBoundary",
-          "category": "Status & Feedback",
-          "path": "src/components/feedback/ErrorBoundary.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["Alert", "Button"],
-          "notes": "React error boundary with fallback UI and retry action."
-        },
-        {
-          "name": "PageNotFound",
-          "category": "Status & Feedback",
-          "path": "src/components/feedback/PageNotFound.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["EmptyState"],
-          "notes": "404 page not found screen."
-        },
-        {
-          "name": "LoadingPage",
-          "category": "Status & Feedback",
-          "path": "src/components/feedback/LoadingPage.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["LoadingSkeleton"],
-          "notes": "Full-page loading state with skeleton layout."
         }
       ]
     }

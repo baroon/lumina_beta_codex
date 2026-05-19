@@ -2,9 +2,185 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import prettier from "eslint-config-prettier";
 
+// ---------------------------------------------------------------------------
+// Feature list — used to generate cross-feature import bans
+// ---------------------------------------------------------------------------
+const FEATURES = [
+  "brands",
+  "competitors",
+  "content-actions",
+  "discovery",
+  "findings",
+  "prompts",
+  "reports",
+  "scan-progress",
+  "scan-results",
+  "sources",
+  "topics",
+  "trackers",
+];
+
+// ---------------------------------------------------------------------------
+// Deprecated path patterns — included in every layer-specific rule group
+// ESLint 10 patterns use `group` (array) instead of `name` (string)
+// ---------------------------------------------------------------------------
+const DEPRECATED_PATH_PATTERNS = [
+  {
+    group: ["@/components/ui/*"],
+    message:
+      "Deprecated: @/components/ui/ has been replaced by @/components/atoms/. Update your import.",
+  },
+  {
+    group: ["@/components/layout/*"],
+    message:
+      "Deprecated: @/components/layout/ has been replaced by @/components/organisms/. Update your import.",
+  },
+  {
+    group: ["@/components/feedback/*"],
+    message:
+      "Deprecated: @/components/feedback/ has been replaced by @/components/atoms/ or @/components/molecules/. Update your import.",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Helper: build no-restricted-imports rule value
+// ---------------------------------------------------------------------------
+function restrictedImports(...extraPatterns) {
+  return ["error", { patterns: [...DEPRECATED_PATH_PATTERNS, ...extraPatterns] }];
+}
+
+// ---------------------------------------------------------------------------
+// Layer boundary configs
+// ---------------------------------------------------------------------------
+
+// Rule Group A — Deprecated path ban (global, for files not matched by more specific rules)
+const deprecatedPathBan = {
+  files: ["**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": restrictedImports(),
+  },
+};
+
+// Rule Group B — Atom boundary
+// Atoms cannot import from molecules, organisms, data-display, charts, features, api, or shared hooks
+const atomBoundary = {
+  files: ["src/components/atoms/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": restrictedImports(
+      {
+        group: ["@/components/molecules/*"],
+        message: "Atoms must not import from molecules. Atoms are the lowest-level primitives.",
+      },
+      {
+        group: ["@/components/organisms/*"],
+        message: "Atoms must not import from organisms.",
+      },
+      {
+        group: ["@/components/data-display/*"],
+        message: "Atoms must not import from data-display components.",
+      },
+      {
+        group: ["@/components/charts/*"],
+        message: "Atoms must not import from chart components.",
+      },
+      {
+        group: ["@/features/**"],
+        message: "Atoms must not import from features. Atoms have no domain knowledge.",
+      },
+      {
+        group: ["@/api/*"],
+        message: "Atoms must not import from the API layer. No side effects in atoms.",
+      },
+      {
+        group: ["@/hooks/*"],
+        message: "Atoms must not import shared hooks. Atoms are pure UI primitives.",
+      },
+    ),
+  },
+};
+
+// Rule Group C — Molecule boundary
+// Molecules cannot import from organisms, features, or api
+const moleculeBoundary = {
+  files: ["src/components/molecules/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": restrictedImports(
+      {
+        group: ["@/components/organisms/*"],
+        message: "Molecules must not import from organisms.",
+      },
+      {
+        group: ["@/features/**"],
+        message: "Molecules must not import from features. Molecules have no domain knowledge.",
+      },
+      {
+        group: ["@/api/*"],
+        message: "Molecules must not import from the API layer.",
+      },
+    ),
+  },
+};
+
+// Rule Group D — Organism boundary
+// Organisms cannot import from features or api
+const organismBoundary = {
+  files: ["src/components/organisms/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": restrictedImports(
+      {
+        group: ["@/features/**"],
+        message: "Organisms must not import from features. Feature content belongs in features/.",
+      },
+      {
+        group: ["@/api/*"],
+        message: "Organisms must not import from the API layer.",
+      },
+    ),
+  },
+};
+
+// Rule Group E — Shared component boundary (data-display, charts)
+// Cannot import from features or api
+const sharedComponentBoundary = {
+  files: ["src/components/data-display/**/*.{ts,tsx}", "src/components/charts/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": restrictedImports(
+      {
+        group: ["@/features/**"],
+        message: "Shared components must not import from features. Receive data via props.",
+      },
+      {
+        group: ["@/api/*"],
+        message: "Shared components must not import from the API layer. Receive data via props.",
+      },
+    ),
+  },
+};
+
+// Rule Group F — Cross-feature import ban
+// Each feature cannot import from any other feature
+const crossFeatureConfigs = FEATURES.map((feature) => {
+  const otherFeatures = FEATURES.filter((f) => f !== feature);
+  const patterns = otherFeatures.map((other) => ({
+    group: [`@/features/${other}/**`],
+    message: `Cross-feature import: ${feature} must not import from ${other}. Use shared hooks, types, or URL params instead.`,
+  }));
+
+  return {
+    files: [`src/features/${feature}/**/*.{ts,tsx}`],
+    rules: {
+      "no-restricted-imports": restrictedImports(...patterns),
+    },
+  };
+});
+
+// ---------------------------------------------------------------------------
+// Export config
+// ---------------------------------------------------------------------------
 export default tseslint.config(
-  { ignores: ["dist", "**/*.d.ts", "tailwind.config.ts"] },
+  { ignores: ["dist", "storybook-static", "**/*.d.ts", "tailwind.config.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -20,4 +196,13 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
+  // Layer boundary rules
+  deprecatedPathBan,
+  atomBoundary,
+  moleculeBoundary,
+  organismBoundary,
+  sharedComponentBoundary,
+  ...crossFeatureConfigs,
+  // Prettier must be last to disable conflicting formatting rules
+  prettier,
 );

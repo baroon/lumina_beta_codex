@@ -1,0 +1,7 @@
+cd src
+
+# Run Prettier + ESLint on staged files via lint-staged
+pnpm exec lint-staged
+
+# Run manifest sync validation on staged files
+node scripts/manifest-sync-lite.mjs --staged

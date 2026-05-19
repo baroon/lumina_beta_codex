@@ -72,9 +72,13 @@ export function DiscoverySection({
                   className="gap-1 text-xs"
                 >
                   {allSelected ? (
-                    <><Square className="h-3 w-3" /> {DISCOVERY_COPY.buttons.deselectAll}</>
+                    <>
+                      <Square className="h-3 w-3" /> {DISCOVERY_COPY.buttons.deselectAll}
+                    </>
                   ) : (
-                    <><CheckSquare className="h-3 w-3" /> {DISCOVERY_COPY.buttons.selectAll}</>
+                    <>
+                      <CheckSquare className="h-3 w-3" /> {DISCOVERY_COPY.buttons.selectAll}
+                    </>
                   )}
                 </Button>
               </div>

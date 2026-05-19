@@ -18,7 +18,7 @@ export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCard
         "flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
         selected
           ? "border-primary-600 bg-primary-50"
-          : "border-neutral-200 hover:border-neutral-300"
+          : "border-neutral-200 hover:border-neutral-300",
       )}
       onClick={() => onToggle(candidate.id)}
     >
@@ -33,7 +33,9 @@ export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCard
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>
           <ConfidenceTag confidence={candidate.confidence} />
           {candidate.source === "LLMSuggested" && (
-            <Badge variant="outline" className="text-xs">{DISCOVERY_COPY.labels.aiSource}</Badge>
+            <Badge variant="outline" className="text-xs">
+              {DISCOVERY_COPY.labels.aiSource}
+            </Badge>
           )}
         </div>
         {candidate.description && (

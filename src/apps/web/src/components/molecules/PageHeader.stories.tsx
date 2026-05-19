@@ -6,7 +6,13 @@ const meta: Meta<typeof PageHeader> = {
   title: "Molecules/PageHeader",
   component: PageHeader,
   tags: ["autodocs"],
-  decorators: [(Story) => <div className="w-[600px]"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-[600px]">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;
@@ -27,7 +33,9 @@ export const WithActions: Story = {
   render: () => (
     <PageHeader title="Discovery" description="Review your brand discovery results.">
       <Button size="sm">Export</Button>
-      <Button size="sm" variant="outline">Settings</Button>
+      <Button size="sm" variant="outline">
+        Settings
+      </Button>
     </PageHeader>
   ),
 };

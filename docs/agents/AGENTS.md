@@ -63,6 +63,9 @@ AIVisibility.Worker
 - Charts receive prepared view models.
 - Do not calculate business metrics in chart components.
 - Use centralized copy/product vocabulary constants.
+- Respect atomic design layer boundaries (atoms → molecules → organisms). ESLint enforces these automatically.
+- Never import from deprecated paths (`@/components/ui/`, `@/components/layout/`, `@/components/feedback/`). Use atoms/molecules/organisms.
+- Never import across feature boundaries. Shared logic goes in `hooks/`, `lib/`, or `types/`.
 
 ## Backend Rules
 
@@ -121,6 +124,33 @@ Backend:
 - Infrastructure implements adapters.
 - Same business workflows run locally and in Azure.
 - Only adapters/configuration differ.
+
+## Commit Enforcement
+
+The following checks run automatically on every `git commit` via Husky pre-commit hooks:
+
+- **Prettier** — Auto-fixes formatting (semi, double quotes, 100 char width, LF line endings)
+- **ESLint** — Enforces architectural boundaries:
+  - No imports from deprecated paths (`@/components/ui/`, `@/components/layout/`, `@/components/feedback/`)
+  - Atoms cannot import from molecules, organisms, features, api, or hooks
+  - Molecules cannot import from organisms, features, or api
+  - Organisms cannot import from features or api
+  - Shared components (data-display, charts) cannot import from features or api
+  - No cross-feature imports (each feature is isolated)
+- **Manifest sync** — Validates component registry consistency:
+  - Every `.tsx` file in shared component dirs must have a manifest entry
+  - Every `implemented` manifest entry must point to an existing file
+  - No `.tsx` files in deprecated directories
+
+If a commit fails:
+
+1. Read the error message to understand which rule was violated
+2. Prettier issues are auto-fixed — just re-stage the files
+3. ESLint boundary violations require manual fixes — move the import or restructure
+4. Manifest issues require adding/updating entries in `component-manifest.json`
+5. Stage the corrected files and commit again
+
+Agents cannot bypass these gates. They exist to prevent architectural drift.
 
 ## Before Completing Work
 

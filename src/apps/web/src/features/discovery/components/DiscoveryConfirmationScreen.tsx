@@ -13,7 +13,10 @@ interface DiscoveryConfirmationScreenProps {
 
 type SectionKey = "products" | "audiences" | "markets" | "topics" | "competitors" | "trustSignals";
 
-const SECTIONS: { key: SectionKey; copy: { title: string; description: string; emptyMessage: string } }[] = [
+const SECTIONS: {
+  key: SectionKey;
+  copy: { title: string; description: string; emptyMessage: string };
+}[] = [
   { key: "products", copy: DISCOVERY_COPY.sections.products },
   { key: "audiences", copy: DISCOVERY_COPY.sections.audiences },
   { key: "markets", copy: DISCOVERY_COPY.sections.markets },
@@ -30,9 +33,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     const selections = new Map<string, Set<string>>();
     for (const { key } of SECTIONS) {
       const candidates = results[key] as CandidateDto[];
-      const preselected = new Set(
-        candidates.filter((c) => c.confidence >= 0.5).map((c) => c.id)
-      );
+      const preselected = new Set(candidates.filter((c) => c.confidence >= 0.5).map((c) => c.id));
       selections.set(key, preselected);
     }
     return selections;
@@ -132,10 +133,14 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
       {results.brandProfile && (
         <div className="rounded-lg border border-neutral-200 bg-surface-card p-4">
-          <h3 className="font-semibold text-neutral-900">{DISCOVERY_COPY.sections.brandProfile.title}</h3>
+          <h3 className="font-semibold text-neutral-900">
+            {DISCOVERY_COPY.sections.brandProfile.title}
+          </h3>
           <p className="mt-1 text-sm text-neutral-500">{results.brandProfile.shortDescription}</p>
           {results.brandProfile.industry && (
-            <p className="mt-1 text-xs text-neutral-400">{DISCOVERY_COPY.confirmation.industryLabel}: {results.brandProfile.industry}</p>
+            <p className="mt-1 text-xs text-neutral-400">
+              {DISCOVERY_COPY.confirmation.industryLabel}: {results.brandProfile.industry}
+            </p>
           )}
         </div>
       )}
@@ -162,14 +167,18 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       {confirmMutation.isError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {confirmMutation.error instanceof Error ? confirmMutation.error.message : DISCOVERY_COPY.errors.confirmFailed}
+            {confirmMutation.error instanceof Error
+              ? confirmMutation.error.message
+              : DISCOVERY_COPY.errors.confirmFailed}
           </AlertDescription>
         </Alert>
       )}
 
       <div className="flex justify-end">
         <Button onClick={handleConfirm} disabled={confirmMutation.isPending} size="lg">
-          {confirmMutation.isPending ? DISCOVERY_COPY.confirmation.confirming : DISCOVERY_COPY.buttons.confirm}
+          {confirmMutation.isPending
+            ? DISCOVERY_COPY.confirmation.confirming
+            : DISCOVERY_COPY.buttons.confirm}
         </Button>
       </div>
     </div>

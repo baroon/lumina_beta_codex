@@ -6,7 +6,13 @@ const meta: Meta<typeof Sidebar> = {
   component: Sidebar,
   tags: ["autodocs"],
   parameters: { layout: "fullscreen" },
-  decorators: [(Story) => <div className="h-screen"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="h-screen">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

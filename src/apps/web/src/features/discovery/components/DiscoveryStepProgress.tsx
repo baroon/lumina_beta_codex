@@ -25,7 +25,8 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
 
   // Get the encouragement message for the active step
   const activeStepDef = DISCOVERY_COPY.steps[step - 1];
-  const encouragement = activeStepDef?.encouragement ?? DISCOVERY_COPY.progress.defaultEncouragement;
+  const encouragement =
+    activeStepDef?.encouragement ?? DISCOVERY_COPY.progress.defaultEncouragement;
 
   return (
     <div className="space-y-6">
@@ -83,7 +84,9 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
 
               {/* Completed badge */}
               {isCompleted && (
-                <span className="ml-auto text-xs text-semantic-success-600">{DISCOVERY_COPY.progress.done}</span>
+                <span className="ml-auto text-xs text-semantic-success-600">
+                  {DISCOVERY_COPY.progress.done}
+                </span>
               )}
             </div>
           );
@@ -91,15 +94,16 @@ export function DiscoveryStepProgress({ step, totalSteps }: DiscoveryStepProgres
       </div>
 
       {/* Encouragement message */}
-      <p className="text-center text-sm italic text-neutral-500">
-        {encouragement}
-      </p>
+      <p className="text-center text-sm italic text-neutral-500">{encouragement}</p>
 
       {/* Overall progress bar */}
       <div className="space-y-1.5">
         <Progress value={percent} className="h-2" />
         <div className="flex justify-between text-xs text-neutral-400">
-          <span>{DISCOVERY_COPY.progress.stepLabel} {step} {DISCOVERY_COPY.progress.ofLabel} {totalSteps}</span>
+          <span>
+            {DISCOVERY_COPY.progress.stepLabel} {step} {DISCOVERY_COPY.progress.ofLabel}{" "}
+            {totalSteps}
+          </span>
           <span>{percent}%</span>
         </div>
       </div>

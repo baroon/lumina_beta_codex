@@ -31,6 +31,18 @@ dotnet ef database update \
   --startup-project apps/api/src/AIVisibility.Api
 ```
 
+## Code Quality & Formatting
+
+```bash
+pnpm format              # Auto-fix formatting with Prettier
+pnpm format:check        # Check formatting without modifying (CI-friendly)
+pnpm lint:web            # Run ESLint on frontend (includes boundary rules)
+pnpm manifest:check      # Validate component manifest sync
+pnpm --filter web typecheck  # Run TypeScript type-check (not in pre-commit)
+```
+
+All formatting and lint checks run automatically on `git commit` via Husky pre-commit hooks. Run them manually for immediate feedback before committing.
+
 ## Local Infra
 
 ```bash

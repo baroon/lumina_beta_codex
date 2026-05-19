@@ -1,8 +1,9 @@
 # Tech Stack Decisions
+
 ## Lumina AI Visibility Platform
 
 **Status:** Decided
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Date:** 2026-05-18
 **Owner:** Chief Technical Architect
 
@@ -15,37 +16,38 @@
 
 ## Decision Summary
 
-| Concern | Decision |
-|---|---|
-| Frontend Framework | React + TypeScript + Vite |
-| Routing | TanStack Router (file-based, type-safe) |
-| UI Components | shadcn/ui + Tailwind CSS |
-| Component Variants | CVA (class-variance-authority) |
-| Design Tokens | tokens.json → CSS custom properties → Tailwind theme |
-| Server State | TanStack Query |
-| Client State | React Context + URL search params |
-| Forms | React Hook Form + Zod |
-| Tables | TanStack Table |
-| Charts | Nivo (via wrapper components) |
-| Real-Time | SignalR (@microsoft/signalr) |
-| API Mocking | MSW (Mock Service Worker) |
-| Unit Testing (FE) | Vitest + React Testing Library |
-| E2E Testing | Playwright |
-| Component Docs | Storybook |
-| Package Manager | pnpm |
-| Backend Framework | ASP.NET Core (C#) |
-| API Style | Controller-based REST + OpenAPI/Swagger |
-| Architecture | Layered modular monolith |
-| Database | PostgreSQL + EF Core + Npgsql |
-| Validation (BE) | FluentValidation |
-| Error Responses | ProblemDetails |
-| Message Bus | MassTransit (Azure Service Bus prod, RabbitMQ local) |
-| Fast Jobs | Hangfire (PostgreSQL persistence) |
-| Auth | Clerk |
-| Tenancy | Workspace-based (internal) |
-| Unit Testing (BE) | xUnit + FluentAssertions + NSubstitute |
-| Integration Testing (BE) | Testcontainers PostgreSQL + WebApplicationFactory |
-| Formatting | Centralized formatters.ts with Intl APIs |
+| Concern                  | Decision                                             |
+| ------------------------ | ---------------------------------------------------- |
+| Frontend Framework       | React + TypeScript + Vite                            |
+| Routing                  | TanStack Router (file-based, type-safe)              |
+| UI Components            | shadcn/ui + Tailwind CSS                             |
+| Component Variants       | CVA (class-variance-authority)                       |
+| Design Tokens            | tokens.json → CSS custom properties → Tailwind theme |
+| Server State             | TanStack Query                                       |
+| Client State             | React Context + URL search params                    |
+| Forms                    | React Hook Form + Zod                                |
+| Tables                   | TanStack Table                                       |
+| Charts                   | Nivo (via wrapper components)                        |
+| Real-Time                | SignalR (@microsoft/signalr)                         |
+| API Mocking              | MSW (Mock Service Worker)                            |
+| Unit Testing (FE)        | Vitest + React Testing Library                       |
+| E2E Testing              | Playwright                                           |
+| Component Docs           | Storybook                                            |
+| Package Manager          | pnpm                                                 |
+| Backend Framework        | ASP.NET Core (C#)                                    |
+| API Style                | Controller-based REST + OpenAPI/Swagger              |
+| Architecture             | Layered modular monolith                             |
+| Database                 | PostgreSQL + EF Core + Npgsql                        |
+| Validation (BE)          | FluentValidation                                     |
+| Error Responses          | ProblemDetails                                       |
+| Message Bus              | MassTransit (Azure Service Bus prod, RabbitMQ local) |
+| Fast Jobs                | Hangfire (PostgreSQL persistence)                    |
+| Auth                     | Clerk                                                |
+| Tenancy                  | Workspace-based (internal)                           |
+| Unit Testing (BE)        | xUnit + FluentAssertions + NSubstitute               |
+| Integration Testing (BE) | Testcontainers PostgreSQL + WebApplicationFactory    |
+| Formatting               | Centralized formatters.ts with Intl APIs             |
+| Code Quality Enforcement | Prettier + ESLint boundaries + Husky + lint-staged   |
 
 ---
 
@@ -54,6 +56,7 @@
 **Decision:** React with TypeScript in strict mode, built with Vite.
 
 **Constraints this places on agents:**
+
 - All components must be written in TypeScript. No `.jsx` files. No `.js` files in `src/`.
 - TypeScript strict mode is mandatory. The following `tsconfig.json` settings are non-negotiable:
 
@@ -74,6 +77,7 @@
 - All async function return types must be explicitly declared — no inferred returns.
 
 **Canonical pattern — functional component with typed props:**
+
 ```typescript
 // src/features/trackers/components/TrackerCard.tsx
 interface TrackerCardProps {
@@ -107,51 +111,54 @@ export function TrackerCard({ tracker, onSelect, isActive = false }: TrackerCard
 **Decision:** TanStack Router with file-based route generation and full type safety.
 
 **Constraints this places on agents:**
+
 - All routes are defined via file-based routing under `src/routes/`.
 - Route params and search params must be fully typed — no `string` coercion or manual parsing.
 - Data prefetching uses route loaders that call TanStack Query's `ensureQueryData`.
 - Route guards for auth and workspace validation use `beforeLoad`.
 
 **Canonical pattern — route file with loader and component:**
+
 ```typescript
 // src/routes/brands/$brandId/trackers/$trackerId.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { queryClient } from '@/lib/queryClient'
-import { trackerQueryOptions } from '@/hooks/useTrackers'
-import { TrackerDetailPage } from '@/features/trackers/pages/TrackerDetailPage'
+import { createFileRoute } from "@tanstack/react-router";
+import { queryClient } from "@/lib/queryClient";
+import { trackerQueryOptions } from "@/hooks/useTrackers";
+import { TrackerDetailPage } from "@/features/trackers/pages/TrackerDetailPage";
 
-export const Route = createFileRoute('/brands/$brandId/trackers/$trackerId')({
+export const Route = createFileRoute("/brands/$brandId/trackers/$trackerId")({
   component: TrackerDetailPage,
-  loader: ({ params }) =>
-    queryClient.ensureQueryData(trackerQueryOptions(params.trackerId)),
+  loader: ({ params }) => queryClient.ensureQueryData(trackerQueryOptions(params.trackerId)),
   beforeLoad: ({ context }) => {
     if (!context.auth.isAuthenticated) {
-      throw redirect({ to: '/login' })
+      throw redirect({ to: "/login" });
     }
   },
-})
+});
 ```
 
 **Search params pattern — typed filter state in URL:**
+
 ```typescript
 // src/routes/brands/$brandId/findings.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 
 const findingsSearchSchema = z.object({
-  platform: z.enum(['chatgpt', 'perplexity', 'gemini', 'all']).optional().default('all'),
-  sentiment: z.enum(['positive', 'negative', 'neutral', 'all']).optional().default('all'),
-  dateRange: z.enum(['7d', '30d', '90d']).optional().default('30d'),
+  platform: z.enum(["chatgpt", "perplexity", "gemini", "all"]).optional().default("all"),
+  sentiment: z.enum(["positive", "negative", "neutral", "all"]).optional().default("all"),
+  dateRange: z.enum(["7d", "30d", "90d"]).optional().default("30d"),
   page: z.number().optional().default(1),
-})
+});
 
-export const Route = createFileRoute('/brands/$brandId/findings')({
+export const Route = createFileRoute("/brands/$brandId/findings")({
   component: FindingsPage,
   validateSearch: findingsSearchSchema,
-})
+});
 ```
 
 **Route file structure:**
+
 ```
 src/routes/
   __root.tsx                            → Root layout, auth context provider
@@ -189,6 +196,7 @@ src/routes/
 **Decision:** shadcn/ui component library with Tailwind CSS for styling. Radix UI primitives underpin shadcn/ui.
 
 **Constraints this places on agents:**
+
 - Use shadcn/ui components first for any interactive primitive (Button, Dialog, Select, Dropdown, Tabs, Tooltip, etc.).
 - shadcn/ui components are copied into `src/components/ui/` — they are owned code, not node_modules.
 - Customization happens exclusively through CVA variants and Tailwind token classes. Never modify the internal Radix primitive wiring of a shadcn component.
@@ -198,6 +206,7 @@ src/routes/
 - Dark mode and responsive variants follow Tailwind conventions — no custom media queries in component files.
 
 **Canonical pattern — using a shadcn/ui component:**
+
 ```typescript
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -220,6 +229,7 @@ export function CreateTrackerDialog() {
 ```
 
 **Component file structure:**
+
 ```
 src/components/
   ui/                    → shadcn/ui primitives (Button, Dialog, Select, etc.)
@@ -237,12 +247,14 @@ src/components/
 **Decision:** All component variant styling uses CVA. No exceptions.
 
 **Constraints this places on agents:**
+
 - ALL conditional class logic in components must use CVA variant definitions.
 - Never use string concatenation or ternary expressions to build className strings.
 - Use `cn()` from `@/lib/utils` for merging CVA output with additional className overrides.
 - Variant names must be descriptive string literals — never booleans for variant selection.
 
 **Canonical pattern — CVA component with variants:**
+
 ```typescript
 // src/components/ui/button.tsx
 import { cva, type VariantProps } from 'class-variance-authority'
@@ -291,17 +303,19 @@ export { buttonVariants }
 ```
 
 **cn() utility — the only way to merge classes:**
+
 ```typescript
 // src/lib/utils.ts
-import { type ClassValue, clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 ```
 
 **Correct vs incorrect patterns:**
+
 ```typescript
 // CORRECT — CVA variant with cn() merge
 <div className={cn(cardVariants({ variant: 'elevated' }), className)} />
@@ -323,12 +337,14 @@ export function cn(...inputs: ClassValue[]) {
 **Decision:** All visual values (colors, spacing, typography, shadows, radii) originate from `design-tokens/tokens.json` and flow through a build pipeline into CSS custom properties and Tailwind theme configuration.
 
 **Constraints this places on agents:**
+
 - Never use raw hex, rgb, hsl, or arbitrary pixel values in component files.
 - Never use Tailwind's default color palette (e.g., `blue-500`, `gray-300`). All color classes must reference the token-derived theme (e.g., `primary-600`, `neutral-300`).
 - Before adding a new token, check `TOKENS.md` for existing tokens that serve the purpose.
 - All visual values in components come from Tailwind classes that reference the token theme.
 
 **Token pipeline flow:**
+
 ```
 tokens.json
   ↓ generate-css.js
@@ -340,6 +356,7 @@ Component classes: bg-primary-600, text-neutral-700, border-border-default
 ```
 
 **tokens.json structure (excerpt):**
+
 ```json
 {
   "color": {
@@ -380,22 +397,23 @@ Component classes: bg-primary-600, text-neutral-700, border-border-default
 ```
 
 **Tailwind config — how tokens become classes:**
+
 ```typescript
 // tailwind.config.ts
-import tokens from './tailwind-tokens.js'
+import tokens from "./tailwind-tokens.js";
 
 export default {
   theme: {
     extend: {
       colors: {
-        'primary': tokens.colors.primary,     // primary-50 through primary-700
-        'neutral': tokens.colors.neutral,
-        'error': tokens.colors.error,
-        'success': tokens.colors.success,
-        'warning': tokens.colors.warning,
-        'border-default': 'var(--color-border-default)',
-        'surface-primary': 'var(--color-surface-primary)',
-        'surface-secondary': 'var(--color-surface-secondary)',
+        primary: tokens.colors.primary, // primary-50 through primary-700
+        neutral: tokens.colors.neutral,
+        error: tokens.colors.error,
+        success: tokens.colors.success,
+        warning: tokens.colors.warning,
+        "border-default": "var(--color-border-default)",
+        "surface-primary": "var(--color-surface-primary)",
+        "surface-secondary": "var(--color-surface-secondary)",
       },
       fontFamily: tokens.fontFamily,
       borderRadius: tokens.borderRadius,
@@ -403,10 +421,11 @@ export default {
       spacing: tokens.spacing,
     },
   },
-}
+};
 ```
 
 **Canonical usage in components:**
+
 ```typescript
 // CORRECT — token-derived Tailwind classes
 <div className="bg-surface-primary border border-border-default rounded-lg shadow-card">
@@ -429,6 +448,7 @@ export default {
 **Decision:** All server data is fetched and cached via TanStack Query hooks. No exceptions.
 
 **Constraints this places on agents:**
+
 - No `fetch()` or `axios` calls inside component files — all API calls go through the API layer (`src/api/`) and are consumed via TanStack Query hooks.
 - No server data stored in React Context or any client state manager.
 - Query keys follow a hierarchical factory pattern for consistent invalidation.
@@ -436,69 +456,71 @@ export default {
 - Mutations use `useMutation` with explicit `onSuccess` invalidation — no manual cache manipulation except where optimistic updates are required.
 
 **Canonical pattern — query key factory + hook:**
+
 ```typescript
 // src/hooks/useTrackers.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getTrackers, getTracker, createTracker } from '@/api/trackersApi'
-import type { TrackerFilters, CreateTrackerRequest } from '@/types/trackers'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTrackers, getTracker, createTracker } from "@/api/trackersApi";
+import type { TrackerFilters, CreateTrackerRequest } from "@/types/trackers";
 
 export const trackerKeys = {
-  all: ['trackers'] as const,
-  lists: () => [...trackerKeys.all, 'list'] as const,
+  all: ["trackers"] as const,
+  lists: () => [...trackerKeys.all, "list"] as const,
   list: (filters: TrackerFilters) => [...trackerKeys.lists(), filters] as const,
-  details: () => [...trackerKeys.all, 'detail'] as const,
+  details: () => [...trackerKeys.all, "detail"] as const,
   detail: (id: string) => [...trackerKeys.details(), id] as const,
-}
+};
 
 export function trackerQueryOptions(id: string) {
   return {
     queryKey: trackerKeys.detail(id),
     queryFn: () => getTracker(id),
-  }
+  };
 }
 
 export function useTrackers(filters: TrackerFilters) {
   return useQuery({
     queryKey: trackerKeys.list(filters),
     queryFn: () => getTrackers(filters),
-  })
+  });
 }
 
 export function useTracker(id: string) {
-  return useQuery(trackerQueryOptions(id))
+  return useQuery(trackerQueryOptions(id));
 }
 
 export function useCreateTracker() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateTrackerRequest) => createTracker(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: trackerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: trackerKeys.lists() });
     },
-  })
+  });
 }
 ```
 
 **API layer pattern — clean separation from hooks:**
+
 ```typescript
 // src/api/trackersApi.ts
-import { apiClient } from '@/api/client'
-import type { Tracker, TrackerFilters, CreateTrackerRequest } from '@/types/trackers'
+import { apiClient } from "@/api/client";
+import type { Tracker, TrackerFilters, CreateTrackerRequest } from "@/types/trackers";
 
 export async function getTrackers(filters: TrackerFilters): Promise<Tracker[]> {
-  const response = await apiClient.get<Tracker[]>('/api/trackers', { params: filters })
-  return response.data
+  const response = await apiClient.get<Tracker[]>("/api/trackers", { params: filters });
+  return response.data;
 }
 
 export async function getTracker(id: string): Promise<Tracker> {
-  const response = await apiClient.get<Tracker>(`/api/trackers/${id}`)
-  return response.data
+  const response = await apiClient.get<Tracker>(`/api/trackers/${id}`);
+  return response.data;
 }
 
 export async function createTracker(data: CreateTrackerRequest): Promise<Tracker> {
-  const response = await apiClient.post<Tracker>('/api/trackers', data)
-  return response.data
+  const response = await apiClient.post<Tracker>("/api/trackers", data);
+  return response.data;
 }
 ```
 
@@ -511,12 +533,14 @@ export async function createTracker(data: CreateTrackerRequest): Promise<Tracker
 **Decision:** React Context for small app-level UI state. URL search params for filter and view state. No dedicated client state library in v1.
 
 **Constraints this places on agents:**
+
 - React Context is used only for: sidebar collapsed state, active theme, toast notifications, and similar ephemeral UI concerns.
 - URL search params (managed by TanStack Router) hold all filter state, pagination, sorting, and view toggles. This makes views bookmarkable and shareable.
 - Do NOT use Zustand, Jotai, Redux, or any third-party state library in v1.
 - Server data never lives in React Context — that is TanStack Query's responsibility.
 
 **Canonical pattern — React Context for UI state:**
+
 ```typescript
 // src/contexts/SidebarContext.tsx
 import { createContext, useContext, useState, type ReactNode } from 'react'
@@ -545,6 +569,7 @@ export function useSidebar() {
 ```
 
 **Canonical pattern — URL search params for filters:**
+
 ```typescript
 // Inside a route component
 import { useSearch, useNavigate } from '@tanstack/react-router'
@@ -576,12 +601,14 @@ function FindingsFilters() {
 **Decision:** All forms use React Hook Form with Zod schema validation via `@hookform/resolvers/zod`.
 
 **Constraints this places on agents:**
+
 - Every form uses `useForm` with a `zodResolver`. No manual `useState` for form fields.
 - Validation schemas are defined in Zod. Form data types are derived via `z.infer<>` — never manually duplicated.
 - Error messages are defined in the Zod schema, not in component JSX.
 - Complex forms with conditional fields use Zod's `.refine()` and `.superRefine()` — no imperative validation in `onSubmit`.
 
 **Canonical pattern — form with Zod validation:**
+
 ```typescript
 // src/features/trackers/components/CreateTrackerForm.tsx
 import { useForm } from 'react-hook-form'
@@ -644,12 +671,14 @@ export function CreateTrackerForm({ brandId }: { brandId: string }) {
 **Decision:** All data tables use TanStack Table with typed column definitions.
 
 **Constraints this places on agents:**
+
 - Column definitions use `createColumnHelper<T>()` for full type safety.
 - Tables receive data as props — no data fetching inside table components.
 - Sorting, filtering, and pagination state lives in URL search params (via TanStack Router), not in component state.
 - Cell renderers are pure functions — no side effects, no hooks inside cell render functions.
 
 **Canonical pattern — typed table with column helper:**
+
 ```typescript
 // src/features/findings/components/FindingsTable.tsx
 import {
@@ -736,12 +765,14 @@ export function FindingsTable({ data }: FindingsTableProps) {
 **Decision:** All charts use Nivo, accessed exclusively through wrapper components in `src/components/charts/`.
 
 **Constraints this places on agents:**
+
 - No direct Nivo imports in feature components. Feature code imports from `@/components/charts/`.
 - Chart wrapper components receive prepared data as props. No business metric calculation, data transformation, or API calls inside chart wrappers.
 - Chart wrappers provide sensible Lumina-branded defaults (colors from tokens, consistent margins, typography) but allow override via props.
 - All chart containers must have explicit height (via Tailwind class, not inline style).
 
 **Canonical pattern — bar chart wrapper:**
+
 ```typescript
 // src/components/charts/BarChartWrapper.tsx
 import { ResponsiveBar, type BarDatum } from '@nivo/bar'
@@ -804,6 +835,7 @@ export function BarChartWrapper({
 ```
 
 **Canonical pattern — line chart wrapper:**
+
 ```typescript
 // src/components/charts/LineChartWrapper.tsx
 import { ResponsiveLine, type Serie } from '@nivo/line'
@@ -852,6 +884,7 @@ export function LineChartWrapper({
 ```
 
 **Usage in feature component:**
+
 ```typescript
 // src/features/analytics/components/VisibilityTrend.tsx
 import { LineChartWrapper } from '@/components/charts/LineChartWrapper'
@@ -878,32 +911,34 @@ export function VisibilityTrend({ brandId }: { brandId: string }) {
 **Decision:** `@microsoft/signalr` for all real-time communication between the ASP.NET Core backend and the React frontend.
 
 **Constraints this places on agents:**
+
 - A shared `useSignalR` hook manages hub connection lifecycle (connect, reconnect, disconnect on unmount).
 - Hub connections are scoped per authenticated user and workspace.
 - SignalR is used for: discovery crawl progress, scan execution progress, analysis pipeline updates, and real-time notification delivery.
 - Components never create `HubConnection` instances directly — they consume the `useSignalR` hook.
 
 **Canonical pattern — useSignalR hook:**
+
 ```typescript
 // src/hooks/useSignalR.ts
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from "react";
 import {
   HubConnectionBuilder,
   HubConnection,
   LogLevel,
   HubConnectionState,
-} from '@microsoft/signalr'
-import { useAuth } from '@/hooks/useAuth'
+} from "@microsoft/signalr";
+import { useAuth } from "@/hooks/useAuth";
 
 interface UseSignalROptions {
-  hubUrl: string
-  onReconnecting?: () => void
-  onReconnected?: () => void
+  hubUrl: string;
+  onReconnecting?: () => void;
+  onReconnected?: () => void;
 }
 
 export function useSignalR({ hubUrl, onReconnecting, onReconnected }: UseSignalROptions) {
-  const connectionRef = useRef<HubConnection | null>(null)
-  const { getToken } = useAuth()
+  const connectionRef = useRef<HubConnection | null>(null);
+  const { getToken } = useAuth();
 
   useEffect(() => {
     const connection = new HubConnectionBuilder()
@@ -912,68 +947,63 @@ export function useSignalR({ hubUrl, onReconnecting, onReconnected }: UseSignalR
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
-      .build()
+      .build();
 
-    connection.onreconnecting(() => onReconnecting?.())
-    connection.onreconnected(() => onReconnected?.())
+    connection.onreconnecting(() => onReconnecting?.());
+    connection.onreconnected(() => onReconnected?.());
 
-    connection.start().catch(console.error)
-    connectionRef.current = connection
+    connection.start().catch(console.error);
+    connectionRef.current = connection;
 
     return () => {
-      connection.stop()
+      connection.stop();
+    };
+  }, [hubUrl, getToken]);
+
+  const on = useCallback(<T>(event: string, handler: (data: T) => void) => {
+    connectionRef.current?.on(event, handler);
+    return () => connectionRef.current?.off(event, handler);
+  }, []);
+
+  const invoke = useCallback(async <T>(method: string, ...args: unknown[]): Promise<T> => {
+    if (connectionRef.current?.state !== HubConnectionState.Connected) {
+      throw new Error("SignalR connection not established");
     }
-  }, [hubUrl, getToken])
+    return connectionRef.current.invoke<T>(method, ...args);
+  }, []);
 
-  const on = useCallback(
-    <T>(event: string, handler: (data: T) => void) => {
-      connectionRef.current?.on(event, handler)
-      return () => connectionRef.current?.off(event, handler)
-    },
-    []
-  )
-
-  const invoke = useCallback(
-    async <T>(method: string, ...args: unknown[]): Promise<T> => {
-      if (connectionRef.current?.state !== HubConnectionState.Connected) {
-        throw new Error('SignalR connection not established')
-      }
-      return connectionRef.current.invoke<T>(method, ...args)
-    },
-    []
-  )
-
-  return { on, invoke, connection: connectionRef.current }
+  return { on, invoke, connection: connectionRef.current };
 }
 ```
 
 **Usage in feature component — crawl progress:**
+
 ```typescript
 // src/features/discovery/hooks/useCrawlProgress.ts
-import { useEffect, useState } from 'react'
-import { useSignalR } from '@/hooks/useSignalR'
+import { useEffect, useState } from "react";
+import { useSignalR } from "@/hooks/useSignalR";
 
 interface CrawlProgress {
-  crawlId: string
-  pagesScanned: number
-  totalPages: number
-  status: 'running' | 'completed' | 'failed'
+  crawlId: string;
+  pagesScanned: number;
+  totalPages: number;
+  status: "running" | "completed" | "failed";
 }
 
 export function useCrawlProgress(crawlId: string) {
-  const [progress, setProgress] = useState<CrawlProgress | null>(null)
-  const { on } = useSignalR({ hubUrl: '/hubs/discovery' })
+  const [progress, setProgress] = useState<CrawlProgress | null>(null);
+  const { on } = useSignalR({ hubUrl: "/hubs/discovery" });
 
   useEffect(() => {
-    const unsubscribe = on<CrawlProgress>('CrawlProgressUpdated', (data) => {
+    const unsubscribe = on<CrawlProgress>("CrawlProgressUpdated", (data) => {
       if (data.crawlId === crawlId) {
-        setProgress(data)
+        setProgress(data);
       }
-    })
-    return unsubscribe
-  }, [crawlId, on])
+    });
+    return unsubscribe;
+  }, [crawlId, on]);
 
-  return progress
+  return progress;
 }
 ```
 
@@ -984,6 +1014,7 @@ export function useCrawlProgress(crawlId: string) {
 **Decision:** All API mocking in development, Storybook, and tests uses MSW.
 
 **Constraints this places on agents:**
+
 - MSW request handlers are defined alongside their corresponding API modules in `src/api/__mocks__/`.
 - MSW is used in Storybook (via `msw-storybook-addon`) for all stories that display API data.
 - MSW is used in Vitest for all tests that exercise API-dependent logic.
@@ -991,75 +1022,76 @@ export function useCrawlProgress(crawlId: string) {
 - Mock data factories produce realistic Lumina domain objects (trackers, findings, brands).
 
 **Canonical pattern — MSW handler:**
+
 ```typescript
 // src/api/__mocks__/trackersHandlers.ts
-import { http, HttpResponse } from 'msw'
-import { mockTrackers, mockTracker } from './data/trackers'
+import { http, HttpResponse } from "msw";
+import { mockTrackers, mockTracker } from "./data/trackers";
 
 export const trackersHandlers = [
-  http.get('/api/trackers', ({ request }) => {
-    const url = new URL(request.url)
-    const brandId = url.searchParams.get('brandId')
+  http.get("/api/trackers", ({ request }) => {
+    const url = new URL(request.url);
+    const brandId = url.searchParams.get("brandId");
 
-    const filtered = brandId
-      ? mockTrackers.filter((t) => t.brandId === brandId)
-      : mockTrackers
+    const filtered = brandId ? mockTrackers.filter((t) => t.brandId === brandId) : mockTrackers;
 
-    return HttpResponse.json(filtered)
+    return HttpResponse.json(filtered);
   }),
 
-  http.get('/api/trackers/:id', ({ params }) => {
-    const tracker = mockTracker(params.id as string)
-    if (!tracker) return new HttpResponse(null, { status: 404 })
-    return HttpResponse.json(tracker)
+  http.get("/api/trackers/:id", ({ params }) => {
+    const tracker = mockTracker(params.id as string);
+    if (!tracker) return new HttpResponse(null, { status: 404 });
+    return HttpResponse.json(tracker);
   }),
 
-  http.post('/api/trackers', async ({ request }) => {
-    const body = await request.json()
+  http.post("/api/trackers", async ({ request }) => {
+    const body = await request.json();
     return HttpResponse.json(
       { id: crypto.randomUUID(), ...body, createdAt: new Date().toISOString() },
-      { status: 201 }
-    )
+      { status: 201 },
+    );
   }),
-]
+];
 ```
 
 **Mock data factory pattern:**
+
 ```typescript
 // src/api/__mocks__/data/trackers.ts
-import type { Tracker } from '@/types/trackers'
+import type { Tracker } from "@/types/trackers";
 
 export const mockTrackers: Tracker[] = [
   {
-    id: '550e8400-e29b-41d4-a716-446655440000',
-    name: 'ChatGPT Brand Mentions',
-    brandId: 'brand-001',
-    platform: 'chatgpt',
-    schedule: 'daily',
-    status: 'active',
-    lastScanAt: '2026-05-17T14:30:00Z',
-    createdAt: '2026-04-01T10:00:00Z',
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    name: "ChatGPT Brand Mentions",
+    brandId: "brand-001",
+    platform: "chatgpt",
+    schedule: "daily",
+    status: "active",
+    lastScanAt: "2026-05-17T14:30:00Z",
+    createdAt: "2026-04-01T10:00:00Z",
   },
   // ... more mock trackers
-]
+];
 
 export function mockTracker(id: string): Tracker | undefined {
-  return mockTrackers.find((t) => t.id === id)
+  return mockTrackers.find((t) => t.id === id);
 }
 ```
 
 **Test setup:**
+
 ```typescript
 // src/test/setup.ts
-import { setupServer } from 'msw/node'
-import { trackersHandlers } from '@/api/__mocks__/trackersHandlers'
-import { findingsHandlers } from '@/api/__mocks__/findingsHandlers'
+import { setupServer } from "msw/node";
+import { trackersHandlers } from "@/api/__mocks__/trackersHandlers";
+import { findingsHandlers } from "@/api/__mocks__/findingsHandlers";
 
-export const server = setupServer(...trackersHandlers, ...findingsHandlers)
+export const server = setupServer(...trackersHandlers, ...findingsHandlers);
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
-afterAll(() => server.close())
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 ```
 
 ---
@@ -1071,6 +1103,7 @@ afterAll(() => server.close())
 ### Unit / Component Testing
 
 **Constraints this places on agents:**
+
 - Test files are co-located with their source files: `TrackerCard.test.tsx` next to `TrackerCard.tsx`.
 - Query elements by accessible role and label text — never by CSS class name or DOM structure.
 - Use `userEvent` from `@testing-library/user-event` over `fireEvent` for realistic interaction simulation.
@@ -1078,6 +1111,7 @@ afterAll(() => server.close())
 - `data-testid` is reserved for E2E tests only — unit tests must not rely on test IDs.
 
 **Canonical pattern — component test:**
+
 ```typescript
 // src/features/trackers/components/TrackerCard.test.tsx
 import { render, screen } from '@testing-library/react'
@@ -1116,6 +1150,7 @@ describe('TrackerCard', () => {
 ```
 
 **Hook test pattern:**
+
 ```typescript
 // src/hooks/useTrackers.test.ts
 import { renderHook, waitFor } from '@testing-library/react'
@@ -1148,12 +1183,14 @@ describe('useTrackers', () => {
 ### E2E Testing — Playwright
 
 **Constraints this places on agents:**
+
 - E2E tests live in `/e2e/` at the project root, not inside `src/`.
 - Page Object Models live in `/e2e/pages/`.
 - Use `data-testid` attributes for E2E selectors — stable across refactors.
 - E2E tests cover critical user journeys, not individual components.
 
 **Critical E2E flows for Lumina:**
+
 ```
 1. Discovery → Tracker Creation → Scan → Findings Review
 2. Brand Setup → Platform Selection → Initial Scan
@@ -1162,25 +1199,26 @@ describe('useTrackers', () => {
 ```
 
 **Canonical pattern — Playwright test:**
+
 ```typescript
 // e2e/trackers/create-tracker.spec.ts
-import { test, expect } from '@playwright/test'
-import { TrackerPage } from '../pages/TrackerPage'
+import { test, expect } from "@playwright/test";
+import { TrackerPage } from "../pages/TrackerPage";
 
-test.describe('Create Tracker Flow', () => {
-  test('user can create a new tracker and see it in the list', async ({ page }) => {
-    const trackerPage = new TrackerPage(page)
+test.describe("Create Tracker Flow", () => {
+  test("user can create a new tracker and see it in the list", async ({ page }) => {
+    const trackerPage = new TrackerPage(page);
 
-    await trackerPage.goto()
-    await trackerPage.clickCreateTracker()
-    await trackerPage.fillTrackerName('Perplexity Mentions')
-    await trackerPage.selectPlatform('perplexity')
-    await trackerPage.selectSchedule('daily')
-    await trackerPage.submit()
+    await trackerPage.goto();
+    await trackerPage.clickCreateTracker();
+    await trackerPage.fillTrackerName("Perplexity Mentions");
+    await trackerPage.selectPlatform("perplexity");
+    await trackerPage.selectSchedule("daily");
+    await trackerPage.submit();
 
-    await expect(page.getByTestId('tracker-list')).toContainText('Perplexity Mentions')
-  })
-})
+    await expect(page.getByTestId("tracker-list")).toContainText("Perplexity Mentions");
+  });
+});
 ```
 
 ---
@@ -1190,6 +1228,7 @@ test.describe('Create Tracker Flow', () => {
 **Decision:** Storybook for component documentation and visual development.
 
 **Constraints this places on agents:**
+
 - Every reusable component in `src/components/` must have a `.stories.tsx` file.
 - One story per variant/state combination.
 - Feature-level components (`src/features/*/components/`) have optional stories.
@@ -1197,71 +1236,75 @@ test.describe('Create Tracker Flow', () => {
 - Stories are co-located with their components.
 
 **Canonical pattern — component stories:**
+
 ```typescript
 // src/components/ui/button.stories.tsx
-import type { Meta, StoryObj } from '@storybook/react'
-import { Button } from './button'
+import type { Meta, StoryObj } from "@storybook/react";
+import { Button } from "./button";
 
 const meta: Meta<typeof Button> = {
-  title: 'UI/Button',
+  title: "UI/Button",
   component: Button,
   argTypes: {
     variant: {
-      control: 'select',
-      options: ['default', 'secondary', 'outline', 'ghost', 'destructive', 'link'],
+      control: "select",
+      options: ["default", "secondary", "outline", "ghost", "destructive", "link"],
     },
     size: {
-      control: 'select',
-      options: ['sm', 'md', 'lg', 'icon'],
+      control: "select",
+      options: ["sm", "md", "lg", "icon"],
     },
   },
-}
+};
 
-export default meta
-type Story = StoryObj<typeof Button>
+export default meta;
+type Story = StoryObj<typeof Button>;
 
-export const Default: Story = { args: { children: 'Create Tracker', variant: 'default' } }
-export const Secondary: Story = { args: { children: 'Cancel', variant: 'secondary' } }
-export const Outline: Story = { args: { children: 'Export', variant: 'outline' } }
-export const Ghost: Story = { args: { children: 'Settings', variant: 'ghost' } }
-export const Destructive: Story = { args: { children: 'Delete', variant: 'destructive' } }
-export const SmallSize: Story = { args: { children: 'Filter', variant: 'default', size: 'sm' } }
-export const LargeSize: Story = { args: { children: 'Get Started', variant: 'default', size: 'lg' } }
-export const Disabled: Story = { args: { children: 'Submit', variant: 'default', disabled: true } }
+export const Default: Story = { args: { children: "Create Tracker", variant: "default" } };
+export const Secondary: Story = { args: { children: "Cancel", variant: "secondary" } };
+export const Outline: Story = { args: { children: "Export", variant: "outline" } };
+export const Ghost: Story = { args: { children: "Settings", variant: "ghost" } };
+export const Destructive: Story = { args: { children: "Delete", variant: "destructive" } };
+export const SmallSize: Story = { args: { children: "Filter", variant: "default", size: "sm" } };
+export const LargeSize: Story = {
+  args: { children: "Get Started", variant: "default", size: "lg" },
+};
+export const Disabled: Story = { args: { children: "Submit", variant: "default", disabled: true } };
 ```
 
 **MSW-dependent story pattern:**
+
 ```typescript
 // src/features/trackers/components/TrackerList.stories.tsx
-import type { Meta, StoryObj } from '@storybook/react'
-import { TrackerList } from './TrackerList'
-import { trackersHandlers } from '@/api/__mocks__/trackersHandlers'
+import type { Meta, StoryObj } from "@storybook/react";
+import { TrackerList } from "./TrackerList";
+import { trackersHandlers } from "@/api/__mocks__/trackersHandlers";
 
 const meta: Meta<typeof TrackerList> = {
-  title: 'Features/Trackers/TrackerList',
+  title: "Features/Trackers/TrackerList",
   component: TrackerList,
   parameters: {
     msw: { handlers: trackersHandlers },
   },
-}
+};
 
-export default meta
-type Story = StoryObj<typeof TrackerList>
+export default meta;
+type Story = StoryObj<typeof TrackerList>;
 
-export const WithData: Story = { args: { brandId: 'brand-001' } }
-export const Empty: Story = { args: { brandId: 'brand-empty' } }
+export const WithData: Story = { args: { brandId: "brand-001" } };
+export const Empty: Story = { args: { brandId: "brand-empty" } };
 export const Loading: Story = {
   parameters: {
     msw: {
       handlers: [
-        http.get('/api/trackers', async () => {
-          await delay('infinite')
-          return HttpResponse.json([])
+        http.get("/api/trackers", async () => {
+          await delay("infinite");
+          return HttpResponse.json([]);
         }),
       ],
     },
   },
-}
+};
 ```
 
 ---
@@ -1271,6 +1314,7 @@ export const Loading: Story = {
 **Decision:** ASP.NET Core with controller-based REST APIs and OpenAPI/Swagger documentation.
 
 **Constraints this places on agents:**
+
 - Controllers are thin dispatchers. They validate input, call a handler, and return a DTO. No business logic in controllers.
 - Commands (write operations) mutate state. Queries (read operations) read state. They are separate classes.
 - Handlers orchestrate domain logic. One handler per command or query.
@@ -1279,6 +1323,7 @@ export const Loading: Story = {
 - All endpoints produce OpenAPI documentation via Swagger attributes.
 
 **Canonical pattern — thin controller:**
+
 ```csharp
 // Controllers/TrackersController.cs
 [ApiController]
@@ -1330,6 +1375,7 @@ public class TrackersController : ControllerBase
 ```
 
 **Canonical pattern — handler with explicit DTO mapping:**
+
 ```csharp
 // Handlers/CreateTrackerHandler.cs
 public class CreateTrackerHandler
@@ -1367,6 +1413,7 @@ public class CreateTrackerHandler
 ```
 
 **Canonical pattern — explicit DTO mapping (no AutoMapper):**
+
 ```csharp
 // DTOs/TrackerDto.cs
 public record TrackerDto(
@@ -1403,6 +1450,7 @@ public record TrackerDto(
 **Decision:** Entity Framework Core with Npgsql provider targeting PostgreSQL.
 
 **Constraints this places on agents:**
+
 - Handlers query `DbContext` directly — no repository abstraction.
 - Entity configurations live in separate `IEntityTypeConfiguration<T>` files, one per entity.
 - Migrations are generated and applied via EF Core CLI (`dotnet ef migrations add`, `dotnet ef database update`).
@@ -1410,6 +1458,7 @@ public record TrackerDto(
 - Use projection (`.Select()`) for list queries to avoid over-fetching.
 
 **Canonical pattern — entity configuration:**
+
 ```csharp
 // Data/Configurations/TrackerConfiguration.cs
 public class TrackerConfiguration : IEntityTypeConfiguration<Tracker>
@@ -1428,6 +1477,7 @@ public class TrackerConfiguration : IEntityTypeConfiguration<Tracker>
 ```
 
 **Canonical pattern — handler querying DbContext:**
+
 ```csharp
 // Handlers/GetTrackersHandler.cs
 public class GetTrackersHandler
@@ -1465,12 +1515,14 @@ public class GetTrackersHandler
 **Decision:** All command validation uses FluentValidation. Validators are auto-registered via assembly scanning.
 
 **Constraints this places on agents:**
+
 - Every command class has a corresponding validator class.
 - Validators are registered via `AddValidatorsFromAssembly` at startup.
 - Validation failures return RFC 7807 `ProblemDetails` responses with a 400 status code.
 - Validators contain only input validation — business rules live in handlers.
 
 **Canonical pattern — command validator:**
+
 ```csharp
 // Validators/CreateTrackerCommandValidator.cs
 public class CreateTrackerCommandValidator : AbstractValidator<CreateTrackerCommand>
@@ -1504,6 +1556,7 @@ public class CreateTrackerCommandValidator : AbstractValidator<CreateTrackerComm
 ```
 
 **ProblemDetails integration:**
+
 ```csharp
 // Middleware/ValidationExceptionMiddleware.cs
 // FluentValidation failures are caught and returned as ProblemDetails
@@ -1526,6 +1579,7 @@ public class CreateTrackerCommandValidator : AbstractValidator<CreateTrackerComm
 **Decision:** MassTransit for all durable asynchronous messaging. Azure Service Bus in production, RabbitMQ for local development.
 
 **Constraints this places on agents:**
+
 - All durable background work flows through MassTransit consumers — not Hangfire, not Task.Run, not fire-and-forget threads.
 - Multi-step scan orchestration uses MassTransit saga/state machines.
 - Message contracts are defined in a shared contracts project.
@@ -1533,6 +1587,7 @@ public class CreateTrackerCommandValidator : AbstractValidator<CreateTrackerComm
 - Transport configuration is environment-based: Azure Service Bus in production and staging, RabbitMQ in development and CI.
 
 **Canonical pattern — message contract:**
+
 ```csharp
 // Contracts/Messages/ScanRequested.cs
 namespace Lumina.Contracts.Messages;
@@ -1548,6 +1603,7 @@ public record ScanRequested(
 ```
 
 **Canonical pattern — consumer:**
+
 ```csharp
 // Consumers/ScanRequestedConsumer.cs
 public class ScanRequestedConsumer : IConsumer<ScanRequested>
@@ -1597,6 +1653,7 @@ public class ScanRequestedConsumer : IConsumer<ScanRequested>
 ```
 
 **Canonical pattern — saga state machine for multi-step scan orchestration:**
+
 ```csharp
 // Sagas/ScanOrchestrationSaga.cs
 public class ScanOrchestrationSaga : MassTransitStateMachine<ScanOrchestrationState>
@@ -1644,12 +1701,14 @@ public class ScanOrchestrationSaga : MassTransitStateMachine<ScanOrchestrationSt
 **Decision:** Hangfire for simple fire-and-forget background jobs and scheduled recurring tasks.
 
 **Constraints this places on agents:**
+
 - Hangfire is used only for: triggering discovery crawls, scheduling recurring scan executions, and sending notification digests.
 - Hangfire jobs must be simple dispatchers that publish MassTransit messages — they do not contain business logic themselves.
 - No long chains of Hangfire continuations. If a workflow has more than one step, use MassTransit saga orchestration.
 - Hangfire uses PostgreSQL for job persistence (same database, separate schema).
 
 **Canonical pattern — scheduled job that dispatches to MassTransit:**
+
 ```csharp
 // Jobs/ScheduledScanJob.cs
 public class ScheduledScanJob
@@ -1696,102 +1755,105 @@ public class ScheduledScanJob
 **Decision:** All date, time, number, currency, and percentage formatting goes through centralized formatter functions using browser Intl APIs.
 
 **Constraints this places on agents:**
+
 - Never use `.toLocaleDateString()`, `moment`, `dayjs`, or manual string formatting in components.
 - All formatting functions live in `src/lib/formatters.ts`.
 - Formatters accept workspace-level locale, timezone, and currency configuration from day one.
 - Components call formatter functions — they never construct `Intl.DateTimeFormat` or `Intl.NumberFormat` instances directly.
 
 **Canonical pattern — formatters.ts:**
+
 ```typescript
 // src/lib/formatters.ts
 
 // Workspace config — injected at app level, defaults for development
 interface FormatConfig {
-  locale: string
-  timezone: string
-  currency: string
+  locale: string;
+  timezone: string;
+  currency: string;
 }
 
 let config: FormatConfig = {
-  locale: 'en-US',
-  timezone: 'America/New_York',
-  currency: 'USD',
-}
+  locale: "en-US",
+  timezone: "America/New_York",
+  currency: "USD",
+};
 
 export function setFormatConfig(newConfig: Partial<FormatConfig>) {
-  config = { ...config, ...newConfig }
+  config = { ...config, ...newConfig };
 }
 
 // --- Date / Time ---
 
 export function formatDate(date: string | Date): string {
   return new Intl.DateTimeFormat(config.locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    year: "numeric",
+    month: "short",
+    day: "numeric",
     timeZone: config.timezone,
-  }).format(new Date(date))
+  }).format(new Date(date));
 }
 
 export function formatDateTime(date: string | Date): string {
   return new Intl.DateTimeFormat(config.locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     timeZone: config.timezone,
-  }).format(new Date(date))
+  }).format(new Date(date));
 }
 
 export function formatRelativeDate(date: string | Date): string {
-  const rtf = new Intl.RelativeTimeFormat(config.locale, { numeric: 'auto' })
-  const diffMs = new Date(date).getTime() - Date.now()
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  const rtf = new Intl.RelativeTimeFormat(config.locale, { numeric: "auto" });
+  const diffMs = new Date(date).getTime() - Date.now();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   if (Math.abs(diffDays) < 1) {
-    const diffHours = Math.round(diffMs / (1000 * 60 * 60))
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
     if (Math.abs(diffHours) < 1) {
-      const diffMinutes = Math.round(diffMs / (1000 * 60))
-      return rtf.format(diffMinutes, 'minute')
+      const diffMinutes = Math.round(diffMs / (1000 * 60));
+      return rtf.format(diffMinutes, "minute");
     }
-    return rtf.format(diffHours, 'hour')
+    return rtf.format(diffHours, "hour");
   }
-  return rtf.format(diffDays, 'day')
+  return rtf.format(diffDays, "day");
 }
 
 // --- Numbers ---
 
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat(config.locale).format(value)
+  return new Intl.NumberFormat(config.locale).format(value);
 }
 
 export function formatPercent(value: number, decimals: number = 1): string {
   return new Intl.NumberFormat(config.locale, {
-    style: 'percent',
+    style: "percent",
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value)
+  }).format(value);
 }
 
 export function formatCompact(value: number): string {
   return new Intl.NumberFormat(config.locale, {
-    notation: 'compact',
+    notation: "compact",
     maximumFractionDigits: 1,
-  }).format(value)
+  }).format(value);
 }
 
 // --- Currency ---
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat(config.locale, {
-    style: 'currency',
+    style: "currency",
     currency: config.currency,
-  }).format(value)
+  }).format(value);
 }
 ```
 
 **Usage in components:**
+
 ```typescript
 import { formatDate, formatNumber, formatPercent } from '@/lib/formatters'
 
@@ -1813,6 +1875,7 @@ function TrackerSummary({ tracker }: { tracker: Tracker }) {
 **Decision:** Clerk for authentication and user management.
 
 **Constraints this places on agents:**
+
 - Frontend uses `@clerk/clerk-react` for auth UI and session management.
 - Backend validates Clerk JWTs via middleware.
 - Workspace (tenant) ID is extracted from Clerk session claims.
@@ -1825,6 +1888,7 @@ function TrackerSummary({ tracker }: { tracker: Tracker }) {
 **Decision:** Multi-tenancy is implemented via workspace scoping. All data queries include a workspace ID filter.
 
 **Constraints this places on agents:**
+
 - Every database entity that is tenant-specific has a `WorkspaceId` column.
 - All queries filter by `ICurrentUser.WorkspaceId` — no exceptions.
 - The `ICurrentUser` interface provides `UserId`, `WorkspaceId`, and role claims extracted from the Clerk JWT.
@@ -1837,11 +1901,13 @@ function TrackerSummary({ tracker }: { tracker: Tracker }) {
 **Decision:** xUnit for test framework. FluentAssertions for assertions. NSubstitute for mocking.
 
 **Constraints this places on agents:**
+
 - Unit tests mock dependencies via NSubstitute. Handler tests mock DbContext or use in-memory providers.
 - Integration tests use `Testcontainers` for real PostgreSQL instances and `WebApplicationFactory` for full HTTP pipeline testing.
 - No Moq — use NSubstitute for all mocking needs.
 
 **Canonical pattern — handler unit test:**
+
 ```csharp
 // Tests/Handlers/CreateTrackerHandlerTests.cs
 public class CreateTrackerHandlerTests
@@ -1885,6 +1951,7 @@ public class CreateTrackerHandlerTests
 ```
 
 **Canonical pattern — integration test with Testcontainers:**
+
 ```csharp
 // Tests/Integration/TrackersApiTests.cs
 public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
@@ -1931,6 +1998,52 @@ public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
 
 ---
 
+## Code Quality Enforcement — Prettier + ESLint + Husky + lint-staged
+
+**Decision:** Automated pre-commit enforcement via a four-layer system.
+
+**What it enforces at commit time:**
+
+| Layer | Tool                           | What it catches                                                           |
+| ----- | ------------------------------ | ------------------------------------------------------------------------- |
+| 1     | Prettier                       | Inconsistent formatting (auto-fixed)                                      |
+| 2     | ESLint `no-restricted-imports` | Layer boundary violations, deprecated path imports, cross-feature imports |
+| 3     | `manifest-sync-lite.mjs`       | Missing manifest entries, orphaned entries, files in deprecated dirs      |
+| 4     | Husky + lint-staged            | Orchestrates layers 1-3 on staged files only                              |
+
+**Config files (workspace root `src/`):**
+
+- `.prettierrc.json` — semi, double quotes, 100 char width, LF
+- `.prettierignore` — skip generated files and build output
+- `.lintstagedrc.json` — maps file patterns to Prettier + ESLint commands
+- `.husky/pre-commit` — shell script that runs lint-staged + manifest sync
+- `scripts/manifest-sync-lite.mjs` — zero-dep Node.js validation script
+
+**ESLint boundary rule groups (in `apps/web/eslint.config.js`):**
+
+- **Deprecated path ban** (all files): blocks `@/components/ui/*`, `@/components/layout/*`, `@/components/feedback/*`
+- **Atom boundary**: atoms cannot import molecules, organisms, data-display, charts, features, api, hooks
+- **Molecule boundary**: molecules cannot import organisms, features, api
+- **Organism boundary**: organisms cannot import features, api
+- **Shared component boundary**: data-display and charts cannot import features, api
+- **Cross-feature ban**: each feature directory cannot import from any other feature directory
+
+**Constraints this places on agents:**
+
+- Agents cannot bypass pre-commit hooks. Violations block the commit.
+- When creating a new shared component, add the manifest entry first.
+- When moving a component between directories, update the manifest path.
+- Formatting is auto-fixed — agents don't need to worry about style, just commit.
+- `eslint-config-prettier` is the last ESLint config entry to prevent formatting conflicts.
+
+**What is deliberately excluded from pre-commit:**
+
+- TypeScript type-check (`tsc --noEmit`) — too slow; run manually via `pnpm --filter web typecheck`
+- AST-based validation — overkill for current component count
+- Commit message linting — adds cognitive overhead without proportional value
+
+---
+
 ## Constraints Summary for Agents
 
 This section consolidates the agent rules from all decisions above into a single scannable reference.
@@ -1960,6 +2073,8 @@ This section consolidates the agent rules from all decisions above into a single
 - Use userEvent over fireEvent in component tests
 - Use data-testid selectors for Playwright E2E tests only
 - Use pnpm for all package operations
+- Register new shared components in component-manifest.json before implementing
+- Respect atomic design layer boundaries — ESLint enforces these at commit time
 ```
 
 ### Never
@@ -1983,6 +2098,10 @@ This section consolidates the agent rules from all decisions above into a single
 - Long Hangfire continuation chains — use MassTransit sagas
 - CSS class names or DOM structure queries in unit tests — use accessible roles
 - npm or yarn — use pnpm
+- Import from @/components/ui/, @/components/layout/, or @/components/feedback/ — use atoms/molecules/organisms
+- Import across feature boundaries — use shared hooks, types, or URL params
+- Import features, api, or hooks from atoms — atoms are pure UI primitives
+- Bypass pre-commit hooks with --no-verify — fix the violation instead
 ```
 
 ### Decisions Pending (do not guess — leave as TODO)
@@ -2000,6 +2119,7 @@ This section consolidates the agent rules from all decisions above into a single
 
 ## Change Log
 
-| Version | Date | Change | Approved By |
-|---|---|---|---|
-| 1.0.0 | 2026-05-18 | Initial decisions recorded — adapted from BOLD framework for Lumina platform | CTA |
+| Version | Date       | Change                                                                                    | Approved By |
+| ------- | ---------- | ----------------------------------------------------------------------------------------- | ----------- |
+| 1.0.0   | 2026-05-18 | Initial decisions recorded — adapted from BOLD framework for Lumina platform              | CTA         |
+| 1.1.0   | 2026-05-19 | Added code quality enforcement decision (Prettier, ESLint boundaries, Husky, lint-staged) | CTA         |

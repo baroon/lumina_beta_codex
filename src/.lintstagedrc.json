@@ -1,0 +1,5 @@
+{
+  "apps/web/**/*.{ts,tsx}": ["prettier --write", "eslint --fix"],
+  "apps/web/**/*.{css,json,md}": ["prettier --write"],
+  "agent-system/component-manifest.json": ["prettier --write"]
+}

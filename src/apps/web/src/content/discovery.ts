@@ -33,12 +33,14 @@ export const DISCOVERY_COPY = {
     trustSignals: {
       title: "Trust Signals",
       description: "Trust-building elements found on your website.",
-      emptyMessage: "No trust signals detected. Consider adding reviews, certifications, or case studies.",
+      emptyMessage:
+        "No trust signals detected. Consider adding reviews, certifications, or case studies.",
     },
   },
   progress: {
     title: "Discovering your brand",
-    subtitle: "We're analyzing your website to build a complete brand profile. This usually wraps up in under a minute.",
+    subtitle:
+      "We're analyzing your website to build a complete brand profile. This usually wraps up in under a minute.",
     awaitingConfirmation: "Review and confirm the discovered information.",
     completed: "Discovery complete!",
     failed: "Something went wrong during discovery.",
@@ -48,15 +50,31 @@ export const DISCOVERY_COPY = {
     defaultEncouragement: "Working on it...",
   },
   steps: [
-    { label: "Crawling website", encouragement: "Reading your website so we don't have to ask you a hundred questions..." },
-    { label: "Analyzing brand", encouragement: "Our AI is studying your brand identity and market positioning..." },
-    { label: "Extracting entities", encouragement: "Mapping out your products, audiences, and markets..." },
-    { label: "Suggesting topics", encouragement: "Figuring out what people search for when they need a brand like yours..." },
-    { label: "Finding competitors", encouragement: "Scouting the competitive landscape to see who you're up against..." },
+    {
+      label: "Crawling website",
+      encouragement: "Reading your website so we don't have to ask you a hundred questions...",
+    },
+    {
+      label: "Analyzing brand",
+      encouragement: "Our AI is studying your brand identity and market positioning...",
+    },
+    {
+      label: "Extracting entities",
+      encouragement: "Mapping out your products, audiences, and markets...",
+    },
+    {
+      label: "Suggesting topics",
+      encouragement: "Figuring out what people search for when they need a brand like yours...",
+    },
+    {
+      label: "Finding competitors",
+      encouragement: "Scouting the competitive landscape to see who you're up against...",
+    },
   ],
   complete: {
     title: "Discovery complete",
-    description: "We've built a complete profile for {brandName}. You're ready to create your Visibility Tracker.",
+    description:
+      "We've built a complete profile for {brandName}. You're ready to create your Visibility Tracker.",
     createTracker: "Create Visibility Tracker",
     comingSoon: "Tracker setup is coming soon.",
   },

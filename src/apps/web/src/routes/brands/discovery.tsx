@@ -28,20 +28,13 @@ export function DiscoveryPage() {
   const status = progress.status;
 
   if (status === "Pending" || status === "Crawling" || status === "Extracting") {
-    return (
-      <DiscoveryProgressScreen
-        step={progress.step}
-        totalSteps={progress.totalSteps}
-      />
-    );
+    return <DiscoveryProgressScreen step={progress.step} totalSteps={progress.totalSteps} />;
   }
 
   if (status === "Failed") {
     return (
       <Alert variant="destructive">
-        <AlertDescription>
-          {DISCOVERY_COPY.errors.discoveryFailed}
-        </AlertDescription>
+        <AlertDescription>{DISCOVERY_COPY.errors.discoveryFailed}</AlertDescription>
       </Alert>
     );
   }

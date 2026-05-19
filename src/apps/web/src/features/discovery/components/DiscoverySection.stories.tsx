@@ -3,16 +3,46 @@ import { DiscoverySection } from "./DiscoverySection";
 import type { CandidateDto } from "@/types/api";
 
 const mockCandidates: CandidateDto[] = [
-  { id: "1", name: "Enterprise SaaS", description: "Cloud platform for enterprises.", confidence: 0.9, source: "WebsiteCrawl", status: "Suggested", metadata: {} },
-  { id: "2", name: "SMB Analytics", description: "Analytics tool for small businesses.", confidence: 0.6, source: "LLMSuggested", status: "Suggested", metadata: {} },
-  { id: "3", name: "API Gateway", description: null, confidence: 0.3, source: "WebsiteCrawl", status: "Suggested", metadata: {} },
+  {
+    id: "1",
+    name: "Enterprise SaaS",
+    description: "Cloud platform for enterprises.",
+    confidence: 0.9,
+    source: "WebsiteCrawl",
+    status: "Suggested",
+    metadata: {},
+  },
+  {
+    id: "2",
+    name: "SMB Analytics",
+    description: "Analytics tool for small businesses.",
+    confidence: 0.6,
+    source: "LLMSuggested",
+    status: "Suggested",
+    metadata: {},
+  },
+  {
+    id: "3",
+    name: "API Gateway",
+    description: null,
+    confidence: 0.3,
+    source: "WebsiteCrawl",
+    status: "Suggested",
+    metadata: {},
+  },
 ];
 
 const meta: Meta<typeof DiscoverySection> = {
   title: "Features/Discovery/DiscoverySection",
   component: DiscoverySection,
   tags: ["autodocs"],
-  decorators: [(Story) => <div className="w-[600px]"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-[600px]">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     title: "Products & Services",
     description: "These products and services were found on your website.",

@@ -5,7 +5,13 @@ const meta: Meta<typeof DiscoveryStepProgress> = {
   title: "Features/Discovery/DiscoveryStepProgress",
   component: DiscoveryStepProgress,
   tags: ["autodocs"],
-  decorators: [(Story) => <div className="w-96"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-96">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default meta;

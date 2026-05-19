@@ -42,7 +42,11 @@ export function useDiscoveryProgress(brandId: string) {
           totalSteps: message.totalSteps,
         });
 
-        if (message.status === "AwaitingConfirmation" || message.status === "Completed" || message.status === "Failed") {
+        if (
+          message.status === "AwaitingConfirmation" ||
+          message.status === "Completed" ||
+          message.status === "Failed"
+        ) {
           queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
           queryClient.invalidateQueries({ queryKey: ["brands", brandId] });
         }
@@ -63,7 +67,11 @@ export function useDiscoveryProgress(brandId: string) {
           status: d.status,
         }));
 
-        if (d.status === "AwaitingConfirmation" || d.status === "Completed" || d.status === "Failed") {
+        if (
+          d.status === "AwaitingConfirmation" ||
+          d.status === "Completed" ||
+          d.status === "Failed"
+        ) {
           queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
           if (pollingRef.current) clearInterval(pollingRef.current);
         }

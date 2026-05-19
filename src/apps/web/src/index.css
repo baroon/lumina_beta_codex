@@ -16,6 +16,8 @@
 
   body {
     @apply bg-surface-page text-neutral-900 font-sans antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 }

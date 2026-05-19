@@ -13,11 +13,12 @@ const checkboxVariants = cva(
       },
     },
     defaultVariants: { checkboxSize: "default" },
-  }
+  },
 );
 
 interface CheckboxProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size">,
+  extends
+    Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "size">,
     VariantProps<typeof checkboxVariants> {
   onCheckedChange?: (checked: boolean) => void;
 }
@@ -34,7 +35,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       }}
       {...props}
     />
-  )
+  ),
 );
 Checkbox.displayName = "Checkbox";
 

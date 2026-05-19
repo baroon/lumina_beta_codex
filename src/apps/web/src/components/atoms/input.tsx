@@ -17,11 +17,12 @@ const inputVariants = cva(
       },
     },
     defaultVariants: { variant: "default", inputSize: "default" },
-  }
+  },
 );
 
 export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
+  extends
+    Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
     VariantProps<typeof inputVariants> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -32,7 +33,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       ref={ref}
       {...props}
     />
-  )
+  ),
 );
 Input.displayName = "Input";
 

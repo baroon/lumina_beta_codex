@@ -16,7 +16,13 @@ const meta: Meta<typeof SuggestionCard> = {
   title: "Features/Discovery/SuggestionCard",
   component: SuggestionCard,
   tags: ["autodocs"],
-  decorators: [(Story) => <div className="w-96"><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div className="w-96">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     onToggle: () => {},
   },

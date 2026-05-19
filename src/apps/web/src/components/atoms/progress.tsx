@@ -2,19 +2,16 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const progressTrackVariants = cva(
-  "relative w-full overflow-hidden rounded-full bg-neutral-100",
-  {
-    variants: {
-      progressSize: {
-        sm: "h-2",
-        default: "h-4",
-        lg: "h-6",
-      },
+const progressTrackVariants = cva("relative w-full overflow-hidden rounded-full bg-neutral-100", {
+  variants: {
+    progressSize: {
+      sm: "h-2",
+      default: "h-4",
+      lg: "h-6",
     },
-    defaultVariants: { progressSize: "default" },
-  }
-);
+  },
+  defaultVariants: { progressSize: "default" },
+});
 
 const progressIndicatorVariants = cva("h-full transition-all", {
   variants: {
@@ -29,7 +26,8 @@ const progressIndicatorVariants = cva("h-full transition-all", {
 });
 
 interface ProgressProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof progressTrackVariants>,
     VariantProps<typeof progressIndicatorVariants> {
   value?: number;
@@ -52,7 +50,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         style={{ width: `${Math.min(100, (value / max) * 100)}%` }}
       />
     </div>
-  )
+  ),
 );
 Progress.displayName = "Progress";
 

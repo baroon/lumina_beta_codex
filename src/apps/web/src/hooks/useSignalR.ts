@@ -6,7 +6,7 @@ const HUB_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/hu
 export function useSignalR() {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const [connectionState, setConnectionState] = useState<signalR.HubConnectionState>(
-    signalR.HubConnectionState.Disconnected
+    signalR.HubConnectionState.Disconnected,
   );
 
   useEffect(() => {
@@ -53,17 +53,14 @@ export function useSignalR() {
     }
   }, []);
 
-  const onProgress = useCallback(
-    (callback: (message: unknown) => void) => {
-      const connection = connectionRef.current;
-      if (connection) {
-        connection.on("ReceiveProgress", callback);
-        return () => connection.off("ReceiveProgress", callback);
-      }
-      return () => {};
-    },
-    []
-  );
+  const onProgress = useCallback((callback: (message: unknown) => void) => {
+    const connection = connectionRef.current;
+    if (connection) {
+      connection.on("ReceiveProgress", callback);
+      return () => connection.off("ReceiveProgress", callback);
+    }
+    return () => {};
+  }, []);
 
   return { connectionState, joinBrandGroup, onProgress };
 }

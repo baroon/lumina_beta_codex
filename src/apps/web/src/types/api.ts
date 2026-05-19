@@ -24,9 +24,20 @@ export interface LatestDiscoveryDto {
   pagesCrawled: number;
 }
 
-export type DiscoveryStatus = "Pending" | "Crawling" | "Extracting" | "AwaitingConfirmation" | "Completed" | "Failed";
+export type DiscoveryStatus =
+  | "Pending"
+  | "Crawling"
+  | "Extracting"
+  | "AwaitingConfirmation"
+  | "Completed"
+  | "Failed";
 export type CandidateStatus = "Suggested" | "Confirmed" | "Dismissed" | "UserAdded";
-export type CandidateSource = "WebsiteCrawl" | "LLMSuggested" | "SearchSuggested" | "UserAdded" | "SystemTemplate";
+export type CandidateSource =
+  | "WebsiteCrawl"
+  | "LLMSuggested"
+  | "SearchSuggested"
+  | "UserAdded"
+  | "SystemTemplate";
 
 export interface DiscoveryResultsDto {
   brandId: string;

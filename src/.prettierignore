@@ -1,0 +1,12 @@
+# Generated files
+apps/web/src/app/routeTree.gen.ts
+design-tokens/tokens.css
+design-tokens/tailwind-tokens.js
+
+# Build output
+apps/web/dist
+apps/web/storybook-static
+node_modules
+
+# Lock files
+pnpm-lock.yaml

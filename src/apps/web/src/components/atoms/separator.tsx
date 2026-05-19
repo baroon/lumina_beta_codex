@@ -13,8 +13,7 @@ const separatorVariants = cva("shrink-0 bg-neutral-200", {
 });
 
 interface SeparatorProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof separatorVariants> {
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof separatorVariants> {
   decorative?: boolean;
 }
 
@@ -27,7 +26,7 @@ const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
       className={cn(separatorVariants({ orientation, className }))}
       {...props}
     />
-  )
+  ),
 );
 Separator.displayName = "Separator";
 

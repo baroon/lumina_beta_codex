@@ -8,10 +8,7 @@ interface DiscoveryProgressScreenProps {
   totalSteps: number;
 }
 
-export function DiscoveryProgressScreen({
-  step,
-  totalSteps,
-}: DiscoveryProgressScreenProps) {
+export function DiscoveryProgressScreen({ step, totalSteps }: DiscoveryProgressScreenProps) {
   return (
     <div className="flex min-h-[400px] items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -20,15 +17,10 @@ export function DiscoveryProgressScreen({
             <Search className="h-6 w-6" />
           </div>
           <CardTitle>{DISCOVERY_COPY.progress.title}</CardTitle>
-          <CardDescription>
-            {DISCOVERY_COPY.progress.subtitle}
-          </CardDescription>
+          <CardDescription>{DISCOVERY_COPY.progress.subtitle}</CardDescription>
         </CardHeader>
         <CardContent>
-          <DiscoveryStepProgress
-            step={step}
-            totalSteps={totalSteps}
-          />
+          <DiscoveryStepProgress step={step} totalSteps={totalSteps} />
         </CardContent>
       </Card>
     </div>

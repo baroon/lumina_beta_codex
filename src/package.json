@@ -9,11 +9,21 @@
     "test:web": "pnpm --filter web test",
     "test:api": "dotnet test apps/api/AIVisibility.sln",
     "storybook": "pnpm --filter web storybook",
-    "tokens:generate": "node design-tokens/generate-css.js"
+    "tokens:generate": "node design-tokens/generate-css.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:web": "pnpm --filter web lint",
+    "manifest:check": "node scripts/manifest-sync-lite.mjs",
+    "prepare": "cd .. && husky src/.husky"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
   },
-  "packageManager": "pnpm@9.15.4"
+  "packageManager": "pnpm@9.15.4",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
+    "prettier": "^3.8.3"
+  }
 }

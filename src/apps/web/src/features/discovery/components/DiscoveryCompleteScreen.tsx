@@ -26,9 +26,7 @@ export function DiscoveryCompleteScreen({ brandName }: DiscoveryCompleteScreenPr
             {DISCOVERY_COPY.complete.createTracker}
             <ArrowRight className="h-4 w-4" />
           </Button>
-          <p className="mt-3 text-xs text-neutral-400">
-            {DISCOVERY_COPY.complete.comingSoon}
-          </p>
+          <p className="mt-3 text-xs text-neutral-400">{DISCOVERY_COPY.complete.comingSoon}</p>
         </CardContent>
       </Card>
     </div>

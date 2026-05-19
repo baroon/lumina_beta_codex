@@ -22,25 +22,25 @@ or belongs to a controller/handler/entity/migration?
 
 ## Quick reference
 
-| What you want to do                                           | Chain to use            |
-| ------------------------------------------------------------- | ----------------------- |
-| Route a UI task to the correct chain + run preflight          | `ui-intake`             |
-| Build a new UI component                                      | `create-component`      |
-| Fix a bug (frontend or backend)                               | `bug-fix`               |
-| Add or change a variant on an existing component              | `modify-variant`        |
-| Wire a real API endpoint into a frontend component            | `integrate-api`         |
-| Match UI to a screenshot, Figma export, or visual target      | `ui-match`              |
-| Build a new page or route                                     | `add-feature-page`      |
-| Build a new Nivo chart wrapper                                | `add-chart`             |
-| Add Zod runtime validation for API responses                  | `add-zod-schema`        |
-| Build a new API endpoint (controller + handler + validator)   | `create-endpoint`       |
-| Build a new domain entity with EF Core mapping                | `create-entity`         |
-| Build a new command handler                                   | `create-command`        |
-| Build a new query handler                                     | `create-query`          |
-| Build a new background job (Hangfire or MassTransit consumer) | `create-worker-job`     |
-| Add a new AI platform adapter in Infrastructure               | `integrate-provider`    |
-| Build a full vertical feature (API + frontend + tests)        | `create-feature-slice`  |
-| Move code to the correct architectural layer                  | `migrate-logic`         |
+| What you want to do                                           | Chain to use              |
+| ------------------------------------------------------------- | ------------------------- |
+| Route a UI task to the correct chain + run preflight          | `ui-intake`               |
+| Build a new UI component                                      | `create-component`        |
+| Fix a bug (frontend or backend)                               | `bug-fix`                 |
+| Add or change a variant on an existing component              | `modify-variant`          |
+| Wire a real API endpoint into a frontend component            | `integrate-api`           |
+| Match UI to a screenshot, Figma export, or visual target      | `ui-match`                |
+| Build a new page or route                                     | `add-feature-page`        |
+| Build a new Nivo chart wrapper                                | `add-chart`               |
+| Add Zod runtime validation for API responses                  | `add-zod-schema`          |
+| Build a new API endpoint (controller + handler + validator)   | `create-endpoint`         |
+| Build a new domain entity with EF Core mapping                | `create-entity`           |
+| Build a new command handler                                   | `create-command`          |
+| Build a new query handler                                     | `create-query`            |
+| Build a new background job (Hangfire or MassTransit consumer) | `create-worker-job`       |
+| Add a new AI platform adapter in Infrastructure               | `integrate-provider`      |
+| Build a full vertical feature (API + frontend + tests)        | `create-feature-slice`    |
+| Move code to the correct architectural layer                  | `migrate-logic`           |
 | Change a config file, env var, CI pipeline                    | No chain -- talk directly |
 | Fix a typo or one-liner CSS tweak                             | No chain -- talk directly |
 | Wire up a third-party package                                 | No chain -- talk directly |
@@ -88,18 +88,18 @@ Follow the chain exactly.
 These are the core entities in the Lumina AI Visibility Platform. Use these
 terms consistently across all chains, code, and documentation:
 
-| Term               | Meaning                                                        |
-| ------------------ | -------------------------------------------------------------- |
-| **Brand**          | The customer's brand being tracked for AI visibility           |
-| **Visibility Tracker** | A configured monitoring job targeting a brand/topic set    |
-| **Topic**          | A subject area the brand wants to be visible for               |
-| **Visibility Check** | A single prompt sent to an AI platform during a scan         |
-| **Prompt**         | The natural-language question sent to an AI platform           |
-| **Scan Run**       | One execution of all visibility checks in a tracker            |
-| **Finding**        | A discrete insight extracted from AI platform responses         |
-| **Content Action** | A recommended action to improve AI visibility                  |
-| **Source**         | An external URL cited by an AI platform in its response        |
-| **Citation**       | A reference to the brand's content within an AI response       |
+| Term                   | Meaning                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| **Brand**              | The customer's brand being tracked for AI visibility     |
+| **Visibility Tracker** | A configured monitoring job targeting a brand/topic set  |
+| **Topic**              | A subject area the brand wants to be visible for         |
+| **Visibility Check**   | A single prompt sent to an AI platform during a scan     |
+| **Prompt**             | The natural-language question sent to an AI platform     |
+| **Scan Run**           | One execution of all visibility checks in a tracker      |
+| **Finding**            | A discrete insight extracted from AI platform responses  |
+| **Content Action**     | A recommended action to improve AI visibility            |
+| **Source**             | An external URL cited by an AI platform in its response  |
+| **Citation**           | A reference to the brand's content within an AI response |
 
 ---
 
@@ -374,14 +374,14 @@ Follow the chain exactly.
 
 **Special handling modes:**
 
-| Mode              | What the chain does differently                                               |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `pagination`      | Adds cursor/offset params, uses `useInfiniteQuery` or offset-based pagination |
-| `polling`         | Uses `refetchInterval` option on `useQuery`                                   |
-| `file-upload`     | Uses `FormData` with appropriate content type                                 |
-| `file-download`   | Returns `Blob`, custom fetch handling                                         |
-| `optimistic`      | Uses TanStack Query `onMutate` for optimistic updates with rollback           |
-| `real-time`       | Pairs with SignalR for live updates, query invalidation on hub messages        |
+| Mode            | What the chain does differently                                               |
+| --------------- | ----------------------------------------------------------------------------- |
+| `pagination`    | Adds cursor/offset params, uses `useInfiniteQuery` or offset-based pagination |
+| `polling`       | Uses `refetchInterval` option on `useQuery`                                   |
+| `file-upload`   | Uses `FormData` with appropriate content type                                 |
+| `file-download` | Returns `Blob`, custom fetch handling                                         |
+| `optimistic`    | Uses TanStack Query `onMutate` for optimistic updates with rollback           |
+| `real-time`     | Pairs with SignalR for live updates, query invalidation on hub messages       |
 
 **When NOT to use it:**
 
@@ -443,14 +443,14 @@ Screenshots can be passed directly -- Claude Code reads images.
 
 **Tier attribution rules:**
 
-| Rule | Tier          | When it applies                                                                     |
-| ---- | ------------- | ----------------------------------------------------------------------------------- |
-| P1   | Core UI       | Same property wrong across multiple screens using the same primitive, OR pure token swap |
-| P2   | Token missing | Token-based fix needed but no token exists -- add token first, then component code  |
-| M1   | Composite     | Fix is about how primitives are composed inside a composite (spacing, internal layout) |
-| F1   | Feature/Page  | Fix is unique to one screen's layout -- wrong to apply globally                     |
+| Rule | Tier          | When it applies                                                                           |
+| ---- | ------------- | ----------------------------------------------------------------------------------------- |
+| P1   | Core UI       | Same property wrong across multiple screens using the same primitive, OR pure token swap  |
+| P2   | Token missing | Token-based fix needed but no token exists -- add token first, then component code        |
+| M1   | Composite     | Fix is about how primitives are composed inside a composite (spacing, internal layout)    |
+| F1   | Feature/Page  | Fix is unique to one screen's layout -- wrong to apply globally                           |
 | A1   | Ambiguous     | Could be P or M, or M or F -- always surfaced for human decision, never silently resolved |
-| X1   | Never         | Patching a feature page to work around a primitive or composite issue               |
+| X1   | Never         | Patching a feature page to work around a primitive or composite issue                     |
 
 **The two gates you must not skip:**
 
@@ -1060,24 +1060,24 @@ wrong layer (e.g., domain logic in a controller).
 
 **Target layers (Frontend):**
 
-| Logic type                       | Where it goes          |
-| -------------------------------- | ---------------------- |
-| Pure functions, no side effects  | `src/utils/`           |
-| API call functions               | `src/api/`             |
-| TanStack Query hooks             | `src/hooks/`           |
-| React-lifecycle-dependent logic  | `src/hooks/`           |
-| Form validation schemas          | `src/schemas/`         |
-| URL search param parsing         | Route definition file  |
+| Logic type                      | Where it goes         |
+| ------------------------------- | --------------------- |
+| Pure functions, no side effects | `src/utils/`          |
+| API call functions              | `src/api/`            |
+| TanStack Query hooks            | `src/hooks/`          |
+| React-lifecycle-dependent logic | `src/hooks/`          |
+| Form validation schemas         | `src/schemas/`        |
+| URL search param parsing        | Route definition file |
 
 **Target layers (Backend):**
 
-| Logic type                         | Where it goes                        |
-| ---------------------------------- | ------------------------------------ |
-| Business rules and domain logic    | `Domain/` or `Application/`         |
-| Data access queries                | `Infrastructure/Persistence/`        |
-| External service calls             | `Infrastructure/`                    |
-| Request validation                 | `Application/Validators/`            |
-| DTO mapping                        | `Application/` (handler or mapper)   |
+| Logic type                      | Where it goes                      |
+| ------------------------------- | ---------------------------------- |
+| Business rules and domain logic | `Domain/` or `Application/`        |
+| Data access queries             | `Infrastructure/Persistence/`      |
+| External service calls          | `Infrastructure/`                  |
+| Request validation              | `Application/Validators/`          |
+| DTO mapping                     | `Application/` (handler or mapper) |
 
 **The extraction-only rule:** This chain is deliberately conservative.
 If you notice a bug while migrating, do NOT fix it in this chain.
@@ -1103,6 +1103,12 @@ Every chain ends with 14 review checks. You never need to run these
 manually -- the chain handles it. But knowing what they cover helps
 you understand why the chain sometimes blocks a change:
 
+> **Automated enforcement:** A subset of these checks (import boundaries,
+> deprecated path bans, formatting, manifest sync) are enforced automatically
+> by the pre-commit hook via Prettier, ESLint, and manifest-sync-lite.
+> Commits that violate these rules will be rejected at `git commit` time.
+> See `project-structure.md` § Pre-Commit Enforcement System for details.
+
 1. **Import order correct** -- React --> external libs --> internal components --> types --> styles
 2. **All manifest variants implemented** -- Every variant listed in `component-manifest.json` has a corresponding CVA variant and rendering path
 3. **CVA used for all variant styling** -- No string concatenation for conditional classes; use CVA variant definitions
@@ -1122,6 +1128,31 @@ If any check fails, the chain sets status to BLOCKED and lists the exact
 file, line, and fix required. The chain retries up to 2 times before
 escalating to human.
 
+**Which checks are enforced automatically by pre-commit:**
+
+| Check                                  | Automated? | Mechanism                                                               |
+| -------------------------------------- | ---------- | ----------------------------------------------------------------------- |
+| 1. Import order                        | No         | Manual review                                                           |
+| 2. All manifest variants implemented   | No         | Manual review                                                           |
+| 3. CVA used for all variant styling    | No         | Manual review                                                           |
+| 4. `cn()` used for conditional classes | No         | Manual review                                                           |
+| 5. Design tokens used                  | No         | Manual review                                                           |
+| 6. No direct fetch in components       | Yes        | ESLint `no-restricted-imports` (atom/molecule/organism boundary rules)  |
+| 7. Named exports only                  | No         | Manual review                                                           |
+| 8. File in correct location            | Partial    | ESLint deprecated path ban + manifest sync `DEPRECATED_DIRECTORY` check |
+| 9. Manifest entry exists               | Yes        | manifest-sync-lite `MISSING_MANIFEST_ENTRY` + `ORPHAN_MANIFEST_ENTRY`   |
+| 10. Test coverage adequate             | No         | Manual review                                                           |
+| 11. One story per variant              | No         | Manual review                                                           |
+| 12. Charts use wrapper pattern         | No         | Manual review                                                           |
+| 13. Forms use React Hook Form + Zod    | No         | Manual review                                                           |
+| 14. URL search params for filters      | No         | Manual review                                                           |
+
+Additionally, the pre-commit hook enforces:
+
+- **Formatting** via Prettier (auto-fixed on commit)
+- **Layer boundary rules** via ESLint (atoms cannot import molecules/organisms/features, molecules cannot import organisms/features, no cross-feature imports)
+- **Deprecated path bans** via ESLint (no imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/`)
+
 ---
 
 ## Protected changes (always require human approval)
@@ -1130,14 +1161,14 @@ Some changes pause any chain and wait for explicit human sign-off
 before proceeding. These are not agent decisions -- they are mandatory
 human gates:
 
-| Protected change                    | Flag                        | Why human approval is required                                    |
-| ----------------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| Database schema changes             | `DATABASE_SCHEMA_CHANGE`    | Migrations affect production data; irreversible if wrong          |
-| Route structure changes             | `ROUTE_STRUCTURE_CHANGE`    | Routing affects all E2E tests and navigation                      |
-| Component deletions from manifest   | `COMPONENT_REMOVAL`         | Consumers may break silently                                      |
-| Auth/tenancy model changes          | `AUTH_TENANCY_CHANGE`       | Security boundary changes have the highest blast radius           |
-| MassTransit saga/state machine      | `SAGA_STATE_MACHINE_CHANGE` | Saga changes affect in-flight messages and pipeline orchestration |
-| SignalR hub contract changes        | `HUB_CONTRACT_CHANGE`       | Hub changes break all connected real-time clients                 |
+| Protected change                  | Flag                        | Why human approval is required                                    |
+| --------------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| Database schema changes           | `DATABASE_SCHEMA_CHANGE`    | Migrations affect production data; irreversible if wrong          |
+| Route structure changes           | `ROUTE_STRUCTURE_CHANGE`    | Routing affects all E2E tests and navigation                      |
+| Component deletions from manifest | `COMPONENT_REMOVAL`         | Consumers may break silently                                      |
+| Auth/tenancy model changes        | `AUTH_TENANCY_CHANGE`       | Security boundary changes have the highest blast radius           |
+| MassTransit saga/state machine    | `SAGA_STATE_MACHINE_CHANGE` | Saga changes affect in-flight messages and pipeline orchestration |
+| SignalR hub contract changes      | `HUB_CONTRACT_CHANGE`       | Hub changes break all connected real-time clients                 |
 
 When you see the agent pause at one of these, read the report it
 produces and approve or reject explicitly. Do not just say "continue"
@@ -1179,6 +1210,7 @@ A label typo does not need a blast radius report.
 It will sometimes ask. The answer:
 
 **Frontend:**
+
 - Touching `.tsx`, `.test.tsx`, `.stories.tsx`, `index.ts` --> yes, use a chain
 - Touching route files --> yes, use `add-feature-page` or `bug-fix`
 - Visual output does not match a design --> yes, use `ui-match`
@@ -1186,6 +1218,7 @@ It will sometimes ask. The answer:
 - Adding form validation --> yes, use `add-zod-schema`
 
 **Backend:**
+
 - Adding a new controller action --> yes, use `create-endpoint`
 - Adding a new entity --> yes, use `create-entity`
 - Adding a command handler --> yes, use `create-command`
@@ -1194,10 +1227,12 @@ It will sometimes ask. The answer:
 - Adding an AI provider adapter --> yes, use `integrate-provider`
 
 **Full-stack:**
+
 - Building a complete feature from DB to UI --> yes, use `create-feature-slice`
 - Moving logic to the correct layer --> yes, use `migrate-logic`
 
 **No chain needed:**
+
 - Touching config files, env vars, CI/CD --> no chain
 - Updating dependencies --> no chain
 - Asking questions or exploring options --> no chain

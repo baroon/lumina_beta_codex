@@ -207,6 +207,35 @@ Reasoning: ASP.NET Core native, WebSocket with automatic fallback, hub-based gro
 
 ---
 
+### 13. Pre-Commit Enforcement System (new)
+
+**Added:** Four-layer automated enforcement to prevent architectural drift
+
+Architecture:
+- **Layer 1 — Prettier:** Consistent formatting (semi, double quotes, 100 char width, LF)
+- **Layer 2 — ESLint boundary rules:** `no-restricted-imports` enforces atomic design layer boundaries, deprecated path bans, and cross-feature isolation. No custom plugins needed.
+- **Layer 3 — Manifest sync validation:** Zero-dependency Node.js script validates component files against `component-manifest.json` (missing entries, orphaned entries, deprecated directories)
+- **Layer 4 — Husky + lint-staged:** Pre-commit hook gates every `git commit` through all three layers. Prettier auto-fixes; ESLint and manifest errors block the commit.
+
+Tooling:
+- `prettier` + `.prettierrc.json` — workspace-level formatting
+- `eslint-config-prettier` — disables ESLint formatting rules that conflict with Prettier
+- `husky` — Git hook management, configured to bridge git root and workspace root
+- `lint-staged` — runs checks only on staged files for fast feedback
+- `scripts/manifest-sync-lite.mjs` — lightweight manifest validation (3 checks, zero external deps)
+
+Reasoning: After the atomic design restructure (v1.1.0), governance documents defined layer boundaries but nothing enforced them at commit time. Agents and developers could still import from deprecated paths, violate layer boundaries, or create components without manifest entries. This system catches the critical violations automatically without the overhead of AST parsing or dependency graph analysis — appropriate for 18 implemented components in early beta.
+
+**Files updated:**
+- `project-structure.md` (§ Pre-Commit Enforcement System)
+- `CHAINS.md` (§ Review & Lint checks)
+- `AGENTS.md` (§ Commit Enforcement)
+- `COMMANDS.md` (§ Code Quality & Formatting)
+- `LOCAL-DEV.md` (§ Code Quality & Pre-Commit Hooks)
+- `tech-stack.decisions.md` (§ Code Quality Enforcement)
+
+---
+
 ## Unchanged Decisions (Confirmed)
 
 The following original decisions were reviewed and explicitly kept:
@@ -288,4 +317,5 @@ The following original decisions were reviewed and explicitly kept:
 | Cloud | Azure (Container Apps, ACR, Key Vault) |
 | CI/CD | GitHub Actions |
 | Package Manager | pnpm |
+| Code Quality | **Prettier + ESLint boundaries + Husky + lint-staged** (added) — pre-commit enforcement |
 | Agent System | **BOLD framework adaptation** (added) — manifest, chains, protected changes |
