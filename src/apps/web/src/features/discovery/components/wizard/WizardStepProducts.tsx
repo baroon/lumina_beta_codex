@@ -9,6 +9,9 @@ interface WizardStepProductsProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string) => void;
+  onRefresh?: () => void;
+  refreshesRemaining?: number;
+  isRefreshing?: boolean;
 }
 
 export function WizardStepProducts({
@@ -18,6 +21,9 @@ export function WizardStepProducts({
   onSelectAll,
   onDeselectAll,
   onAddCustom,
+  onRefresh,
+  refreshesRemaining,
+  isRefreshing,
 }: WizardStepProductsProps) {
   return (
     <DiscoverySection
@@ -30,6 +36,9 @@ export function WizardStepProducts({
       onSelectAll={onSelectAll}
       onDeselectAll={onDeselectAll}
       onAddCustom={onAddCustom}
+      onRefresh={onRefresh}
+      refreshesRemaining={refreshesRemaining}
+      isRefreshing={isRefreshing}
     />
   );
 }

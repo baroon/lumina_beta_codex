@@ -119,17 +119,24 @@ export const DISCOVERY_COPY = {
     confirmAndFinish: "Confirm & Finish",
     resuggestingMessage: "Improving suggestions based on your selections...",
   },
+  lenses: {
+    title: "Visibility Lenses",
+    description: "Each Visibility Lens represents a dimension of your brand's AI visibility.",
+  },
   buttons: {
     confirm: "Confirm Selections",
     addCustom: "Add Custom",
     dismiss: "Dismiss",
     selectAll: "Select All",
     deselectAll: "Deselect All",
+    refreshLens: "Refresh suggestions",
+    refreshLensRemaining: "{count} left",
   },
   errors: {
     loadBrandFailed: "Failed to load brand information.",
     discoveryFailed: "Discovery failed. Please try again or contact support.",
     confirmFailed: "Failed to confirm",
     createBrandFailed: "Failed to create brand",
+    regenerateFailed: "Failed to refresh. Original suggestions still available.",
   },
 } as const;

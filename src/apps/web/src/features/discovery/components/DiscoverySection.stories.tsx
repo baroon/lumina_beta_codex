@@ -77,3 +77,33 @@ export const AllSelected: Story = {
     selectedIds: new Set(["1", "2", "3"]),
   },
 };
+
+export const WithRefresh: Story = {
+  args: {
+    candidates: mockCandidates,
+    selectedIds: new Set(["1"]),
+    onRefresh: () => {},
+    refreshesRemaining: 2,
+    isRefreshing: false,
+  },
+};
+
+export const RefreshExhausted: Story = {
+  args: {
+    candidates: mockCandidates,
+    selectedIds: new Set(["1"]),
+    onRefresh: () => {},
+    refreshesRemaining: 0,
+    isRefreshing: false,
+  },
+};
+
+export const Refreshing: Story = {
+  args: {
+    candidates: mockCandidates,
+    selectedIds: new Set(["1"]),
+    onRefresh: () => {},
+    refreshesRemaining: 1,
+    isRefreshing: true,
+  },
+};

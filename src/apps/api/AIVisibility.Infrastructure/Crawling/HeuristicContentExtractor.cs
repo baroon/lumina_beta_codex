@@ -98,7 +98,7 @@ public class HeuristicContentExtractor : IContentExtractor
             }
         }
 
-        return products.Take(20).ToList();
+        return products.Take(4).ToList();
     }
 
     private static List<Audience> ExtractAudiences(List<CrawledPage> pages)
@@ -134,7 +134,7 @@ public class HeuristicContentExtractor : IContentExtractor
             }
         }
 
-        return audiences.Take(10).ToList();
+        return audiences.Take(4).ToList();
     }
 
     private static List<Market> ExtractMarkets(Brand brand, List<CrawledPage> pages)
@@ -230,7 +230,7 @@ public class HeuristicContentExtractor : IContentExtractor
             }
         }
 
-        return markets.Take(10).ToList();
+        return markets.Take(4).ToList();
     }
 
     private static List<Topic> ExtractTopics(List<CrawledPage> pages)
@@ -263,7 +263,7 @@ public class HeuristicContentExtractor : IContentExtractor
             }
         }
 
-        return topics.Take(20).ToList();
+        return topics.Take(4).ToList();
     }
 
     private static List<TrustSignal> ExtractTrustSignals(List<CrawledPage> pages)
@@ -354,7 +354,7 @@ public class HeuristicContentExtractor : IContentExtractor
             }
         }
 
-        return signals;
+        return signals.Take(4).ToList();
     }
 
     private static List<string> GetAllHeadingTexts(List<CrawledPage> pages)

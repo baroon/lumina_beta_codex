@@ -67,3 +67,13 @@ export const Empty: Story = {
     selectedIds: new Set(),
   },
 };
+
+export const WithRefresh: Story = {
+  args: {
+    candidates: mockProducts,
+    selectedIds: new Set(["p1", "p2"]),
+    onRefresh: () => {},
+    refreshesRemaining: 2,
+    isRefreshing: false,
+  },
+};

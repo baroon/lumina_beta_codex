@@ -125,7 +125,7 @@ export const NoBrandProfile: Story = {
   },
 };
 
-/** With many items across all sections */
+/** With 4 items per lens (max) */
 export const RichData: Story = {
   args: {
     results: {
@@ -151,6 +151,36 @@ export const RichData: Story = {
           metadata: {},
         },
       ],
+      audiences: [
+        ...mockResults.audiences,
+        {
+          id: "a2",
+          name: "DevOps Engineers",
+          description: "Infrastructure teams.",
+          confidence: 0.7,
+          source: "WebsiteCrawl",
+          status: "Suggested",
+          metadata: {},
+        },
+        {
+          id: "a3",
+          name: "Startup Founders",
+          description: "Early-stage tech founders.",
+          confidence: 0.55,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+        {
+          id: "a4",
+          name: "Product Managers",
+          description: "Product team leads.",
+          confidence: 0.5,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+      ],
       competitors: [
         ...mockResults.competitors,
         {
@@ -167,6 +197,15 @@ export const RichData: Story = {
           name: "AltCloud",
           description: "Budget alternative.",
           confidence: 0.45,
+          source: "LLMSuggested",
+          status: "Suggested",
+          metadata: {},
+        },
+        {
+          id: "c4",
+          name: "CloudNext",
+          description: "Next-gen cloud provider.",
+          confidence: 0.6,
           source: "LLMSuggested",
           status: "Suggested",
           metadata: {},

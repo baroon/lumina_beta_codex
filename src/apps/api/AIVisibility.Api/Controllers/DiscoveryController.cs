@@ -51,4 +51,21 @@ public class DiscoveryController : ControllerBase
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("regenerate-lens")]
+    [ProducesResponseType(typeof(RegenerateLensResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegenerateLens(Guid brandId, [FromBody] RegenerateLensRequest request, CancellationToken cancellationToken)
+    {
+        var command = new RegenerateLensCommand(
+            brandId,
+            request.Lens,
+            request.Industry,
+            request.Category,
+            request.Products,
+            request.Audiences,
+            request.Markets);
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(result);
+    }
 }

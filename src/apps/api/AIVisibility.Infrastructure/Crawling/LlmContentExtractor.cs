@@ -56,6 +56,7 @@ public class LlmContentExtractor : IContentExtractor
             "Generating discovery search categories...", step: 4, totalSteps: 5, cancellationToken: cancellationToken);
         var topicSuggestions = await SuggestTopicsAsync(brand, brandProfile, cancellationToken);
         topics.AddRange(topicSuggestions);
+        topics = topics.OrderByDescending(t => t.Confidence).Take(4).ToList();
 
         return new ExtractionResult(
             brandProfile,
@@ -240,11 +241,11 @@ public class LlmContentExtractor : IContentExtractor
         }
 
         Guidelines:
-        - Products: Include actual products/services/features. Aim for 5-15 items. Be specific, not generic.
-        - Audiences: Include distinct customer segments. Aim for 3-8 items. Use descriptive names like "Small Business Owners" not just "businesses".
-        - Markets: Include countries/regions where the brand clearly operates. Use ISO country codes when applicable.
-        - Topics: Include industry topics, technology areas, and business themes. Aim for 5-10 items.
-        - Trust Signals: Look for pricing pages, testimonials/reviews, case studies, certifications, awards, partner logos, press mentions, security badges, free trials, money-back guarantees, "trusted by X companies", expert endorsements, privacy policies, and terms of service. Include specific evidence (e.g., "Trusted by 500+ companies" not just "Social Proof").
+        - Products: Include actual products/services/features. Return your top 4, ranked by relevance. Be specific, not generic.
+        - Audiences: Include distinct customer segments. Return your top 4, ranked by relevance. Use descriptive names like "Small Business Owners" not just "businesses".
+        - Markets: Include countries/regions where the brand clearly operates. Return your top 4, ranked by confidence. Use ISO country codes when applicable.
+        - Topics: Include industry topics, technology areas, and business themes. Return your top 4, ranked by relevance.
+        - Trust Signals: Look for pricing pages, testimonials/reviews, case studies, certifications, awards, partner logos, press mentions, security badges, free trials, money-back guarantees, "trusted by X companies", expert endorsements, privacy policies, and terms of service. Return your top 4. Include specific evidence (e.g., "Trusted by 500+ companies" not just "Social Proof").
         - Confidence: 0-100 scale. Higher = more evidence in the content.
         - Be factual. Only include items evidenced in the content.
         """;
@@ -298,7 +299,7 @@ public class LlmContentExtractor : IContentExtractor
         try
         {
             var userPrompt = BuildEntityExtractionPrompt(brand, profile, pages, pageTexts);
-            var response = await _openAi.ChatCompletionAsync(EntityExtractionSystem, userPrompt, 2048, 0.3, ct);
+            var response = await _openAi.ChatCompletionAsync(EntityExtractionSystem, userPrompt, 1024, 0.3, ct);
 
             if (string.IsNullOrWhiteSpace(response))
                 return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.Topics, baseline.TrustSignals);
@@ -346,7 +347,7 @@ public class LlmContentExtractor : IContentExtractor
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
             })
-            .Take(20)
+            .Take(4)
             .ToList();
     }
 
@@ -364,7 +365,7 @@ public class LlmContentExtractor : IContentExtractor
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
             })
-            .Take(10)
+            .Take(4)
             .ToList();
     }
 
@@ -383,7 +384,7 @@ public class LlmContentExtractor : IContentExtractor
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
             })
-            .Take(10)
+            .Take(4)
             .ToList();
     }
 
@@ -402,7 +403,7 @@ public class LlmContentExtractor : IContentExtractor
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
             })
-            .Take(20)
+            .Take(4)
             .ToList();
     }
 
@@ -421,6 +422,7 @@ public class LlmContentExtractor : IContentExtractor
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
             })
+            .Take(4)
             .ToList();
     }
 
@@ -454,7 +456,7 @@ public class LlmContentExtractor : IContentExtractor
         Each suggestion should be a natural search phrase (5-15 words) that someone would type into an AI assistant when looking for this type of brand. Include geographic or market context when the brand has a clear regional focus. Do NOT include the brand name in any suggestion.
 
         Return JSON only:
-        ["search category 1", "search category 2", "search category 3", "search category 4", "search category 5"]
+        ["search category 1", "search category 2", "search category 3", "search category 4"]
         """;
 
     private static string BuildTopicSuggestionsPrompt(Brand brand, BrandProfile? profile)
@@ -464,7 +466,7 @@ public class LlmContentExtractor : IContentExtractor
         if (profile != null && !string.IsNullOrWhiteSpace(profile.ShortDescription))
             parts.Add($"Description: {profile.ShortDescription}");
 
-        parts.Add("\nSuggest 5 discovery search categories -- the searches people would make when looking for a brand like this, without naming it directly. Include market/region context when relevant.");
+        parts.Add("\nSuggest 4 discovery search categories -- the searches people would make when looking for a brand like this, without naming it directly. Include market/region context when relevant.");
         return string.Join("\n", parts);
     }
 
@@ -494,7 +496,7 @@ public class LlmContentExtractor : IContentExtractor
                     Source = CandidateSource.LLMSuggested,
                     Status = CandidateStatus.Suggested
                 })
-                .Take(5)
+                .Take(4)
                 .ToList();
         }
         catch (Exception ex)

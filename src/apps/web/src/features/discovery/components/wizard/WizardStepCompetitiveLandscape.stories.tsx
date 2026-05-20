@@ -96,3 +96,32 @@ export const Loading: Story = {
     },
   },
 };
+
+export const WithRefresh: Story = {
+  args: {
+    topics: {
+      candidates: mockTopics,
+      selectedIds: new Set(["t1"]),
+      ...sectionDefaults,
+      onRefresh: noop,
+      refreshesRemaining: 2,
+      isRefreshing: false,
+    },
+    competitors: {
+      candidates: mockCompetitors,
+      selectedIds: new Set(["c2"]),
+      ...sectionDefaults,
+      onRefresh: noop,
+      refreshesRemaining: 3,
+      isRefreshing: false,
+    },
+    trustSignals: {
+      candidates: mockTrustSignals,
+      selectedIds: new Set(["ts1"]),
+      ...sectionDefaults,
+      onRefresh: noop,
+      refreshesRemaining: 0,
+      isRefreshing: false,
+    },
+  },
+};

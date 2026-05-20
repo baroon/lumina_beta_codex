@@ -45,7 +45,7 @@ public class OpenAiCompetitorSuggestionService : ICompetitorSuggestionService
         - Scale fit: avoid suggesting massive incumbents for early-stage/local businesses unless explicitly requested
         - Product fit: suggestions should compete on overlapping jobs-to-be-done
 
-        Return up to 8 competitors as a JSON array of objects with:
+        Return up to 4 competitors as a JSON array of objects with:
         - "name": string
         - "domain": their website domain (e.g., example.com)
         - "description": short reason they compete
@@ -92,7 +92,7 @@ public class OpenAiCompetitorSuggestionService : ICompetitorSuggestionService
                     Source = CandidateSource.LLMSuggested,
                     Status = CandidateStatus.Suggested
                 })
-                .Take(8)
+                .Take(4)
                 .ToList();
         }
         catch (Exception ex)

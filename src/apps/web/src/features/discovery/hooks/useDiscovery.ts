@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { discoveryApi } from "@/api/discoveryApi";
-import type { ConfirmDiscoveryRequest, ResuggestRequest } from "@/types/api";
+import type { ConfirmDiscoveryRequest, RegenerateLensRequest, ResuggestRequest } from "@/types/api";
 
 export function useDiscoveryResults(brandId: string) {
   return useQuery({
@@ -25,5 +25,11 @@ export function useConfirmDiscovery(brandId: string) {
 export function useResuggestDiscovery(brandId: string) {
   return useMutation({
     mutationFn: (data: ResuggestRequest) => discoveryApi.resuggest(brandId, data),
+  });
+}
+
+export function useRegenerateLens(brandId: string) {
+  return useMutation({
+    mutationFn: (data: RegenerateLensRequest) => discoveryApi.regenerateLens(brandId, data),
   });
 }

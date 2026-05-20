@@ -2,6 +2,8 @@ import { apiClient } from "./apiClient";
 import type {
   ConfirmDiscoveryRequest,
   DiscoveryResultsDto,
+  RegenerateLensRequest,
+  RegenerateLensResponse,
   ResuggestRequest,
   ResuggestResponse,
 } from "@/types/api";
@@ -15,4 +17,10 @@ export const discoveryApi = {
 
   resuggest: (brandId: string, data: ResuggestRequest) =>
     apiClient.post<ResuggestResponse>(`/api/brands/${brandId}/discovery/resuggest`, data),
+
+  regenerateLens: (brandId: string, data: RegenerateLensRequest) =>
+    apiClient.post<RegenerateLensResponse>(
+      `/api/brands/${brandId}/discovery/regenerate-lens`,
+      data,
+    ),
 };

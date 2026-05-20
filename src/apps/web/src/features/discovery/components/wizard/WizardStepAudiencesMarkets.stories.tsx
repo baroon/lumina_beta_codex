@@ -103,3 +103,30 @@ export const Empty: Story = {
     },
   },
 };
+
+export const WithRefresh: Story = {
+  args: {
+    audiences: {
+      candidates: mockAudiences,
+      selectedIds: new Set(["a1"]),
+      onToggle: noop,
+      onSelectAll: noop,
+      onDeselectAll: noop,
+      onAddCustom: noop,
+      onRefresh: noop,
+      refreshesRemaining: 3,
+      isRefreshing: false,
+    },
+    markets: {
+      candidates: mockMarkets,
+      selectedIds: new Set(["m1"]),
+      onToggle: noop,
+      onSelectAll: noop,
+      onDeselectAll: noop,
+      onAddCustom: noop,
+      onRefresh: noop,
+      refreshesRemaining: 1,
+      isRefreshing: false,
+    },
+  },
+};

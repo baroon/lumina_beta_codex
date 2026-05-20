@@ -3,7 +3,11 @@ import { Alert, AlertDescription } from "@/components/atoms/alert";
 import { Stepper } from "@/components/molecules/Stepper";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { DISCOVERY_COPY } from "@/content/discovery";
-import { useConfirmDiscovery, useResuggestDiscovery } from "../hooks/useDiscovery";
+import {
+  useConfirmDiscovery,
+  useResuggestDiscovery,
+  useRegenerateLens,
+} from "../hooks/useDiscovery";
 import {
   WizardStepBrandIdentity,
   WizardStepProducts,
@@ -11,7 +15,12 @@ import {
   WizardStepCompetitiveLandscape,
   WizardStepReview,
 } from "./wizard";
-import type { DiscoveryResultsDto, CandidateDto, ResuggestCandidateDto } from "@/types/api";
+import type {
+  DiscoveryResultsDto,
+  CandidateDto,
+  ResuggestCandidateDto,
+  VisibilityLens,
+} from "@/types/api";
 
 interface DiscoveryConfirmationScreenProps {
   results: DiscoveryResultsDto;
@@ -27,6 +36,8 @@ const ALL_SECTIONS: SectionKey[] = [
   "competitors",
   "trustSignals",
 ];
+
+const MAX_LENS_REFRESHES = 3;
 
 const WIZARD_STEPS = DISCOVERY_COPY.wizard.steps;
 
@@ -45,12 +56,16 @@ function toCandidate(dto: ResuggestCandidateDto): CandidateDto {
 export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationScreenProps) {
   const confirmMutation = useConfirmDiscovery(results.brandId);
   const resuggestMutation = useResuggestDiscovery(results.brandId);
+  const regenerateLensMutation = useRegenerateLens(results.brandId);
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [refreshedSections, setRefreshedSections] = useState<{
-    topics?: CandidateDto[];
-    competitors?: CandidateDto[];
-  } | null>(null);
+  const [refreshedSections, setRefreshedSections] = useState<
+    Partial<Record<SectionKey, CandidateDto[]>>
+  >({});
+  const [lensRefreshCounts, setLensRefreshCounts] = useState<Map<SectionKey, number>>(
+    () => new Map(ALL_SECTIONS.map((key) => [key, 0])),
+  );
+  const [refreshingLens, setRefreshingLens] = useState<SectionKey | null>(null);
 
   // Initialize selections: preselect high-confidence items
   const initialSelections = useMemo(() => {
@@ -127,11 +142,9 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     (key: SectionKey): CandidateDto[] => {
       let original = (results[key] as CandidateDto[]) || [];
 
-      // Use refreshed data for topics and competitors when available
-      if (key === "topics" && refreshedSections?.topics) {
-        original = refreshedSections.topics;
-      } else if (key === "competitors" && refreshedSections?.competitors) {
-        original = refreshedSections.competitors;
+      // Use refreshed data when available for any lens
+      if (refreshedSections[key]) {
+        original = refreshedSections[key];
       }
 
       const custom = customItems.get(key) || [];
@@ -163,11 +176,14 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     confirmMutation.mutate({ confirmedIds, dismissedIds });
   };
 
-  const getSelectedNames = (key: SectionKey): string[] => {
-    const candidates = getCombinedCandidates(key);
-    const selected = selections.get(key) || new Set<string>();
-    return candidates.filter((c) => selected.has(c.id)).map((c) => c.name);
-  };
+  const getSelectedNames = useCallback(
+    (key: SectionKey): string[] => {
+      const candidates = getCombinedCandidates(key);
+      const selected = selections.get(key) || new Set<string>();
+      return candidates.filter((c) => selected.has(c.id)).map((c) => c.name);
+    },
+    [getCombinedCandidates, selections],
+  );
 
   const handleResuggest = () => {
     resuggestMutation.mutate(
@@ -183,7 +199,11 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
           const newTopics = data.topics.map(toCandidate);
           const newCompetitors = data.competitors.map(toCandidate);
 
-          setRefreshedSections({ topics: newTopics, competitors: newCompetitors });
+          setRefreshedSections((prev) => ({
+            ...prev,
+            topics: newTopics,
+            competitors: newCompetitors,
+          }));
 
           // Pre-select refreshed items with confidence >= 0.5
           setSelections((prev) => {
@@ -218,6 +238,62 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     );
   };
 
+  const handleRefreshLens = useCallback(
+    (lens: SectionKey) => {
+      const count = lensRefreshCounts.get(lens) ?? 0;
+      if (count >= MAX_LENS_REFRESHES) return;
+
+      setRefreshingLens(lens);
+      regenerateLensMutation.mutate(
+        {
+          lens: lens as VisibilityLens,
+          industry: results.brandProfile?.industry ?? null,
+          category: results.brandProfile?.category ?? null,
+          products: getSelectedNames("products"),
+          audiences: getSelectedNames("audiences"),
+          markets: getSelectedNames("markets"),
+        },
+        {
+          onSuccess: (data) => {
+            const newCandidates = data.candidates.map(toCandidate);
+            setRefreshedSections((prev) => ({ ...prev, [lens]: newCandidates }));
+
+            // Pre-select items with confidence >= 0.5
+            setSelections((prev) => {
+              const next = new Map(prev);
+              const custom = customItems.get(lens) || [];
+              next.set(
+                lens,
+                new Set([
+                  ...newCandidates.filter((c) => c.confidence >= 0.5).map((c) => c.id),
+                  ...custom.map((c) => c.id),
+                ]),
+              );
+              return next;
+            });
+
+            setLensRefreshCounts((prev) => {
+              const next = new Map(prev);
+              next.set(lens, (next.get(lens) ?? 0) + 1);
+              return next;
+            });
+            setRefreshingLens(null);
+          },
+          onError: () => {
+            setRefreshingLens(null);
+          },
+        },
+      );
+    },
+    [
+      lensRefreshCounts,
+      regenerateLensMutation,
+      results.brandProfile,
+      getSelectedNames,
+      customItems,
+    ],
+  );
+
   const handleNext = () => {
     if (currentStep === 2) {
       // Step 3 -> Step 4: trigger resuggest
@@ -245,6 +321,9 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       onSelectAll: () => selectAll(key, candidates),
       onDeselectAll: () => deselectAll(key),
       onAddCustom: (name: string) => addCustomItem(key, name),
+      onRefresh: () => handleRefreshLens(key),
+      refreshesRemaining: MAX_LENS_REFRESHES - (lensRefreshCounts.get(key) ?? 0),
+      isRefreshing: refreshingLens === key,
     };
   };
 
@@ -338,6 +417,12 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       {resuggestMutation.isError && currentStep === 3 && (
         <Alert variant="destructive">
           <AlertDescription>Re-suggestion failed. Showing original suggestions.</AlertDescription>
+        </Alert>
+      )}
+
+      {regenerateLensMutation.isError && (
+        <Alert variant="destructive">
+          <AlertDescription>{DISCOVERY_COPY.errors.regenerateFailed}</AlertDescription>
         </Alert>
       )}
     </div>

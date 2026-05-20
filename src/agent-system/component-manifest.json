@@ -537,7 +537,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "Accordion"],
-          "notes": "Collapsible section within the discovery confirmation screen."
+          "notes": "Collapsible section within the discovery confirmation screen. Supports per-lens refresh with onRefresh/refreshesRemaining/isRefreshing props."
         },
         {
           "name": "SuggestionCard",

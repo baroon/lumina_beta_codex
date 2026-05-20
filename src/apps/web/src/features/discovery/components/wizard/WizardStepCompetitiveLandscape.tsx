@@ -9,6 +9,9 @@ interface SectionData {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string) => void;
+  onRefresh?: () => void;
+  refreshesRemaining?: number;
+  isRefreshing?: boolean;
 }
 
 interface WizardStepCompetitiveLandscapeProps {
@@ -44,6 +47,9 @@ export function WizardStepCompetitiveLandscape({
         onSelectAll={topics.onSelectAll}
         onDeselectAll={topics.onDeselectAll}
         onAddCustom={topics.onAddCustom}
+        onRefresh={topics.onRefresh}
+        refreshesRemaining={topics.refreshesRemaining}
+        isRefreshing={topics.isRefreshing}
       />
       <DiscoverySection
         title={DISCOVERY_COPY.sections.competitors.title}
@@ -55,6 +61,9 @@ export function WizardStepCompetitiveLandscape({
         onSelectAll={competitors.onSelectAll}
         onDeselectAll={competitors.onDeselectAll}
         onAddCustom={competitors.onAddCustom}
+        onRefresh={competitors.onRefresh}
+        refreshesRemaining={competitors.refreshesRemaining}
+        isRefreshing={competitors.isRefreshing}
       />
       <DiscoverySection
         title={DISCOVERY_COPY.sections.trustSignals.title}
@@ -66,6 +75,9 @@ export function WizardStepCompetitiveLandscape({
         onSelectAll={trustSignals.onSelectAll}
         onDeselectAll={trustSignals.onDeselectAll}
         onAddCustom={trustSignals.onAddCustom}
+        onRefresh={trustSignals.onRefresh}
+        refreshesRemaining={trustSignals.refreshesRemaining}
+        isRefreshing={trustSignals.isRefreshing}
       />
     </div>
   );

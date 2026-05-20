@@ -99,6 +99,28 @@ export interface ResuggestResponse {
   topics: ResuggestCandidateDto[];
 }
 
+export type VisibilityLens =
+  | "products"
+  | "audiences"
+  | "markets"
+  | "topics"
+  | "competitors"
+  | "trustSignals";
+
+export interface RegenerateLensRequest {
+  lens: VisibilityLens;
+  industry: string | null;
+  category: string | null;
+  products: string[];
+  audiences: string[];
+  markets: string[];
+}
+
+export interface RegenerateLensResponse {
+  lens: string;
+  candidates: ResuggestCandidateDto[];
+}
+
 export interface DiscoveryProgressMessage {
   brandId: string;
   status: DiscoveryStatus;

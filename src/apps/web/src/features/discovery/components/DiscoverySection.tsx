@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CheckSquare, Square } from "lucide-react";
+import { ChevronDown, ChevronRight, CheckSquare, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/atoms/button";
+import { cn } from "@/lib/utils";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { SuggestionCard } from "./SuggestionCard";
 import { AddCustomItemForm } from "./AddCustomItemForm";
@@ -17,6 +18,9 @@ interface DiscoverySectionProps {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string) => void;
+  onRefresh?: () => void;
+  refreshesRemaining?: number;
+  isRefreshing?: boolean;
 }
 
 export function DiscoverySection({
@@ -29,6 +33,9 @@ export function DiscoverySection({
   onSelectAll,
   onDeselectAll,
   onAddCustom,
+  onRefresh,
+  refreshesRemaining,
+  isRefreshing,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
@@ -50,6 +57,29 @@ export function DiscoverySection({
             <h3 className="font-semibold text-neutral-900">{title}</h3>
             <p className="text-xs text-neutral-500">{description}</p>
           </div>
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={refreshesRemaining === 0 || isRefreshing}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRefresh();
+              }}
+              className="ml-2 gap-1 text-xs"
+              title={DISCOVERY_COPY.buttons.refreshLens}
+            >
+              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+              {refreshesRemaining !== undefined && (
+                <span className="text-neutral-400">
+                  {DISCOVERY_COPY.buttons.refreshLensRemaining.replace(
+                    "{count}",
+                    String(refreshesRemaining),
+                  )}
+                </span>
+              )}
+            </Button>
+          )}
         </div>
         <span className="text-sm text-neutral-500">
           {DISCOVERY_COPY.confirmation.selectedCount

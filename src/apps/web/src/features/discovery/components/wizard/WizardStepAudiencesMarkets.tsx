@@ -9,6 +9,9 @@ interface SectionData {
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string) => void;
+  onRefresh?: () => void;
+  refreshesRemaining?: number;
+  isRefreshing?: boolean;
 }
 
 interface WizardStepAudiencesMarketsProps {
@@ -32,6 +35,9 @@ export function WizardStepAudiencesMarkets({
         onSelectAll={audiences.onSelectAll}
         onDeselectAll={audiences.onDeselectAll}
         onAddCustom={audiences.onAddCustom}
+        onRefresh={audiences.onRefresh}
+        refreshesRemaining={audiences.refreshesRemaining}
+        isRefreshing={audiences.isRefreshing}
       />
       <DiscoverySection
         title={DISCOVERY_COPY.sections.markets.title}
@@ -43,6 +49,9 @@ export function WizardStepAudiencesMarkets({
         onSelectAll={markets.onSelectAll}
         onDeselectAll={markets.onDeselectAll}
         onAddCustom={markets.onAddCustom}
+        onRefresh={markets.onRefresh}
+        refreshesRemaining={markets.refreshesRemaining}
+        isRefreshing={markets.isRefreshing}
       />
     </div>
   );
