@@ -33,6 +33,8 @@ public class GetDiscoveryResultsQueryHandler : IRequestHandler<GetDiscoveryResul
             .OrderByDescending(r => r.StartedAt)
             .FirstOrDefault();
 
+        var latestRunId = latestRun?.Id;
+
         return new DiscoveryResultsDto(
             brand.Id,
             brand.Name,
@@ -48,16 +50,16 @@ public class GetDiscoveryResultsQueryHandler : IRequestHandler<GetDiscoveryResul
                     brand.BrandProfile.Source.ToString(),
                     brand.BrandProfile.Status.ToString())
                 : null,
-            brand.Products.OrderByDescending(p => p.Confidence).Take(4).Select(p => ToCandidate(p.Id, p.Name, p.Description, p.Confidence, p.Source, p.Status,
+            brand.Products.Where(p => p.DiscoveryRunId == latestRunId).OrderByDescending(p => p.Confidence).Take(4).Select(p => ToCandidate(p.Id, p.Name, p.Description, p.Confidence, p.Source, p.Status,
                 new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString(), ["relatedPageUrl"] = p.RelatedPageUrl })).ToList(),
-            brand.Audiences.OrderByDescending(a => a.Confidence).Take(4).Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source, a.Status, new Dictionary<string, object?>())).ToList(),
-            brand.Markets.OrderByDescending(m => m.Confidence).Take(4).Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source, m.Status,
+            brand.Audiences.Where(a => a.DiscoveryRunId == latestRunId).OrderByDescending(a => a.Confidence).Take(4).Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source, a.Status, new Dictionary<string, object?>())).ToList(),
+            brand.Markets.Where(m => m.DiscoveryRunId == latestRunId).OrderByDescending(m => m.Confidence).Take(4).Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source, m.Status,
                 new Dictionary<string, object?> { ["marketType"] = m.MarketType.ToString(), ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
-            brand.Topics.OrderByDescending(t => t.Confidence).Take(4).Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source, t.Status,
+            brand.Topics.Where(t => t.DiscoveryRunId == latestRunId).OrderByDescending(t => t.Confidence).Take(4).Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source, t.Status,
                 new Dictionary<string, object?> { ["topicType"] = t.TopicType.ToString() })).ToList(),
-            brand.Competitors.OrderByDescending(c => c.Confidence).Take(4).Select(c => ToCandidate(c.Id, c.Name, c.Description, c.Confidence, c.Source, c.Status,
+            brand.Competitors.Where(c => c.DiscoveryRunId == latestRunId).OrderByDescending(c => c.Confidence).Take(4).Select(c => ToCandidate(c.Id, c.Name, c.Description, c.Confidence, c.Source, c.Status,
                 new Dictionary<string, object?> { ["domain"] = c.Domain })).ToList(),
-            brand.TrustSignals.OrderByDescending(ts => ts.Confidence).Take(4).Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source, ts.Status,
+            brand.TrustSignals.Where(ts => ts.DiscoveryRunId == latestRunId).OrderByDescending(ts => ts.Confidence).Take(4).Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source, ts.Status,
                 new Dictionary<string, object?> { ["signalType"] = ts.SignalType.ToString() })).ToList());
     }
 

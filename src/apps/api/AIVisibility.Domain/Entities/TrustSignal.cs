@@ -13,6 +13,8 @@ public class TrustSignal
     public double Confidence { get; set; }
     public CandidateSource Source { get; set; }
     public CandidateStatus Status { get; set; }
+    public Guid DiscoveryRunId { get; set; }
 
     public Brand Brand { get; set; } = null!;
+    public DiscoveryRun DiscoveryRun { get; set; } = null!;
 }

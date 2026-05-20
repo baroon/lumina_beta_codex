@@ -18,6 +18,7 @@ public class CompetitorConfiguration : IEntityTypeConfiguration<Competitor>
         builder.Property(c => c.Confidence).HasColumnName("confidence");
         builder.Property(c => c.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(c => c.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
+        builder.Property(c => c.DiscoveryRunId).HasColumnName("discovery_run_id");
 
         builder.HasIndex(c => c.BrandId);
     }

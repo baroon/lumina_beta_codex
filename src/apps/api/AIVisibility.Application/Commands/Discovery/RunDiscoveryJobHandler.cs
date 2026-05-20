@@ -72,11 +72,11 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 _db.BrandProfiles.Add(extractionResult.BrandProfile);
             }
 
-            foreach (var p in extractionResult.Products) { p.BrandId = brandId; _db.Products.Add(p); }
-            foreach (var a in extractionResult.Audiences) { a.BrandId = brandId; _db.Audiences.Add(a); }
-            foreach (var m in extractionResult.Markets) { m.BrandId = brandId; _db.Markets.Add(m); }
-            foreach (var t in extractionResult.Topics) { t.BrandId = brandId; _db.Topics.Add(t); }
-            foreach (var ts in extractionResult.TrustSignals) { ts.BrandId = brandId; _db.TrustSignals.Add(ts); }
+            foreach (var p in extractionResult.Products) { p.BrandId = brandId; p.DiscoveryRunId = discoveryRunId; _db.Products.Add(p); }
+            foreach (var a in extractionResult.Audiences) { a.BrandId = brandId; a.DiscoveryRunId = discoveryRunId; _db.Audiences.Add(a); }
+            foreach (var m in extractionResult.Markets) { m.BrandId = brandId; m.DiscoveryRunId = discoveryRunId; _db.Markets.Add(m); }
+            foreach (var t in extractionResult.Topics) { t.BrandId = brandId; t.DiscoveryRunId = discoveryRunId; _db.Topics.Add(t); }
+            foreach (var ts in extractionResult.TrustSignals) { ts.BrandId = brandId; ts.DiscoveryRunId = discoveryRunId; _db.TrustSignals.Add(ts); }
             await _db.SaveChangesAsync(cancellationToken);
 
             // Step 5: Competitor discovery
@@ -88,7 +88,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 extractionResult.BrandProfile?.Category,
                 cancellationToken);
 
-            foreach (var c in competitors) { c.BrandId = brandId; _db.Competitors.Add(c); }
+            foreach (var c in competitors) { c.BrandId = brandId; c.DiscoveryRunId = discoveryRunId; _db.Competitors.Add(c); }
             await _db.SaveChangesAsync(cancellationToken);
 
             // Complete
