@@ -127,11 +127,11 @@
         {
           "name": "Select",
           "category": "Atoms",
-          "path": "src/components/atoms/Select.tsx",
-          "status": "planned",
-          "variants": ["default", "error"],
-          "dependencies": ["Popover"],
-          "notes": "Dropdown select control with popover-based options list."
+          "path": "src/components/atoms/select.tsx",
+          "status": "implemented",
+          "variants": ["sm", "default"],
+          "dependencies": ["@radix-ui/react-select"],
+          "notes": "Custom styled dropdown select built on Radix UI Select. Supports icons per item, placeholder, size variants, and check indicator. Linear-inspired design."
         },
         {
           "name": "RadioGroup",
@@ -249,6 +249,15 @@
           "variants": ["default", "active", "collapsed"],
           "dependencies": ["Tooltip"],
           "notes": "Individual nav item with icon, label, and active state."
+        },
+        {
+          "name": "InlineEdit",
+          "category": "Atoms",
+          "path": "src/components/atoms/inline-edit.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Input"],
+          "notes": "Click-to-edit text field. Displays as styled text, transforms to Input on click. Commits on Enter/blur, cancels on Escape."
         },
         {
           "name": "BreadcrumbNav",
@@ -608,8 +617,8 @@
           "path": "src/features/discovery/components/AddCustomItemForm.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Input", "Button"],
-          "notes": "Form for manually adding custom pages or topics to the discovery list."
+          "dependencies": ["Input", "Button", "Select"],
+          "notes": "Form for manually adding custom items with optional type dropdown (Select with icons)."
         },
         {
           "name": "WizardStepBrandIdentity",
@@ -617,8 +626,8 @@
           "path": "src/features/discovery/components/wizard/WizardStepBrandIdentity.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "ConfidenceTag"],
-          "notes": "Wizard step 1: read-only brand profile card showing description, industry, category, positioning, and confidence."
+          "dependencies": ["InlineEdit", "ConfidenceTag"],
+          "notes": "Wizard step 1: brand profile card with inline-editable industry, category, and positioning fields."
         },
         {
           "name": "WizardStepProducts",

@@ -89,6 +89,7 @@ export const DISCOVERY_COPY = {
   },
   labels: {
     aiSource: "AI",
+    manualSource: "Manual",
   },
   confidence: {
     high: "High",
@@ -105,6 +106,15 @@ export const DISCOVERY_COPY = {
   customItem: {
     add: "Add",
     cancel: "Cancel",
+    typePlaceholder: "Type",
+  },
+  productTypes: {
+    Product: "Product",
+    Service: "Service",
+    Feature: "Feature",
+    Solution: "Solution",
+    Tool: "Tool",
+    Resource: "Resource",
   },
   wizard: {
     steps: [

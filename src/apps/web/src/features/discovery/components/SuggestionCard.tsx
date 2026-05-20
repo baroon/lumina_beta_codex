@@ -1,5 +1,5 @@
 import { Checkbox } from "@/components/atoms/checkbox";
-import { Badge } from "@/components/atoms/badge";
+import { Sparkles, UserPen } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";
@@ -11,11 +11,37 @@ interface SuggestionCardProps {
   onToggle: (id: string) => void;
 }
 
+function SourceIcon({ source }: { source: CandidateDto["source"] }) {
+  if (source === "LLMSuggested" || source === "WebsiteCrawl" || source === "SearchSuggested") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-primary-600"
+        title={DISCOVERY_COPY.labels.aiSource}
+      >
+        <Sparkles className="h-3 w-3" />
+        {DISCOVERY_COPY.labels.aiSource}
+      </span>
+    );
+  }
+  if (source === "UserAdded") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-neutral-500"
+        title={DISCOVERY_COPY.labels.manualSource}
+      >
+        <UserPen className="h-3 w-3" />
+        {DISCOVERY_COPY.labels.manualSource}
+      </span>
+    );
+  }
+  return null;
+}
+
 export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCardProps) {
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
+        "relative flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
         selected
           ? "border-primary-600 bg-primary-50"
           : "border-neutral-200 hover:border-neutral-300",
@@ -32,15 +58,13 @@ export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCard
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>
           <ConfidenceTag confidence={candidate.confidence} />
-          {candidate.source === "LLMSuggested" && (
-            <Badge variant="outline" className="text-xs">
-              {DISCOVERY_COPY.labels.aiSource}
-            </Badge>
-          )}
         </div>
         {candidate.description && (
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{candidate.description}</p>
         )}
+      </div>
+      <div className="shrink-0">
+        <SourceIcon source={candidate.source} />
       </div>
     </div>
   );

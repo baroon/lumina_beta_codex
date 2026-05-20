@@ -1,12 +1,17 @@
+import { InlineEdit } from "@/components/atoms/inline-edit";
 import { ConfidenceTag } from "../ConfidenceTag";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import type { BrandProfileDto } from "@/types/api";
 
 interface WizardStepBrandIdentityProps {
   brandProfile: BrandProfileDto | null;
+  onProfileChange?: (field: string, value: string) => void;
 }
 
-export function WizardStepBrandIdentity({ brandProfile }: WizardStepBrandIdentityProps) {
+export function WizardStepBrandIdentity({
+  brandProfile,
+  onProfileChange,
+}: WizardStepBrandIdentityProps) {
   if (!brandProfile) {
     return (
       <div className="rounded-lg border border-neutral-200 bg-surface-card p-6 text-center text-neutral-500">
@@ -32,30 +37,42 @@ export function WizardStepBrandIdentity({ brandProfile }: WizardStepBrandIdentit
             <dd className="text-neutral-700">{brandProfile.shortDescription}</dd>
           </div>
         )}
-        {brandProfile.industry && (
-          <div>
-            <dt className="text-xs font-medium text-neutral-400">
-              {DISCOVERY_COPY.confirmation.industryLabel}
-            </dt>
-            <dd className="text-neutral-700">{brandProfile.industry}</dd>
-          </div>
-        )}
-        {brandProfile.category && (
-          <div>
-            <dt className="text-xs font-medium text-neutral-400">
-              {DISCOVERY_COPY.confirmation.categoryLabel}
-            </dt>
-            <dd className="text-neutral-700">{brandProfile.category}</dd>
-          </div>
-        )}
-        {brandProfile.positioning && (
-          <div>
-            <dt className="text-xs font-medium text-neutral-400">
-              {DISCOVERY_COPY.confirmation.positioningLabel}
-            </dt>
-            <dd className="text-neutral-700">{brandProfile.positioning}</dd>
-          </div>
-        )}
+        <div>
+          <dt className="text-xs font-medium text-neutral-400">
+            {DISCOVERY_COPY.confirmation.industryLabel}
+          </dt>
+          <dd>
+            <InlineEdit
+              value={brandProfile.industry ?? ""}
+              onChange={(v) => onProfileChange?.("industry", v)}
+              placeholder="Click to edit"
+            />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-neutral-400">
+            {DISCOVERY_COPY.confirmation.categoryLabel}
+          </dt>
+          <dd>
+            <InlineEdit
+              value={brandProfile.category ?? ""}
+              onChange={(v) => onProfileChange?.("category", v)}
+              placeholder="Click to edit"
+            />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-medium text-neutral-400">
+            {DISCOVERY_COPY.confirmation.positioningLabel}
+          </dt>
+          <dd>
+            <InlineEdit
+              value={brandProfile.positioning ?? ""}
+              onChange={(v) => onProfileChange?.("positioning", v)}
+              placeholder="Click to edit"
+            />
+          </dd>
+        </div>
       </dl>
     </div>
   );

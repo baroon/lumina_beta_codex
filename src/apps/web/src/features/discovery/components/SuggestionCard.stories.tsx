@@ -39,9 +39,24 @@ export const Selected: Story = {
   args: { candidate: baseCand, selected: true },
 };
 
-export const WithAIBadge: Story = {
+export const AISource: Story = {
   args: {
     candidate: { ...baseCand, source: "LLMSuggested" },
     selected: false,
+  },
+};
+
+export const ManualSource: Story = {
+  args: {
+    candidate: {
+      ...baseCand,
+      id: "2",
+      name: "Custom Analytics Tool",
+      description: "Manually added by the user.",
+      confidence: 1,
+      source: "UserAdded",
+      status: "UserAdded",
+    },
+    selected: true,
   },
 };

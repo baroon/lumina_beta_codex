@@ -7,6 +7,7 @@ import { SuggestionCard } from "./SuggestionCard";
 import { AddCustomItemForm } from "./AddCustomItemForm";
 import { ManualFallbackPrompt } from "./ManualFallbackPrompt";
 import type { CandidateDto } from "@/types/api";
+import type { TypeOption } from "./AddCustomItemForm";
 
 interface DiscoverySectionProps {
   title: string;
@@ -17,10 +18,11 @@ interface DiscoverySectionProps {
   onToggle: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
-  onAddCustom: (name: string) => void;
+  onAddCustom: (name: string, metadata?: Record<string, string>) => void;
   onRefresh?: () => void;
   refreshesRemaining?: number;
   isRefreshing?: boolean;
+  typeOptions?: TypeOption[];
 }
 
 export function DiscoverySection({
@@ -36,6 +38,7 @@ export function DiscoverySection({
   onRefresh,
   refreshesRemaining,
   isRefreshing,
+  typeOptions,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
@@ -127,6 +130,7 @@ export function DiscoverySection({
           <AddCustomItemForm
             placeholder={`Add a ${title.toLowerCase().replace(/s$/, "")}...`}
             onAdd={onAddCustom}
+            typeOptions={typeOptions}
           />
         </div>
       )}
