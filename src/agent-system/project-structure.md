@@ -106,6 +106,7 @@ apps/web/
 │   │   │   ├── components/             DiscoveryConfirmationScreen, SuggestionCard, etc.
 │   │   │   │   └── wizard/            Wizard step components (BrandIdentity, Products, AudiencesMarkets, CompetitiveLandscape, Review)
 │   │   │   ├── hooks/                  useDiscovery, useResuggestDiscovery, useCrawlProgress
+│   │   │   ├── confidence.ts           Confidence thresholds, level helpers, preselection utilities
 │   │   │   └── types.ts
 │   │   ├── trackers/
 │   │   │   ├── components/             TrackerNameEditor, PromptCard, PlatformSelector, etc.
