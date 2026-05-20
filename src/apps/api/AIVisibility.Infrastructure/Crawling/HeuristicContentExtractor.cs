@@ -14,7 +14,7 @@ public class HeuristicContentExtractor : IContentExtractor
         var products = ExtractProducts(pages);
         var audiences = ExtractAudiences(pages);
         var markets = ExtractMarkets(brand, pages);
-        var topics = ExtractTopics(pages);
+        var topics = new List<Topic>();
         var trustSignals = ExtractTrustSignals(pages);
 
         return Task.FromResult(new ExtractionResult(brandProfile, products, audiences, markets, topics, trustSignals));
@@ -238,39 +238,6 @@ public class HeuristicContentExtractor : IContentExtractor
         }
 
         return markets.Take(4).ToList();
-    }
-
-    private static List<Topic> ExtractTopics(List<CrawledPage> pages)
-    {
-        var topics = new List<Topic>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var page in pages)
-        {
-            var headings = ParseHeadings(page.HeadingsJson);
-            foreach (var heading in headings.Where(h => h.Tag == "h1" || h.Tag == "h2"))
-            {
-                var text = heading.Text.Trim();
-                if (text.Length < 3 || text.Length > 100 || seen.Contains(text)) continue;
-                if (IsGenericHeading(text)) continue;
-
-                seen.Add(text);
-                var category = PagePriorityClassifier.Classify(page.Url);
-                topics.Add(new Topic
-                {
-                    Id = Guid.NewGuid(),
-                    Name = text,
-                    TopicType = category == PageCategory.FAQ ? TopicType.General :
-                                category == PageCategory.Product ? TopicType.ProductSpecific :
-                                TopicType.General,
-                    Confidence = heading.Tag == "h1" ? 0.6 : 0.4,
-                    Source = CandidateSource.WebsiteCrawl,
-                    Status = CandidateStatus.Suggested
-                });
-            }
-        }
-
-        return topics.Take(4).ToList();
     }
 
     private static List<TrustSignal> ExtractTrustSignals(List<CrawledPage> pages)

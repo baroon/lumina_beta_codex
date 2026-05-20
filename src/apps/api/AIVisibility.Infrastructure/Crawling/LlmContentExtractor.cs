@@ -48,22 +48,19 @@ public class LlmContentExtractor : IContentExtractor
         // Call 2: Full Discovery Extraction (step 3)
         await _notifier.NotifyProgressAsync(brand.Id, Domain.Enums.DiscoveryStatus.Extracting, 0,
             "Discovering products, audiences, and markets...", step: 3, totalSteps: 5, cancellationToken: cancellationToken);
-        var (products, audiences, markets, topics, trustSignals) = await ExtractEntitiesAsync(
+        var (products, audiences, markets, trustSignals) = await ExtractEntitiesAsync(
             brand, brandProfile, pages, pageTexts, baseline, cancellationToken);
 
-        // Call 3: Topic Suggestions (step 4)
+        // Step 4 progress — topics will be generated during confirmation via resuggest
         await _notifier.NotifyProgressAsync(brand.Id, Domain.Enums.DiscoveryStatus.Extracting, 0,
-            "Generating discovery search categories...", step: 4, totalSteps: 5, cancellationToken: cancellationToken);
-        var topicSuggestions = await SuggestTopicsAsync(brand, brandProfile, cancellationToken);
-        topics.AddRange(topicSuggestions);
-        topics = topics.OrderByDescending(t => t.Confidence).Take(4).ToList();
+            "Preparing topic suggestions...", step: 4, totalSteps: 5, cancellationToken: cancellationToken);
 
         return new ExtractionResult(
             brandProfile,
             products,
             audiences,
             markets,
-            topics,
+            new List<Topic>(),
             trustSignals);
     }
 
@@ -218,8 +215,7 @@ public class LlmContentExtractor : IContentExtractor
         1. Products/Services: What the brand sells or offers
         2. Target Audiences: Who the brand serves
         3. Markets: Geographic markets the brand operates in
-        4. Topics: Key industry topics and themes relevant to the brand
-        5. Trust Signals: Credibility indicators found on the website
+        4. Trust Signals: Credibility indicators found on the website
 
         Return JSON only:
         {
@@ -231,9 +227,6 @@ public class LlmContentExtractor : IContentExtractor
           ],
           "markets": [
             {"name": "Market Name", "type": "Country|Region|City|Global", "countryCode": "US", "confidence": 75}
-          ],
-          "topics": [
-            {"name": "Topic Name", "description": "Brief description", "type": "General|Industry|ProductSpecific|AudienceSpecific", "confidence": 70}
           ],
           "trustSignals": [
             {"name": "Signal Name", "description": "What was found", "type": "PricingTransparency|ReviewsTestimonials|CaseStudies|Certifications|Awards|Partnerships|MediaMentions|SecurityCompliance|MoneyBackGuarantee|FreeTrial|SocialProof|ExpertEndorsement|PrivacyPolicy|TermsOfService", "confidence": 75}
@@ -253,7 +246,6 @@ public class LlmContentExtractor : IContentExtractor
           * Country-specific case studies, testimonials, or customer logos
           * Job postings mentioning office locations
           If no clear geographic signals exist, infer from the website TLD, content language, and industry norms. Return your top 4, ranked by confidence. Use ISO country codes when applicable. Prefer specific countries over vague regions like "Global" unless the brand genuinely operates worldwide with evidence.
-        - Topics: Include industry topics, technology areas, and business themes. Return your top 4, ranked by relevance.
         - Trust Signals: Look for pricing pages, testimonials/reviews, case studies, certifications, awards, partner logos, press mentions, security badges, free trials, money-back guarantees, "trusted by X companies", expert endorsements, privacy policies, and terms of service. Return your top 4. Include specific evidence (e.g., "Trusted by 500+ companies" not just "Social Proof").
         - Confidence: 0-100 scale. Higher = more evidence in the content.
         - Be factual. Only include items evidenced in the content.
@@ -320,11 +312,11 @@ public class LlmContentExtractor : IContentExtractor
                 parts.Add(Truncate(contactText, 1000));
         }
 
-        parts.Add("\nExtract all products/services, target audiences, markets, topics, and trust signals from this brand's website content.");
+        parts.Add("\nExtract all products/services, target audiences, markets, and trust signals from this brand's website content.");
         return string.Join("\n", parts);
     }
 
-    private async Task<(List<Product>, List<Audience>, List<Market>, List<Topic>, List<TrustSignal>)> ExtractEntitiesAsync(
+    private async Task<(List<Product>, List<Audience>, List<Market>, List<TrustSignal>)> ExtractEntitiesAsync(
         Brand brand, BrandProfile? profile, List<CrawledPage> pages,
         Dictionary<string, string> pageTexts, ExtractionResult baseline, CancellationToken ct)
     {
@@ -334,18 +326,17 @@ public class LlmContentExtractor : IContentExtractor
             var response = await _openAi.ChatCompletionAsync(EntityExtractionSystem, userPrompt, 1024, 0.3, ct);
 
             if (string.IsNullOrWhiteSpace(response))
-                return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.Topics, baseline.TrustSignals);
+                return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.TrustSignals);
 
             var json = ExtractJson(response);
             var result = JsonSerializer.Deserialize<EntityExtractionResponse>(json, JsonOptions);
 
             if (result == null)
-                return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.Topics, baseline.TrustSignals);
+                return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.TrustSignals);
 
             var products = MapProducts(result.Products);
             var audiences = MapAudiences(result.Audiences);
             var markets = MapMarkets(result.Markets);
-            var topics = MapTopics(result.Topics);
             var trustSignals = MapTrustSignals(result.TrustSignals);
 
             // Use LLM results if non-empty, otherwise fall back to heuristic
@@ -353,14 +344,13 @@ public class LlmContentExtractor : IContentExtractor
                 products.Count > 0 ? products : baseline.Products,
                 audiences.Count > 0 ? audiences : baseline.Audiences,
                 markets.Count > 0 ? markets : baseline.Markets,
-                topics.Count > 0 ? topics : baseline.Topics,
                 trustSignals.Count > 0 ? trustSignals : baseline.TrustSignals
             );
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "LLM entity extraction failed, using heuristic fallback");
-            return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.Topics, baseline.TrustSignals);
+            return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.TrustSignals);
         }
     }
 
@@ -420,25 +410,6 @@ public class LlmContentExtractor : IContentExtractor
             .ToList();
     }
 
-    private static List<Topic> MapTopics(List<TopicDto>? dtos)
-    {
-        if (dtos == null) return new List<Topic>();
-        return dtos
-            .Where(d => !string.IsNullOrWhiteSpace(d.Name))
-            .Select(d => new Topic
-            {
-                Id = Guid.NewGuid(),
-                Name = d.Name!,
-                Description = d.Description,
-                TopicType = ParseEnum(d.Type, TopicType.General),
-                Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
-                Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
-            })
-            .Take(4)
-            .ToList();
-    }
-
     private static List<TrustSignal> MapTrustSignals(List<TrustSignalDto>? dtos)
     {
         if (dtos == null) return new List<TrustSignal>();
@@ -462,80 +433,12 @@ public class LlmContentExtractor : IContentExtractor
         List<ProductDto>? Products,
         List<AudienceDto>? Audiences,
         List<MarketDto>? Markets,
-        List<TopicDto>? Topics,
         List<TrustSignalDto>? TrustSignals);
 
     private record ProductDto(string? Name, string? Description, string? Type, int Confidence);
     private record AudienceDto(string? Name, string? Description, int Confidence);
     private record MarketDto(string? Name, string? Type, string? CountryCode, int Confidence);
-    private record TopicDto(string? Name, string? Description, string? Type, int Confidence);
     private record TrustSignalDto(string? Name, string? Description, string? Type, int Confidence);
-
-    #endregion
-
-    #region Call 3: Topic Suggestions
-
-    private const string TopicSuggestionsSystem = """
-        You suggest industry topics and themes for a brand's AI visibility monitoring. These are concise topic labels (2-5 words) representing the subject areas where the brand should be visible in AI-generated answers.
-
-        Good topics are short, descriptive labels like:
-        - Industry verticals: "Commercial Interior Design", "Green Building"
-        - Service areas: "Landscape Architecture", "Space Planning"
-        - Domain expertise: "LEED Certification", "Sustainable Materials"
-        - Market niches: "Luxury Residential Design", "Office Fit-Outs"
-
-        Each topic should be a concise noun phrase (2-5 words), NOT a full search query or sentence. Do NOT include the brand name.
-
-        Return JSON only:
-        ["Topic Name 1", "Topic Name 2", "Topic Name 3", "Topic Name 4"]
-        """;
-
-    private static string BuildTopicSuggestionsPrompt(Brand brand, BrandProfile? profile)
-    {
-        var parts = new List<string> { $"Brand: \"{brand.Name}\"" };
-
-        if (profile != null && !string.IsNullOrWhiteSpace(profile.ShortDescription))
-            parts.Add($"Description: {profile.ShortDescription}");
-
-        parts.Add("\nSuggest 4 industry topics or themes (2-5 words each) that represent the subject areas this brand should be visible in. Use the brand description to identify relevant verticals, service areas, and domain expertise.");
-        return string.Join("\n", parts);
-    }
-
-    private async Task<List<Topic>> SuggestTopicsAsync(Brand brand, BrandProfile? profile, CancellationToken ct)
-    {
-        try
-        {
-            var userPrompt = BuildTopicSuggestionsPrompt(brand, profile);
-            var response = await _openAi.ChatCompletionAsync(TopicSuggestionsSystem, userPrompt, 512, 0.5, ct);
-
-            if (string.IsNullOrWhiteSpace(response))
-                return new List<Topic>();
-
-            var json = ExtractJson(response);
-            var suggestions = JsonSerializer.Deserialize<List<string>>(json, JsonOptions);
-
-            if (suggestions == null) return new List<Topic>();
-
-            return suggestions
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => new Topic
-                {
-                    Id = Guid.NewGuid(),
-                    Name = s.Trim(),
-                    TopicType = TopicType.General,
-                    Confidence = 0.7,
-                    Source = CandidateSource.LLMSuggested,
-                    Status = CandidateStatus.Suggested
-                })
-                .Take(4)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "LLM topic suggestion failed");
-            return new List<Topic>();
-        }
-    }
 
     #endregion
 

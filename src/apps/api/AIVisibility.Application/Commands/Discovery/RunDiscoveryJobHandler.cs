@@ -10,7 +10,6 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
     private readonly IAppDbContext _db;
     private readonly IWebsiteDiscoveryService _crawlService;
     private readonly IContentExtractor _extractor;
-    private readonly ICompetitorSuggestionService _competitorService;
     private readonly IDiscoveryProgressNotifier _notifier;
     private readonly ILogger<RunDiscoveryJobHandler> _logger;
 
@@ -18,14 +17,12 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
         IAppDbContext db,
         IWebsiteDiscoveryService crawlService,
         IContentExtractor extractor,
-        ICompetitorSuggestionService competitorService,
         IDiscoveryProgressNotifier notifier,
         ILogger<RunDiscoveryJobHandler> logger)
     {
         _db = db;
         _crawlService = crawlService;
         _extractor = extractor;
-        _competitorService = competitorService;
         _notifier = notifier;
         _logger = logger;
     }
@@ -79,17 +76,9 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
             foreach (var ts in extractionResult.TrustSignals) { ts.BrandId = brandId; ts.DiscoveryRunId = discoveryRunId; _db.TrustSignals.Add(ts); }
             await _db.SaveChangesAsync(cancellationToken);
 
-            // Step 5: Competitor discovery
+            // Step 5 progress — competitors will be generated during confirmation via resuggest
             await _notifier.NotifyProgressAsync(brandId, DiscoveryStatus.Extracting, crawlResult.TotalPagesCrawled,
-                "Identifying competitive landscape...", step: 5, totalSteps: 5, cancellationToken: cancellationToken);
-            var competitors = await _competitorService.SuggestCompetitorsAsync(
-                brand.Name,
-                extractionResult.BrandProfile?.Industry,
-                extractionResult.BrandProfile?.Category,
-                cancellationToken);
-
-            foreach (var c in competitors) { c.BrandId = brandId; c.DiscoveryRunId = discoveryRunId; _db.Competitors.Add(c); }
-            await _db.SaveChangesAsync(cancellationToken);
+                "Preparing competitive analysis...", step: 5, totalSteps: 5, cancellationToken: cancellationToken);
 
             // Complete
             run.Status = DiscoveryStatus.AwaitingConfirmation;
