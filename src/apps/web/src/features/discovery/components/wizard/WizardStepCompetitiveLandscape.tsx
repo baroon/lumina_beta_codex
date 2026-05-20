@@ -1,6 +1,35 @@
+import {
+  Trophy,
+  ShieldCheck,
+  Newspaper,
+  Star,
+  GraduationCap,
+  BarChart3,
+  Users,
+} from "lucide-react";
 import { DiscoverySection } from "../DiscoverySection";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import type { CandidateDto } from "@/types/api";
+
+const ICON_CLASS = "h-3.5 w-3.5";
+
+const TRUST_SIGNAL_TYPE_ICONS: Record<string, React.ReactNode> = {
+  AwardsAndRecognitions: <Trophy className={ICON_CLASS} />,
+  CertificationsAndAccreditations: <ShieldCheck className={ICON_CLASS} />,
+  PressAndMediaMentions: <Newspaper className={ICON_CLASS} />,
+  TestimonialsAndReviews: <Star className={ICON_CLASS} />,
+  ExpertEndorsements: <GraduationCap className={ICON_CLASS} />,
+  CaseStudiesAndSuccessMetrics: <BarChart3 className={ICON_CLASS} />,
+  ClientAndPartnerLogos: <Users className={ICON_CLASS} />,
+};
+
+const TRUST_SIGNAL_TYPE_OPTIONS = Object.entries(DISCOVERY_COPY.trustSignalTypes).map(
+  ([value, label]) => ({
+    value,
+    label,
+    icon: TRUST_SIGNAL_TYPE_ICONS[value],
+  }),
+);
 
 interface SectionData {
   candidates: CandidateDto[];
@@ -8,7 +37,7 @@ interface SectionData {
   onToggle: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
-  onAddCustom: (name: string) => void;
+  onAddCustom: (name: string, metadata?: Record<string, string>) => void;
   onRefresh?: () => void;
   refreshesRemaining?: number;
   isRefreshing?: boolean;
@@ -78,6 +107,8 @@ export function WizardStepCompetitiveLandscape({
         onRefresh={trustSignals.onRefresh}
         refreshesRemaining={trustSignals.refreshesRemaining}
         isRefreshing={trustSignals.isRefreshing}
+        typeOptions={TRUST_SIGNAL_TYPE_OPTIONS}
+        typeMetadataKey="signalType"
       />
     </div>
   );

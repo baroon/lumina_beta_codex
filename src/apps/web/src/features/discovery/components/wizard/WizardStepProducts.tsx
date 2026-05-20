@@ -58,6 +58,7 @@ export function WizardStepProducts({
       refreshesRemaining={refreshesRemaining}
       isRefreshing={isRefreshing}
       typeOptions={PRODUCT_TYPE_OPTIONS}
+      typeMetadataKey="productType"
     />
   );
 }

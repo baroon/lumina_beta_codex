@@ -116,6 +116,15 @@ export const DISCOVERY_COPY = {
     Tool: "Tool",
     Resource: "Resource",
   },
+  trustSignalTypes: {
+    AwardsAndRecognitions: "Awards & Recognitions",
+    CertificationsAndAccreditations: "Certifications & Accreditations",
+    PressAndMediaMentions: "Press & Media Mentions",
+    TestimonialsAndReviews: "Testimonials & Reviews",
+    ExpertEndorsements: "Expert Endorsements",
+    CaseStudiesAndSuccessMetrics: "Case Studies & Success Metrics",
+    ClientAndPartnerLogos: "Client & Partner Logos",
+  },
   wizard: {
     steps: [
       { label: "Brand Identity" },

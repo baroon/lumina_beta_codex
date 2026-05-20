@@ -9,6 +9,8 @@ interface SuggestionCardProps {
   candidate: CandidateDto;
   selected: boolean;
   onToggle: (id: string) => void;
+  typeMetadataKey?: string;
+  typeLabels?: Record<string, string>;
 }
 
 function SourceIcon({ source }: { source: CandidateDto["source"] }) {
@@ -37,7 +39,16 @@ function SourceIcon({ source }: { source: CandidateDto["source"] }) {
   return null;
 }
 
-export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCardProps) {
+export function SuggestionCard({
+  candidate,
+  selected,
+  onToggle,
+  typeMetadataKey,
+  typeLabels,
+}: SuggestionCardProps) {
+  const typeValue = typeMetadataKey ? candidate.metadata?.[typeMetadataKey] : undefined;
+  const typeLabel = typeValue && typeLabels ? typeLabels[typeValue] : undefined;
+
   return (
     <div
       className={cn(
@@ -57,6 +68,11 @@ export function SuggestionCard({ candidate, selected, onToggle }: SuggestionCard
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>
+          {typeLabel && (
+            <span className="inline-flex shrink-0 items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+              {typeLabel}
+            </span>
+          )}
           <ConfidenceTag confidence={candidate.confidence} />
         </div>
         {candidate.description && (

@@ -97,16 +97,16 @@ public class HeuristicContentExtractorTests
             new()
             {
                 Id = Guid.NewGuid(),
-                Url = "https://example.com/pricing",
-                Title = "Pricing",
+                Url = "https://example.com/testimonials",
+                Title = "Testimonials",
                 HeadingsJson = "[]",
                 StatusCode = 200
             },
             new()
             {
                 Id = Guid.NewGuid(),
-                Url = "https://example.com/privacy-policy",
-                Title = "Privacy Policy",
+                Url = "https://example.com/case-studies",
+                Title = "Case Studies",
                 HeadingsJson = "[]",
                 StatusCode = 200
             }
@@ -115,8 +115,8 @@ public class HeuristicContentExtractorTests
         var result = await _extractor.ExtractCandidatesAsync(brand, pages);
 
         result.TrustSignals.Should().NotBeEmpty();
-        result.TrustSignals.Should().Contain(ts => ts.SignalType == TrustSignalType.PricingTransparency);
-        result.TrustSignals.Should().Contain(ts => ts.SignalType == TrustSignalType.PrivacyPolicy);
+        result.TrustSignals.Should().Contain(ts => ts.SignalType == TrustSignalType.TestimonialsAndReviews);
+        result.TrustSignals.Should().Contain(ts => ts.SignalType == TrustSignalType.CaseStudiesAndSuccessMetrics);
     }
 
     [Fact]

@@ -8,7 +8,6 @@ public class Topic
     public Guid BrandId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public TopicType TopicType { get; set; }
     public string? AliasesJson { get; set; }
     public double Confidence { get; set; }
     public CandidateSource Source { get; set; }

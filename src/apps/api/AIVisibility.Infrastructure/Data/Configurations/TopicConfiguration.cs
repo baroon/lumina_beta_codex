@@ -14,7 +14,6 @@ public class TopicConfiguration : IEntityTypeConfiguration<Topic>
         builder.Property(t => t.BrandId).HasColumnName("brand_id");
         builder.Property(t => t.Name).HasColumnName("name").HasMaxLength(300).IsRequired();
         builder.Property(t => t.Description).HasColumnName("description").HasMaxLength(2000);
-        builder.Property(t => t.TopicType).HasColumnName("topic_type").HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.AliasesJson).HasColumnName("aliases").HasColumnType("jsonb");
         builder.Property(t => t.Confidence).HasColumnName("confidence");
         builder.Property(t => t.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);

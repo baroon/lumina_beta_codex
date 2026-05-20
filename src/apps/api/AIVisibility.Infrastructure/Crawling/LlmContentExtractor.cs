@@ -230,7 +230,7 @@ public class LlmContentExtractor : IContentExtractor
             {"name": "Market Name", "type": "Country|Region|City|Global", "countryCode": "US", "confidence": 75}
           ],
           "trustSignals": [
-            {"name": "Signal Name", "description": "What was found", "type": "PricingTransparency|ReviewsTestimonials|CaseStudies|Certifications|Awards|Partnerships|MediaMentions|SecurityCompliance|MoneyBackGuarantee|FreeTrial|SocialProof|ExpertEndorsement|PrivacyPolicy|TermsOfService", "confidence": 75}
+            {"name": "Signal Name", "description": "What was found", "type": "AwardsAndRecognitions|CertificationsAndAccreditations|PressAndMediaMentions|TestimonialsAndReviews|ExpertEndorsements|CaseStudiesAndSuccessMetrics|ClientAndPartnerLogos", "confidence": 75}
           ]
         }
 
@@ -247,7 +247,15 @@ public class LlmContentExtractor : IContentExtractor
           * Country-specific case studies, testimonials, or customer logos
           * Job postings mentioning office locations
           If no clear geographic signals exist, infer from the website TLD, content language, and industry norms. Return your top 4, ranked by confidence. Use ISO country codes when applicable. Prefer specific countries over vague regions like "Global" unless the brand genuinely operates worldwide with evidence.
-        - Trust Signals: Look for pricing pages, testimonials/reviews, case studies, certifications, awards, partner logos, press mentions, security badges, free trials, money-back guarantees, "trusted by X companies", expert endorsements, privacy policies, and terms of service. Return your top 4. Include specific evidence (e.g., "Trusted by 500+ companies" not just "Social Proof").
+        - Trust Signals: Look for genuine credibility indicators on the website. Categorize each signal:
+          * AwardsAndRecognitions: Industry awards, rankings, "Best of" lists
+          * CertificationsAndAccreditations: ISO, SOC2, HIPAA, professional accreditations
+          * PressAndMediaMentions: "As seen in", press coverage, media logos
+          * TestimonialsAndReviews: Customer quotes, star ratings, review counts
+          * ExpertEndorsements: Analyst recommendations, thought-leader quotes
+          * CaseStudiesAndSuccessMetrics: Published case studies, ROI stats, success metrics
+          * ClientAndPartnerLogos: "Trusted by" logo grids, partner badges, client lists
+          Return your top 4. Include specific evidence (e.g., "Trusted by 500+ companies" not just a generic label).
         - Confidence: 0-100 scale. Higher = more evidence in the content.
         - Be factual. Only include items evidenced in the content.
         """;
@@ -419,7 +427,7 @@ public class LlmContentExtractor : IContentExtractor
             .Select(d => new TrustSignal
             {
                 Id = Guid.NewGuid(),
-                SignalType = ParseEnum(d.Type, TrustSignalType.SocialProof),
+                SignalType = ParseEnum(d.Type, TrustSignalType.TestimonialsAndReviews),
                 Name = d.Name!,
                 Description = d.Description,
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),

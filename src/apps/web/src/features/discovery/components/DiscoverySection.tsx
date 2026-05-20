@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, CheckSquare, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ interface DiscoverySectionProps {
   refreshesRemaining?: number;
   isRefreshing?: boolean;
   typeOptions?: TypeOption[];
+  typeMetadataKey?: string;
 }
 
 export function DiscoverySection({
@@ -39,10 +40,16 @@ export function DiscoverySection({
   refreshesRemaining,
   isRefreshing,
   typeOptions,
+  typeMetadataKey,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
   const selectedCount = candidates.filter((c) => selectedIds.has(c.id)).length;
+  const typeLabels = useMemo(
+    () =>
+      typeOptions ? Object.fromEntries(typeOptions.map((o) => [o.value, o.label])) : undefined,
+    [typeOptions],
+  );
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-surface-card">
@@ -122,6 +129,8 @@ export function DiscoverySection({
                     candidate={candidate}
                     selected={selectedIds.has(candidate.id)}
                     onToggle={onToggle}
+                    typeMetadataKey={typeMetadataKey}
+                    typeLabels={typeLabels}
                   />
                 ))}
               </div>
@@ -131,6 +140,7 @@ export function DiscoverySection({
             placeholder={`Add a ${title.toLowerCase().replace(/s$/, "")}...`}
             onAdd={onAddCustom}
             typeOptions={typeOptions}
+            metadataKey={typeMetadataKey}
           />
         </div>
       )}

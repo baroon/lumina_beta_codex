@@ -190,7 +190,6 @@ public class OpenAiResuggestService : IResuggestService
                 {
                     Id = Guid.NewGuid(),
                     Name = s.Trim(),
-                    TopicType = TopicType.General,
                     Confidence = 0.7,
                     Source = CandidateSource.LLMSuggested,
                     Status = CandidateStatus.Suggested
@@ -319,7 +318,7 @@ public class OpenAiResuggestService : IResuggestService
                     Description: null,
                     Confidence: 0.7,
                     Source: "LLMSuggested",
-                    Metadata: new Dictionary<string, object?> { ["topicType"] = "General" }))
+                    Metadata: new Dictionary<string, object?>()))
                 .Take(4)
                 .ToList();
 
@@ -368,17 +367,54 @@ public class OpenAiResuggestService : IResuggestService
     private async Task<LensRegenerateResult> RegenerateTrustSignalsAsync(ResuggestContext ctx, CancellationToken ct)
     {
         var system = """
-            You identify trust signals for a brand based on its profile. Trust signals are credibility indicators like pricing transparency, reviews, case studies, certifications, awards, partnerships, media mentions, security compliance, free trials, money-back guarantees, social proof, expert endorsements, privacy policies, and terms of service.
+            You identify trust signals for a brand based on its profile. Trust signals are genuine credibility indicators. Each signal must be categorized into one of these types:
+
+            - AwardsAndRecognitions: Industry awards, rankings, "Best of" lists
+            - CertificationsAndAccreditations: ISO, SOC2, HIPAA, professional accreditations
+            - PressAndMediaMentions: "As seen in", press coverage, media logos
+            - TestimonialsAndReviews: Customer quotes, star ratings, review counts
+            - ExpertEndorsements: Analyst recommendations, thought-leader quotes
+            - CaseStudiesAndSuccessMetrics: Published case studies, ROI stats, success metrics
+            - ClientAndPartnerLogos: "Trusted by" logo grids, partner badges, client lists
 
             If trust signals are already confirmed, treat them as a signal for the kind of credibility indicators that matter — suggest complementary or different trust signals. Do not repeat any confirmed items.
 
             Return your top 4 trust signals as a JSON array:
-            [{"name": "Signal Name", "description": "What evidence supports this", "confidence": 0.75}]
+            [{"name": "Signal Name", "description": "What evidence supports this", "type": "TestimonialsAndReviews", "confidence": 0.75}]
             """;
 
-        var prompt = BuildLensPrompt(ctx, "Suggest 4 trust signals this brand likely has or should highlight.");
-        return await CallLensAsync(system, prompt, "LLMSuggested", ct);
+        var prompt = BuildLensPrompt(ctx, "Suggest 4 trust signals this brand likely has or should highlight. Include a type field for each.");
+        try
+        {
+            var response = await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct);
+            if (string.IsNullOrWhiteSpace(response))
+                return new LensRegenerateResult(new List<LensCandidate>());
+
+            var json = ExtractJson(response);
+            var items = JsonSerializer.Deserialize<List<TrustSignalLensDto>>(json, JsonOptions);
+            if (items == null) return new LensRegenerateResult(new List<LensCandidate>());
+
+            var candidates = items
+                .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+                .Select(i => new LensCandidate(
+                    Name: i.Name!,
+                    Description: i.Description,
+                    Confidence: Math.Clamp(i.Confidence, 0.0, 1.0),
+                    Source: "LLMSuggested",
+                    Metadata: new Dictionary<string, object?> { ["signalType"] = i.Type ?? "TestimonialsAndReviews" }))
+                .Take(4)
+                .ToList();
+
+            return new LensRegenerateResult(candidates);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "RegenerateLens: trust signal regeneration failed");
+            return new LensRegenerateResult(new List<LensCandidate>());
+        }
     }
+
+    private record TrustSignalLensDto(string? Name, string? Description, string? Type, double Confidence);
 
     private async Task<LensRegenerateResult> CallLensAsync(
         string system, string prompt, string source, CancellationToken ct)

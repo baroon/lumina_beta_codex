@@ -60,3 +60,20 @@ export const ManualSource: Story = {
     selected: true,
   },
 };
+
+export const WithTypeBadge: Story = {
+  args: {
+    candidate: {
+      ...baseCand,
+      name: "SOC 2 Certified",
+      description: "SOC 2 Type II compliance certification.",
+      metadata: { signalType: "CertificationsAndAccreditations" },
+    },
+    selected: false,
+    typeMetadataKey: "signalType",
+    typeLabels: {
+      CertificationsAndAccreditations: "Certifications & Accreditations",
+      TestimonialsAndReviews: "Testimonials & Reviews",
+    },
+  },
+};

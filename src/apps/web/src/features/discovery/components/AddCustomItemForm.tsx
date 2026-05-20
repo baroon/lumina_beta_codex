@@ -21,9 +21,15 @@ interface AddCustomItemFormProps {
   placeholder: string;
   onAdd: (name: string, metadata?: Record<string, string>) => void;
   typeOptions?: TypeOption[];
+  metadataKey?: string;
 }
 
-export function AddCustomItemForm({ placeholder, onAdd, typeOptions }: AddCustomItemFormProps) {
+export function AddCustomItemForm({
+  placeholder,
+  onAdd,
+  typeOptions,
+  metadataKey = "productType",
+}: AddCustomItemFormProps) {
   const [value, setValue] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +37,7 @@ export function AddCustomItemForm({ placeholder, onAdd, typeOptions }: AddCustom
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim()) {
-      const metadata = typeOptions && selectedType ? { productType: selectedType } : undefined;
+      const metadata = typeOptions && selectedType ? { [metadataKey]: selectedType } : undefined;
       onAdd(value.trim(), metadata);
       setValue("");
       setIsOpen(false);

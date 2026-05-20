@@ -247,21 +247,13 @@ public class HeuristicContentExtractor : IContentExtractor
 
         var urlPatterns = new Dictionary<string, TrustSignalType>
         {
-            ["/pricing"] = TrustSignalType.PricingTransparency,
-            ["/testimonial"] = TrustSignalType.ReviewsTestimonials,
-            ["/review"] = TrustSignalType.ReviewsTestimonials,
-            ["/case-stud"] = TrustSignalType.CaseStudies,
-            ["/partner"] = TrustSignalType.Partnerships,
-            ["/press"] = TrustSignalType.MediaMentions,
-            ["/privacy"] = TrustSignalType.PrivacyPolicy,
-            ["/terms"] = TrustSignalType.TermsOfService,
-            ["/security"] = TrustSignalType.SecurityCompliance,
-            ["/compliance"] = TrustSignalType.SecurityCompliance,
-            ["/free-trial"] = TrustSignalType.FreeTrial,
-            ["/trial"] = TrustSignalType.FreeTrial,
-            ["/guarantee"] = TrustSignalType.MoneyBackGuarantee,
-            ["/certification"] = TrustSignalType.Certifications,
-            ["/award"] = TrustSignalType.Awards
+            ["/testimonial"] = TrustSignalType.TestimonialsAndReviews,
+            ["/review"] = TrustSignalType.TestimonialsAndReviews,
+            ["/case-stud"] = TrustSignalType.CaseStudiesAndSuccessMetrics,
+            ["/partner"] = TrustSignalType.ClientAndPartnerLogos,
+            ["/press"] = TrustSignalType.PressAndMediaMentions,
+            ["/certification"] = TrustSignalType.CertificationsAndAccreditations,
+            ["/award"] = TrustSignalType.AwardsAndRecognitions
         };
 
         foreach (var page in pages)
@@ -290,18 +282,15 @@ public class HeuristicContentExtractor : IContentExtractor
             var headings = ParseHeadings(page.HeadingsJson);
             var headingKeywords = new Dictionary<string, TrustSignalType>
             {
-                ["testimonial"] = TrustSignalType.ReviewsTestimonials,
-                ["review"] = TrustSignalType.ReviewsTestimonials,
-                ["case study"] = TrustSignalType.CaseStudies,
-                ["case studies"] = TrustSignalType.CaseStudies,
-                ["partner"] = TrustSignalType.Partnerships,
-                ["award"] = TrustSignalType.Awards,
-                ["certif"] = TrustSignalType.Certifications,
-                ["free trial"] = TrustSignalType.FreeTrial,
-                ["money back"] = TrustSignalType.MoneyBackGuarantee,
-                ["guarantee"] = TrustSignalType.MoneyBackGuarantee,
-                ["social proof"] = TrustSignalType.SocialProof,
-                ["trusted by"] = TrustSignalType.SocialProof
+                ["testimonial"] = TrustSignalType.TestimonialsAndReviews,
+                ["review"] = TrustSignalType.TestimonialsAndReviews,
+                ["case study"] = TrustSignalType.CaseStudiesAndSuccessMetrics,
+                ["case studies"] = TrustSignalType.CaseStudiesAndSuccessMetrics,
+                ["partner"] = TrustSignalType.ClientAndPartnerLogos,
+                ["trusted by"] = TrustSignalType.ClientAndPartnerLogos,
+                ["award"] = TrustSignalType.AwardsAndRecognitions,
+                ["certif"] = TrustSignalType.CertificationsAndAccreditations,
+                ["endorsement"] = TrustSignalType.ExpertEndorsements
             };
 
             foreach (var heading in headings)

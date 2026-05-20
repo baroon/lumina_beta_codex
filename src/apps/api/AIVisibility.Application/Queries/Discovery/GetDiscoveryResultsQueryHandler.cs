@@ -56,7 +56,7 @@ public class GetDiscoveryResultsQueryHandler : IRequestHandler<GetDiscoveryResul
             brand.Markets.Where(m => m.DiscoveryRunId == latestRunId).OrderByDescending(m => m.Confidence).Take(4).Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source, m.Status,
                 new Dictionary<string, object?> { ["marketType"] = m.MarketType.ToString(), ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
             brand.Topics.Where(t => t.DiscoveryRunId == latestRunId).OrderByDescending(t => t.Confidence).Take(4).Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source, t.Status,
-                new Dictionary<string, object?> { ["topicType"] = t.TopicType.ToString() })).ToList(),
+                new Dictionary<string, object?>())).ToList(),
             brand.Competitors.Where(c => c.DiscoveryRunId == latestRunId).OrderByDescending(c => c.Confidence).Take(4).Select(c => ToCandidate(c.Id, c.Name, c.Description, c.Confidence, c.Source, c.Status,
                 new Dictionary<string, object?> { ["domain"] = c.Domain })).ToList(),
             brand.TrustSignals.Where(ts => ts.DiscoveryRunId == latestRunId).OrderByDescending(ts => ts.Confidence).Take(4).Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source, ts.Status,

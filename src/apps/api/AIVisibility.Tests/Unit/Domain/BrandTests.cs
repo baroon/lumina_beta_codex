@@ -91,9 +91,9 @@ public class BrandTests
     }
 
     [Fact]
-    public void TrustSignalType_ShouldHave14Values()
+    public void TrustSignalType_ShouldHave7Values()
     {
         var values = Enum.GetValues<TrustSignalType>();
-        values.Should().HaveCount(14);
+        values.Should().HaveCount(7);
     }
 }

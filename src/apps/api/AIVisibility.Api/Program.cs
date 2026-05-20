@@ -3,6 +3,7 @@ using AIVisibility.Application;
 using AIVisibility.Infrastructure;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Npgsql;
 
 // DiscoveryHub is in AIVisibility.Infrastructure namespace (already imported above)
 
@@ -22,12 +23,13 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Hangfire
+var connString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
     .UsePostgreSqlStorage(options =>
-        options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection"))));
+        options.UseNpgsqlConnection(connString)));
 builder.Services.AddHangfireServer();
 
 // CORS for frontend dev server
@@ -43,6 +45,17 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Ensure Hangfire schema exists
+var hangfireConnString = app.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(hangfireConnString))
+{
+    using var conn = new NpgsqlConnection(hangfireConnString);
+    conn.Open();
+    using var cmd = conn.CreateCommand();
+    cmd.CommandText = "CREATE SCHEMA IF NOT EXISTS hangfire";
+    cmd.ExecuteNonQuery();
+}
 
 if (app.Environment.IsDevelopment())
 {

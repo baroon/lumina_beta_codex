@@ -49,10 +49,7 @@ public class ResuggestCommandHandler : IRequestHandler<ResuggestCommand, Resugge
                 Description: t.Description,
                 Confidence: t.Confidence,
                 Source: t.Source.ToString(),
-                Metadata: new Dictionary<string, object?>
-                {
-                    ["topicType"] = t.TopicType.ToString()
-                }
+                Metadata: new Dictionary<string, object?>()
             )).ToList()
         );
     }
