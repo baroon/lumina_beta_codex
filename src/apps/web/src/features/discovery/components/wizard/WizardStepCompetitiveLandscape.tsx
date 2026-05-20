@@ -38,20 +38,6 @@ export function WizardStepCompetitiveLandscape({
         </div>
       )}
       <DiscoverySection
-        title={DISCOVERY_COPY.sections.topics.title}
-        description={DISCOVERY_COPY.sections.topics.description}
-        emptyMessage={DISCOVERY_COPY.sections.topics.emptyMessage}
-        candidates={topics.candidates}
-        selectedIds={topics.selectedIds}
-        onToggle={topics.onToggle}
-        onSelectAll={topics.onSelectAll}
-        onDeselectAll={topics.onDeselectAll}
-        onAddCustom={topics.onAddCustom}
-        onRefresh={topics.onRefresh}
-        refreshesRemaining={topics.refreshesRemaining}
-        isRefreshing={topics.isRefreshing}
-      />
-      <DiscoverySection
         title={DISCOVERY_COPY.sections.competitors.title}
         description={DISCOVERY_COPY.sections.competitors.description}
         emptyMessage={DISCOVERY_COPY.sections.competitors.emptyMessage}
@@ -64,6 +50,20 @@ export function WizardStepCompetitiveLandscape({
         onRefresh={competitors.onRefresh}
         refreshesRemaining={competitors.refreshesRemaining}
         isRefreshing={competitors.isRefreshing}
+      />
+      <DiscoverySection
+        title={DISCOVERY_COPY.sections.topics.title}
+        description={DISCOVERY_COPY.sections.topics.description}
+        emptyMessage={DISCOVERY_COPY.sections.topics.emptyMessage}
+        candidates={topics.candidates}
+        selectedIds={topics.selectedIds}
+        onToggle={topics.onToggle}
+        onSelectAll={topics.onSelectAll}
+        onDeselectAll={topics.onDeselectAll}
+        onAddCustom={topics.onAddCustom}
+        onRefresh={topics.onRefresh}
+        refreshesRemaining={topics.refreshesRemaining}
+        isRefreshing={topics.isRefreshing}
       />
       <DiscoverySection
         title={DISCOVERY_COPY.sections.trustSignals.title}
