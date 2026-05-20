@@ -47,7 +47,10 @@ public class DiscoveryController : ControllerBase
             request.Category,
             request.Products,
             request.Audiences,
-            request.Markets);
+            request.Markets,
+            request.Topics,
+            request.Competitors,
+            request.TrustSignals);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
     }
@@ -64,7 +67,10 @@ public class DiscoveryController : ControllerBase
             request.Category,
             request.Products,
             request.Audiences,
-            request.Markets);
+            request.Markets,
+            request.Topics,
+            request.Competitors,
+            request.TrustSignals);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
     }

@@ -8,7 +8,10 @@ public record ResuggestCommand(
     string? Category,
     List<string> Products,
     List<string> Audiences,
-    List<string> Markets) : IRequest<ResuggestResultDto>;
+    List<string> Markets,
+    List<string>? Topics = null,
+    List<string>? Competitors = null,
+    List<string>? TrustSignals = null) : IRequest<ResuggestResultDto>;
 
 public record ResuggestResultDto(
     List<ResuggestCandidateDto> Competitors,

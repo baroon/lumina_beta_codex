@@ -243,7 +243,16 @@ public class LlmContentExtractor : IContentExtractor
         Guidelines:
         - Products: Include actual products/services/features. Return your top 4, ranked by relevance. Be specific, not generic.
         - Audiences: Include distinct customer segments. Return your top 4, ranked by relevance. Use descriptive names like "Small Business Owners" not just "businesses".
-        - Markets: Include countries/regions where the brand clearly operates. Return your top 4, ranked by confidence. Use ISO country codes when applicable.
+        - Markets: Identify geographic markets where the brand operates. Look for these signals:
+          * Physical addresses, phone numbers with country codes, office locations
+          * Shipping/delivery regions, service areas mentioned on the site
+          * Currency symbols or pricing in specific currencies (€, £, ₹, etc.)
+          * Language-specific content or locale selectors (e.g., "EN-US", "DE", "/fr/")
+          * Regional compliance mentions (GDPR → EU, SOC2 → US, etc.)
+          * "Available in" or "Serving customers in" statements
+          * Country-specific case studies, testimonials, or customer logos
+          * Job postings mentioning office locations
+          If no clear geographic signals exist, infer from the website TLD, content language, and industry norms. Return your top 4, ranked by confidence. Use ISO country codes when applicable. Prefer specific countries over vague regions like "Global" unless the brand genuinely operates worldwide with evidence.
         - Topics: Include industry topics, technology areas, and business themes. Return your top 4, ranked by relevance.
         - Trust Signals: Look for pricing pages, testimonials/reviews, case studies, certifications, awards, partner logos, press mentions, security badges, free trials, money-back guarantees, "trusted by X companies", expert endorsements, privacy policies, and terms of service. Return your top 4. Include specific evidence (e.g., "Trusted by 500+ companies" not just "Social Proof").
         - Confidence: 0-100 scale. Higher = more evidence in the content.
@@ -269,10 +278,20 @@ public class LlmContentExtractor : IContentExtractor
                 parts.Add($"Category: {profile.Category}");
         }
 
+        // Surface website TLD as a geographic hint
+        try
+        {
+            var uri = new Uri(brand.WebsiteUrl);
+            var tld = uri.Host.Split('.').Last().ToUpperInvariant();
+            parts.Add($"Website TLD: .{tld}");
+        }
+        catch { /* ignore */ }
+
         // Include content from top pages
         var topPages = pages
             .OrderByDescending(p => PagePriorityClassifier.GetPriority(p.Url))
-            .Take(5);
+            .Take(5)
+            .ToList();
 
         foreach (var page in topPages)
         {
@@ -286,6 +305,19 @@ public class LlmContentExtractor : IContentExtractor
 
             if (pageTexts.TryGetValue(page.Url, out var text))
                 parts.Add(Truncate(text, 1500));
+        }
+
+        // Include contact page for geographic signals (addresses, phone numbers)
+        var contactPage = pages.FirstOrDefault(p =>
+            PagePriorityClassifier.Classify(p.Url) == PageCategory.Contact);
+        var includedUrls = topPages.Select(p => p.Url).ToHashSet();
+        if (contactPage != null && !includedUrls.Contains(contactPage.Url))
+        {
+            parts.Add($"\n--- {contactPage.Title ?? contactPage.Url} (Contact) ---");
+            if (!string.IsNullOrWhiteSpace(contactPage.MetaDescription))
+                parts.Add($"Meta: {contactPage.MetaDescription}");
+            if (pageTexts.TryGetValue(contactPage.Url, out var contactText))
+                parts.Add(Truncate(contactText, 1000));
         }
 
         parts.Add("\nExtract all products/services, target audiences, markets, topics, and trust signals from this brand's website content.");

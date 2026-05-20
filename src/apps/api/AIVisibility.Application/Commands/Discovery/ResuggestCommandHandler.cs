@@ -26,7 +26,10 @@ public class ResuggestCommandHandler : IRequestHandler<ResuggestCommand, Resugge
             Category: request.Category,
             Products: request.Products,
             Audiences: request.Audiences,
-            Markets: request.Markets);
+            Markets: request.Markets,
+            Topics: request.Topics,
+            Competitors: request.Competitors,
+            TrustSignals: request.TrustSignals);
 
         var result = await _resuggestService.ResuggestAsync(context, cancellationToken);
 

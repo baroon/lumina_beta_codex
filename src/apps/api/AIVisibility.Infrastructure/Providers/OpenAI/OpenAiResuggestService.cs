@@ -50,6 +50,8 @@ public class OpenAiResuggestService : IResuggestService
         - Product fit: suggestions should compete on overlapping products/services
         - Scale fit: avoid suggesting massive incumbents for early-stage/local businesses
 
+        If competitors are already confirmed, treat them as a signal for the competitive landscape — suggest others at a similar scale and in a similar space. Do not repeat any confirmed competitors.
+
         Return up to 4 competitors as a JSON array of objects with:
         - "name": string
         - "domain": their website domain (e.g., example.com)
@@ -117,6 +119,8 @@ public class OpenAiResuggestService : IResuggestService
             parts.Add($"Confirmed target audiences: {string.Join(", ", ctx.Audiences)}");
         if (ctx.Markets.Count > 0)
             parts.Add($"Confirmed geographic markets: {string.Join(", ", ctx.Markets)}");
+        if (ctx.Competitors is { Count: > 0 })
+            parts.Add($"Already confirmed competitors (use as signal, suggest different ones): {string.Join(", ", ctx.Competitors)}");
 
         return string.Join("\n", parts);
     }
@@ -161,6 +165,8 @@ public class OpenAiResuggestService : IResuggestService
 
         Each suggestion should be a natural search phrase (5-15 words) that someone would type into an AI assistant when looking for this type of brand. Include geographic or market context when relevant.
         Do NOT include the brand name in any suggestion.
+
+        If topics/search categories are already confirmed, treat them as a signal for the kind of searches that are relevant — suggest complementary searches covering different angles or audiences. Do not repeat any confirmed items.
 
         Return JSON only:
         ["search category 1", "search category 2", "search category 3", "search category 4"]
@@ -215,6 +221,8 @@ public class OpenAiResuggestService : IResuggestService
             parts.Add($"Confirmed target audiences: {string.Join(", ", ctx.Audiences)}");
         if (ctx.Markets.Count > 0)
             parts.Add($"Confirmed geographic markets: {string.Join(", ", ctx.Markets)}");
+        if (ctx.Topics is { Count: > 0 })
+            parts.Add($"Already confirmed topics (use as signal, suggest different ones): {string.Join(", ", ctx.Topics)}");
 
         parts.Add("\nSuggest 4 discovery search categories -- the searches people would make when looking for a brand like this, without naming it directly. Incorporate the confirmed markets and audiences for geographic and demographic targeting.");
 
@@ -245,6 +253,8 @@ public class OpenAiResuggestService : IResuggestService
         var system = """
             You suggest products and services for a brand based on its profile. Return your top 4 products/services, ranked by relevance.
 
+            If products/services are already confirmed, treat them as a signal for the kind of offerings that are relevant — suggest complementary or related items the brand likely also offers. Do not repeat any confirmed items.
+
             Return JSON only:
             [{"name": "Product Name", "description": "Brief description", "confidence": 0.85}]
             """;
@@ -258,6 +268,8 @@ public class OpenAiResuggestService : IResuggestService
         var system = """
             You suggest target audiences for a brand based on its profile. Return your top 4 audience segments, ranked by relevance.
 
+            If audiences are already confirmed, treat them as a signal for the kind of segments that are relevant — suggest complementary or adjacent audience segments. Do not repeat any confirmed items.
+
             Return JSON only:
             [{"name": "Audience Name", "description": "Brief description", "confidence": 0.80}]
             """;
@@ -269,13 +281,23 @@ public class OpenAiResuggestService : IResuggestService
     private async Task<LensRegenerateResult> RegenerateMarketsAsync(ResuggestContext ctx, CancellationToken ct)
     {
         var system = """
-            You suggest geographic markets for a brand based on its profile. Return your top 4 markets, ranked by confidence.
+            You suggest geographic markets for a brand based on its profile. Analyze the brand's industry, products, audiences, and any already-confirmed markets to infer where the brand operates or has strong potential.
+
+            Consider:
+            - Where the brand's industry typically operates (e.g., SaaS → global/US-first, local services → specific country/city)
+            - Language and cultural fit with confirmed products and audiences
+            - Natural expansion markets adjacent to already-confirmed markets
+            - Industry-specific geographic hubs (e.g., fintech → US/UK/Singapore, automotive → Germany/Japan/US)
+
+            If markets are already confirmed, treat them as a signal for where the brand operates — suggest adjacent or complementary geographic markets. Do not repeat any confirmed items.
+
+            Return your top 4 markets as specific countries or well-defined regions, ranked by confidence. Avoid "Global" unless strong evidence supports it. Prefer countries over vague continental regions.
 
             Return JSON only:
-            [{"name": "Market Name", "description": "Country or region", "confidence": 0.75}]
+            [{"name": "Market Name", "description": "Why this market fits", "confidence": 0.75}]
             """;
 
-        var prompt = BuildLensPrompt(ctx, "Suggest 4 geographic markets where this brand likely operates or should expand.");
+        var prompt = BuildLensPrompt(ctx, "Suggest 4 specific geographic markets (countries or well-defined regions) where this brand likely operates or should expand. Base your reasoning on the brand's industry, products, audiences, and existing markets. Explain why each market is a fit.");
         return await CallLensAsync(system, prompt, "LLMSuggested", ct);
     }
 
@@ -350,6 +372,8 @@ public class OpenAiResuggestService : IResuggestService
         var system = """
             You identify trust signals for a brand based on its profile. Trust signals are credibility indicators like pricing transparency, reviews, case studies, certifications, awards, partnerships, media mentions, security compliance, free trials, money-back guarantees, social proof, expert endorsements, privacy policies, and terms of service.
 
+            If trust signals are already confirmed, treat them as a signal for the kind of credibility indicators that matter — suggest complementary or different trust signals. Do not repeat any confirmed items.
+
             Return your top 4 trust signals as a JSON array:
             [{"name": "Signal Name", "description": "What evidence supports this", "confidence": 0.75}]
             """;
@@ -405,6 +429,12 @@ public class OpenAiResuggestService : IResuggestService
             parts.Add($"Confirmed target audiences: {string.Join(", ", ctx.Audiences)}");
         if (ctx.Markets.Count > 0)
             parts.Add($"Confirmed geographic markets: {string.Join(", ", ctx.Markets)}");
+        if (ctx.Topics is { Count: > 0 })
+            parts.Add($"Confirmed topics/search categories: {string.Join(", ", ctx.Topics)}");
+        if (ctx.Competitors is { Count: > 0 })
+            parts.Add($"Confirmed competitors: {string.Join(", ", ctx.Competitors)}");
+        if (ctx.TrustSignals is { Count: > 0 })
+            parts.Add($"Confirmed trust signals: {string.Join(", ", ctx.TrustSignals)}");
 
         parts.Add($"\n{instruction}");
         return string.Join("\n", parts);

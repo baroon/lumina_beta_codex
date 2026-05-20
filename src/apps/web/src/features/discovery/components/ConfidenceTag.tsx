@@ -1,16 +1,18 @@
 import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
+import { getConfidenceLevel } from "../confidence";
 
 interface ConfidenceTagProps {
   confidence: number;
 }
 
+const VARIANT_MAP = {
+  high: "success",
+  medium: "warning",
+  low: "secondary",
+} as const;
+
 export function ConfidenceTag({ confidence }: ConfidenceTagProps) {
-  if (confidence >= 0.7) {
-    return <Badge variant="success">{DISCOVERY_COPY.confidence.high}</Badge>;
-  }
-  if (confidence >= 0.4) {
-    return <Badge variant="warning">{DISCOVERY_COPY.confidence.medium}</Badge>;
-  }
-  return <Badge variant="secondary">{DISCOVERY_COPY.confidence.low}</Badge>;
+  const level = getConfidenceLevel(confidence);
+  return <Badge variant={VARIANT_MAP[level]}>{DISCOVERY_COPY.confidence[level]}</Badge>;
 }

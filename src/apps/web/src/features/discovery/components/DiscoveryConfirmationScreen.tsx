@@ -17,10 +17,12 @@ import {
 } from "./wizard";
 import type {
   DiscoveryResultsDto,
+  BrandProfileDto,
   CandidateDto,
   ResuggestCandidateDto,
   VisibilityLens,
 } from "@/types/api";
+import { preselectCandidates, isHighConfidence } from "../confidence";
 
 interface DiscoveryConfirmationScreenProps {
   results: DiscoveryResultsDto;
@@ -59,6 +61,19 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const regenerateLensMutation = useRegenerateLens(results.brandId);
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [brandProfileOverrides, setBrandProfileOverrides] = useState<
+    Partial<Pick<BrandProfileDto, "industry" | "category" | "positioning">>
+  >({});
+
+  const handleProfileChange = useCallback((field: string, value: string) => {
+    setBrandProfileOverrides((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const effectiveBrandProfile = useMemo<BrandProfileDto | null>(() => {
+    if (!results.brandProfile) return null;
+    return { ...results.brandProfile, ...brandProfileOverrides };
+  }, [results.brandProfile, brandProfileOverrides]);
+
   const [refreshedSections, setRefreshedSections] = useState<
     Partial<Record<SectionKey, CandidateDto[]>>
   >({});
@@ -72,8 +87,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     const selections = new Map<string, Set<string>>();
     for (const key of ALL_SECTIONS) {
       const candidates = results[key] as CandidateDto[];
-      const preselected = new Set(candidates.filter((c) => c.confidence >= 0.5).map((c) => c.id));
-      selections.set(key, preselected);
+      selections.set(key, preselectCandidates(candidates));
     }
     return selections;
   }, [results]);
@@ -111,32 +125,35 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     });
   }, []);
 
-  const addCustomItem = useCallback((sectionKey: string, name: string) => {
-    const newItem: CandidateDto = {
-      id: `custom-${Date.now()}`,
-      name,
-      description: null,
-      confidence: 1.0,
-      source: "UserAdded",
-      status: "Suggested",
-      metadata: {},
-    };
+  const addCustomItem = useCallback(
+    (sectionKey: string, name: string, metadata?: Record<string, string>) => {
+      const newItem: CandidateDto = {
+        id: `custom-${Date.now()}`,
+        name,
+        description: null,
+        confidence: 1.0,
+        source: "UserAdded",
+        status: "Suggested",
+        metadata: metadata ?? {},
+      };
 
-    setCustomItems((prev) => {
-      const next = new Map(prev);
-      const items = [...(next.get(sectionKey) || []), newItem];
-      next.set(sectionKey, items);
-      return next;
-    });
+      setCustomItems((prev) => {
+        const next = new Map(prev);
+        const items = [...(next.get(sectionKey) || []), newItem];
+        next.set(sectionKey, items);
+        return next;
+      });
 
-    setSelections((prev) => {
-      const next = new Map(prev);
-      const sectionSet = new Set(next.get(sectionKey) || []);
-      sectionSet.add(newItem.id);
-      next.set(sectionKey, sectionSet);
-      return next;
-    });
-  }, []);
+      setSelections((prev) => {
+        const next = new Map(prev);
+        const sectionSet = new Set(next.get(sectionKey) || []);
+        sectionSet.add(newItem.id);
+        next.set(sectionKey, sectionSet);
+        return next;
+      });
+    },
+    [],
+  );
 
   const getCombinedCandidates = useCallback(
     (key: SectionKey): CandidateDto[] => {
@@ -188,8 +205,8 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const handleResuggest = () => {
     resuggestMutation.mutate(
       {
-        industry: results.brandProfile?.industry ?? null,
-        category: results.brandProfile?.category ?? null,
+        industry: effectiveBrandProfile?.industry ?? null,
+        category: effectiveBrandProfile?.category ?? null,
         products: getSelectedNames("products"),
         audiences: getSelectedNames("audiences"),
         markets: getSelectedNames("markets"),
@@ -205,7 +222,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             competitors: newCompetitors,
           }));
 
-          // Pre-select refreshed items with confidence >= 0.5
+          // Pre-select refreshed items with high confidence
           setSelections((prev) => {
             const next = new Map(prev);
             const topicCustom = customItems.get("topics") || [];
@@ -214,14 +231,14 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             next.set(
               "topics",
               new Set([
-                ...newTopics.filter((t) => t.confidence >= 0.5).map((t) => t.id),
+                ...newTopics.filter((t) => isHighConfidence(t.confidence)).map((t) => t.id),
                 ...topicCustom.map((c) => c.id),
               ]),
             );
             next.set(
               "competitors",
               new Set([
-                ...newCompetitors.filter((c) => c.confidence >= 0.5).map((c) => c.id),
+                ...newCompetitors.filter((c) => isHighConfidence(c.confidence)).map((c) => c.id),
                 ...compCustom.map((c) => c.id),
               ]),
             );
@@ -247,8 +264,8 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       regenerateLensMutation.mutate(
         {
           lens: lens as VisibilityLens,
-          industry: results.brandProfile?.industry ?? null,
-          category: results.brandProfile?.category ?? null,
+          industry: effectiveBrandProfile?.industry ?? null,
+          category: effectiveBrandProfile?.category ?? null,
           products: getSelectedNames("products"),
           audiences: getSelectedNames("audiences"),
           markets: getSelectedNames("markets"),
@@ -258,14 +275,14 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             const newCandidates = data.candidates.map(toCandidate);
             setRefreshedSections((prev) => ({ ...prev, [lens]: newCandidates }));
 
-            // Pre-select items with confidence >= 0.5
+            // Pre-select items with high confidence
             setSelections((prev) => {
               const next = new Map(prev);
               const custom = customItems.get(lens) || [];
               next.set(
                 lens,
                 new Set([
-                  ...newCandidates.filter((c) => c.confidence >= 0.5).map((c) => c.id),
+                  ...newCandidates.filter((c) => isHighConfidence(c.confidence)).map((c) => c.id),
                   ...custom.map((c) => c.id),
                 ]),
               );
@@ -288,7 +305,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     [
       lensRefreshCounts,
       regenerateLensMutation,
-      results.brandProfile,
+      effectiveBrandProfile,
       getSelectedNames,
       customItems,
     ],
@@ -320,7 +337,8 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       onToggle: (id: string) => toggleItem(key, id),
       onSelectAll: () => selectAll(key, candidates),
       onDeselectAll: () => deselectAll(key),
-      onAddCustom: (name: string) => addCustomItem(key, name),
+      onAddCustom: (name: string, metadata?: Record<string, string>) =>
+        addCustomItem(key, name, metadata),
       onRefresh: () => handleRefreshLens(key),
       refreshesRemaining: MAX_LENS_REFRESHES - (lensRefreshCounts.get(key) ?? 0),
       isRefreshing: refreshingLens === key,
@@ -351,7 +369,12 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
         isNextLoading={isNextLoading}
         isNextDisabled={confirmMutation.isPending}
       >
-        {currentStep === 0 && <WizardStepBrandIdentity brandProfile={results.brandProfile} />}
+        {currentStep === 0 && (
+          <WizardStepBrandIdentity
+            brandProfile={effectiveBrandProfile}
+            onProfileChange={handleProfileChange}
+          />
+        )}
 
         {currentStep === 1 && <WizardStepProducts {...makeSectionProps("products")} />}
 
@@ -373,7 +396,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
         {currentStep === 4 && (
           <WizardStepReview
-            brandProfile={results.brandProfile}
+            brandProfile={effectiveBrandProfile}
             sections={{
               products: {
                 candidates: getCombinedCandidates("products"),

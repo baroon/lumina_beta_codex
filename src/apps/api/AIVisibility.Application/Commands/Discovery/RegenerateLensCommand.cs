@@ -9,7 +9,10 @@ public record RegenerateLensCommand(
     string? Category,
     List<string> Products,
     List<string> Audiences,
-    List<string> Markets) : IRequest<RegenerateLensResultDto>;
+    List<string> Markets,
+    List<string>? Topics = null,
+    List<string>? Competitors = null,
+    List<string>? TrustSignals = null) : IRequest<RegenerateLensResultDto>;
 
 public record RegenerateLensResultDto(
     string Lens,

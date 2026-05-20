@@ -25,7 +25,10 @@ public class RegenerateLensCommandHandler : IRequestHandler<RegenerateLensComman
             Category: request.Category,
             Products: request.Products,
             Audiences: request.Audiences,
-            Markets: request.Markets);
+            Markets: request.Markets,
+            Topics: request.Topics,
+            Competitors: request.Competitors,
+            TrustSignals: request.TrustSignals);
 
         var result = await _resuggestService.RegenerateLensAsync(context, request.Lens, cancellationToken);
 

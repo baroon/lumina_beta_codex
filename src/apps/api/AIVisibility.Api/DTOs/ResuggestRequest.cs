@@ -5,4 +5,7 @@ public record ResuggestRequest(
     string? Category,
     List<string> Products,
     List<string> Audiences,
-    List<string> Markets);
+    List<string> Markets,
+    List<string>? Topics = null,
+    List<string>? Competitors = null,
+    List<string>? TrustSignals = null);

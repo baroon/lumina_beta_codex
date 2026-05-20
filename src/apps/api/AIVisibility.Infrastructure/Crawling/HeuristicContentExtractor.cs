@@ -142,41 +142,48 @@ public class HeuristicContentExtractor : IContentExtractor
         var markets = new List<Market>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Check for hreflang tags
-        foreach (var page in pages)
+        // TLD-based market detection (run once, not per-page)
+        try
         {
-            var headings = ParseHeadings(page.HeadingsJson);
-            // Simple TLD-based market detection
-            try
+            var uri = new Uri(brand.WebsiteUrl);
+            var tld = uri.Host.Split('.').Last().ToUpperInvariant();
+            var tldMarkets = new Dictionary<string, (string Name, string Code)>
             {
-                var uri = new Uri(brand.WebsiteUrl);
-                var tld = uri.Host.Split('.').Last().ToUpperInvariant();
-                var tldMarkets = new Dictionary<string, (string Name, string Code)>
-                {
-                    ["COM"] = ("United States", "US"), ["CO"] = ("Colombia", "CO"),
-                    ["UK"] = ("United Kingdom", "GB"), ["DE"] = ("Germany", "DE"),
-                    ["FR"] = ("France", "FR"), ["AU"] = ("Australia", "AU"),
-                    ["CA"] = ("Canada", "CA"), ["IN"] = ("India", "IN"),
-                    ["JP"] = ("Japan", "JP"), ["BR"] = ("Brazil", "BR")
-                };
+                ["COM"] = ("United States", "US"), ["CO"] = ("Colombia", "CO"),
+                ["UK"] = ("United Kingdom", "GB"), ["DE"] = ("Germany", "DE"),
+                ["FR"] = ("France", "FR"), ["AU"] = ("Australia", "AU"),
+                ["CA"] = ("Canada", "CA"), ["IN"] = ("India", "IN"),
+                ["JP"] = ("Japan", "JP"), ["BR"] = ("Brazil", "BR"),
+                ["IO"] = ("United Kingdom", "GB"),
+                ["NZ"] = ("New Zealand", "NZ"),
+                ["SG"] = ("Singapore", "SG"),
+                ["AE"] = ("United Arab Emirates", "AE"),
+                ["ZA"] = ("South Africa", "ZA"),
+                ["NL"] = ("Netherlands", "NL"),
+                ["SE"] = ("Sweden", "SE"),
+                ["CH"] = ("Switzerland", "CH"),
+                ["ES"] = ("Spain", "ES"),
+                ["IT"] = ("Italy", "IT"),
+                ["MX"] = ("Mexico", "MX"),
+                ["KR"] = ("South Korea", "KR")
+            };
 
-                if (tldMarkets.TryGetValue(tld, out var market) && !seen.Contains(market.Name))
+            if (tldMarkets.TryGetValue(tld, out var market) && !seen.Contains(market.Name))
+            {
+                seen.Add(market.Name);
+                markets.Add(new Market
                 {
-                    seen.Add(market.Name);
-                    markets.Add(new Market
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = market.Name,
-                        MarketType = MarketType.Country,
-                        CountryCode = market.Code,
-                        Confidence = 0.6,
-                        Source = CandidateSource.WebsiteCrawl,
-                        Status = CandidateStatus.Suggested
-                    });
-                }
+                    Id = Guid.NewGuid(),
+                    Name = market.Name,
+                    MarketType = MarketType.Country,
+                    CountryCode = market.Code,
+                    Confidence = 0.6,
+                    Source = CandidateSource.WebsiteCrawl,
+                    Status = CandidateStatus.Suggested
+                });
             }
-            catch { /* ignore URI parse errors */ }
         }
+        catch { /* ignore URI parse errors */ }
 
         // Default global market if nothing detected
         if (markets.Count == 0)
@@ -192,36 +199,36 @@ public class HeuristicContentExtractor : IContentExtractor
             });
         }
 
-        // Check meta tags for language/currency hints
+        // Currency detection from page text (meta descriptions, titles, headings)
+        var currencyMarkets = new Dictionary<string, (string Name, MarketType Type, string? Code, string Currency)>
+        {
+            ["€"] = ("Europe", MarketType.Region, null, "EUR"),
+            ["£"] = ("United Kingdom", MarketType.Country, "GB", "GBP"),
+            ["₹"] = ("India", MarketType.Country, "IN", "INR"),
+            ["¥"] = ("Japan", MarketType.Country, "JP", "JPY"),
+            ["₩"] = ("South Korea", MarketType.Country, "KR", "KRW"),
+            ["R$"] = ("Brazil", MarketType.Country, "BR", "BRL"),
+        };
+
         foreach (var page in pages.Take(3))
         {
-            // Look for currency symbols in page content
-            if (page.MetaDescription != null)
+            var textToScan = string.Join(" ", new[] { page.MetaDescription, page.Title }
+                .Where(t => !string.IsNullOrWhiteSpace(t)));
+            var headingTexts = ParseHeadings(page.HeadingsJson).Select(h => h.Text);
+            textToScan += " " + string.Join(" ", headingTexts);
+
+            foreach (var (symbol, cm) in currencyMarkets)
             {
-                if (page.MetaDescription.Contains("€") && !seen.Contains("Europe"))
+                if (textToScan.Contains(symbol) && !seen.Contains(cm.Name))
                 {
-                    seen.Add("Europe");
+                    seen.Add(cm.Name);
                     markets.Add(new Market
                     {
                         Id = Guid.NewGuid(),
-                        Name = "Europe",
-                        MarketType = MarketType.Region,
-                        CurrencyCode = "EUR",
-                        Confidence = 0.5,
-                        Source = CandidateSource.WebsiteCrawl,
-                        Status = CandidateStatus.Suggested
-                    });
-                }
-                if (page.MetaDescription.Contains("£") && !seen.Contains("United Kingdom"))
-                {
-                    seen.Add("United Kingdom");
-                    markets.Add(new Market
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = "United Kingdom",
-                        MarketType = MarketType.Country,
-                        CountryCode = "GB",
-                        CurrencyCode = "GBP",
+                        Name = cm.Name,
+                        MarketType = cm.Type,
+                        CountryCode = cm.Code,
+                        CurrencyCode = cm.Currency,
                         Confidence = 0.5,
                         Source = CandidateSource.WebsiteCrawl,
                         Status = CandidateStatus.Suggested
