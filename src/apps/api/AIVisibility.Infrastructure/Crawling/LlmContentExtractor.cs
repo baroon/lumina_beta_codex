@@ -476,19 +476,18 @@ public class LlmContentExtractor : IContentExtractor
     #region Call 3: Topic Suggestions
 
     private const string TopicSuggestionsSystem = """
-        You suggest brand-discovery search categories for AI visibility monitoring. These represent the kinds of searches real people make when looking for a product, service, or company like the given brand - without knowing the brand by name.
+        You suggest industry topics and themes for a brand's AI visibility monitoring. These are concise topic labels (2-5 words) representing the subject areas where the brand should be visible in AI-generated answers.
 
-        Good suggestions are search categories like:
-        - Market/service searches: "sustainable design firms in India"
-        - Problem-solving searches: "companies that help with green building certification"
-        - Recommendation searches: "best eco-friendly architecture firms"
-        - Industry-specific searches: "LEED certified design consultants"
-        - Comparison searches: "top residential interior designers in Mumbai"
+        Good topics are short, descriptive labels like:
+        - Industry verticals: "Commercial Interior Design", "Green Building"
+        - Service areas: "Landscape Architecture", "Space Planning"
+        - Domain expertise: "LEED Certification", "Sustainable Materials"
+        - Market niches: "Luxury Residential Design", "Office Fit-Outs"
 
-        Each suggestion should be a natural search phrase (5-15 words) that someone would type into an AI assistant when looking for this type of brand. Include geographic or market context when the brand has a clear regional focus. Do NOT include the brand name in any suggestion.
+        Each topic should be a concise noun phrase (2-5 words), NOT a full search query or sentence. Do NOT include the brand name.
 
         Return JSON only:
-        ["search category 1", "search category 2", "search category 3", "search category 4"]
+        ["Topic Name 1", "Topic Name 2", "Topic Name 3", "Topic Name 4"]
         """;
 
     private static string BuildTopicSuggestionsPrompt(Brand brand, BrandProfile? profile)
@@ -498,7 +497,7 @@ public class LlmContentExtractor : IContentExtractor
         if (profile != null && !string.IsNullOrWhiteSpace(profile.ShortDescription))
             parts.Add($"Description: {profile.ShortDescription}");
 
-        parts.Add("\nSuggest 4 discovery search categories -- the searches people would make when looking for a brand like this, without naming it directly. Include market/region context when relevant.");
+        parts.Add("\nSuggest 4 industry topics or themes (2-5 words each) that represent the subject areas this brand should be visible in. Use the brand description to identify relevant verticals, service areas, and domain expertise.");
         return string.Join("\n", parts);
     }
 
