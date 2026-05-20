@@ -129,6 +129,14 @@ export const DISCOVERY_COPY = {
     confirmAndFinish: "Confirm & Finish",
     resuggestingMessage: "Improving suggestions based on your selections...",
   },
+  review: {
+    editSection: "Edit",
+    returnToReview: "Return to Review",
+    removedUndo: 'Removed "{name}"',
+    undoAction: "Undo",
+    customTag: "Custom",
+    noneSelected: "None selected",
+  },
   lenses: {
     title: "Visibility Lenses",
     description: "Each Visibility Lens represents a dimension of your brand's AI visibility.",

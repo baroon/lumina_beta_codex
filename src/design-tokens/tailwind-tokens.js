@@ -3,7 +3,7 @@
  *
  * Source : tokens.json
  * Script : generate-css.js
- * Generated : 2026-05-18T09:00:37.616Z
+ * Generated : 2026-05-20T12:42:26.143Z
  *
  * Usage in tailwind.config.js:
  *
@@ -154,15 +154,15 @@ module.exports = {
     ]
   },
   "fontSize": {
-    "xs": "12px",
-    "sm": "13px",
-    "base": "14px",
-    "lg": "16px",
-    "xl": "18px",
-    "2xl": "20px",
-    "3xl": "24px",
-    "4xl": "30px",
-    "5xl": "36px"
+    "xs": "13px",
+    "sm": "14px",
+    "base": "15px",
+    "lg": "17px",
+    "xl": "19px",
+    "2xl": "22px",
+    "3xl": "26px",
+    "4xl": "32px",
+    "5xl": "38px"
   },
   "fontWeight": {
     "normal": "400",

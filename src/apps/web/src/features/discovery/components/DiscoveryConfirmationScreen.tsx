@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, AlertDescription } from "@/components/atoms/alert";
 import { Stepper } from "@/components/molecules/Stepper";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -41,6 +41,16 @@ const ALL_SECTIONS: SectionKey[] = [
 
 const MAX_LENS_REFRESHES = 3;
 
+const SECTION_STEP_MAP: Record<SectionKey | "brandProfile", number> = {
+  brandProfile: 0,
+  products: 1,
+  audiences: 2,
+  markets: 2,
+  topics: 3,
+  competitors: 3,
+  trustSignals: 3,
+};
+
 const WIZARD_STEPS = DISCOVERY_COPY.wizard.steps;
 
 function toCandidate(dto: ResuggestCandidateDto): CandidateDto {
@@ -61,17 +71,45 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const regenerateLensMutation = useRegenerateLens(results.brandId);
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [returnToStep, setReturnToStep] = useState<number | null>(null);
   const [brandProfileOverrides, setBrandProfileOverrides] = useState<
-    Partial<Pick<BrandProfileDto, "industry" | "category" | "positioning">>
+    Partial<
+      Pick<
+        BrandProfileDto,
+        | "shortDescription"
+        | "industry"
+        | "category"
+        | "positioning"
+        | "shortDescriptionSource"
+        | "industrySource"
+        | "categorySource"
+        | "positioningSource"
+      >
+    >
   >({});
 
+  const FIELD_SOURCE_MAP: Record<string, keyof BrandProfileDto> = {
+    shortDescription: "shortDescriptionSource",
+    industry: "industrySource",
+    category: "categorySource",
+    positioning: "positioningSource",
+  };
+
   const handleProfileChange = useCallback((field: string, value: string) => {
-    setBrandProfileOverrides((prev) => ({ ...prev, [field]: value }));
+    setBrandProfileOverrides((prev) => ({
+      ...prev,
+      [field]: value,
+      [FIELD_SOURCE_MAP[field]]: "UserAdded" as const,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const effectiveBrandProfile = useMemo<BrandProfileDto | null>(() => {
     if (!results.brandProfile) return null;
-    return { ...results.brandProfile, ...brandProfileOverrides };
+    return {
+      ...results.brandProfile,
+      ...brandProfileOverrides,
+    };
   }, [results.brandProfile, brandProfileOverrides]);
 
   const [refreshedSections, setRefreshedSections] = useState<
@@ -81,6 +119,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     () => new Map(ALL_SECTIONS.map((key) => [key, 0])),
   );
   const [refreshingLens, setRefreshingLens] = useState<SectionKey | null>(null);
+  const [hasResuggested, setHasResuggested] = useState(false);
 
   // Initialize selections: preselect high-confidence items
   const initialSelections = useMemo(() => {
@@ -94,6 +133,21 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
   const [selections, setSelections] = useState(initialSelections);
   const [customItems, setCustomItems] = useState<Map<string, CandidateDto[]>>(new Map());
+
+  // Safety net: if the results prop delivers new candidate data after mount
+  // (e.g., component mounted with stale cache, then query refetched), re-sync
+  // the preselection for sections the user hasn't modified yet.
+  const candidateIdKey = useMemo(
+    () => ALL_SECTIONS.flatMap((k) => (results[k] as CandidateDto[]).map((c) => c.id)).join(","),
+    [results],
+  );
+  const prevCandidateIdKeyRef = useRef(candidateIdKey);
+  useEffect(() => {
+    if (candidateIdKey !== prevCandidateIdKeyRef.current) {
+      prevCandidateIdKeyRef.current = candidateIdKey;
+      setSelections(initialSelections);
+    }
+  }, [candidateIdKey, initialSelections]);
 
   const toggleItem = useCallback((sectionKey: string, id: string) => {
     setSelections((prev) => {
@@ -154,6 +208,20 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     },
     [],
   );
+
+  const handleEditSection = useCallback((sectionKey: SectionKey | "brandProfile") => {
+    setReturnToStep(4);
+    setCurrentStep(SECTION_STEP_MAP[sectionKey]);
+  }, []);
+
+  const removeCustomItem = useCallback((sectionKey: string, id: string) => {
+    setCustomItems((prev) => {
+      const next = new Map(prev);
+      const items = (next.get(sectionKey) || []).filter((item) => item.id !== id);
+      next.set(sectionKey, items);
+      return next;
+    });
+  }, []);
 
   const getCombinedCandidates = useCallback(
     (key: SectionKey): CandidateDto[] => {
@@ -245,10 +313,12 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             return next;
           });
 
+          setHasResuggested(true);
           setCurrentStep(3);
         },
         onError: () => {
           // Advance even on error — use original data
+          setHasResuggested(true);
           setCurrentStep(3);
         },
       },
@@ -312,9 +382,18 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   );
 
   const handleNext = () => {
+    if (returnToStep !== null) {
+      const target = returnToStep;
+      setReturnToStep(null);
+      setCurrentStep(target);
+      return;
+    }
     if (currentStep === 2) {
-      // Step 3 -> Step 4: trigger resuggest
-      handleResuggest();
+      if (!hasResuggested) {
+        handleResuggest();
+      } else {
+        setCurrentStep(3);
+      }
       return;
     }
     if (currentStep === 4) {
@@ -346,7 +425,11 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   };
 
   const nextLabel =
-    currentStep === 4 ? DISCOVERY_COPY.wizard.confirmAndFinish : DISCOVERY_COPY.wizard.next;
+    returnToStep !== null
+      ? DISCOVERY_COPY.review.returnToReview
+      : currentStep === 4
+        ? DISCOVERY_COPY.wizard.confirmAndFinish
+        : DISCOVERY_COPY.wizard.next;
 
   const isNextLoading =
     (currentStep === 2 && resuggestMutation.isPending) ||
@@ -423,6 +506,10 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
                 selectedIds: selections.get("trustSignals") || new Set(),
               },
             }}
+            onToggle={toggleItem}
+            onAddCustom={addCustomItem}
+            onRemoveCustom={removeCustomItem}
+            onEditSection={handleEditSection}
           />
         )}
       </Stepper>

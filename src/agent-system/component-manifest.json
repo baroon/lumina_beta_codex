@@ -662,8 +662,8 @@
           "path": "src/features/discovery/components/wizard/WizardStepReview.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Badge"],
-          "notes": "Wizard step 5: compact summary of all selections across all sections with chip-style badges. Confirm button triggers final save."
+          "dependencies": ["Badge", "Input", "AddCustomItemForm"],
+          "notes": "Wizard step 5: interactive review of all selections with removable/editable chips, inline add, undo toast, and edit-section deep links."
         }
       ]
     },

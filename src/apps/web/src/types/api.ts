@@ -61,6 +61,10 @@ export interface BrandProfileDto {
   confidence: number;
   source: CandidateSource;
   status: CandidateStatus;
+  shortDescriptionSource?: CandidateSource;
+  industrySource?: CandidateSource;
+  categorySource?: CandidateSource;
+  positioningSource?: CandidateSource;
 }
 
 export interface CandidateDto {
