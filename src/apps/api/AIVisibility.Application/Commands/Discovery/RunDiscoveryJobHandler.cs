@@ -79,6 +79,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
             // Step 5 progress — competitors will be generated during confirmation via resuggest
             await _notifier.NotifyProgressAsync(brandId, DiscoveryStatus.Extracting, crawlResult.TotalPagesCrawled,
                 "Preparing competitive analysis...", step: 5, totalSteps: 5, cancellationToken: cancellationToken);
+            await Task.Delay(3000, cancellationToken);
 
             // Complete
             run.Status = DiscoveryStatus.AwaitingConfirmation;

@@ -54,6 +54,7 @@ public class LlmContentExtractor : IContentExtractor
         // Step 4 progress — topics will be generated during confirmation via resuggest
         await _notifier.NotifyProgressAsync(brand.Id, Domain.Enums.DiscoveryStatus.Extracting, 0,
             "Preparing topic suggestions...", step: 4, totalSteps: 5, cancellationToken: cancellationToken);
+        await Task.Delay(4000, cancellationToken);
 
         return new ExtractionResult(
             brandProfile,
