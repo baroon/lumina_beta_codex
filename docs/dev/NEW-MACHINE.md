@@ -26,9 +26,10 @@ Create `src/apps/api/AIVisibility.Api/appsettings.Local.json` with a freshly **r
 
 ## 3. Database (Postgres)
 
-The connection string is in `appsettings.Development.json` (`Host=localhost;Port=5432;Database=lumina;Username=lumina;Password=lumina_dev`). Start Postgres (see `LOCAL-DEV.md`), then apply all migrations — the schema is fully reproducible from git:
+The connection string is in `appsettings.Development.json` (`Host=localhost;Port=5432;Database=lumina;Username=lumina;Password=lumina_dev`). Start the local stack, then apply all migrations — the schema is fully reproducible from git:
 
 ```bash
+docker compose up -d   # from src/ — Postgres (+ RabbitMQ, Azurite, Mailpit, Gotenberg); see LOCAL-DEV.md
 dotnet ef database update --project apps/api/AIVisibility.Infrastructure --startup-project apps/api/AIVisibility.Api
 ```
 
