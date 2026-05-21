@@ -56,7 +56,7 @@ function ReviewChip({ candidate, typeLabel, onRemove }: ReviewChipProps) {
         <img
           src={flagUrl}
           alt={candidate.metadata?.countryCode}
-          className="h-3 w-auto rounded-[2px]"
+          className="h-3 w-auto rounded-sm"
         />
       )}
       <span>{candidate.name}</span>

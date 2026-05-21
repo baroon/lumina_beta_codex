@@ -3,6 +3,12 @@ export const APP_COPY = {
   nav: {
     addBrand: "Add Brand",
   },
+  stepper: {
+    progressLabel: "Wizard progress",
+    next: "Next",
+    back: "Back",
+    loading: "Loading...",
+  },
   error: {
     title: "Something went wrong",
     description: "An unexpected error occurred. Please try again.",

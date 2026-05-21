@@ -84,6 +84,10 @@ export const DISCOVERY_COPY = {
     industryLabel: "Industry",
     categoryLabel: "Category",
     positioningLabel: "Positioning",
+    descriptionPlaceholder: "Click to add a description",
+    industryPlaceholder: "Click to add industry",
+    categoryPlaceholder: "Click to add category",
+    positioningPlaceholder: "Click to add positioning",
     confirming: "Confirming...",
     selectedCount: "{selected}/{total} selected",
   },
@@ -107,6 +111,7 @@ export const DISCOVERY_COPY = {
     add: "Add",
     cancel: "Cancel",
     typePlaceholder: "Type",
+    addPlaceholder: "Add a {item}...",
   },
   productTypes: {
     Product: "Product",

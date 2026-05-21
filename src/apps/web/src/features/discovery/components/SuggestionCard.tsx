@@ -75,7 +75,7 @@ export function SuggestionCard({
             <img
               src={flagUrl}
               alt={candidate.metadata?.countryCode}
-              className="h-3 w-auto shrink-0 rounded-[2px]"
+              className="h-3 w-auto shrink-0 rounded-sm"
             />
           )}
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>

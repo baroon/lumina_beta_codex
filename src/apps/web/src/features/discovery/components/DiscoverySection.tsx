@@ -142,7 +142,10 @@ export function DiscoverySection({
             </>
           )}
           <AddCustomItemForm
-            placeholder={`Add a ${title.toLowerCase().replace(/s$/, "")}...`}
+            placeholder={DISCOVERY_COPY.customItem.addPlaceholder.replace(
+              "{item}",
+              title.toLowerCase().replace(/s$/, ""),
+            )}
             onAdd={onAddCustom}
             typeOptions={typeOptions}
             metadataKey={typeMetadataKey}

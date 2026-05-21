@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
+import { APP_COPY } from "@/content/app";
 
 export interface StepperStep {
   label: string;
@@ -25,14 +26,14 @@ export function Stepper({
   onBack,
   isNextDisabled,
   isNextLoading,
-  nextLabel = "Next",
-  backLabel = "Back",
+  nextLabel = APP_COPY.stepper.next,
+  backLabel = APP_COPY.stepper.back,
   children,
 }: StepperProps) {
   return (
     <div className="space-y-6">
       {/* Progress header */}
-      <nav aria-label="Wizard progress" className="px-4">
+      <nav aria-label={APP_COPY.stepper.progressLabel} className="px-4">
         <ol className="flex items-center">
           {steps.map((step, index) => {
             const isCompleted = index < currentStep;
@@ -94,7 +95,7 @@ export function Stepper({
         <div>
           {onNext && (
             <Button onClick={onNext} disabled={isNextDisabled || isNextLoading}>
-              {isNextLoading ? "Loading..." : nextLabel}
+              {isNextLoading ? APP_COPY.stepper.loading : nextLabel}
             </Button>
           )}
         </div>

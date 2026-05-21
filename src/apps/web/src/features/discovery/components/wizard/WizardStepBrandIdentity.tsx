@@ -259,7 +259,7 @@ export function WizardStepBrandIdentity({
           value={brandProfile.shortDescription ?? ""}
           source={brandProfile.shortDescriptionSource ?? brandProfile.source}
           onChange={(v) => onProfileChange?.("shortDescription", v)}
-          placeholder="Click to add a description"
+          placeholder={DISCOVERY_COPY.confirmation.descriptionPlaceholder}
         />
         <div className="grid gap-2 sm:grid-cols-2">
           <EditableField
@@ -267,14 +267,14 @@ export function WizardStepBrandIdentity({
             value={brandProfile.industry ?? ""}
             source={brandProfile.industrySource ?? brandProfile.source}
             onChange={(v) => onProfileChange?.("industry", v)}
-            placeholder="Click to add industry"
+            placeholder={DISCOVERY_COPY.confirmation.industryPlaceholder}
           />
           <EditableField
             label={DISCOVERY_COPY.confirmation.categoryLabel}
             value={brandProfile.category ?? ""}
             source={brandProfile.categorySource ?? brandProfile.source}
             onChange={(v) => onProfileChange?.("category", v)}
-            placeholder="Click to add category"
+            placeholder={DISCOVERY_COPY.confirmation.categoryPlaceholder}
           />
         </div>
         <EditableField
@@ -282,7 +282,7 @@ export function WizardStepBrandIdentity({
           value={brandProfile.positioning ?? ""}
           source={brandProfile.positioningSource ?? brandProfile.source}
           onChange={(v) => onProfileChange?.("positioning", v)}
-          placeholder="Click to add positioning"
+          placeholder={DISCOVERY_COPY.confirmation.positioningPlaceholder}
         />
       </div>
     </div>
