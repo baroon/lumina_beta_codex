@@ -109,6 +109,7 @@ export function WizardStepCompetitiveLandscape({
         isRefreshing={trustSignals.isRefreshing}
         typeOptions={TRUST_SIGNAL_TYPE_OPTIONS}
         typeMetadataKey="signalType"
+        typeRequired
       />
     </div>
   );

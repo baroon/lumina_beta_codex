@@ -24,6 +24,7 @@ interface DiscoverySectionProps {
   isRefreshing?: boolean;
   typeOptions?: TypeOption[];
   typeMetadataKey?: string;
+  typeRequired?: boolean;
 }
 
 export function DiscoverySection({
@@ -41,6 +42,7 @@ export function DiscoverySection({
   isRefreshing,
   typeOptions,
   typeMetadataKey,
+  typeRequired,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
@@ -141,6 +143,7 @@ export function DiscoverySection({
             onAdd={onAddCustom}
             typeOptions={typeOptions}
             metadataKey={typeMetadataKey}
+            typeRequired={typeRequired}
           />
         </div>
       )}

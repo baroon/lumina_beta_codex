@@ -22,6 +22,7 @@ interface AddCustomItemFormProps {
   onAdd: (name: string, metadata?: Record<string, string>) => void;
   typeOptions?: TypeOption[];
   metadataKey?: string;
+  typeRequired?: boolean;
 }
 
 export function AddCustomItemForm({
@@ -29,6 +30,7 @@ export function AddCustomItemForm({
   onAdd,
   typeOptions,
   metadataKey = "productType",
+  typeRequired = false,
 }: AddCustomItemFormProps) {
   const [value, setValue] = useState("");
   const [selectedType, setSelectedType] = useState("");
@@ -76,7 +78,12 @@ export function AddCustomItemForm({
           </SelectContent>
         </Select>
       )}
-      <Button type="submit" size="sm" className="h-8" disabled={!value.trim()}>
+      <Button
+        type="submit"
+        size="sm"
+        className="h-8"
+        disabled={!value.trim() || (typeRequired && !selectedType)}
+      >
         {DISCOVERY_COPY.customItem.add}
       </Button>
       <Button
