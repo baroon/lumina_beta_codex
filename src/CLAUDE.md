@@ -207,6 +207,7 @@ Also update `agent-system/project-structure.md` if the change introduces new dir
 # Frontend (from apps/web/)
 pnpm dev          # Vite dev server
 pnpm test         # Vitest run
+pnpm test:coverage # Vitest run with coverage (fails below the configured thresholds)
 pnpm lint         # ESLint
 pnpm typecheck    # tsc --noEmit
 pnpm storybook    # Storybook on port 6006

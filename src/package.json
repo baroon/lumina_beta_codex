@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "lint:web": "pnpm --filter web lint",
     "manifest:check": "node scripts/manifest-sync-lite.mjs",
-    "check:all": "pnpm lint:web && pnpm --filter web typecheck && pnpm --filter web test && pnpm manifest:check",
+    "check:all": "pnpm lint:web && pnpm --filter web typecheck && pnpm --filter web test:coverage && pnpm manifest:check",
     "prepare": "cd .. && husky src/.husky"
   },
   "engines": {

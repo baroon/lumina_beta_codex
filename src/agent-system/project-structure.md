@@ -700,7 +700,7 @@ packages:
     "format:check": "prettier --check .",
     "lint:web": "pnpm --filter web lint",
     "manifest:check": "node scripts/manifest-sync-lite.mjs",
-    "check:all": "pnpm lint:web && pnpm --filter web typecheck && pnpm --filter web test && pnpm manifest:check",
+    "check:all": "pnpm lint:web && pnpm --filter web typecheck && pnpm --filter web test:coverage && pnpm manifest:check",
     "prepare": "cd .. && husky src/.husky",
   },
 }
@@ -767,7 +767,7 @@ pnpm lint:web       # run ESLint on the web app
 ```bash
 pnpm manifest:check          # validate all files (includes story/test existence checks)
 node scripts/manifest-sync-lite.mjs --staged   # validate only staged files (used in pre-commit)
-pnpm check:all               # full CI validation: ESLint → TypeScript → tests → manifest sync
+pnpm check:all               # full CI validation: ESLint → TypeScript → tests + coverage thresholds (90% lines) → manifest sync
 ```
 
 ### Layer 4: Husky + lint-staged (pre-commit gating)

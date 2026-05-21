@@ -17,6 +17,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       all: true,
+      thresholds: {
+        lines: 90,
+        statements: 90,
+        branches: 85,
+        functions: 80,
+      },
       reporter: ["text-summary", "text", "html"],
       reportsDirectory: "./coverage",
       include: ["src/**/*.{ts,tsx}"],
@@ -28,7 +34,8 @@ export default defineConfig({
         "src/test-utils.tsx",
         "src/main.tsx",
         "src/vite-env.d.ts",
-        "src/app/routeTree.gen.ts",
+        "src/App.tsx",
+        "src/app/**",
         "src/**/types.ts",
         "src/types/**",
       ],
