@@ -9,6 +9,25 @@
 
 ---
 
+## Agent chains
+
+Structured, step-by-step recipes for non-trivial work live in **`agent-system/CHAINS.md`** (17 chains, each ending in a 14-point Review & Lint gate). Decision rule: if a change touches a file that has a test or a Storybook story, or a controller/handler/entity/migration, **use a chain**; for config, dependency bumps, questions, or trivial one-liners, talk directly.
+
+- **Frontend:** `create-component`, `modify-variant`, `bug-fix`, `integrate-api`, `ui-match`, `add-feature-page`, `add-chart`, `add-zod-schema`
+- **Backend:** `create-endpoint`, `create-entity`, `create-command`, `create-query`, `create-worker-job`, `integrate-provider`
+- **Full-stack / housekeeping:** `create-feature-slice`, `migrate-logic`, `ui-intake` (intake routing + preflight)
+
+Invoke a chain by reading its section first:
+
+```
+Read agent-system/CHAINS.md (the <chain-name> section) and agent-system/component-manifest.json.
+<task description>. Follow the chain exactly.
+```
+
+The chains operationalize the rules in the rest of this file — manifest entry, co-located test + story, dependency/layer updates, design tokens — so following a chain and following these conventions are the same thing. `agent-system/component-manifest.json` is the canonical component registry; `agent-system/project-structure.md` documents directories and pre-commit enforcement.
+
+---
+
 ## Component Architecture (Atomic Design)
 
 Components live in `apps/web/src/components/` organized by layer:
