@@ -42,11 +42,21 @@ public class GetDiscoveryResultsQueryHandlerTests
             UpdatedAt = DateTime.UtcNow
         };
 
+        var run = new DiscoveryRun
+        {
+            Id = Guid.NewGuid(),
+            BrandId = brand.Id,
+            Status = DiscoveryStatus.AwaitingConfirmation,
+            StartedAt = DateTime.UtcNow
+        };
+
         context.Brands.Add(brand);
+        context.DiscoveryRuns.Add(run);
         context.Products.Add(new Product
         {
             Id = Guid.NewGuid(),
             BrandId = brand.Id,
+            DiscoveryRunId = run.Id,
             Name = "Test Product",
             Status = CandidateStatus.Suggested,
             Source = CandidateSource.WebsiteCrawl,
@@ -56,18 +66,12 @@ public class GetDiscoveryResultsQueryHandlerTests
         {
             Id = Guid.NewGuid(),
             BrandId = brand.Id,
+            DiscoveryRunId = run.Id,
             Name = "Global",
             MarketType = MarketType.Global,
             Status = CandidateStatus.Suggested,
             Source = CandidateSource.WebsiteCrawl,
             Confidence = 0.5
-        });
-        context.DiscoveryRuns.Add(new DiscoveryRun
-        {
-            Id = Guid.NewGuid(),
-            BrandId = brand.Id,
-            Status = DiscoveryStatus.AwaitingConfirmation,
-            StartedAt = DateTime.UtcNow
         });
         await context.SaveChangesAsync();
 

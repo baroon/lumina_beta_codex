@@ -122,11 +122,13 @@ public class HeuristicContentExtractorTests
     [Fact]
     public async Task ExtractCandidates_ShouldReturnDefaultGlobalMarket_WhenNoMarketDetected()
     {
+        // .xyz has no TLD->country mapping and the page carries no currency signals,
+        // so the extractor falls back to a default Global market.
         var brand = new Brand
         {
             Id = Guid.NewGuid(),
             Name = "Test Brand",
-            WebsiteUrl = "https://example.io"
+            WebsiteUrl = "https://example.xyz"
         };
 
         var pages = new List<CrawledPage>
@@ -134,7 +136,7 @@ public class HeuristicContentExtractorTests
             new()
             {
                 Id = Guid.NewGuid(),
-                Url = "https://example.io/",
+                Url = "https://example.xyz/",
                 Title = "Test Brand",
                 HeadingsJson = "[]",
                 StatusCode = 200
@@ -148,8 +150,10 @@ public class HeuristicContentExtractorTests
     }
 
     [Fact]
-    public async Task ExtractCandidates_ShouldExtractTopics_FromHeadings()
+    public async Task ExtractCandidates_ShouldNotExtractTopics_TopicsGeneratedDuringConfirmation()
     {
+        // Topics are no longer extracted from the crawl; they are generated during the
+        // confirmation wizard from confirmed context (see ADDENDUM-002 / REQ-001 §5).
         var brand = new Brand
         {
             Id = Guid.NewGuid(),
@@ -175,7 +179,6 @@ public class HeuristicContentExtractorTests
 
         var result = await _extractor.ExtractCandidatesAsync(brand, pages);
 
-        result.Topics.Should().NotBeEmpty();
-        result.Topics.Should().Contain(t => t.Name == "Digital Marketing Automation");
+        result.Topics.Should().BeEmpty();
     }
 }
