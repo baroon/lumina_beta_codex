@@ -6,3 +6,10 @@
 - ADR-004 Reporting & Actions UI — see Phase 4 package
 
 This master package includes phase packages under `source_phase_packages/` for convenience.
+
+## Addendums
+
+Addendums amend locked ADRs without modifying them. See `../addendum/`.
+
+- ADDENDUM-001 Unified Architecture Decisions — stack unification with the BOLD framework
+- ADDENDUM-002 Discovery Implementation Alignment — supersedes parts of ADR-001 (wizard, trust signals, confidence) to match shipped Phase 1

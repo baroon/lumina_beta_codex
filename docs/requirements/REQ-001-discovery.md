@@ -35,7 +35,7 @@ The system must run a basic website crawl after brand/website input.
 Default crawl settings:
 
 ```text
-Max 25 same-domain pages
+Max 10 same-domain pages
 Retry crawl on failure
 Allow manual fallback
 Prioritize homepage, about, product/service, pricing, FAQ/support, contact, sitemap-discovered pages
@@ -59,16 +59,21 @@ Crawl must not perform full SEO audit in v1.
 
 ## 5. Extraction requirements
 
-The extraction pipeline must produce candidate entities for:
+Discovery uses a **staged extraction model**:
+
+- The initial crawl-based extraction produces candidates for **BrandProfile, Product / Service, Audience, Market, and TrustSignal**.
+- **Topic** and **Competitor** candidates are NOT produced by the initial crawl. They are generated during the confirmation wizard (see §6 "In-wizard refinement"), using the user's confirmed industry/category, products, audiences, and markets as context to improve accuracy.
+
+Across both stages the pipeline must produce candidate entities for:
 
 ```text
-BrandProfile
-Product / Service
-Audience
-Market
-Topic
-Competitor
-TrustSignal
+BrandProfile      (initial extraction)
+Product / Service (initial extraction)
+Audience          (initial extraction)
+Market            (initial extraction)
+TrustSignal       (initial extraction)
+Topic             (generated during confirmation from confirmed context)
+Competitor        (generated during confirmation from confirmed context)
 ```
 
 Each extracted candidate must include:
@@ -85,18 +90,17 @@ Status
 
 ## 6. Confirmation screen requirements
 
-The Discovery confirmation screen must be one combined page with grouped editable sections.
+The Discovery confirmation screen is a guided multi-step wizard. The final step
+is a combined, editable review of every section before the user confirms.
 
-Sections:
+Wizard steps:
 
 ```text
-Brand details
-Products / services
-Audience
-Market
-Topics
-Competitors
-Trust signals
+1. Brand Identity        — brand profile fields, each with per-field source attribution, inline editable
+2. Products              — products / services
+3. Audiences & Markets   — target audiences and markets
+4. Competitive Landscape — topics, competitors, trust signals
+5. Review & Confirm      — combined summary of all sections; "Edit" jumps back to the relevant step
 ```
 
 User must be able to:
@@ -107,10 +111,23 @@ Select/unselect suggestions
 Edit suggested values
 Add custom values
 Ignore suggestions
-Proceed only after reviewing the screen
+Review every section (the Review & Confirm step) before completing
 ```
 
-High-confidence suggestions may be preselected.
+High-confidence suggestions are preselected (see §14).
+
+### In-wizard refinement
+
+The confirmation flow supports iterative refinement (distinct from full
+re-discovery in §17):
+
+```text
+Resuggest      — advancing past Audiences & Markets re-derives Topics and Competitors
+                 from the confirmed products, audiences, and markets.
+Refresh lens   — each lens (products, audiences, markets, topics, competitors,
+                 trust signals) offers a "Refresh suggestions" action that
+                 regenerates that lens, limited to 3 refreshes per lens.
+```
 
 ## 7. BrandProfile requirements
 
@@ -152,6 +169,18 @@ RelatedPageUrl optional
 Source
 ConfidenceScore
 Status
+```
+
+ProductType controlled list:
+
+```text
+Product
+Service
+Feature
+Solution
+Tool
+Resource
+Unknown
 ```
 
 Product/service is recommended. If missing, Category may be used as fallback.
@@ -214,7 +243,6 @@ Fields:
 ```text
 Name
 Description optional
-TopicType optional
 Source
 ConfidenceScore
 Status
@@ -223,11 +251,15 @@ Aliases optional
 
 At least one Topic is required for Discovery completion.
 
-Topics are not a rigid taxonomy. They may be suggested from crawl/templates and edited by the user.
+Topics are not a rigid taxonomy. They are generated during the confirmation
+wizard from the user's confirmed context (industry/category, products,
+audiences, markets) and remain editable by the user.
 
 ## 12. Competitor requirements
 
 Competitor discovery must primarily use user input + search/LLM suggestions.
+Like topics, competitor candidates are generated during the confirmation wizard
+from the user's confirmed context, not from the initial crawl.
 
 Source priority:
 
@@ -245,46 +277,45 @@ No competitors selected must not block Discovery completion.
 
 ## 13. TrustSignal requirements
 
-TrustSignals use a finite controlled list.
+TrustSignals use a finite controlled list of curated categories.
 
-V1 signal types:
+V1 signal types (enum name in parentheses):
 
 ```text
-Pricing Transparency
-Refund Policy
-Cancellation Policy
-Customer Support
-Privacy Policy
-Security
-Compliance / Certifications
-Reviews / Ratings
-Testimonials
-Case Studies
-Guarantee / Warranty
-Contact Availability
-Company / About Information
-Terms of Service
+Awards & Recognitions          (AwardsAndRecognitions)
+Certifications & Accreditations (CertificationsAndAccreditations)
+Press & Media Mentions         (PressAndMediaMentions)
+Testimonials & Reviews         (TestimonialsAndReviews)
+Expert Endorsements            (ExpertEndorsements)
+Case Studies & Success Metrics (CaseStudiesAndSuccessMetrics)
+Client & Partner Logos         (ClientAndPartnerLogos)
 ```
 
-If not detected, status must be `NotDetected`; do not claim missing.
+TrustSignals follow the same candidate lifecycle as every other concept
+(`Suggested` → `Confirmed` / `Dismissed`); there is no separate `NotDetected`
+status. An undetected signal simply produces no candidate rather than a
+"missing" claim.
+
+When a user adds a custom trust signal, a signal type from the list above must
+be selected.
 
 ## 14. Confidence and selection requirements
 
-Confidence thresholds must be configurable per concept.
-
-Default thresholds:
+A single set of confidence thresholds applies uniformly across all concepts.
+Each candidate maps to one of three confidence levels:
 
 ```text
-BrandProfile: 0.80
-Product/Service: 0.75
-Audience: 0.70
-Market: user-confirm required
-Topic: 0.65
-Competitor: user-confirm required
-TrustSignal: 0.75
+High:   confidence >= 0.70
+Medium: confidence >= 0.40 and < 0.70
+Low:    confidence < 0.40
 ```
 
-User confirmation finalizes the item regardless of original confidence.
+High-confidence candidates are preselected in every lens (products, audiences,
+markets, topics, competitors, trust signals). Medium- and low-confidence
+candidates are shown but not preselected.
+
+User confirmation (or deselection) finalizes the item regardless of its
+original confidence.
 
 ## 15. Normalization requirements
 

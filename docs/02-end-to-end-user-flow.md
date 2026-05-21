@@ -3,11 +3,12 @@
 ## Phase 1: Discovery
 
 1. User enters Brand name, Website URL, and primary market if known.
-2. System crawls up to 25 same-domain pages.
-3. System extracts suggestions: BrandProfile, Products/Services, Audience, Market, Topics, Competitors, TrustSignals.
-4. User reviews one combined Discovery screen with grouped sections.
-5. User confirms or edits suggestions.
-6. Discovery is complete when required rules are met.
+2. System crawls up to 10 same-domain pages.
+3. System extracts initial suggestions from the crawl: BrandProfile, Products/Services, Audiences, Markets, TrustSignals. (Topics and Competitors are generated later in the wizard from the user's confirmed inputs.)
+4. User steps through a Discovery confirmation wizard: Brand Identity → Products → Audiences & Markets → Competitive Landscape → Review & Confirm.
+5. Throughout the wizard the user can select/unselect, edit, and add custom items, and can refine suggestions (advancing past Audiences & Markets re-derives Topics and Competitors; each lens can be refreshed up to 3 times).
+6. The final Review & Confirm step presents a combined, editable summary of all sections.
+7. Discovery is complete when required rules are met.
 
 ## Phase 2: Tracker Setup & Execution
 

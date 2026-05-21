@@ -7,25 +7,26 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 ### TODO
 
 - Design Add Brand screen
-- Design combined Discovery confirmation screen
-- Add grouped sections: Brand details, Products/services, Audience, Market, Topics, Competitors, Trust signals
+- Design Discovery confirmation wizard (Brand Identity → Products → Audiences & Markets → Competitive Landscape → Review & Confirm)
+- Implement the combined, editable Review & Confirm step (with per-section "Edit" jump-back)
 - Add inline edit/select/unselect/add behavior
+- Add in-wizard refinement: re-derive Topics/Competitors after Audiences & Markets; per-lens "Refresh suggestions" (max 3 per lens)
 - Add confidence/uncertainty copy without exposing raw technical scores by default
 - Add manual fallback flow when crawl fails
 - Add Discovery completion validation
 
 ### Acceptance criteria
 
-- User can complete Discovery from one combined confirmation screen
-- User must review the screen before proceeding
-- High-confidence suggestions can be preselected
+- User can complete Discovery through the confirmation wizard, ending in a combined Review & Confirm step
+- User must reach the Review & Confirm step before completing
+- High-confidence suggestions are preselected
 - User can edit or add missing values
 
 ## Epic 2 — Website Crawl
 
 ### TODO
 
-- Implement same-domain crawl with max 25 pages
+- Implement same-domain crawl with max 10 pages
 - Prioritize homepage/about/product/service/pricing/FAQ/support/contact/sitemap pages
 - Implement retry behavior
 - Implement failure handling and manual fallback
@@ -105,8 +106,7 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 ### TODO
 
 - Rename Theme to Topic everywhere in Phase 1 docs/code
-- Extract topics from headings, page titles, URLs, FAQ, repeated phrases
-- Suggest generic/industry topics
+- Generate topics during the confirmation wizard from confirmed context (industry/category, products, audiences, markets) via the resuggest/regenerate-lens flow — not from the initial crawl
 - Add alias-based soft normalization
 - Support user-added free-form topics
 
@@ -135,21 +135,23 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 
 ### TODO
 
-- Implement finite TrustSignal taxonomy
-- Detect pricing/refund/cancellation/support/privacy/security/reviews/testimonials/case study signals
-- Track Detected vs NotDetected
+- Implement the finite TrustSignal taxonomy (7 curated categories): Awards & Recognitions, Certifications & Accreditations, Press & Media Mentions, Testimonials & Reviews, Expert Endorsements, Case Studies & Success Metrics, Client & Partner Logos
+- Detect signals across the 7 categories
+- Track via the standard candidate lifecycle (Suggested → Confirmed/Dismissed); no separate NotDetected status
+- Require a signal type when the user adds a custom trust signal
 - Store source evidence
 
 ### Acceptance criteria
 
-- System never claims a trust signal is missing, only not detected on crawled pages
+- Undetected signals produce no candidate (the system never fabricates a "missing" claim)
 - TrustSignals support later sentiment/trust prompts and findings
 
 ## Epic 10 — Confidence, Normalization, and Confirmation
 
 ### TODO
 
-- Implement configurable concept-specific thresholds
+- Implement uniform confidence thresholds (High >= 0.70, Medium >= 0.40, Low < 0.40)
+- Preselect high-confidence candidates in every lens
 - Implement source/status/confidence metadata on extracted candidates
 - Implement alias-based soft normalization
 - Implement suggested merge UX/backend flagging
@@ -157,7 +159,7 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 
 ### Acceptance criteria
 
-- Default thresholds match ADR-001
+- Thresholds match REQ-001 §14 (uniform High/Medium/Low)
 - User-created items are not aggressively auto-merged
 - Confirmed values are not overwritten automatically
 
@@ -188,3 +190,15 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 
 - Phase 2 can create a Visibility Tracker from confirmed Discovery outputs
 - Phase 2 does not need to rerun crawl or infer Discovery concepts again
+
+## Known gaps / Phase 1 backlog (implementation does not yet meet spec)
+
+Tracked deviations where the shipped code does not yet satisfy REQ-001 / ADR-001. See `../addendum/ADDENDUM-002-discovery-implementation-alignment.md` for context.
+
+- **B1 — Completion gating (§16):** Market + at least one Topic + (at least one Product/Service or a Category) are not enforced before completion. _(In progress.)_
+- **B2 — Source evidence (§5, §7):** Only TrustSignal stores source page URLs; Product has a single `RelatedPageUrl` (not populated by the LLM path); Audience/Market/Topic/Competitor/BrandProfile store none.
+- **B3 — Crawl richness (§4):** Open Graph and schema.org metadata are not collected; no sitemap-driven page discovery.
+- **B4 — Crawl resilience (§4):** No crawl retry; a full crawl failure fails the run (the frontend offers a manual-fallback UI, but there is no backend retry).
+- **B5 — Normalization (§15):** No alias-based soft normalization or suggested-merge logic; the `Topic.AliasesJson` column exists but is unused.
+- **B6 — Re-discovery (§17):** Re-running discovery overwrites; there is no new-snapshot diff against confirmed values (non-destructive rerun).
+- **B7 — Market reference data (§10):** No country/language/currency lookup or validation; values are freeform strings.
