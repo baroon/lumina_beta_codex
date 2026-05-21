@@ -53,4 +53,4 @@ pnpm --filter web build-storybook       # all stories compile
 ## Notes
 
 - **Working style travels via git:** the red→green-per-bug-fix rule and the present-trade-offs collaboration style live in `src/CLAUDE.md` (auto-loaded), so a fresh Claude session matches the established experience. Claude's home-dir memory (`~/.claude/.../memory/`) is machine-local and optional to copy.
-- **Phase 2 starts from the docs:** `docs/requirements/REQ-002`, `docs/adr/ADR-002`, `docs/kanban/KANBAN-002` (tracker setup). Phase 1 is tagged `phase-1-discovery`.
+- **What to work on next:** this guide is setup-only and phase-agnostic — for the current phase and its specs see the README "Status" section, `docs/03-phase-roadmap.md`, and the latest `docs/kanban/`.
