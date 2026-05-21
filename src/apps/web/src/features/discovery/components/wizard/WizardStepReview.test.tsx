@@ -132,4 +132,26 @@ describe("WizardStepReview", () => {
     expect(screen.getByText("Service")).toBeInTheDocument();
     expect(screen.getByText("Certifications & Accreditations")).toBeInTheDocument();
   });
+
+  it("renders a country flag for market chips with a countryCode", () => {
+    render(
+      <WizardStepReview
+        brandProfile={null}
+        sections={{
+          products: emptySection(),
+          audiences: emptySection(),
+          markets: {
+            candidates: [{ ...cand("m1", "United States"), metadata: { countryCode: "US" } }],
+            selectedIds: new Set(["m1"]),
+          },
+          topics: emptySection(),
+          competitors: emptySection(),
+          trustSignals: emptySection(),
+        }}
+        onToggle={vi.fn()}
+        onEditSection={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("🇺🇸")).toBeInTheDocument();
+  });
 });

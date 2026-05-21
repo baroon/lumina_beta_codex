@@ -3,6 +3,7 @@ import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { countryCodeToFlag } from "../../flag";
 import type { CandidateDto, BrandProfileDto } from "@/types/api";
 
 type SectionKey = "products" | "audiences" | "markets" | "topics" | "competitors" | "trustSignals";
@@ -44,12 +45,14 @@ interface ReviewChipProps {
 
 function ReviewChip({ candidate, typeLabel, onRemove }: ReviewChipProps) {
   const isCustom = candidate.source === "UserAdded";
+  const flag = countryCodeToFlag(candidate.metadata?.countryCode);
 
   return (
     <Badge
       variant="secondary"
       className={cn("cursor-default gap-1 pr-1", isCustom && "border-primary-200 bg-primary-50")}
     >
+      {flag && <span aria-hidden="true">{flag}</span>}
       <span>{candidate.name}</span>
       {typeLabel && (
         <span className="rounded-full bg-neutral-200/70 px-1.5 text-[10px] font-medium text-neutral-600">

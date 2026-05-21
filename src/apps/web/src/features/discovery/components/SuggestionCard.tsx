@@ -3,6 +3,7 @@ import { Sparkles, UserPen } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";
+import { countryCodeToFlag } from "../flag";
 import type { CandidateDto } from "@/types/api";
 
 interface SuggestionCardProps {
@@ -48,6 +49,7 @@ export function SuggestionCard({
 }: SuggestionCardProps) {
   const typeValue = typeMetadataKey ? candidate.metadata?.[typeMetadataKey] : undefined;
   const typeLabel = typeValue && typeLabels ? typeLabels[typeValue] : undefined;
+  const flag = countryCodeToFlag(candidate.metadata?.countryCode);
 
   return (
     <div
@@ -67,6 +69,11 @@ export function SuggestionCard({
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {flag && (
+            <span className="shrink-0 text-sm" aria-hidden="true">
+              {flag}
+            </span>
+          )}
           <span className="font-medium text-sm text-neutral-900 truncate">{candidate.name}</span>
           {typeLabel && (
             <span className="inline-flex shrink-0 items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-600">

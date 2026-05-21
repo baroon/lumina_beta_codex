@@ -69,4 +69,15 @@ describe("SuggestionCard", () => {
     );
     expect(screen.getByText("Service")).toBeInTheDocument();
   });
+
+  it("renders a country flag for markets with a countryCode", () => {
+    render(
+      <SuggestionCard
+        candidate={candidate({ name: "United States", metadata: { countryCode: "US" } })}
+        selected={false}
+        onToggle={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("🇺🇸")).toBeInTheDocument();
+  });
 });
