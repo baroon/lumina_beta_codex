@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Input } from "@/components/atoms/input";
 import { DISCOVERY_COPY } from "@/content/discovery";
-import { AddCustomItemForm } from "../AddCustomItemForm";
-import { X, Pencil } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CandidateDto, BrandProfileDto } from "@/types/api";
 
@@ -13,8 +11,6 @@ interface WizardStepReviewProps {
   brandProfile: BrandProfileDto | null;
   sections: Record<SectionKey, { candidates: CandidateDto[]; selectedIds: Set<string> }>;
   onToggle: (sectionKey: string, id: string) => void;
-  onAddCustom: (sectionKey: string, name: string, metadata?: Record<string, string>) => void;
-  onRemoveCustom: (sectionKey: string, id: string) => void;
   onEditSection: (sectionKey: SectionKey | "brandProfile") => void;
 }
 
@@ -28,87 +24,29 @@ const SECTION_ORDER: { key: SectionKey; label: string }[] = [
 ];
 
 // ── ReviewChip ────────────────────────────────────────────────────
+// The review screen is read-only apart from deletion: items can be removed,
+// but adding/renaming happens back in the relevant step (via "Edit") so the
+// mandatory type rules are always enforced.
 
 interface ReviewChipProps {
   candidate: CandidateDto;
   onRemove: () => void;
-  onEdit: (newName: string) => void;
 }
 
-function ReviewChip({ candidate, onRemove, onEdit }: ReviewChipProps) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(candidate.name);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (editing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [editing]);
-
-  function commit() {
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== candidate.name) {
-      onEdit(trimmed);
-    }
-    setEditing(false);
-    setDraft(candidate.name);
-  }
-
-  function cancel() {
-    setDraft(candidate.name);
-    setEditing(false);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      commit();
-    } else if (e.key === "Escape") {
-      cancel();
-    }
-  }
-
-  if (editing) {
-    return (
-      <Input
-        ref={inputRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={handleKeyDown}
-        inputSize="sm"
-        className="h-7 w-40 text-xs"
-      />
-    );
-  }
-
+function ReviewChip({ candidate, onRemove }: ReviewChipProps) {
   const isCustom = candidate.source === "UserAdded";
 
   return (
     <Badge
       variant="secondary"
-      className={cn(
-        "group/chip cursor-default gap-1 pr-1",
-        isCustom && "border-primary-200 bg-primary-50",
-      )}
+      className={cn("cursor-default gap-1 pr-1", isCustom && "border-primary-200 bg-primary-50")}
     >
-      <span className="cursor-pointer" onDoubleClick={() => setEditing(true)}>
-        {candidate.name}
-      </span>
+      <span>{candidate.name}</span>
       {isCustom && (
         <span className="text-[10px] font-normal text-primary-600">
           {DISCOVERY_COPY.review.customTag}
         </span>
       )}
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="ml-0.5 rounded p-0.5 opacity-0 transition-opacity hover:bg-neutral-200 group-hover/chip:opacity-100"
-        aria-label={`Edit ${candidate.name}`}
-      >
-        <Pencil className="h-2.5 w-2.5" />
-      </button>
       <button
         type="button"
         onClick={onRemove}
@@ -154,8 +92,6 @@ export function WizardStepReview({
   brandProfile,
   sections,
   onToggle,
-  onAddCustom,
-  onRemoveCustom,
   onEditSection,
 }: WizardStepReviewProps) {
   const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
@@ -199,20 +135,6 @@ export function WizardStepReview({
     setUndoItem(null);
   }, [undoItem, onToggle]);
 
-  const handleEdit = useCallback(
-    (sectionKey: SectionKey, candidate: CandidateDto, newName: string) => {
-      // Deselect old item
-      onToggle(sectionKey, candidate.id);
-      // If custom, remove from custom items
-      if (candidate.source === "UserAdded") {
-        onRemoveCustom(sectionKey, candidate.id);
-      }
-      // Add new custom item (auto-selects)
-      onAddCustom(sectionKey, newName);
-    },
-    [onToggle, onRemoveCustom, onAddCustom],
-  );
-
   return (
     <div className="space-y-4">
       {/* Brand profile summary */}
@@ -231,7 +153,7 @@ export function WizardStepReview({
             </button>
           </div>
           <p className="mt-1 text-sm text-neutral-600">
-            {brandProfile.shortDescription || brandProfile.industry || "\u2014"}
+            {brandProfile.shortDescription || brandProfile.industry || "—"}
           </p>
         </div>
       )}
@@ -268,23 +190,12 @@ export function WizardStepReview({
             {selected.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {selected.map((c) => (
-                  <ReviewChip
-                    key={c.id}
-                    candidate={c}
-                    onRemove={() => handleRemove(key, c)}
-                    onEdit={(newName) => handleEdit(key, c, newName)}
-                  />
+                  <ReviewChip key={c.id} candidate={c} onRemove={() => handleRemove(key, c)} />
                 ))}
               </div>
             ) : (
               <p className="mt-1 text-xs text-neutral-400">{DISCOVERY_COPY.review.noneSelected}</p>
             )}
-            <div className="mt-2">
-              <AddCustomItemForm
-                placeholder={`Add ${label.toLowerCase()}...`}
-                onAdd={(name, metadata) => onAddCustom(key, name, metadata)}
-              />
-            </div>
           </div>
         );
       })}

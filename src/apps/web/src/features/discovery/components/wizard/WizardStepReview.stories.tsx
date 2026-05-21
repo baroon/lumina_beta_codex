@@ -21,8 +21,6 @@ const meta: Meta<typeof WizardStepReview> = {
   tags: ["autodocs"],
   args: {
     onToggle: () => {},
-    onAddCustom: () => {},
-    onRemoveCustom: () => {},
     onEditSection: () => {},
   },
   decorators: [

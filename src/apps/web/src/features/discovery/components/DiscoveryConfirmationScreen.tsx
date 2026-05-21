@@ -213,15 +213,6 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     setCurrentStep(SECTION_STEP_MAP[sectionKey]);
   }, []);
 
-  const removeCustomItem = useCallback((sectionKey: string, id: string) => {
-    setCustomItems((prev) => {
-      const next = new Map(prev);
-      const items = (next.get(sectionKey) || []).filter((item) => item.id !== id);
-      next.set(sectionKey, items);
-      return next;
-    });
-  }, []);
-
   const getCombinedCandidates = useCallback(
     (key: SectionKey): CandidateDto[] => {
       let original = (results[key] as CandidateDto[]) || [];
@@ -528,8 +519,6 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
               },
             }}
             onToggle={toggleItem}
-            onAddCustom={addCustomItem}
-            onRemoveCustom={removeCustomItem}
             onEditSection={handleEditSection}
           />
         )}

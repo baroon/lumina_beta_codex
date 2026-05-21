@@ -47,8 +47,6 @@ const brandProfile = {
 function renderReview(
   overrides: {
     onToggle?: ReturnType<typeof vi.fn>;
-    onAddCustom?: ReturnType<typeof vi.fn>;
-    onRemoveCustom?: ReturnType<typeof vi.fn>;
     onEditSection?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
@@ -56,8 +54,6 @@ function renderReview(
     brandProfile,
     sections: makeSections([cand("p1", "Alpha")], ["p1"]),
     onToggle: overrides.onToggle ?? vi.fn(),
-    onAddCustom: overrides.onAddCustom ?? vi.fn(),
-    onRemoveCustom: overrides.onRemoveCustom ?? vi.fn(),
     onEditSection: overrides.onEditSection ?? vi.fn(),
   };
   render(<WizardStepReview {...props} />);
@@ -98,18 +94,11 @@ describe("WizardStepReview", () => {
     expect(onToggle).toHaveBeenLastCalledWith("products", "p1");
   });
 
-  it("adds a custom item to a section", async () => {
-    const onAddCustom = vi.fn();
-    renderReview({ onAddCustom });
-
-    const addCustomButtons = screen.getAllByRole("button", { name: /add custom/i });
-    await userEvent.click(addCustomButtons[0]);
-    await userEvent.type(
-      screen.getByPlaceholderText("Add products & services..."),
-      "Custom Product",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /^add$/i }));
-
-    expect(onAddCustom).toHaveBeenCalledWith("products", "Custom Product", undefined);
+  it("offers only delete and edit-section — no add or inline rename", () => {
+    renderReview();
+    expect(screen.queryByRole("button", { name: /add custom/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove Alpha" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit Alpha" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Edit" }).length).toBeGreaterThan(0);
   });
 });
