@@ -191,11 +191,17 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 - Phase 2 can create a Visibility Tracker from confirmed Discovery outputs
 - Phase 2 does not need to rerun crawl or infer Discovery concepts again
 
+## Added after the seed — Brand aliases
+
+Not in the original ADR-001 / REQ-001. Alternate brand names ("also known as") captured for downstream brand-mention detection in the reporting/analytics phase.
+
+- ✅ **Done.** Stored on `Brand.Aliases` (jsonb), user-entered on the Brand Identity step via an add/remove chip editor, shown read-only in Review & Confirm, and persisted on completion (trimmed + case-insensitive dedupe). Migration `AddBrandAliases`.
+
 ## Known gaps / Phase 1 backlog (implementation does not yet meet spec)
 
-Tracked deviations where the shipped code does not yet satisfy REQ-001 / ADR-001. See `../addendum/ADDENDUM-002-discovery-implementation-alignment.md` for context.
+Tracked deviations where the shipped code does not yet satisfy REQ-001 / ADR-001. B1 is resolved; B2–B7 remain open. See `../addendum/ADDENDUM-002-discovery-implementation-alignment.md` for context.
 
-- **B1 — Completion gating (§16):** Market + at least one Topic + (at least one Product/Service or a Category) are not enforced before completion. _(In progress.)_
+- **B1 — Completion gating (§16): ✅ DONE.** `ConfirmDiscoveryCommandHandler` requires at least one confirmed Market, at least one Topic, and (at least one Product/Service or a brand Category) before the run can complete; the wizard disables "Confirm & Finish" and lists what is missing.
 - **B2 — Source evidence (§5, §7):** Only TrustSignal stores source page URLs; Product has a single `RelatedPageUrl` (not populated by the LLM path); Audience/Market/Topic/Competitor/BrandProfile store none.
 - **B3 — Crawl richness (§4):** Open Graph and schema.org metadata are not collected; no sitemap-driven page discovery.
 - **B4 — Crawl resilience (§4):** No crawl retry; a full crawl failure fails the run (the frontend offers a manual-fallback UI, but there is no backend retry).
