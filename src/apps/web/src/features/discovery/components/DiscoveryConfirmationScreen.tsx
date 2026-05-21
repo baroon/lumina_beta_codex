@@ -24,6 +24,7 @@ import type {
   VisibilityLens,
 } from "@/types/api";
 import { preselectCandidates, isHighConfidence } from "../confidence";
+import { resolveCountryCode } from "../country";
 
 interface DiscoveryConfirmationScreenProps {
   results: DiscoveryResultsDto;
@@ -181,13 +182,20 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
   const addCustomItem = useCallback(
     (sectionKey: string, name: string, metadata?: Record<string, string>) => {
+      let resolvedMetadata = metadata ?? {};
+      // Markets added by hand carry no country code; infer one from the typed
+      // name so the flag can render (best-effort — regions/cities won't match).
+      if (sectionKey === "markets" && !resolvedMetadata.countryCode) {
+        const code = resolveCountryCode(name);
+        if (code) resolvedMetadata = { ...resolvedMetadata, countryCode: code };
+      }
       const newItem: CandidateDto = {
         id: `custom-${Date.now()}`,
         name,
         description: null,
         confidence: 1.0,
         source: "UserAdded",
-        metadata: metadata ?? {},
+        metadata: resolvedMetadata,
       };
 
       setCustomItems((prev) => {
