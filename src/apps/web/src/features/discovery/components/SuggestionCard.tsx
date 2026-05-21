@@ -56,7 +56,7 @@ export function SuggestionCard({
   return (
     <div
       className={cn(
-        "relative flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
+        "group relative flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
         selected
           ? "border-primary-600 bg-primary-50"
           : "border-neutral-200 hover:border-neutral-300",
@@ -90,7 +90,7 @@ export function SuggestionCard({
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{candidate.description}</p>
         )}
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         {onRemove && (
           <button
             type="button"
@@ -98,10 +98,10 @@ export function SuggestionCard({
               e.stopPropagation();
               onRemove(candidate.id);
             }}
-            className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
             aria-label={`Remove ${candidate.name}`}
+            className="rounded-md p-1 text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 group-hover:opacity-100"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3 w-3" />
           </button>
         )}
         <SourceIcon source={candidate.source} />
