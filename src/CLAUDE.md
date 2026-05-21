@@ -18,14 +18,14 @@ Components live in `apps/web/src/components/` organized by layer:
 | **Atoms** | `components/atoms/` | Primitives (Button, Input, Badge, etc.) | Required | Required |
 | **Molecules** | `components/molecules/` | Simple compositions (PageHeader, Stepper) | Required | Required |
 | **Organisms** | `components/organisms/` | Complex layouts (AppShell, Sidebar) | Required | Required |
-| **Feature components** | `features/{name}/components/` | Domain-specific UI | Required | Not required |
+| **Feature components** | `features/{name}/components/` | Domain-specific UI | Required | Required |
 
 ### Rules
 
 - **Every component `.tsx` file MUST have a co-located `.stories.tsx` file.**
-- **Shared components (atoms, molecules, organisms) MUST also have a `.test.tsx` file.**
+- **Every component `.tsx` file MUST also have a co-located `.test.tsx` file** — shared and feature components alike. We maintain complete test coverage across the frontend; no component layer is test-exempt. This extends to hooks, the API layer, and `lib/` utilities, which must also be covered by tests.
 - **Every new or modified component MUST be reflected in `agent-system/component-manifest.json`** (add entry, update dependencies, update notes). Update `agent-system/project-structure.md` if new directories are introduced.
-- When modifying a component, always update its `.stories.tsx` (and `.test.tsx` if it exists) to reflect the changes.
+- When modifying a component, always update its `.stories.tsx` and `.test.tsx` to reflect the changes.
 - When creating a new component, create the story, test, and manifest entry at the same time as the component.
 
 ### File Naming

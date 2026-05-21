@@ -642,7 +642,7 @@ Before creating any new file, agents must confirm:
 
 ### Frontend Component Conventions
 
-When creating a new shared component (in `components/`), follow these conventions:
+When creating any new component — shared (in `components/`) or feature (in `features/{name}/components/`) — follow these conventions:
 
 ```
 ComponentName.tsx           ← Implementation
@@ -651,9 +651,9 @@ ComponentName.stories.tsx   ← Storybook stories (one per variant)
 index.ts                    ← Barrel export
 ```
 
-Agents must never create a shared component without the accompanying test and story files.
+Agents must never create a component (shared or feature) without the accompanying test and story files. The frontend maintains complete test coverage; no component layer is test-exempt, and hooks, the API layer, and `lib/` utilities are covered by tests as well.
 
-> **Note:** Story files (`.stories.tsx`) already exist for all 18 currently implemented shared components (12 atoms, 3 molecules, 3 organisms).
+> **Note:** Story and test files exist for all shared components; feature components, hooks, the API layer, and `lib/` utilities are being brought up to the same complete-coverage standard.
 
 ### Backend Handler Conventions
 
@@ -762,7 +762,7 @@ pnpm lint:web       # run ESLint on the web app
 | `ORPHAN_MANIFEST_ENTRY`  | ERROR    | Manifest entry with `status: "implemented"` points to non-existent file                       |
 | `DEPRECATED_DIRECTORY`   | ERROR    | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
 | `MISSING_STORY_FILE`     | ERROR    | Shared component `.tsx` has no matching `.stories.tsx` in the same directory                   |
-| `MISSING_TEST_FILE`      | WARN     | Shared component `.tsx` has no matching `.test.tsx` in the same directory (non-blocking)       |
+| `MISSING_TEST_FILE`      | WARN     | Component `.tsx` (shared or feature) has no matching `.test.tsx` in the same directory. Required for all components per convention; currently non-blocking, to become blocking once frontend coverage is complete. |
 
 ```bash
 pnpm manifest:check          # validate all files (includes story/test existence checks)
