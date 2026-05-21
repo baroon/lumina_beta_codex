@@ -15,7 +15,7 @@ namespace AIVisibility.Infrastructure.Migrations
                 table: "brands",
                 type: "jsonb",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "[]");
         }
 
         /// <inheritdoc />

@@ -13,6 +13,21 @@ public class BrandConfiguration : IEntityTypeConfiguration<Brand>
         v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s.GetHashCode())),
         v => v == null ? new List<string>() : v.ToList());
 
+    // Tolerant read: legacy/blank values (null, "", or the JSON empty-string "")
+    // and anything that isn't a JSON array decode to an empty list rather than throwing.
+    public static List<string> DeserializeAliases(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new List<string>();
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+        catch (JsonException)
+        {
+            return new List<string>();
+        }
+    }
+
     public void Configure(EntityTypeBuilder<Brand> builder)
     {
         builder.ToTable("brands");
@@ -29,9 +44,7 @@ public class BrandConfiguration : IEntityTypeConfiguration<Brand>
             .HasColumnType("jsonb")
             .HasConversion(
                 v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                v => string.IsNullOrEmpty(v)
-                    ? new List<string>()
-                    : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+                v => DeserializeAliases(v))
             .Metadata.SetValueComparer(AliasesComparer);
 
         builder.HasMany(b => b.DiscoveryRuns).WithOne(d => d.Brand).HasForeignKey(d => d.BrandId);
