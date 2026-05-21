@@ -31,8 +31,8 @@ export type DiscoveryStatus =
   | "AwaitingConfirmation"
   | "Completed"
   | "Failed";
-export type CandidateStatus = "Suggested" | "Confirmed" | "Dismissed" | "UserAdded";
-export type CandidateSource = "WebsiteCrawl" | "LLMSuggested" | "SearchSuggested" | "UserAdded";
+export type CandidateStatus = "Suggested" | "Confirmed" | "Dismissed";
+export type CandidateSource = "WebsiteCrawl" | "LLMSuggested" | "UserAdded";
 
 export interface DiscoveryResultsDto {
   brandId: string;

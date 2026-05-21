@@ -55,7 +55,7 @@ export const ManualSource: Story = {
       description: "Manually added by the user.",
       confidence: 1,
       source: "UserAdded",
-      status: "UserAdded",
+      status: "Suggested",
     },
     selected: true,
   },

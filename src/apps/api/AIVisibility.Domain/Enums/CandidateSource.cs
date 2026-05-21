@@ -4,6 +4,5 @@ public enum CandidateSource
 {
     WebsiteCrawl,
     LLMSuggested,
-    SearchSuggested,
     UserAdded
 }

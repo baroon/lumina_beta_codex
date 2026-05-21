@@ -7,6 +7,5 @@ public enum ProductType
     Feature,
     Solution,
     Tool,
-    Resource,
-    Unknown
+    Resource
 }

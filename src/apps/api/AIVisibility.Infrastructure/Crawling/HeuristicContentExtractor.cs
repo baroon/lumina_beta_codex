@@ -175,7 +175,6 @@ public class HeuristicContentExtractor : IContentExtractor
                 {
                     Id = Guid.NewGuid(),
                     Name = market.Name,
-                    MarketType = MarketType.Country,
                     CountryCode = market.Code,
                     Confidence = 0.6,
                     Source = CandidateSource.WebsiteCrawl,
@@ -192,7 +191,6 @@ public class HeuristicContentExtractor : IContentExtractor
             {
                 Id = Guid.NewGuid(),
                 Name = "Global",
-                MarketType = MarketType.Global,
                 Confidence = 0.4,
                 Source = CandidateSource.WebsiteCrawl,
                 Status = CandidateStatus.Suggested
@@ -200,14 +198,14 @@ public class HeuristicContentExtractor : IContentExtractor
         }
 
         // Currency detection from page text (meta descriptions, titles, headings)
-        var currencyMarkets = new Dictionary<string, (string Name, MarketType Type, string? Code, string Currency)>
+        var currencyMarkets = new Dictionary<string, (string Name, string? Code, string Currency)>
         {
-            ["€"] = ("Europe", MarketType.Region, null, "EUR"),
-            ["£"] = ("United Kingdom", MarketType.Country, "GB", "GBP"),
-            ["₹"] = ("India", MarketType.Country, "IN", "INR"),
-            ["¥"] = ("Japan", MarketType.Country, "JP", "JPY"),
-            ["₩"] = ("South Korea", MarketType.Country, "KR", "KRW"),
-            ["R$"] = ("Brazil", MarketType.Country, "BR", "BRL"),
+            ["€"] = ("Europe", null, "EUR"),
+            ["£"] = ("United Kingdom", "GB", "GBP"),
+            ["₹"] = ("India", "IN", "INR"),
+            ["¥"] = ("Japan", "JP", "JPY"),
+            ["₩"] = ("South Korea", "KR", "KRW"),
+            ["R$"] = ("Brazil", "BR", "BRL"),
         };
 
         foreach (var page in pages.Take(3))
@@ -226,7 +224,6 @@ public class HeuristicContentExtractor : IContentExtractor
                     {
                         Id = Guid.NewGuid(),
                         Name = cm.Name,
-                        MarketType = cm.Type,
                         CountryCode = cm.Code,
                         CurrencyCode = cm.Currency,
                         Confidence = 0.5,

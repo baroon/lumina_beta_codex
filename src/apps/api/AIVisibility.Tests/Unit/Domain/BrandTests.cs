@@ -81,16 +81,6 @@ public class BrandTests
     }
 
     [Fact]
-    public void Market_ShouldSupportAllMarketTypes()
-    {
-        var values = Enum.GetValues<MarketType>();
-        values.Should().Contain(MarketType.Country);
-        values.Should().Contain(MarketType.Region);
-        values.Should().Contain(MarketType.Global);
-        values.Should().Contain(MarketType.Custom);
-    }
-
-    [Fact]
     public void TrustSignalType_ShouldHave7Values()
     {
         var values = Enum.GetValues<TrustSignalType>();

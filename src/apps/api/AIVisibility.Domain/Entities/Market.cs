@@ -7,7 +7,6 @@ public class Market
     public Guid Id { get; set; }
     public Guid BrandId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public MarketType MarketType { get; set; }
     public string? CountryCode { get; set; }
     public string? Region { get; set; }
     public string? City { get; set; }

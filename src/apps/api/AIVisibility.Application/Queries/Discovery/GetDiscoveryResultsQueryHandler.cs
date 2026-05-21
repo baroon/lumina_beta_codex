@@ -54,7 +54,7 @@ public class GetDiscoveryResultsQueryHandler : IRequestHandler<GetDiscoveryResul
                 new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString(), ["relatedPageUrl"] = p.RelatedPageUrl })).ToList(),
             brand.Audiences.Where(a => a.DiscoveryRunId == latestRunId).OrderByDescending(a => a.Confidence).Take(4).Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source, a.Status, new Dictionary<string, object?>())).ToList(),
             brand.Markets.Where(m => m.DiscoveryRunId == latestRunId).OrderByDescending(m => m.Confidence).Take(4).Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source, m.Status,
-                new Dictionary<string, object?> { ["marketType"] = m.MarketType.ToString(), ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
+                new Dictionary<string, object?> { ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
             brand.Topics.Where(t => t.DiscoveryRunId == latestRunId).OrderByDescending(t => t.Confidence).Take(4).Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source, t.Status,
                 new Dictionary<string, object?>())).ToList(),
             brand.Competitors.Where(c => c.DiscoveryRunId == latestRunId).OrderByDescending(c => c.Confidence).Take(4).Select(c => ToCandidate(c.Id, c.Name, c.Description, c.Confidence, c.Source, c.Status,

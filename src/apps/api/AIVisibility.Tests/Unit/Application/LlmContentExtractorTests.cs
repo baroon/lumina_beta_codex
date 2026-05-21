@@ -63,7 +63,7 @@ public class LlmContentExtractorTests
         result.BrandProfile.Confidence.Should().Be(0.9);
         result.Products.Should().ContainSingle(p => p.Name == "Analytics" && p.ProductType == ProductType.Product);
         result.Audiences.Should().ContainSingle(a => a.Name == "Marketers");
-        result.Markets.Should().ContainSingle(m => m.Name == "United States" && m.MarketType == MarketType.Country);
+        result.Markets.Should().ContainSingle(m => m.Name == "United States");
         result.TrustSignals.Should().ContainSingle(t => t.SignalType == TrustSignalType.CertificationsAndAccreditations);
         result.Topics.Should().BeEmpty();
     }

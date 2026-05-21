@@ -146,7 +146,7 @@ public class HeuristicContentExtractorTests
         var result = await _extractor.ExtractCandidatesAsync(brand, pages);
 
         result.Markets.Should().NotBeEmpty();
-        result.Markets.Should().Contain(m => m.MarketType == MarketType.Global);
+        result.Markets.Should().Contain(m => m.Name == "Global");
     }
 
     [Fact]

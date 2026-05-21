@@ -68,7 +68,6 @@ public class GetDiscoveryResultsQueryHandlerTests
             BrandId = brand.Id,
             DiscoveryRunId = run.Id,
             Name = "Global",
-            MarketType = MarketType.Global,
             Status = CandidateStatus.Suggested,
             Source = CandidateSource.WebsiteCrawl,
             Confidence = 0.5

@@ -14,7 +14,7 @@ interface SuggestionCardProps {
 }
 
 function SourceIcon({ source }: { source: CandidateDto["source"] }) {
-  if (source === "LLMSuggested" || source === "WebsiteCrawl" || source === "SearchSuggested") {
+  if (source === "LLMSuggested" || source === "WebsiteCrawl") {
     return (
       <span
         className="inline-flex items-center gap-1 text-xs text-primary-600"

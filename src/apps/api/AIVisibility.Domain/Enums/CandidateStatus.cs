@@ -4,6 +4,5 @@ public enum CandidateStatus
 {
     Suggested,
     Confirmed,
-    Dismissed,
-    UserAdded
+    Dismissed
 }

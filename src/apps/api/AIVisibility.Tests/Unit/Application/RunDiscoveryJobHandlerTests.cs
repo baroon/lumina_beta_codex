@@ -74,7 +74,7 @@ public class RunDiscoveryJobHandlerTests
                 new BrandProfile { Id = Guid.NewGuid(), ShortDescription = "desc", Source = CandidateSource.WebsiteCrawl, Status = CandidateStatus.Suggested, Confidence = 0.7 },
                 new List<Product> { new() { Id = Guid.NewGuid(), Name = "Product A", Source = CandidateSource.WebsiteCrawl, Status = CandidateStatus.Suggested, Confidence = 0.7 } },
                 new List<Audience>(),
-                new List<Market> { new() { Id = Guid.NewGuid(), Name = "Global", MarketType = MarketType.Global, Source = CandidateSource.WebsiteCrawl, Status = CandidateStatus.Suggested, Confidence = 0.4 } },
+                new List<Market> { new() { Id = Guid.NewGuid(), Name = "Global", Source = CandidateSource.WebsiteCrawl, Status = CandidateStatus.Suggested, Confidence = 0.4 } },
                 new List<Topic>(),
                 new List<TrustSignal>()));
 

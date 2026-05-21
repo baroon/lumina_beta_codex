@@ -8,7 +8,7 @@ import type { BrandProfileDto, CandidateSource } from "@/types/api";
 // ── Source icon (matches SuggestionCard pattern) ──────────────────
 
 function SourceIcon({ source }: { source: CandidateSource }) {
-  if (source === "LLMSuggested" || source === "WebsiteCrawl" || source === "SearchSuggested") {
+  if (source === "LLMSuggested" || source === "WebsiteCrawl") {
     return (
       <span
         className="inline-flex items-center gap-1 text-xs text-primary-600"

@@ -373,7 +373,7 @@ public class LlmContentExtractor : IContentExtractor
                 Id = Guid.NewGuid(),
                 Name = d.Name!,
                 Description = d.Description,
-                ProductType = ParseEnum(d.Type, ProductType.Unknown),
+                ProductType = ParseEnum(d.Type, ProductType.Product),
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
                 Status = CandidateStatus.Suggested
@@ -409,7 +409,6 @@ public class LlmContentExtractor : IContentExtractor
             {
                 Id = Guid.NewGuid(),
                 Name = d.Name!,
-                MarketType = ParseEnum(d.Type, MarketType.Country),
                 CountryCode = d.CountryCode,
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
@@ -446,7 +445,7 @@ public class LlmContentExtractor : IContentExtractor
 
     private record ProductDto(string? Name, string? Description, string? Type, int Confidence);
     private record AudienceDto(string? Name, string? Description, int Confidence);
-    private record MarketDto(string? Name, string? Type, string? CountryCode, int Confidence);
+    private record MarketDto(string? Name, string? CountryCode, int Confidence);
     private record TrustSignalDto(string? Name, string? Description, string? Type, int Confidence);
 
     #endregion
