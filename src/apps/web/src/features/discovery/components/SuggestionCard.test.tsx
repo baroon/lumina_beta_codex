@@ -70,7 +70,7 @@ describe("SuggestionCard", () => {
     expect(screen.getByText("Service")).toBeInTheDocument();
   });
 
-  it("renders a country flag for markets with a countryCode", () => {
+  it("renders a country flag image for markets with a countryCode", () => {
     render(
       <SuggestionCard
         candidate={candidate({ name: "United States", metadata: { countryCode: "US" } })}
@@ -78,6 +78,9 @@ describe("SuggestionCard", () => {
         onToggle={vi.fn()}
       />,
     );
-    expect(screen.getByText("🇺🇸")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "US" })).toHaveAttribute(
+      "src",
+      "https://flagcdn.com/us.svg",
+    );
   });
 });

@@ -152,6 +152,9 @@ describe("WizardStepReview", () => {
         onEditSection={vi.fn()}
       />,
     );
-    expect(screen.getByText("🇺🇸")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "US" })).toHaveAttribute(
+      "src",
+      "https://flagcdn.com/us.svg",
+    );
   });
 });
