@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Pencil, Sparkles, UserPen } from "lucide-react";
+import { Pencil, Sparkles, UserPen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfidenceTag } from "../ConfidenceTag";
 import { DISCOVERY_COPY } from "@/content/discovery";
@@ -110,6 +110,19 @@ function EditableField({
           >
             {value || placeholder}
           </span>
+          {value && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+              }}
+              aria-label={`Clear ${label}`}
+              className="rounded-md p-1 text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 group-hover:opacity-100 pointer-coarse:opacity-100"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
           <Pencil className="h-3 w-3 shrink-0 text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
       )}

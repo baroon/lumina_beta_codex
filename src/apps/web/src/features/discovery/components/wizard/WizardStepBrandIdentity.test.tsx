@@ -57,4 +57,13 @@ describe("WizardStepBrandIdentity", () => {
 
     expect(onProfileChange).toHaveBeenCalledWith("shortDescription", "A new description");
   });
+
+  it("clears a field via its clear button", async () => {
+    const onProfileChange = vi.fn();
+    render(<WizardStepBrandIdentity brandProfile={profile()} onProfileChange={onProfileChange} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear Industry" }));
+
+    expect(onProfileChange).toHaveBeenCalledWith("industry", "");
+  });
 });
