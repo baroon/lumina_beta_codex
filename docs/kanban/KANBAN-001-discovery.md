@@ -195,7 +195,8 @@ This Kanban board is generated from ADR-001 and REQ-001. It is intended for deta
 
 Not in the original ADR-001 / REQ-001. Alternate brand names ("also known as") captured for downstream brand-mention detection in the reporting/analytics phase.
 
-- ✅ **Done.** Stored on `Brand.Aliases` (jsonb), user-entered on the Brand Identity step via an add/remove chip editor, shown read-only in Review & Confirm, and persisted on completion (trimmed + case-insensitive dedupe). Migration `AddBrandAliases`.
+- ✅ **Done.** Stored on `Brand.Aliases` (jsonb), user-entered on the Brand Identity step via an add/remove chip editor (also removable on Review & Confirm), and persisted on completion (trimmed + case-insensitive dedupe). Migration `AddBrandAliases`.
+- **Phase 3 use:** aliases feed brand-mention matching in the reporting/analytics phase (brand name + aliases vs. answer text). They are deliberately **not** included in the discovery LLM prompts (`ResuggestContext`).
 
 ## Known gaps / Phase 1 backlog (implementation does not yet meet spec)
 

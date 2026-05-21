@@ -216,3 +216,21 @@ pnpm storybook    # Storybook on port 6006
 dotnet build
 dotnet run --project AIVisibility.Api
 ```
+
+---
+
+## Working agreement (collaboration style)
+
+The established way of working on this project — follow these by default in any session.
+
+### Red → green for every bug fix
+
+Before fixing a bug, add or extend a test that reproduces it and run it to confirm it **fails** (red); then apply the minimal fix and re-run to confirm it **passes** (green), surfacing both states. Prove the test actually catches the bug before fixing it. Lock new behavior with tests too where practical.
+
+### Present trade-offs in the message
+
+When offering a choice with real trade-offs (a library, approach, or architecture), spell out the pros/cons directly in the reply — a short comparison table — then ask. Don't rely on the question picker alone to carry the comparison, and verify your own claims about each option before presenting them.
+
+### Cadence
+
+Work in small, verified increments: keep `pnpm check:all` (frontend) and `dotnet test` (backend) green, commit in logical units with clear messages, and push only when asked.
