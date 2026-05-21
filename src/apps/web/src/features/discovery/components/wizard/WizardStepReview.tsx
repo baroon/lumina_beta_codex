@@ -23,6 +23,14 @@ const SECTION_ORDER: { key: SectionKey; label: string }[] = [
   { key: "trustSignals", label: DISCOVERY_COPY.sections.trustSignals.title },
 ];
 
+// Sections whose chips carry a (mandatory) type tag.
+const SECTION_TYPE_TAGS: Partial<
+  Record<SectionKey, { metadataKey: string; labels: Record<string, string> }>
+> = {
+  products: { metadataKey: "productType", labels: DISCOVERY_COPY.productTypes },
+  trustSignals: { metadataKey: "signalType", labels: DISCOVERY_COPY.trustSignalTypes },
+};
+
 // ── ReviewChip ────────────────────────────────────────────────────
 // The review screen is read-only apart from deletion: items can be removed,
 // but adding/renaming happens back in the relevant step (via "Edit") so the
@@ -30,10 +38,11 @@ const SECTION_ORDER: { key: SectionKey; label: string }[] = [
 
 interface ReviewChipProps {
   candidate: CandidateDto;
+  typeLabel?: string;
   onRemove: () => void;
 }
 
-function ReviewChip({ candidate, onRemove }: ReviewChipProps) {
+function ReviewChip({ candidate, typeLabel, onRemove }: ReviewChipProps) {
   const isCustom = candidate.source === "UserAdded";
 
   return (
@@ -42,6 +51,11 @@ function ReviewChip({ candidate, onRemove }: ReviewChipProps) {
       className={cn("cursor-default gap-1 pr-1", isCustom && "border-primary-200 bg-primary-50")}
     >
       <span>{candidate.name}</span>
+      {typeLabel && (
+        <span className="rounded-full bg-neutral-200/70 px-1.5 text-[10px] font-medium text-neutral-600">
+          {typeLabel}
+        </span>
+      )}
       {isCustom && (
         <span className="text-[10px] font-normal text-primary-600">
           {DISCOVERY_COPY.review.customTag}
@@ -189,9 +203,19 @@ export function WizardStepReview({
             </div>
             {selected.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {selected.map((c) => (
-                  <ReviewChip key={c.id} candidate={c} onRemove={() => handleRemove(key, c)} />
-                ))}
+                {selected.map((c) => {
+                  const typeTag = SECTION_TYPE_TAGS[key];
+                  const typeValue = typeTag ? c.metadata?.[typeTag.metadataKey] : undefined;
+                  const typeLabel = typeTag && typeValue ? typeTag.labels[typeValue] : undefined;
+                  return (
+                    <ReviewChip
+                      key={c.id}
+                      candidate={c}
+                      typeLabel={typeLabel}
+                      onRemove={() => handleRemove(key, c)}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <p className="mt-1 text-xs text-neutral-400">{DISCOVERY_COPY.review.noneSelected}</p>

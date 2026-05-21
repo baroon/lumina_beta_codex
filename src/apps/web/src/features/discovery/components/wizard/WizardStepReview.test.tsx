@@ -101,4 +101,35 @@ describe("WizardStepReview", () => {
     expect(screen.queryByRole("button", { name: "Edit Alpha" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Edit" }).length).toBeGreaterThan(0);
   });
+
+  it("shows the type tag on product and trust-signal chips", () => {
+    render(
+      <WizardStepReview
+        brandProfile={null}
+        sections={{
+          products: {
+            candidates: [{ ...cand("p1", "Alpha"), metadata: { productType: "Service" } }],
+            selectedIds: new Set(["p1"]),
+          },
+          audiences: emptySection(),
+          markets: emptySection(),
+          topics: emptySection(),
+          competitors: emptySection(),
+          trustSignals: {
+            candidates: [
+              {
+                ...cand("ts1", "SOC 2"),
+                metadata: { signalType: "CertificationsAndAccreditations" },
+              },
+            ],
+            selectedIds: new Set(["ts1"]),
+          },
+        }}
+        onToggle={vi.fn()}
+        onEditSection={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Service")).toBeInTheDocument();
+    expect(screen.getByText("Certifications & Accreditations")).toBeInTheDocument();
+  });
 });
