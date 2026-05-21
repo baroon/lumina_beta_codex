@@ -42,6 +42,7 @@ export function AddCustomItemForm({
       const metadata = typeOptions && selectedType ? { [metadataKey]: selectedType } : undefined;
       onAdd(value.trim(), metadata);
       setValue("");
+      setSelectedType("");
       setIsOpen(false);
     }
   };
@@ -94,6 +95,7 @@ export function AddCustomItemForm({
         onClick={() => {
           setIsOpen(false);
           setValue("");
+          setSelectedType("");
         }}
       >
         {DISCOVERY_COPY.customItem.cancel}
