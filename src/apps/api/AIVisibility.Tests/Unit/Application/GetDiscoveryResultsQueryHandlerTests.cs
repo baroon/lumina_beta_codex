@@ -60,17 +60,22 @@ public class GetDiscoveryResultsQueryHandlerTests
         using var ctx = NewContext();
         var (brand, run) = Seed(ctx, DiscoveryStatus.AwaitingConfirmation);
 
+        brand.Aliases = new List<string> { "Acme Inc" };
+        await ctx.SaveChangesAsync();
+
         var store = NewStore();
         store.Save(run.Id, new DiscoveryResultsDto(
             brand.Id, brand.Name, "AwaitingConfirmation", null,
             new List<CandidateDto> { new(Guid.NewGuid(), "Analytics", null, 0.9, "LLMSuggested", new()) },
-            new(), new(), new(), new(), new()));
+            new(), new(), new(), new(), new(), new()));
 
         var handler = new GetDiscoveryResultsQueryHandler(ctx, store);
         var result = await handler.Handle(new GetDiscoveryResultsQuery(brand.Id), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Products.Should().ContainSingle(p => p.Name == "Analytics");
+        // Aliases come from the durable brand, overriding the cached draft.
+        result.Aliases.Should().Contain("Acme Inc");
     }
 
     [Fact]

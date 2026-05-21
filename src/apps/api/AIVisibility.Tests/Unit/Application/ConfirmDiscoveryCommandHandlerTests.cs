@@ -48,9 +48,10 @@ public class ConfirmDiscoveryCommandHandlerTests
         List<ConfirmCandidateInput>? markets = null,
         List<ConfirmCandidateInput>? topics = null,
         List<ConfirmCandidateInput>? competitors = null,
-        List<ConfirmCandidateInput>? trustSignals = null) =>
+        List<ConfirmCandidateInput>? trustSignals = null,
+        List<string>? aliases = null) =>
         new(brandId, profile, products ?? new(), new(), markets ?? new(),
-            topics ?? new(), competitors ?? new(), trustSignals ?? new());
+            topics ?? new(), competitors ?? new(), trustSignals ?? new(), aliases);
 
     [Fact]
     public async Task Handle_ShouldThrowWhenBrandNotFound()
@@ -93,6 +94,26 @@ public class ConfirmDiscoveryCommandHandlerTests
         (await ctx.TrustSignals.SingleAsync()).SignalType.Should().Be(TrustSignalType.CertificationsAndAccreditations);
         (await ctx.BrandProfiles.SingleAsync()).Category.Should().Be("SaaS");
         (await ctx.DiscoveryRuns.FindAsync(run.Id))!.Status.Should().Be(DiscoveryStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPersistBrandAliases_TrimmedAndDeduped()
+    {
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+
+        var command = Command(
+            brand.Id,
+            products: new() { Item("Analytics", new() { ["productType"] = "Service" }) },
+            markets: new() { Item("United States") },
+            topics: new() { Item("Pricing") },
+            aliases: new() { "Lumina", "  Lumina  ", "Lumina AI", "" });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        var saved = await ctx.Brands.FindAsync(brand.Id);
+        saved!.Aliases.Should().BeEquivalentTo(new[] { "Lumina", "Lumina AI" });
     }
 
     [Fact]

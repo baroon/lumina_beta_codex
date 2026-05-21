@@ -1,11 +1,18 @@
+using System.Text.Json;
 using AIVisibility.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AIVisibility.Infrastructure.Data.Configurations;
 
 public class BrandConfiguration : IEntityTypeConfiguration<Brand>
 {
+    private static readonly ValueComparer<List<string>> AliasesComparer = new(
+        (a, b) => (a ?? new List<string>()).SequenceEqual(b ?? new List<string>()),
+        v => v == null ? 0 : v.Aggregate(0, (acc, s) => HashCode.Combine(acc, s.GetHashCode())),
+        v => v == null ? new List<string>() : v.ToList());
+
     public void Configure(EntityTypeBuilder<Brand> builder)
     {
         builder.ToTable("brands");
@@ -16,6 +23,16 @@ public class BrandConfiguration : IEntityTypeConfiguration<Brand>
         builder.Property(b => b.WorkspaceId).HasColumnName("workspace_id");
         builder.Property(b => b.CreatedAt).HasColumnName("created_at");
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at");
+
+        builder.Property(b => b.Aliases)
+            .HasColumnName("aliases")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => string.IsNullOrEmpty(v)
+                    ? new List<string>()
+                    : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+            .Metadata.SetValueComparer(AliasesComparer);
 
         builder.HasMany(b => b.DiscoveryRuns).WithOne(d => d.Brand).HasForeignKey(d => d.BrandId);
         builder.HasOne(b => b.BrandProfile).WithOne(bp => bp.Brand).HasForeignKey<BrandProfile>(bp => bp.BrandId);

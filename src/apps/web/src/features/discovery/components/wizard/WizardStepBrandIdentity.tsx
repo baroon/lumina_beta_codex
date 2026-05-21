@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Pencil, Sparkles, UserPen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/atoms/badge";
 import { ConfidenceTag } from "../ConfidenceTag";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import type { BrandProfileDto, CandidateSource } from "@/types/api";
@@ -220,16 +221,75 @@ function EditableDescription({
   );
 }
 
+// ── Alias editor ──────────────────────────────────────────────────
+
+interface AliasEditorProps {
+  aliases: string[];
+  onChange: (aliases: string[]) => void;
+}
+
+function AliasEditor({ aliases, onChange }: AliasEditorProps) {
+  const [draft, setDraft] = useState("");
+
+  function add() {
+    const value = draft.trim();
+    if (value && !aliases.some((a) => a.toLowerCase() === value.toLowerCase())) {
+      onChange([...aliases, value]);
+    }
+    setDraft("");
+  }
+
+  return (
+    <div className="rounded-lg border border-neutral-200 p-3">
+      <div className="mb-1 text-xs font-medium text-neutral-400">
+        {DISCOVERY_COPY.confirmation.aliasesLabel}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {aliases.map((alias) => (
+          <Badge key={alias} variant="secondary" className="gap-1 pr-1">
+            <span>{alias}</span>
+            <button
+              type="button"
+              onClick={() => onChange(aliases.filter((a) => a !== alias))}
+              aria-label={`Remove ${alias}`}
+              className="rounded p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </Badge>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          onBlur={add}
+          placeholder={DISCOVERY_COPY.confirmation.aliasesPlaceholder}
+          className="h-7 min-w-[8rem] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── WizardStepBrandIdentity ───────────────────────────────────────
 
 interface WizardStepBrandIdentityProps {
   brandProfile: BrandProfileDto | null;
   onProfileChange?: (field: string, value: string) => void;
+  aliases?: string[];
+  onAliasesChange?: (aliases: string[]) => void;
 }
 
 export function WizardStepBrandIdentity({
   brandProfile,
   onProfileChange,
+  aliases = [],
+  onAliasesChange,
 }: WizardStepBrandIdentityProps) {
   if (!brandProfile) {
     return (
@@ -284,6 +344,7 @@ export function WizardStepBrandIdentity({
           onChange={(v) => onProfileChange?.("positioning", v)}
           placeholder={DISCOVERY_COPY.confirmation.positioningPlaceholder}
         />
+        {onAliasesChange && <AliasEditor aliases={aliases} onChange={onAliasesChange} />}
       </div>
     </div>
   );

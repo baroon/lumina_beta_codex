@@ -10,7 +10,8 @@ public record ConfirmDiscoveryCommand(
     List<ConfirmCandidateInput> Markets,
     List<ConfirmCandidateInput> Topics,
     List<ConfirmCandidateInput> Competitors,
-    List<ConfirmCandidateInput> TrustSignals) : IRequest<Unit>;
+    List<ConfirmCandidateInput> TrustSignals,
+    List<string>? Aliases = null) : IRequest<Unit>;
 
 public record ConfirmCandidateInput(
     string Name,

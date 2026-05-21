@@ -13,6 +13,7 @@ interface WizardStepReviewProps {
   sections: Record<SectionKey, { candidates: CandidateDto[]; selectedIds: Set<string> }>;
   onToggle: (sectionKey: string, id: string) => void;
   onEditSection: (sectionKey: SectionKey | "brandProfile") => void;
+  aliases?: string[];
 }
 
 const SECTION_ORDER: { key: SectionKey; label: string }[] = [
@@ -116,6 +117,7 @@ export function WizardStepReview({
   sections,
   onToggle,
   onEditSection,
+  aliases = [],
 }: WizardStepReviewProps) {
   const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
 
@@ -178,6 +180,18 @@ export function WizardStepReview({
           <p className="mt-1 text-sm text-neutral-600">
             {brandProfile.shortDescription || brandProfile.industry || "—"}
           </p>
+          {aliases.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-neutral-400">
+                {DISCOVERY_COPY.confirmation.aliasesLabel}:
+              </span>
+              {aliases.map((alias) => (
+                <Badge key={alias} variant="secondary">
+                  {alias}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

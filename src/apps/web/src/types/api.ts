@@ -44,6 +44,7 @@ export interface DiscoveryResultsDto {
   topics: CandidateDto[];
   competitors: CandidateDto[];
   trustSignals: CandidateDto[];
+  aliases: string[];
 }
 
 export interface BrandProfileDto {
@@ -94,6 +95,7 @@ export interface ConfirmDiscoveryRequest {
   topics: ConfirmCandidateInput[];
   competitors: ConfirmCandidateInput[];
   trustSignals: ConfirmCandidateInput[];
+  aliases?: string[];
 }
 
 export interface ResuggestRequest {

@@ -123,7 +123,8 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 new Dictionary<string, object?>())).ToList(),
             new List<CandidateDto>(),
             extraction.TrustSignals.Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source,
-                new Dictionary<string, object?> { ["signalType"] = ts.SignalType.ToString() })).ToList());
+                new Dictionary<string, object?> { ["signalType"] = ts.SignalType.ToString() })).ToList(),
+            brand.Aliases);
     }
 
     private static CandidateDto ToCandidate(Guid id, string name, string? description, double confidence,

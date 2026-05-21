@@ -148,6 +148,11 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
 
         latestRun.Status = DiscoveryStatus.Completed;
         latestRun.CompletedAt = DateTime.UtcNow;
+        brand.Aliases = (request.Aliases ?? new List<string>())
+            .Select(a => a.Trim())
+            .Where(a => a.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         brand.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 

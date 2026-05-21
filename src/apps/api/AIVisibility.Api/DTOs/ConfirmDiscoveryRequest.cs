@@ -9,4 +9,5 @@ public record ConfirmDiscoveryRequest(
     List<ConfirmCandidateInput>? Markets,
     List<ConfirmCandidateInput>? Topics,
     List<ConfirmCandidateInput>? Competitors,
-    List<ConfirmCandidateInput>? TrustSignals);
+    List<ConfirmCandidateInput>? TrustSignals,
+    List<string>? Aliases = null);

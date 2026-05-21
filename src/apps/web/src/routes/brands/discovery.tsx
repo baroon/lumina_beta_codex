@@ -42,6 +42,7 @@ export function DiscoveryPage() {
         brandName: brand.data?.name ?? "",
         status: "AwaitingConfirmation",
         brandProfile: null,
+        aliases: [],
         products: [],
         audiences: [],
         markets: [],

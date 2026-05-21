@@ -66,4 +66,30 @@ describe("WizardStepBrandIdentity", () => {
 
     expect(onProfileChange).toHaveBeenCalledWith("industry", "");
   });
+
+  it("adds and removes brand aliases", async () => {
+    const onAliasesChange = vi.fn();
+    const { rerender } = render(
+      <WizardStepBrandIdentity
+        brandProfile={profile()}
+        onProfileChange={vi.fn()}
+        aliases={[]}
+        onAliasesChange={onAliasesChange}
+      />,
+    );
+
+    await userEvent.type(screen.getByPlaceholderText("Add an alias..."), "Lumina AI{Enter}");
+    expect(onAliasesChange).toHaveBeenCalledWith(["Lumina AI"]);
+
+    rerender(
+      <WizardStepBrandIdentity
+        brandProfile={profile()}
+        onProfileChange={vi.fn()}
+        aliases={["Lumina AI"]}
+        onAliasesChange={onAliasesChange}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove Lumina AI" }));
+    expect(onAliasesChange).toHaveBeenLastCalledWith([]);
+  });
 });

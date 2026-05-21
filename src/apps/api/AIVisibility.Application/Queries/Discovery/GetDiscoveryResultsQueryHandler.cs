@@ -32,17 +32,23 @@ public class GetDiscoveryResultsQueryHandler : IRequestHandler<GetDiscoveryResul
         // Suggestions live only in the transient draft store, never the candidate tables.
         // If the draft is gone (expired/restart, or already confirmed) return a minimal
         // result carrying the run status so the UI can route correctly.
-        return _draftStore.Get(latestRun.Id)
-            ?? new DiscoveryResultsDto(
-                brand.Id,
-                brand.Name,
-                latestRun.Status.ToString(),
-                null,
-                new List<CandidateDto>(),
-                new List<CandidateDto>(),
-                new List<CandidateDto>(),
-                new List<CandidateDto>(),
-                new List<CandidateDto>(),
-                new List<CandidateDto>());
+        // Aliases live on the durable Brand, so always reflect the current value
+        // (the cached draft may predate an alias edit).
+        var draft = _draftStore.Get(latestRun.Id);
+        if (draft != null)
+            return draft with { Aliases = brand.Aliases };
+
+        return new DiscoveryResultsDto(
+            brand.Id,
+            brand.Name,
+            latestRun.Status.ToString(),
+            null,
+            new List<CandidateDto>(),
+            new List<CandidateDto>(),
+            new List<CandidateDto>(),
+            new List<CandidateDto>(),
+            new List<CandidateDto>(),
+            new List<CandidateDto>(),
+            brand.Aliases);
     }
 }

@@ -137,6 +137,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const [selections, setSelections] = useState(initialSelections);
   const [customItems, setCustomItems] = useState<Map<string, CandidateDto[]>>(new Map());
   const [removedIds, setRemovedIds] = useState<Map<string, Set<string>>>(new Map());
+  const [aliases, setAliases] = useState<string[]>(results.aliases ?? []);
 
   // Safety net: if the results prop delivers new candidate data after mount
   // (e.g., component mounted with stale cache, then query refetched), re-sync
@@ -291,6 +292,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       topics: selectedInputs("topics"),
       competitors: selectedInputs("competitors"),
       trustSignals: selectedInputs("trustSignals"),
+      aliases,
     });
   };
 
@@ -523,6 +525,8 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
           <WizardStepBrandIdentity
             brandProfile={effectiveBrandProfile}
             onProfileChange={handleProfileChange}
+            aliases={aliases}
+            onAliasesChange={setAliases}
           />
         )}
 
@@ -575,6 +579,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             }}
             onToggle={toggleItem}
             onEditSection={handleEditSection}
+            aliases={aliases}
           />
         )}
       </Stepper>

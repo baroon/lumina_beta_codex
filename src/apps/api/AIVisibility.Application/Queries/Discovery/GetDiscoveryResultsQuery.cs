@@ -14,7 +14,8 @@ public record DiscoveryResultsDto(
     List<CandidateDto> Markets,
     List<CandidateDto> Topics,
     List<CandidateDto> Competitors,
-    List<CandidateDto> TrustSignals);
+    List<CandidateDto> TrustSignals,
+    List<string> Aliases);
 
 public record BrandProfileDto(
     Guid Id,

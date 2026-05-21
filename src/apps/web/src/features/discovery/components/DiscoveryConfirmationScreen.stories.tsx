@@ -6,6 +6,7 @@ const mockResults: DiscoveryResultsDto = {
   brandId: "brand-123",
   brandName: "Acme Inc.",
   status: "AwaitingConfirmation",
+  aliases: ["Acme", "Acme Corp"],
   brandProfile: {
     id: "bp-1",
     shortDescription: "Leading cloud platform for enterprise teams.",

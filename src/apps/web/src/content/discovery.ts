@@ -88,6 +88,8 @@ export const DISCOVERY_COPY = {
     industryPlaceholder: "Click to add industry",
     categoryPlaceholder: "Click to add category",
     positioningPlaceholder: "Click to add positioning",
+    aliasesLabel: "Also known as",
+    aliasesPlaceholder: "Add an alias...",
     confirming: "Confirming...",
     selectedCount: "{selected}/{total} selected",
   },

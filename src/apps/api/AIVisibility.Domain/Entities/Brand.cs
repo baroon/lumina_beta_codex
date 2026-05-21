@@ -6,6 +6,10 @@ public class Brand
     public string Name { get; set; } = string.Empty;
     public string WebsiteUrl { get; set; } = string.Empty;
     public Guid WorkspaceId { get; set; }
+
+    /// <summary>Alternate brand names ("also known as") used downstream as a proxy for brand mention detection.</summary>
+    public List<string> Aliases { get; set; } = new();
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

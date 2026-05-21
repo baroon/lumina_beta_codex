@@ -142,6 +142,7 @@ function makeResults(overrides?: Partial<DiscoveryResultsDto>): DiscoveryResults
     topics: [makeCandidate("topic-high", 0.8), makeCandidate("topic-low", 0.35)],
     competitors: [makeCandidate("comp-high", 0.7), makeCandidate("comp-low", 0.4)],
     trustSignals: [makeCandidate("ts-high", 0.9), makeCandidate("ts-low", 0.3)],
+    aliases: [],
     ...overrides,
   };
 }
