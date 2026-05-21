@@ -1,5 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Enums;
+using FluentValidation;
+using FluentValidation.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +32,31 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
 
         var confirmedSet = request.ConfirmedIds.ToHashSet();
         var dismissedSet = request.DismissedIds.ToHashSet();
+
+        // Completion gating (REQ-001 §16): a discovery run may only be completed
+        // when a market and at least one topic are confirmed, and either a
+        // product/service is confirmed or the brand profile has a category.
+        var failures = new List<ValidationFailure>();
+
+        if (!brand.Markets.Any(m => confirmedSet.Contains(m.Id)))
+            failures.Add(new ValidationFailure(
+                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
+                "At least one market must be confirmed before completing discovery."));
+
+        if (!brand.Topics.Any(t => confirmedSet.Contains(t.Id)))
+            failures.Add(new ValidationFailure(
+                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
+                "At least one topic must be confirmed before completing discovery."));
+
+        var hasProduct = brand.Products.Any(p => confirmedSet.Contains(p.Id));
+        var hasCategory = !string.IsNullOrWhiteSpace(brand.BrandProfile?.Category);
+        if (!hasProduct && !hasCategory)
+            failures.Add(new ValidationFailure(
+                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
+                "At least one product or service must be confirmed, or a brand category must be set, before completing discovery."));
+
+        if (failures.Count > 0)
+            throw new ValidationException(failures);
 
         void UpdateStatus<T>(IEnumerable<T> entities) where T : class
         {

@@ -424,6 +424,16 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     };
   };
 
+  const completion = useMemo(() => {
+    const hasSelection = (key: SectionKey) => (selections.get(key)?.size ?? 0) > 0;
+    const missing: string[] = [];
+    if (!hasSelection("markets")) missing.push(DISCOVERY_COPY.completion.missingMarket);
+    if (!hasSelection("topics")) missing.push(DISCOVERY_COPY.completion.missingTopic);
+    if (!hasSelection("products") && !effectiveBrandProfile?.category?.trim())
+      missing.push(DISCOVERY_COPY.completion.missingProduct);
+    return { isComplete: missing.length === 0, missing };
+  }, [selections, effectiveBrandProfile]);
+
   const nextLabel =
     returnToStep !== null
       ? DISCOVERY_COPY.review.returnToReview
@@ -450,7 +460,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
         nextLabel={nextLabel}
         backLabel={DISCOVERY_COPY.wizard.back}
         isNextLoading={isNextLoading}
-        isNextDisabled={confirmMutation.isPending}
+        isNextDisabled={confirmMutation.isPending || (currentStep === 4 && !completion.isComplete)}
       >
         {currentStep === 0 && (
           <WizardStepBrandIdentity
@@ -513,6 +523,19 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
           />
         )}
       </Stepper>
+
+      {currentStep === 4 && !completion.isComplete && (
+        <Alert>
+          <AlertDescription>
+            <p className="font-medium">{DISCOVERY_COPY.completion.title}</p>
+            <ul className="mt-1 list-disc pl-5">
+              {completion.missing.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {confirmMutation.isError && (
         <Alert variant="destructive">

@@ -4,6 +4,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DiscoveryConfirmationScreen } from "./DiscoveryConfirmationScreen";
 import type { DiscoveryResultsDto, CandidateDto } from "@/types/api";
 
+type ResuggestItem = {
+  name: string;
+  description: null;
+  confidence: number;
+  source: string;
+  metadata: Record<string, string>;
+};
+type ResuggestData = { topics: ResuggestItem[]; competitors: ResuggestItem[] };
+
 // ── Mocks ──────────────────────────────────────────────────────────
 
 const mutateMock = vi.fn();
@@ -531,5 +540,50 @@ describe("DiscoveryConfirmationScreen", () => {
     expectNotSelected("audiences-aud-med");
     expectSelected("markets-mkt-high");
     expectNotSelected("markets-mkt-low");
+  });
+
+  // ── Completion gating (Confirm & Finish) ─────────────────────────
+
+  it("disables Confirm & Finish until market, topic, and product/category are selected", async () => {
+    const user = userEvent.setup();
+    render(<DiscoveryConfirmationScreen results={makeResults()} />);
+
+    await advanceToStep(user, 2);
+    mutateMock.mockImplementationOnce(
+      (_data: unknown, options: { onSuccess: (data: ResuggestData) => void }) => {
+        options.onSuccess({ topics: [], competitors: [] });
+      },
+    );
+    await user.click(screen.getByRole("button", { name: /next/i })); // → step 3
+    await user.click(screen.getByRole("button", { name: /next/i })); // → step 4 (review)
+
+    expect(screen.getByRole("button", { name: /confirm & finish/i })).toBeDisabled();
+  });
+
+  it("enables Confirm & Finish once required sections are satisfied", async () => {
+    const user = userEvent.setup();
+    render(<DiscoveryConfirmationScreen results={makeResults()} />);
+
+    await advanceToStep(user, 2);
+    mutateMock.mockImplementationOnce(
+      (_data: unknown, options: { onSuccess: (data: ResuggestData) => void }) => {
+        options.onSuccess({
+          topics: [
+            {
+              name: "High Topic",
+              description: null,
+              confidence: 0.9,
+              source: "LLMSuggested",
+              metadata: {},
+            },
+          ],
+          competitors: [],
+        });
+      },
+    );
+    await user.click(screen.getByRole("button", { name: /next/i })); // → step 3
+    await user.click(screen.getByRole("button", { name: /next/i })); // → step 4 (review)
+
+    expect(screen.getByRole("button", { name: /confirm & finish/i })).toBeEnabled();
   });
 });

@@ -146,6 +146,12 @@ export const DISCOVERY_COPY = {
     customTag: "Custom",
     noneSelected: "None selected",
   },
+  completion: {
+    title: "A few things are needed before you can finish:",
+    missingMarket: "Select at least one market",
+    missingTopic: "Select at least one topic",
+    missingProduct: "Select at least one product or service (or set a brand category)",
+  },
   lenses: {
     title: "Visibility Lenses",
     description: "Each Visibility Lens represents a dimension of your brand's AI visibility.",
