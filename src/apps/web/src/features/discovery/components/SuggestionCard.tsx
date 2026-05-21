@@ -1,5 +1,5 @@
 import { Checkbox } from "@/components/atoms/checkbox";
-import { Sparkles, UserPen } from "lucide-react";
+import { Sparkles, UserPen, X } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,7 @@ interface SuggestionCardProps {
   candidate: CandidateDto;
   selected: boolean;
   onToggle: (id: string) => void;
+  onRemove?: (id: string) => void;
   typeMetadataKey?: string;
   typeLabels?: Record<string, string>;
 }
@@ -44,6 +45,7 @@ export function SuggestionCard({
   candidate,
   selected,
   onToggle,
+  onRemove,
   typeMetadataKey,
   typeLabels,
 }: SuggestionCardProps) {
@@ -88,7 +90,20 @@ export function SuggestionCard({
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{candidate.description}</p>
         )}
       </div>
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {onRemove && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(candidate.id);
+            }}
+            className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+            aria-label={`Remove ${candidate.name}`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
         <SourceIcon source={candidate.source} />
       </div>
     </div>

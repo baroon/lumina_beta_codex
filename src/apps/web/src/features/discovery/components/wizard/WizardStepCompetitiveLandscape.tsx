@@ -35,6 +35,7 @@ interface SectionData {
   candidates: CandidateDto[];
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
+  onRemove?: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string, metadata?: Record<string, string>) => void;
@@ -73,6 +74,7 @@ export function WizardStepCompetitiveLandscape({
         candidates={competitors.candidates}
         selectedIds={competitors.selectedIds}
         onToggle={competitors.onToggle}
+        onRemove={competitors.onRemove}
         onSelectAll={competitors.onSelectAll}
         onDeselectAll={competitors.onDeselectAll}
         onAddCustom={competitors.onAddCustom}
@@ -87,6 +89,7 @@ export function WizardStepCompetitiveLandscape({
         candidates={topics.candidates}
         selectedIds={topics.selectedIds}
         onToggle={topics.onToggle}
+        onRemove={topics.onRemove}
         onSelectAll={topics.onSelectAll}
         onDeselectAll={topics.onDeselectAll}
         onAddCustom={topics.onAddCustom}
@@ -101,6 +104,7 @@ export function WizardStepCompetitiveLandscape({
         candidates={trustSignals.candidates}
         selectedIds={trustSignals.selectedIds}
         onToggle={trustSignals.onToggle}
+        onRemove={trustSignals.onRemove}
         onSelectAll={trustSignals.onSelectAll}
         onDeselectAll={trustSignals.onDeselectAll}
         onAddCustom={trustSignals.onAddCustom}

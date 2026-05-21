@@ -83,4 +83,25 @@ describe("SuggestionCard", () => {
       "https://flagcdn.com/us.svg",
     );
   });
+
+  it("calls onRemove (and not onToggle) when the remove button is clicked", async () => {
+    const onRemove = vi.fn();
+    const onToggle = vi.fn();
+    render(
+      <SuggestionCard
+        candidate={candidate()}
+        selected={false}
+        onToggle={onToggle}
+        onRemove={onRemove}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove Acme" }));
+    expect(onRemove).toHaveBeenCalledWith("c1");
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("does not render a remove button when onRemove is not provided", () => {
+    render(<SuggestionCard candidate={candidate()} selected={false} onToggle={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
+  });
 });

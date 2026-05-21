@@ -16,6 +16,7 @@ interface DiscoverySectionProps {
   candidates: CandidateDto[];
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
+  onRemove?: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string, metadata?: Record<string, string>) => void;
@@ -34,6 +35,7 @@ export function DiscoverySection({
   candidates,
   selectedIds,
   onToggle,
+  onRemove,
   onSelectAll,
   onDeselectAll,
   onAddCustom,
@@ -131,6 +133,7 @@ export function DiscoverySection({
                     candidate={candidate}
                     selected={selectedIds.has(candidate.id)}
                     onToggle={onToggle}
+                    onRemove={onRemove}
                     typeMetadataKey={typeMetadataKey}
                     typeLabels={typeLabels}
                   />

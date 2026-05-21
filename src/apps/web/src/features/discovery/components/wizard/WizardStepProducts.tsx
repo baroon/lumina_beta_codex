@@ -24,6 +24,7 @@ interface WizardStepProductsProps {
   candidates: CandidateDto[];
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
+  onRemove?: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string, metadata?: Record<string, string>) => void;
@@ -36,6 +37,7 @@ export function WizardStepProducts({
   candidates,
   selectedIds,
   onToggle,
+  onRemove,
   onSelectAll,
   onDeselectAll,
   onAddCustom,
@@ -51,6 +53,7 @@ export function WizardStepProducts({
       candidates={candidates}
       selectedIds={selectedIds}
       onToggle={onToggle}
+      onRemove={onRemove}
       onSelectAll={onSelectAll}
       onDeselectAll={onDeselectAll}
       onAddCustom={onAddCustom}

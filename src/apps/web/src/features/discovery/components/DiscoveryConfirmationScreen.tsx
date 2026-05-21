@@ -134,6 +134,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
 
   const [selections, setSelections] = useState(initialSelections);
   const [customItems, setCustomItems] = useState<Map<string, CandidateDto[]>>(new Map());
+  const [removedIds, setRemovedIds] = useState<Map<string, Set<string>>>(new Map());
 
   // Safety net: if the results prop delivers new candidate data after mount
   // (e.g., component mounted with stale cache, then query refetched), re-sync
@@ -216,6 +217,24 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
     [],
   );
 
+  // Hard-dismiss a suggestion so it no longer shows (distinct from unselecting).
+  const removeItem = useCallback((sectionKey: string, id: string) => {
+    setRemovedIds((prev) => {
+      const next = new Map(prev);
+      const set = new Set(next.get(sectionKey) || []);
+      set.add(id);
+      next.set(sectionKey, set);
+      return next;
+    });
+    setSelections((prev) => {
+      const next = new Map(prev);
+      const set = new Set(next.get(sectionKey) || []);
+      set.delete(id);
+      next.set(sectionKey, set);
+      return next;
+    });
+  }, []);
+
   const handleEditSection = useCallback((sectionKey: SectionKey | "brandProfile") => {
     setReturnToStep(4);
     setCurrentStep(SECTION_STEP_MAP[sectionKey]);
@@ -231,9 +250,11 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       }
 
       const custom = customItems.get(key) || [];
-      return [...original, ...custom];
+      const combined = [...original, ...custom];
+      const removed = removedIds.get(key);
+      return removed ? combined.filter((c) => !removed.has(c.id)) : combined;
     },
-    [results, customItems, refreshedSections],
+    [results, customItems, refreshedSections, removedIds],
   );
 
   const handleConfirm = () => {
@@ -424,6 +445,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       candidates,
       selectedIds,
       onToggle: (id: string) => toggleItem(key, id),
+      onRemove: (id: string) => removeItem(key, id),
       onSelectAll: () => selectAll(key, candidates),
       onDeselectAll: () => deselectAll(key),
       onAddCustom: (name: string, metadata?: Record<string, string>) =>

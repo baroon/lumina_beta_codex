@@ -6,6 +6,7 @@ interface SectionData {
   candidates: CandidateDto[];
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
+  onRemove?: (id: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onAddCustom: (name: string) => void;
@@ -32,6 +33,7 @@ export function WizardStepAudiencesMarkets({
         candidates={audiences.candidates}
         selectedIds={audiences.selectedIds}
         onToggle={audiences.onToggle}
+        onRemove={audiences.onRemove}
         onSelectAll={audiences.onSelectAll}
         onDeselectAll={audiences.onDeselectAll}
         onAddCustom={audiences.onAddCustom}
@@ -46,6 +48,7 @@ export function WizardStepAudiencesMarkets({
         candidates={markets.candidates}
         selectedIds={markets.selectedIds}
         onToggle={markets.onToggle}
+        onRemove={markets.onRemove}
         onSelectAll={markets.onSelectAll}
         onDeselectAll={markets.onDeselectAll}
         onAddCustom={markets.onAddCustom}
