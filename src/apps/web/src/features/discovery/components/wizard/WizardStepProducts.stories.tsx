@@ -9,7 +9,6 @@ const mockProducts: CandidateDto[] = [
     description: "Core SaaS product for enterprise teams.",
     confidence: 0.95,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -18,7 +17,6 @@ const mockProducts: CandidateDto[] = [
     description: "Real-time analytics and reporting.",
     confidence: 0.7,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -27,7 +25,6 @@ const mockProducts: CandidateDto[] = [
     description: null,
     confidence: 0.4,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
 ];

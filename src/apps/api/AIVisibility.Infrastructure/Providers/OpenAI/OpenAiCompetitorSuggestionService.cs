@@ -90,7 +90,6 @@ public class OpenAiCompetitorSuggestionService : ICompetitorSuggestionService
                     Description = BuildCompetitorDescription(s),
                     Confidence = Math.Clamp(s.Confidence, 0.0, 1.0),
                     Source = CandidateSource.LLMSuggested,
-                    Status = CandidateStatus.Suggested
                 })
                 .Take(4)
                 .ToList();

@@ -14,7 +14,6 @@ function makeCandidate(
     name: "Test",
     description: null,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
     ...overrides,
   };

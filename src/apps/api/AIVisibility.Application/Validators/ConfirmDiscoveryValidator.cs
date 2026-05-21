@@ -7,10 +7,6 @@ public class ConfirmDiscoveryValidator : AbstractValidator<ConfirmDiscoveryComma
 {
     public ConfirmDiscoveryValidator()
     {
-        RuleFor(x => x.BrandId)
-            .NotEmpty().WithMessage("Brand ID is required");
-
-        RuleFor(x => x.ConfirmedIds)
-            .NotEmpty().WithMessage("At least one item must be confirmed");
+        RuleFor(x => x.BrandId).NotEmpty().WithMessage("Brand ID is required");
     }
 }

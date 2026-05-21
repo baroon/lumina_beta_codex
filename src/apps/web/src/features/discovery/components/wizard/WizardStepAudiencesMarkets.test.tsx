@@ -10,7 +10,6 @@ function cand(id: string, name: string): CandidateDto {
     description: null,
     confidence: 0.9,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   };
 }

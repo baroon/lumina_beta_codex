@@ -192,7 +192,6 @@ public class LlmContentExtractor : IContentExtractor
                 Positioning = result.Positioning,
                 Confidence = Math.Clamp(result.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             };
         }
         catch (Exception ex)
@@ -376,7 +375,6 @@ public class LlmContentExtractor : IContentExtractor
                 ProductType = ParseEnum(d.Type, ProductType.Product),
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             })
             .Take(4)
             .ToList();
@@ -394,7 +392,6 @@ public class LlmContentExtractor : IContentExtractor
                 Description = d.Description,
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             })
             .Take(4)
             .ToList();
@@ -412,7 +409,6 @@ public class LlmContentExtractor : IContentExtractor
                 CountryCode = d.CountryCode,
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             })
             .Take(4)
             .ToList();
@@ -431,7 +427,6 @@ public class LlmContentExtractor : IContentExtractor
                 Description = d.Description,
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             })
             .Take(4)
             .ToList();

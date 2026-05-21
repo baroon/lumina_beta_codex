@@ -1,4 +1,6 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Application.Queries.Discovery;
+using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,6 +13,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
     private readonly IWebsiteDiscoveryService _crawlService;
     private readonly IContentExtractor _extractor;
     private readonly IDiscoveryProgressNotifier _notifier;
+    private readonly IDiscoveryDraftStore _draftStore;
     private readonly ILogger<RunDiscoveryJobHandler> _logger;
 
     public RunDiscoveryJobHandler(
@@ -18,12 +21,14 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
         IWebsiteDiscoveryService crawlService,
         IContentExtractor extractor,
         IDiscoveryProgressNotifier notifier,
+        IDiscoveryDraftStore draftStore,
         ILogger<RunDiscoveryJobHandler> logger)
     {
         _db = db;
         _crawlService = crawlService;
         _extractor = extractor;
         _notifier = notifier;
+        _draftStore = draftStore;
         _logger = logger;
     }
 
@@ -55,26 +60,18 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
             run.PagesCrawled = crawlResult.TotalPagesCrawled;
             await _db.SaveChangesAsync(cancellationToken);
 
-            // Steps 2-4: Extract (LlmContentExtractor sends step 2, 3, 4 internally)
+            // Steps 2-4: Extract (LlmContentExtractor emits step 2, 3, 4 internally)
             run.Status = DiscoveryStatus.Extracting;
             await _db.SaveChangesAsync(cancellationToken);
             await _notifier.NotifyProgressAsync(brandId, DiscoveryStatus.Extracting, crawlResult.TotalPagesCrawled,
                 "Identifying brand identity and positioning...", step: 2, totalSteps: 5, cancellationToken: cancellationToken);
 
-            var extractionResult = await _extractor.ExtractCandidatesAsync(brand, crawlResult.Pages, cancellationToken);
+            var extraction = await _extractor.ExtractCandidatesAsync(brand, crawlResult.Pages, cancellationToken);
 
-            if (extractionResult.BrandProfile != null)
-            {
-                extractionResult.BrandProfile.BrandId = brandId;
-                _db.BrandProfiles.Add(extractionResult.BrandProfile);
-            }
-
-            foreach (var p in extractionResult.Products) { p.BrandId = brandId; p.DiscoveryRunId = discoveryRunId; _db.Products.Add(p); }
-            foreach (var a in extractionResult.Audiences) { a.BrandId = brandId; a.DiscoveryRunId = discoveryRunId; _db.Audiences.Add(a); }
-            foreach (var m in extractionResult.Markets) { m.BrandId = brandId; m.DiscoveryRunId = discoveryRunId; _db.Markets.Add(m); }
-            foreach (var t in extractionResult.Topics) { t.BrandId = brandId; t.DiscoveryRunId = discoveryRunId; _db.Topics.Add(t); }
-            foreach (var ts in extractionResult.TrustSignals) { ts.BrandId = brandId; ts.DiscoveryRunId = discoveryRunId; _db.TrustSignals.Add(ts); }
-            await _db.SaveChangesAsync(cancellationToken);
+            // Suggestions are NOT persisted — only the user-confirmed set is (see ConfirmDiscovery).
+            // Hand the draft to the confirmation wizard via the transient draft store; if it
+            // expires or the app restarts, discovery is simply re-run.
+            _draftStore.Save(discoveryRunId, BuildDraft(brand, extraction));
 
             // Step 5 progress — competitors will be generated during confirmation via resuggest
             await _notifier.NotifyProgressAsync(brandId, DiscoveryStatus.Extracting, crawlResult.TotalPagesCrawled,
@@ -99,4 +96,37 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 $"Discovery failed: {ex.Message}", step: 0, totalSteps: 5, cancellationToken: cancellationToken);
         }
     }
+
+    private static DiscoveryResultsDto BuildDraft(Brand brand, ExtractionResult extraction)
+    {
+        return new DiscoveryResultsDto(
+            brand.Id,
+            brand.Name,
+            DiscoveryStatus.AwaitingConfirmation.ToString(),
+            extraction.BrandProfile != null
+                ? new BrandProfileDto(
+                    extraction.BrandProfile.Id,
+                    extraction.BrandProfile.ShortDescription,
+                    extraction.BrandProfile.Industry,
+                    extraction.BrandProfile.Category,
+                    extraction.BrandProfile.Positioning,
+                    extraction.BrandProfile.Confidence,
+                    extraction.BrandProfile.Source.ToString())
+                : null,
+            extraction.Products.Select(p => ToCandidate(p.Id, p.Name, p.Description, p.Confidence, p.Source,
+                new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString(), ["relatedPageUrl"] = p.RelatedPageUrl })).ToList(),
+            extraction.Audiences.Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source,
+                new Dictionary<string, object?>())).ToList(),
+            extraction.Markets.Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source,
+                new Dictionary<string, object?> { ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
+            extraction.Topics.Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source,
+                new Dictionary<string, object?>())).ToList(),
+            new List<CandidateDto>(),
+            extraction.TrustSignals.Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source,
+                new Dictionary<string, object?> { ["signalType"] = ts.SignalType.ToString() })).ToList());
+    }
+
+    private static CandidateDto ToCandidate(Guid id, string name, string? description, double confidence,
+        CandidateSource source, Dictionary<string, object?> metadata)
+        => new(id, name, description, confidence, source.ToString(), metadata);
 }

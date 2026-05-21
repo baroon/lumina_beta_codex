@@ -13,7 +13,6 @@ function profile(overrides?: Partial<BrandProfileDto>): BrandProfileDto {
     positioning: "Leader",
     confidence: 0.9,
     source: "LLMSuggested",
-    status: "Suggested",
     ...overrides,
   } as BrandProfileDto;
 }

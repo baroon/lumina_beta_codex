@@ -9,7 +9,6 @@ const mockCandidates: CandidateDto[] = [
     description: "Cloud platform for enterprises.",
     confidence: 0.9,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -18,7 +17,6 @@ const mockCandidates: CandidateDto[] = [
     description: "Analytics tool for small businesses.",
     confidence: 0.6,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -27,7 +25,6 @@ const mockCandidates: CandidateDto[] = [
     description: null,
     confidence: 0.3,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
 ];

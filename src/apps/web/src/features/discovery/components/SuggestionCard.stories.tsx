@@ -8,7 +8,6 @@ const baseCand: CandidateDto = {
   description: "Cloud-based software solution for large organizations.",
   confidence: 0.85,
   source: "WebsiteCrawl",
-  status: "Suggested",
   metadata: {},
 };
 
@@ -55,7 +54,6 @@ export const ManualSource: Story = {
       description: "Manually added by the user.",
       confidence: 1,
       source: "UserAdded",
-      status: "Suggested",
     },
     selected: true,
   },

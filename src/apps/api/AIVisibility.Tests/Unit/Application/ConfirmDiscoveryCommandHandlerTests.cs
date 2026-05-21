@@ -15,123 +15,120 @@ public class ConfirmDiscoveryCommandHandlerTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options);
 
+    private static ConfirmCandidateInput Item(string name, Dictionary<string, string>? metadata = null) =>
+        new(name, null, 0.9, "LLMSuggested", metadata);
+
+    private static (Brand brand, DiscoveryRun run) Seed(AppDbContext ctx)
+    {
+        var brand = new Brand
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test",
+            WebsiteUrl = "https://test.com",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        var run = new DiscoveryRun
+        {
+            Id = Guid.NewGuid(),
+            BrandId = brand.Id,
+            Status = DiscoveryStatus.AwaitingConfirmation,
+            StartedAt = DateTime.UtcNow,
+        };
+        ctx.Brands.Add(brand);
+        ctx.DiscoveryRuns.Add(run);
+        ctx.SaveChanges();
+        return (brand, run);
+    }
+
+    private static ConfirmDiscoveryCommand Command(
+        Guid brandId,
+        ConfirmBrandProfileInput? profile = null,
+        List<ConfirmCandidateInput>? products = null,
+        List<ConfirmCandidateInput>? markets = null,
+        List<ConfirmCandidateInput>? topics = null,
+        List<ConfirmCandidateInput>? competitors = null,
+        List<ConfirmCandidateInput>? trustSignals = null) =>
+        new(brandId, profile, products ?? new(), new(), markets ?? new(),
+            topics ?? new(), competitors ?? new(), trustSignals ?? new());
+
     [Fact]
     public async Task Handle_ShouldThrowWhenBrandNotFound()
     {
-        using var context = NewContext();
-        var handler = new ConfirmDiscoveryCommandHandler(context);
+        using var ctx = NewContext();
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        var command = new ConfirmDiscoveryCommand(Guid.NewGuid(), new List<Guid> { Guid.NewGuid() }, new List<Guid>());
-
-        var act = () => handler.Handle(command, CancellationToken.None);
+        var act = () => handler.Handle(Command(Guid.NewGuid()), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
 
     [Fact]
-    public async Task Handle_ShouldConfirmAndDismissCandidates_WhenCompletionRequirementsMet()
+    public async Task Handle_ShouldPersistConfirmedRowsAndCompleteRun()
     {
-        using var context = NewContext();
+        using var ctx = NewContext();
+        var (brand, run) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        var brand = NewBrand();
-        var product1 = NewProduct(brand.Id, "Product 1", 0.8);
-        var product2 = NewProduct(brand.Id, "Product 2", 0.5);
-        var market = NewMarket(brand.Id, "United States");
-        var topic = NewTopic(brand.Id, "Pricing");
-        var run = NewRun(brand.Id);
-
-        context.Brands.Add(brand);
-        context.Products.AddRange(product1, product2);
-        context.Markets.Add(market);
-        context.Topics.Add(topic);
-        context.DiscoveryRuns.Add(run);
-        await context.SaveChangesAsync();
-
-        var handler = new ConfirmDiscoveryCommandHandler(context);
-        var command = new ConfirmDiscoveryCommand(
+        var command = Command(
             brand.Id,
-            new List<Guid> { product1.Id, market.Id, topic.Id },
-            new List<Guid> { product2.Id });
+            profile: new ConfirmBrandProfileInput("A SaaS tool", "Tech", "SaaS", "Leader", 0.9, "LLMSuggested"),
+            products: new() { Item("Analytics", new() { ["productType"] = "Service" }) },
+            markets: new() { Item("United States") },
+            topics: new() { Item("Pricing") },
+            competitors: new() { Item("Acme", new() { ["domain"] = "acme.com" }) },
+            trustSignals: new() { Item("SOC2", new() { ["signalType"] = "CertificationsAndAccreditations" }) });
 
         await handler.Handle(command, CancellationToken.None);
 
-        (await context.Products.FindAsync(product1.Id))!.Status.Should().Be(CandidateStatus.Confirmed);
-        (await context.Products.FindAsync(product2.Id))!.Status.Should().Be(CandidateStatus.Dismissed);
-        (await context.DiscoveryRuns.FindAsync(run.Id))!.Status.Should().Be(DiscoveryStatus.Completed);
+        var product = await ctx.Products.SingleAsync();
+        product.Name.Should().Be("Analytics");
+        product.ProductType.Should().Be(ProductType.Service);
+        product.BrandId.Should().Be(brand.Id);
+        product.DiscoveryRunId.Should().Be(run.Id);
+
+        (await ctx.Markets.SingleAsync()).Name.Should().Be("United States");
+        (await ctx.Topics.SingleAsync()).Name.Should().Be("Pricing");
+        (await ctx.Competitors.SingleAsync()).Domain.Should().Be("acme.com");
+        (await ctx.TrustSignals.SingleAsync()).SignalType.Should().Be(TrustSignalType.CertificationsAndAccreditations);
+        (await ctx.BrandProfiles.SingleAsync()).Category.Should().Be("SaaS");
+        (await ctx.DiscoveryRuns.FindAsync(run.Id))!.Status.Should().Be(DiscoveryStatus.Completed);
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowValidation_WhenNoMarketConfirmed()
+    public async Task Handle_ShouldThrowValidation_WhenNoMarket()
     {
-        using var context = NewContext();
-        var brand = NewBrand();
-        var product = NewProduct(brand.Id, "Product", 0.8);
-        var topic = NewTopic(brand.Id, "Pricing");
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        context.Brands.Add(brand);
-        context.Products.Add(product);
-        context.Topics.Add(topic);
-        context.DiscoveryRuns.Add(NewRun(brand.Id));
-        await context.SaveChangesAsync();
-
-        var handler = new ConfirmDiscoveryCommandHandler(context);
-        var command = new ConfirmDiscoveryCommand(
-            brand.Id,
-            new List<Guid> { product.Id, topic.Id },
-            new List<Guid>());
-
+        var command = Command(brand.Id, products: new() { Item("P") }, topics: new() { Item("T") });
         var act = () => handler.Handle(command, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<ValidationException>())
-            .Which.Message.Should().Contain("market");
+        (await act.Should().ThrowAsync<ValidationException>()).Which.Message.Should().Contain("market");
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowValidation_WhenNoTopicConfirmed()
+    public async Task Handle_ShouldThrowValidation_WhenNoTopic()
     {
-        using var context = NewContext();
-        var brand = NewBrand();
-        var product = NewProduct(brand.Id, "Product", 0.8);
-        var market = NewMarket(brand.Id, "United States");
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        context.Brands.Add(brand);
-        context.Products.Add(product);
-        context.Markets.Add(market);
-        context.DiscoveryRuns.Add(NewRun(brand.Id));
-        await context.SaveChangesAsync();
-
-        var handler = new ConfirmDiscoveryCommandHandler(context);
-        var command = new ConfirmDiscoveryCommand(
-            brand.Id,
-            new List<Guid> { product.Id, market.Id },
-            new List<Guid>());
-
+        var command = Command(brand.Id, products: new() { Item("P") }, markets: new() { Item("US") });
         var act = () => handler.Handle(command, CancellationToken.None);
 
-        (await act.Should().ThrowAsync<ValidationException>())
-            .Which.Message.Should().Contain("topic");
+        (await act.Should().ThrowAsync<ValidationException>()).Which.Message.Should().Contain("topic");
     }
 
     [Fact]
     public async Task Handle_ShouldThrowValidation_WhenNoProductAndNoCategory()
     {
-        using var context = NewContext();
-        var brand = NewBrand();
-        var market = NewMarket(brand.Id, "United States");
-        var topic = NewTopic(brand.Id, "Pricing");
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        context.Brands.Add(brand);
-        context.Markets.Add(market);
-        context.Topics.Add(topic);
-        context.DiscoveryRuns.Add(NewRun(brand.Id));
-        await context.SaveChangesAsync();
-
-        var handler = new ConfirmDiscoveryCommandHandler(context);
-        var command = new ConfirmDiscoveryCommand(
-            brand.Id,
-            new List<Guid> { market.Id, topic.Id },
-            new List<Guid>());
-
+        var command = Command(brand.Id, markets: new() { Item("US") }, topics: new() { Item("T") });
         var act = () => handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<ValidationException>();
@@ -140,84 +137,17 @@ public class ConfirmDiscoveryCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldSucceed_WithCategoryInsteadOfProduct()
     {
-        using var context = NewContext();
-        var brand = NewBrand();
-        brand.BrandProfile = new BrandProfile
-        {
-            Id = Guid.NewGuid(),
-            BrandId = brand.Id,
-            Category = "Career Tools",
-            Source = CandidateSource.LLMSuggested,
-            Status = CandidateStatus.Suggested,
-            Confidence = 0.9
-        };
-        var market = NewMarket(brand.Id, "United States");
-        var topic = NewTopic(brand.Id, "Pricing");
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
 
-        context.Brands.Add(brand);
-        context.Markets.Add(market);
-        context.Topics.Add(topic);
-        context.DiscoveryRuns.Add(NewRun(brand.Id));
-        await context.SaveChangesAsync();
-
-        var handler = new ConfirmDiscoveryCommandHandler(context);
-        var command = new ConfirmDiscoveryCommand(
+        var command = Command(
             brand.Id,
-            new List<Guid> { market.Id, topic.Id },
-            new List<Guid>());
-
+            profile: new ConfirmBrandProfileInput(null, null, "Career Tools", null, 0.9, "LLMSuggested"),
+            markets: new() { Item("US") },
+            topics: new() { Item("T") });
         var act = () => handler.Handle(command, CancellationToken.None);
 
         await act.Should().NotThrowAsync();
     }
-
-    // ---- Helpers ----
-
-    private static Brand NewBrand() => new()
-    {
-        Id = Guid.NewGuid(),
-        Name = "Test",
-        WebsiteUrl = "https://test.com",
-        CreatedAt = DateTime.UtcNow,
-        UpdatedAt = DateTime.UtcNow
-    };
-
-    private static Product NewProduct(Guid brandId, string name, double confidence) => new()
-    {
-        Id = Guid.NewGuid(),
-        BrandId = brandId,
-        Name = name,
-        Status = CandidateStatus.Suggested,
-        Source = CandidateSource.WebsiteCrawl,
-        Confidence = confidence
-    };
-
-    private static Market NewMarket(Guid brandId, string name) => new()
-    {
-        Id = Guid.NewGuid(),
-        BrandId = brandId,
-        Name = name,
-        LanguageCode = "en",
-        Status = CandidateStatus.Suggested,
-        Source = CandidateSource.LLMSuggested,
-        Confidence = 0.9
-    };
-
-    private static Topic NewTopic(Guid brandId, string name) => new()
-    {
-        Id = Guid.NewGuid(),
-        BrandId = brandId,
-        Name = name,
-        Status = CandidateStatus.Suggested,
-        Source = CandidateSource.LLMSuggested,
-        Confidence = 0.9
-    };
-
-    private static DiscoveryRun NewRun(Guid brandId) => new()
-    {
-        Id = Guid.NewGuid(),
-        BrandId = brandId,
-        Status = DiscoveryStatus.AwaitingConfirmation,
-        StartedAt = DateTime.UtcNow
-    };
 }

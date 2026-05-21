@@ -12,7 +12,6 @@ public class BrandProfile
     public string? Positioning { get; set; }
     public double Confidence { get; set; }
     public CandidateSource Source { get; set; }
-    public CandidateStatus Status { get; set; }
 
     public Brand Brand { get; set; } = null!;
 }

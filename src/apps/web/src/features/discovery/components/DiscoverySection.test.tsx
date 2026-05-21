@@ -13,7 +13,6 @@ function makeCandidates(): CandidateDto[] {
       description: null,
       confidence: 0.9,
       source: "LLMSuggested",
-      status: "Suggested",
       metadata: {},
     },
     {
@@ -22,7 +21,6 @@ function makeCandidates(): CandidateDto[] {
       description: null,
       confidence: 0.5,
       source: "LLMSuggested",
-      status: "Suggested",
       metadata: {},
     },
   ];

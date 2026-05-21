@@ -30,7 +30,6 @@ export const Default: Story = {
       positioning: "Enterprise-grade reliability with developer-friendly tools.",
       confidence: 0.9,
       source: "WebsiteCrawl",
-      status: "Suggested",
     },
   },
 };
@@ -45,7 +44,6 @@ export const EditableFields: Story = {
       positioning: "Simple, transparent payments for small businesses.",
       confidence: 0.7,
       source: "LLMSuggested",
-      status: "Suggested",
     },
   },
 };
@@ -60,7 +58,6 @@ export const PartiallyEdited: Story = {
       positioning: "Enterprise-grade reliability",
       confidence: 0.9,
       source: "WebsiteCrawl",
-      status: "Suggested",
       shortDescriptionSource: "UserAdded",
       industrySource: "UserAdded",
     },
@@ -77,7 +74,6 @@ export const LowConfidence: Story = {
       positioning: null,
       confidence: 0.3,
       source: "LLMSuggested",
-      status: "Suggested",
     },
   },
 };

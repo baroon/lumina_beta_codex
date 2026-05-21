@@ -62,7 +62,6 @@ public class HeuristicContentExtractor : IContentExtractor
             Positioning = headings.FirstOrDefault(),
             Confidence = description != null ? 0.7 : 0.3,
             Source = CandidateSource.WebsiteCrawl,
-            Status = CandidateStatus.Suggested
         };
     }
 
@@ -93,7 +92,6 @@ public class HeuristicContentExtractor : IContentExtractor
                     RelatedPageUrl = page.Url,
                     Confidence = category == PageCategory.Product ? 0.7 : 0.5,
                     Source = CandidateSource.WebsiteCrawl,
-                    Status = CandidateStatus.Suggested
                 });
             }
         }
@@ -129,7 +127,6 @@ public class HeuristicContentExtractor : IContentExtractor
                     Name = name,
                     Confidence = 0.5,
                     Source = CandidateSource.WebsiteCrawl,
-                    Status = CandidateStatus.Suggested
                 });
             }
         }
@@ -178,7 +175,6 @@ public class HeuristicContentExtractor : IContentExtractor
                     CountryCode = market.Code,
                     Confidence = 0.6,
                     Source = CandidateSource.WebsiteCrawl,
-                    Status = CandidateStatus.Suggested
                 });
             }
         }
@@ -193,7 +189,6 @@ public class HeuristicContentExtractor : IContentExtractor
                 Name = "Global",
                 Confidence = 0.4,
                 Source = CandidateSource.WebsiteCrawl,
-                Status = CandidateStatus.Suggested
             });
         }
 
@@ -228,7 +223,6 @@ public class HeuristicContentExtractor : IContentExtractor
                         CurrencyCode = cm.Currency,
                         Confidence = 0.5,
                         Source = CandidateSource.WebsiteCrawl,
-                        Status = CandidateStatus.Suggested
                     });
                 }
             }
@@ -270,7 +264,6 @@ public class HeuristicContentExtractor : IContentExtractor
                         SourcePagesJson = JsonSerializer.Serialize(new[] { page.Url }),
                         Confidence = 0.7,
                         Source = CandidateSource.WebsiteCrawl,
-                        Status = CandidateStatus.Suggested
                     });
                 }
             }
@@ -307,7 +300,6 @@ public class HeuristicContentExtractor : IContentExtractor
                             SourcePagesJson = JsonSerializer.Serialize(new[] { page.Url }),
                             Confidence = 0.6,
                             Source = CandidateSource.WebsiteCrawl,
-                            Status = CandidateStatus.Suggested
                         });
                     }
                 }

@@ -18,7 +18,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.RelatedPageUrl).HasColumnName("related_page_url").HasMaxLength(2048);
         builder.Property(p => p.Confidence).HasColumnName("confidence");
         builder.Property(p => p.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
-        builder.Property(p => p.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
         builder.Property(p => p.DiscoveryRunId).HasColumnName("discovery_run_id");
 
         builder.HasIndex(p => p.BrandId);

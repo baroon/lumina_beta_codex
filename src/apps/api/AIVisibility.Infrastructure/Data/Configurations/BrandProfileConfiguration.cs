@@ -18,7 +18,6 @@ public class BrandProfileConfiguration : IEntityTypeConfiguration<BrandProfile>
         builder.Property(bp => bp.Positioning).HasColumnName("positioning").HasMaxLength(2000);
         builder.Property(bp => bp.Confidence).HasColumnName("confidence");
         builder.Property(bp => bp.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
-        builder.Property(bp => bp.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
 
         builder.HasIndex(bp => bp.BrandId).IsUnique();
     }

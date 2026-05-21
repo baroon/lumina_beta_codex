@@ -23,8 +23,7 @@ public record BrandProfileDto(
     string? Category,
     string? Positioning,
     double Confidence,
-    string Source,
-    string Status);
+    string Source);
 
 public record CandidateDto(
     Guid Id,
@@ -32,5 +31,4 @@ public record CandidateDto(
     string? Description,
     double Confidence,
     string Source,
-    string Status,
     Dictionary<string, object?> Metadata);

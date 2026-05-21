@@ -88,7 +88,6 @@ public class OpenAiResuggestService : IResuggestService
                     Description = BuildCompetitorDescription(s),
                     Confidence = Math.Clamp(s.Confidence, 0.0, 1.0),
                     Source = CandidateSource.LLMSuggested,
-                    Status = CandidateStatus.Suggested
                 })
                 .Take(4)
                 .ToList();
@@ -192,7 +191,6 @@ public class OpenAiResuggestService : IResuggestService
                     Name = s.Trim(),
                     Confidence = 0.7,
                     Source = CandidateSource.LLMSuggested,
-                    Status = CandidateStatus.Suggested
                 })
                 .Take(4)
                 .ToList();

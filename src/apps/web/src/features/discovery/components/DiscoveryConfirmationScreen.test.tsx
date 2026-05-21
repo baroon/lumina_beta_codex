@@ -109,7 +109,6 @@ function makeCandidate(id: string, confidence: number): CandidateDto {
     description: null,
     confidence,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   };
 }
@@ -127,7 +126,6 @@ function makeResults(overrides?: Partial<DiscoveryResultsDto>): DiscoveryResults
       positioning: "Leader",
       confidence: 0.9,
       source: "LLMSuggested",
-      status: "Suggested",
     },
     products: [makeCandidate("prod-high", 0.9), makeCandidate("prod-low", 0.3)],
     audiences: [makeCandidate("aud-high", 0.85), makeCandidate("aud-med", 0.5)],

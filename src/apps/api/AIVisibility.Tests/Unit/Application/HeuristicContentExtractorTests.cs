@@ -44,7 +44,6 @@ public class HeuristicContentExtractorTests
         result.BrandProfile!.ShortDescription.Should().Contain("software platform");
         result.BrandProfile.Industry.Should().Be("Technology");
         result.BrandProfile.Source.Should().Be(CandidateSource.WebsiteCrawl);
-        result.BrandProfile.Status.Should().Be(CandidateStatus.Suggested);
     }
 
     [Fact]

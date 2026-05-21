@@ -1,5 +1,12 @@
+using AIVisibility.Application.Commands.Discovery;
+
 namespace AIVisibility.Api.DTOs;
 
 public record ConfirmDiscoveryRequest(
-    List<Guid> ConfirmedIds,
-    List<Guid> DismissedIds);
+    ConfirmBrandProfileInput? BrandProfile,
+    List<ConfirmCandidateInput>? Products,
+    List<ConfirmCandidateInput>? Audiences,
+    List<ConfirmCandidateInput>? Markets,
+    List<ConfirmCandidateInput>? Topics,
+    List<ConfirmCandidateInput>? Competitors,
+    List<ConfirmCandidateInput>? TrustSignals);

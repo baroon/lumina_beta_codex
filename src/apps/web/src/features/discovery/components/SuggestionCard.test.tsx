@@ -11,7 +11,6 @@ function candidate(overrides?: Partial<CandidateDto>): CandidateDto {
     description: "A competitor",
     confidence: 0.9,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
     ...overrides,
   };

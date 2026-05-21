@@ -1,4 +1,5 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using FluentValidation;
 using FluentValidation.Results;
@@ -19,86 +20,137 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
     public async Task<Unit> Handle(ConfirmDiscoveryCommand request, CancellationToken cancellationToken)
     {
         var brand = await _db.Brands
-            .Include(b => b.BrandProfile)
-            .Include(b => b.Products)
-            .Include(b => b.Audiences)
-            .Include(b => b.Markets)
-            .Include(b => b.Topics)
-            .Include(b => b.Competitors)
-            .Include(b => b.TrustSignals)
             .Include(b => b.DiscoveryRuns)
             .FirstOrDefaultAsync(b => b.Id == request.BrandId, cancellationToken)
             ?? throw new InvalidOperationException($"Brand {request.BrandId} not found");
 
-        var confirmedSet = request.ConfirmedIds.ToHashSet();
-        var dismissedSet = request.DismissedIds.ToHashSet();
+        var latestRun = brand.DiscoveryRuns
+            .OrderByDescending(r => r.StartedAt)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException($"No discovery run found for brand {request.BrandId}");
 
-        // Completion gating (REQ-001 §16): a discovery run may only be completed
-        // when a market and at least one topic are confirmed, and either a
-        // product/service is confirmed or the brand profile has a category.
+        // Completion gating (REQ-001 §16): require a market, at least one topic, and either a
+        // confirmed product/service or a brand category before the run can be completed.
         var failures = new List<ValidationFailure>();
-
-        if (!brand.Markets.Any(m => confirmedSet.Contains(m.Id)))
-            failures.Add(new ValidationFailure(
-                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
-                "At least one market must be confirmed before completing discovery."));
-
-        if (!brand.Topics.Any(t => confirmedSet.Contains(t.Id)))
-            failures.Add(new ValidationFailure(
-                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
-                "At least one topic must be confirmed before completing discovery."));
-
-        var hasProduct = brand.Products.Any(p => confirmedSet.Contains(p.Id));
-        var hasCategory = !string.IsNullOrWhiteSpace(brand.BrandProfile?.Category);
-        if (!hasProduct && !hasCategory)
-            failures.Add(new ValidationFailure(
-                nameof(ConfirmDiscoveryCommand.ConfirmedIds),
-                "At least one product or service must be confirmed, or a brand category must be set, before completing discovery."));
-
+        if (request.Markets.Count == 0)
+            failures.Add(new ValidationFailure("Markets", "At least one market must be confirmed before completing discovery."));
+        if (request.Topics.Count == 0)
+            failures.Add(new ValidationFailure("Topics", "At least one topic must be confirmed before completing discovery."));
+        if (request.Products.Count == 0 && string.IsNullOrWhiteSpace(request.BrandProfile?.Category))
+            failures.Add(new ValidationFailure("Products", "At least one product or service must be confirmed, or a brand category must be set, before completing discovery."));
         if (failures.Count > 0)
             throw new ValidationException(failures);
 
-        void UpdateStatus<T>(IEnumerable<T> entities) where T : class
+        var runId = latestRun.Id;
+
+        if (request.BrandProfile is { } bp)
         {
-            foreach (var entity in entities)
+            _db.BrandProfiles.Add(new BrandProfile
             {
-                var id = (Guid)entity.GetType().GetProperty("Id")!.GetValue(entity)!;
-                var statusProp = entity.GetType().GetProperty("Status")!;
-                if (confirmedSet.Contains(id))
-                    statusProp.SetValue(entity, CandidateStatus.Confirmed);
-                else if (dismissedSet.Contains(id))
-                    statusProp.SetValue(entity, CandidateStatus.Dismissed);
-            }
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                ShortDescription = bp.ShortDescription,
+                Industry = bp.Industry,
+                Category = bp.Category,
+                Positioning = bp.Positioning,
+                Confidence = bp.Confidence,
+                Source = ParseSource(bp.Source),
+            });
         }
 
-        if (brand.BrandProfile != null)
-        {
-            if (confirmedSet.Contains(brand.BrandProfile.Id))
-                brand.BrandProfile.Status = CandidateStatus.Confirmed;
-            else if (dismissedSet.Contains(brand.BrandProfile.Id))
-                brand.BrandProfile.Status = CandidateStatus.Dismissed;
-        }
+        foreach (var p in request.Products)
+            _db.Products.Add(new Product
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = p.Name,
+                Description = p.Description,
+                Confidence = p.Confidence,
+                Source = ParseSource(p.Source),
+                ProductType = ParseEnum(Meta(p, "productType"), ProductType.Product),
+                RelatedPageUrl = Meta(p, "relatedPageUrl"),
+            });
 
-        UpdateStatus(brand.Products);
-        UpdateStatus(brand.Audiences);
-        UpdateStatus(brand.Markets);
-        UpdateStatus(brand.Topics);
-        UpdateStatus(brand.Competitors);
-        UpdateStatus(brand.TrustSignals);
+        foreach (var a in request.Audiences)
+            _db.Audiences.Add(new Audience
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = a.Name,
+                Description = a.Description,
+                Confidence = a.Confidence,
+                Source = ParseSource(a.Source),
+            });
 
-        var latestRun = brand.DiscoveryRuns
-            .OrderByDescending(r => r.StartedAt)
-            .FirstOrDefault();
+        foreach (var m in request.Markets)
+            _db.Markets.Add(new Market
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = m.Name,
+                Confidence = m.Confidence,
+                Source = ParseSource(m.Source),
+                CountryCode = Meta(m, "countryCode"),
+                Region = Meta(m, "region"),
+                LanguageCode = Meta(m, "languageCode"),
+                CurrencyCode = Meta(m, "currencyCode"),
+            });
 
-        if (latestRun != null)
-        {
-            latestRun.Status = DiscoveryStatus.Completed;
-            latestRun.CompletedAt = DateTime.UtcNow;
-        }
+        foreach (var t in request.Topics)
+            _db.Topics.Add(new Topic
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = t.Name,
+                Description = t.Description,
+                Confidence = t.Confidence,
+                Source = ParseSource(t.Source),
+            });
 
+        foreach (var c in request.Competitors)
+            _db.Competitors.Add(new Competitor
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = c.Name,
+                Description = c.Description,
+                Confidence = c.Confidence,
+                Source = ParseSource(c.Source),
+                Domain = Meta(c, "domain"),
+            });
+
+        foreach (var ts in request.TrustSignals)
+            _db.TrustSignals.Add(new TrustSignal
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brand.Id,
+                DiscoveryRunId = runId,
+                Name = ts.Name,
+                Description = ts.Description,
+                Confidence = ts.Confidence,
+                Source = ParseSource(ts.Source),
+                SignalType = ParseEnum(Meta(ts, "signalType"), TrustSignalType.TestimonialsAndReviews),
+            });
+
+        latestRun.Status = DiscoveryStatus.Completed;
+        latestRun.CompletedAt = DateTime.UtcNow;
         brand.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;
     }
+
+    private static string? Meta(ConfirmCandidateInput c, string key) =>
+        c.Metadata != null && c.Metadata.TryGetValue(key, out var v) ? v : null;
+
+    private static CandidateSource ParseSource(string? value) =>
+        Enum.TryParse<CandidateSource>(value, ignoreCase: true, out var r) ? r : CandidateSource.LLMSuggested;
+
+    private static T ParseEnum<T>(string? value, T defaultValue) where T : struct, Enum =>
+        !string.IsNullOrWhiteSpace(value) && Enum.TryParse<T>(value, ignoreCase: true, out var r) ? r : defaultValue;
 }

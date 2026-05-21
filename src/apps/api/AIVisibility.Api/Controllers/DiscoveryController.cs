@@ -31,7 +31,15 @@ public class DiscoveryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ConfirmDiscovery(Guid brandId, [FromBody] ConfirmDiscoveryRequest request, CancellationToken cancellationToken)
     {
-        var command = new ConfirmDiscoveryCommand(brandId, request.ConfirmedIds, request.DismissedIds);
+        var command = new ConfirmDiscoveryCommand(
+            brandId,
+            request.BrandProfile,
+            request.Products ?? new(),
+            request.Audiences ?? new(),
+            request.Markets ?? new(),
+            request.Topics ?? new(),
+            request.Competitors ?? new(),
+            request.TrustSignals ?? new());
         await _mediator.Send(command, cancellationToken);
         return NoContent();
     }

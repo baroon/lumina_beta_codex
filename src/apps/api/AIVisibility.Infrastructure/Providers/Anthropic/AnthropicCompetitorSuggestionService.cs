@@ -99,7 +99,6 @@ Return ONLY a valid JSON array, no other text. Example format:
                 Description = s.Description,
                 Confidence = Math.Clamp(s.Confidence, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
-                Status = CandidateStatus.Suggested
             }).ToList();
         }
         catch (Exception ex)

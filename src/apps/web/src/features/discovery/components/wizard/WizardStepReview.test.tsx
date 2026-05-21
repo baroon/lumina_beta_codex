@@ -15,7 +15,6 @@ function cand(
     description: null,
     confidence: 0.9,
     source,
-    status: "Suggested",
     metadata: {},
   };
 }
@@ -43,7 +42,6 @@ const brandProfile = {
   positioning: "Leader",
   confidence: 0.9,
   source: "LLMSuggested",
-  status: "Suggested",
 } as BrandProfileDto;
 
 function renderReview(

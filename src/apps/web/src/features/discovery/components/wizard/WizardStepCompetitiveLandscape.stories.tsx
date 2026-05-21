@@ -9,7 +9,6 @@ const mockTopics: CandidateDto[] = [
     description: null,
     confidence: 0.7,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
 ];
@@ -21,7 +20,6 @@ const mockCompetitors: CandidateDto[] = [
     description: "Direct competitor in cloud infra. [Region: high, Scale: medium, Segment: high]",
     confidence: 0.6,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -30,7 +28,6 @@ const mockCompetitors: CandidateDto[] = [
     description: "Competing analytics platform.",
     confidence: 0.8,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
 ];
@@ -42,7 +39,6 @@ const mockTrustSignals: CandidateDto[] = [
     description: null,
     confidence: 0.95,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
 ];

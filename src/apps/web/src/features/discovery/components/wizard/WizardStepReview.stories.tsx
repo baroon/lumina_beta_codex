@@ -12,7 +12,6 @@ const make = (
   description: null,
   confidence: 0.8,
   source,
-  status: "Suggested",
   metadata: {},
 });
 
@@ -48,7 +47,6 @@ export const Default: Story = {
       positioning: "Enterprise-grade reliability",
       confidence: 0.9,
       source: "WebsiteCrawl",
-      status: "Suggested",
     },
     sections: {
       products: {
@@ -89,7 +87,6 @@ export const WithCustomItems: Story = {
       positioning: "Enterprise-grade reliability",
       confidence: 0.9,
       source: "WebsiteCrawl",
-      status: "Suggested",
     },
     sections: {
       products: {

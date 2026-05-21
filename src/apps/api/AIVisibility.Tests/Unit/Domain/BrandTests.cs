@@ -72,12 +72,10 @@ public class BrandTests
             ProductType = ProductType.Service,
             Confidence = 0.8,
             Source = CandidateSource.WebsiteCrawl,
-            Status = CandidateStatus.Suggested
         };
 
         product.Confidence.Should().Be(0.8);
         product.Source.Should().Be(CandidateSource.WebsiteCrawl);
-        product.Status.Should().Be(CandidateStatus.Suggested);
     }
 
     [Fact]

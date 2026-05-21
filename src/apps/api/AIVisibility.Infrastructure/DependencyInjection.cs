@@ -1,6 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Infrastructure.Crawling;
 using AIVisibility.Infrastructure.Data;
+using AIVisibility.Infrastructure.Discovery;
 using AIVisibility.Infrastructure.Providers.Anthropic;
 using AIVisibility.Infrastructure.Providers.OpenAi;
 using AIVisibility.Infrastructure.Storage;
@@ -55,6 +56,10 @@ public static class DependencyInjection
 
         // SignalR Notifier
         services.AddScoped<IDiscoveryProgressNotifier, SignalRDiscoveryProgressNotifier>();
+
+        // Transient draft store for unconfirmed discovery suggestions
+        services.AddMemoryCache();
+        services.AddSingleton<IDiscoveryDraftStore, MemoryDiscoveryDraftStore>();
 
         return services;
     }

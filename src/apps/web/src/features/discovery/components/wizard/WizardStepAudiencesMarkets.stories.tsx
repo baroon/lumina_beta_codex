@@ -9,7 +9,6 @@ const mockAudiences: CandidateDto[] = [
     description: "C-level tech leaders at large organizations.",
     confidence: 0.8,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -18,7 +17,6 @@ const mockAudiences: CandidateDto[] = [
     description: "Infrastructure and operations teams.",
     confidence: 0.7,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
 ];
@@ -30,7 +28,6 @@ const mockMarkets: CandidateDto[] = [
     description: null,
     confidence: 0.9,
     source: "WebsiteCrawl",
-    status: "Suggested",
     metadata: {},
   },
   {
@@ -39,7 +36,6 @@ const mockMarkets: CandidateDto[] = [
     description: null,
     confidence: 0.6,
     source: "LLMSuggested",
-    status: "Suggested",
     metadata: {},
   },
 ];

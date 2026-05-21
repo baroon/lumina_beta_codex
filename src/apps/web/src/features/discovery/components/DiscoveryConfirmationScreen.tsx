@@ -19,6 +19,7 @@ import type {
   DiscoveryResultsDto,
   BrandProfileDto,
   CandidateDto,
+  ConfirmCandidateInput,
   ResuggestCandidateDto,
   VisibilityLens,
 } from "@/types/api";
@@ -60,7 +61,6 @@ function toCandidate(dto: ResuggestCandidateDto): CandidateDto {
     description: dto.description,
     confidence: dto.confidence,
     source: dto.source,
-    status: "Suggested",
     metadata: dto.metadata,
   };
 }
@@ -187,7 +187,6 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
         description: null,
         confidence: 1.0,
         source: "UserAdded",
-        status: "Suggested",
         metadata: metadata ?? {},
       };
 
@@ -239,26 +238,38 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   );
 
   const handleConfirm = () => {
-    const confirmedIds: string[] = [];
-    const dismissedIds: string[] = [];
+    const toInput = (c: CandidateDto): ConfirmCandidateInput => ({
+      name: c.name,
+      description: c.description,
+      confidence: c.confidence,
+      source: c.source,
+      metadata: c.metadata,
+    });
 
-    if (results.brandProfile) {
-      confirmedIds.push(results.brandProfile.id);
-    }
-
-    for (const key of ALL_SECTIONS) {
-      const candidates = results[key] as CandidateDto[];
+    const selectedInputs = (key: SectionKey): ConfirmCandidateInput[] => {
+      const candidates = getCombinedCandidates(key);
       const selected = selections.get(key) || new Set<string>();
-      for (const c of candidates) {
-        if (selected.has(c.id)) {
-          confirmedIds.push(c.id);
-        } else {
-          dismissedIds.push(c.id);
-        }
-      }
-    }
+      return candidates.filter((c) => selected.has(c.id)).map(toInput);
+    };
 
-    confirmMutation.mutate({ confirmedIds, dismissedIds });
+    confirmMutation.mutate({
+      brandProfile: effectiveBrandProfile
+        ? {
+            shortDescription: effectiveBrandProfile.shortDescription,
+            industry: effectiveBrandProfile.industry,
+            category: effectiveBrandProfile.category,
+            positioning: effectiveBrandProfile.positioning,
+            confidence: effectiveBrandProfile.confidence,
+            source: effectiveBrandProfile.source,
+          }
+        : null,
+      products: selectedInputs("products"),
+      audiences: selectedInputs("audiences"),
+      markets: selectedInputs("markets"),
+      topics: selectedInputs("topics"),
+      competitors: selectedInputs("competitors"),
+      trustSignals: selectedInputs("trustSignals"),
+    });
   };
 
   const getSelectedNames = useCallback(

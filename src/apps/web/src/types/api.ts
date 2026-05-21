@@ -31,7 +31,6 @@ export type DiscoveryStatus =
   | "AwaitingConfirmation"
   | "Completed"
   | "Failed";
-export type CandidateStatus = "Suggested" | "Confirmed" | "Dismissed";
 export type CandidateSource = "WebsiteCrawl" | "LLMSuggested" | "UserAdded";
 
 export interface DiscoveryResultsDto {
@@ -55,7 +54,6 @@ export interface BrandProfileDto {
   positioning: string | null;
   confidence: number;
   source: CandidateSource;
-  status: CandidateStatus;
   shortDescriptionSource?: CandidateSource;
   industrySource?: CandidateSource;
   categorySource?: CandidateSource;
@@ -68,13 +66,34 @@ export interface CandidateDto {
   description: string | null;
   confidence: number;
   source: CandidateSource;
-  status: CandidateStatus;
   metadata: Record<string, string>;
 }
 
+export interface ConfirmCandidateInput {
+  name: string;
+  description: string | null;
+  confidence: number;
+  source: CandidateSource;
+  metadata?: Record<string, string> | null;
+}
+
+export interface ConfirmBrandProfileInput {
+  shortDescription: string | null;
+  industry: string | null;
+  category: string | null;
+  positioning: string | null;
+  confidence: number;
+  source: CandidateSource;
+}
+
 export interface ConfirmDiscoveryRequest {
-  confirmedIds: string[];
-  dismissedIds: string[];
+  brandProfile: ConfirmBrandProfileInput | null;
+  products: ConfirmCandidateInput[];
+  audiences: ConfirmCandidateInput[];
+  markets: ConfirmCandidateInput[];
+  topics: ConfirmCandidateInput[];
+  competitors: ConfirmCandidateInput[];
+  trustSignals: ConfirmCandidateInput[];
 }
 
 export interface ResuggestRequest {
