@@ -132,6 +132,8 @@ export interface RegenerateLensRequest {
   products: string[];
   audiences: string[];
   markets: string[];
+  // Names already shown, removed, or user-added for this lens — so regeneration returns new items.
+  exclude?: string[];
 }
 
 export interface RegenerateLensResponse {

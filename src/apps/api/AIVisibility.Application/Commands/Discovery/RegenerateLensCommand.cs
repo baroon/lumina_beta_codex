@@ -12,7 +12,8 @@ public record RegenerateLensCommand(
     List<string> Markets,
     List<string>? Topics = null,
     List<string>? Competitors = null,
-    List<string>? TrustSignals = null) : IRequest<RegenerateLensResultDto>;
+    List<string>? TrustSignals = null,
+    List<string>? Exclude = null) : IRequest<RegenerateLensResultDto>;
 
 public record RegenerateLensResultDto(
     string Lens,

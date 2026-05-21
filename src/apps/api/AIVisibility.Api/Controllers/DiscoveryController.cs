@@ -78,7 +78,8 @@ public class DiscoveryController : ControllerBase
             request.Markets,
             request.Topics,
             request.Competitors,
-            request.TrustSignals);
+            request.TrustSignals,
+            request.Exclude);
         var result = await _mediator.Send(command, cancellationToken);
         return Ok(result);
     }

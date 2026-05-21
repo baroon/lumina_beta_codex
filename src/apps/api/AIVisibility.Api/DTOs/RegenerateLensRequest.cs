@@ -9,4 +9,5 @@ public record RegenerateLensRequest(
     List<string> Markets,
     List<string>? Topics = null,
     List<string>? Competitors = null,
-    List<string>? TrustSignals = null);
+    List<string>? TrustSignals = null,
+    List<string>? Exclude = null);

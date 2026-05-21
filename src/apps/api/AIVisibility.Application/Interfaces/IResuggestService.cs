@@ -21,7 +21,8 @@ public record ResuggestContext(
     List<string> Markets,
     List<string>? Topics = null,
     List<string>? Competitors = null,
-    List<string>? TrustSignals = null);
+    List<string>? TrustSignals = null,
+    List<string>? Exclude = null);
 
 public record ResuggestResult(
     List<Competitor> Competitors,

@@ -130,4 +130,25 @@ public class OpenAiResuggestServiceTests
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task RegenerateLensAsync_PassesExclusionsIntoThePrompt()
+    {
+        string? captured = null;
+        _openAi
+            .Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, int, double, CancellationToken>((_, prompt, _, _, _) => captured = prompt)
+            .ReturnsAsync("[]");
+
+        var ctx = new ResuggestContext(
+            "Test Brand", "Tech", "SaaS",
+            new() { "Product A" }, new() { "Marketers" }, new() { "US" },
+            Exclude: new() { "Existing Widget" });
+
+        await CreateService().RegenerateLensAsync(ctx, "products", CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.Should().Contain("Existing Widget");
+    }
 }

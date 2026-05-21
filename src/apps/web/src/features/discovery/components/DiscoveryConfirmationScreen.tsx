@@ -116,6 +116,8 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const [refreshedSections, setRefreshedSections] = useState<
     Partial<Record<SectionKey, CandidateDto[]>>
   >({});
+  // Accumulated names already shown/removed/added per lens, so each refresh excludes them.
+  const [excludedNames, setExcludedNames] = useState<Map<SectionKey, Set<string>>>(new Map());
   const [lensRefreshCounts, setLensRefreshCounts] = useState<Map<SectionKey, number>>(
     () => new Map(ALL_SECTIONS.map((key) => [key, 0])),
   );
@@ -361,6 +363,15 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       const count = lensRefreshCounts.get(lens) ?? 0;
       if (count >= MAX_LENS_REFRESHES) return;
 
+      // Build the exclusion list: everything the user has already seen for this
+      // lens — current suggestions, user-added items, removed items (the raw
+      // source lists still hold removed ones), and names from prior refreshes.
+      const currentNames = [
+        ...(refreshedSections[lens] ?? (results[lens] as CandidateDto[]) ?? []),
+        ...(customItems.get(lens) ?? []),
+      ].map((c) => c.name);
+      const exclude = Array.from(new Set([...(excludedNames.get(lens) ?? []), ...currentNames]));
+
       setRefreshingLens(lens);
       regenerateLensMutation.mutate(
         {
@@ -370,11 +381,18 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
           products: getSelectedNames("products"),
           audiences: getSelectedNames("audiences"),
           markets: getSelectedNames("markets"),
+          exclude,
         },
         {
           onSuccess: (data) => {
             const newCandidates = data.candidates.map(toCandidate);
             setRefreshedSections((prev) => ({ ...prev, [lens]: newCandidates }));
+            // Remember what we just excluded so subsequent refreshes keep avoiding it.
+            setExcludedNames((prev) => {
+              const next = new Map(prev);
+              next.set(lens, new Set(exclude));
+              return next;
+            });
 
             // Pre-select items with high confidence
             setSelections((prev) => {
@@ -409,6 +427,9 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       effectiveBrandProfile,
       getSelectedNames,
       customItems,
+      refreshedSections,
+      results,
+      excludedNames,
     ],
   );
 

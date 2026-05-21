@@ -92,4 +92,26 @@ public class RegenerateLensCommandHandlerTests
         captured.Category.Should().Be("SaaS");
         service.Verify(s => s.RegenerateLensAsync(It.IsAny<ResuggestContext>(), "competitors", It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_ShouldPassExclusionsToService()
+    {
+        using var ctx = NewContext();
+        var brand = SeedBrand(ctx);
+
+        ResuggestContext? captured = null;
+        var service = new Mock<IResuggestService>();
+        service.Setup(s => s.RegenerateLensAsync(It.IsAny<ResuggestContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<ResuggestContext, string, CancellationToken>((c, _, _) => captured = c)
+            .ReturnsAsync(new LensRegenerateResult(new List<LensCandidate>()));
+
+        var handler = new RegenerateLensCommandHandler(service.Object, ctx);
+        var command = new RegenerateLensCommand(brand.Id, "topics", "Tech", "SaaS",
+            new(), new(), new(), Exclude: new() { "Old Topic" });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.Exclude.Should().BeEquivalentTo(new[] { "Old Topic" });
+    }
 }

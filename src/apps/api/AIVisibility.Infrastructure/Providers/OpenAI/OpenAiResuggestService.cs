@@ -121,7 +121,18 @@ public class OpenAiResuggestService : IResuggestService
         if (ctx.Competitors is { Count: > 0 })
             parts.Add($"Already confirmed competitors (use as signal, suggest different ones): {string.Join(", ", ctx.Competitors)}");
 
+        AppendExclusions(parts, ctx);
+
         return string.Join("\n", parts);
+    }
+
+    // Items the user has already seen, removed, or added — the regenerated list must avoid them.
+    private static void AppendExclusions(List<string> parts, ResuggestContext ctx)
+    {
+        if (ctx.Exclude is { Count: > 0 })
+            parts.Add(
+                "Already shown, removed, or user-added — do NOT suggest any of these or close variants: "
+                + string.Join(", ", ctx.Exclude));
     }
 
     private static string BuildCompetitorDescription(CompetitorDto dto)
@@ -218,6 +229,8 @@ public class OpenAiResuggestService : IResuggestService
             parts.Add($"Confirmed geographic markets: {string.Join(", ", ctx.Markets)}");
         if (ctx.Topics is { Count: > 0 })
             parts.Add($"Already confirmed topics (use as signal, suggest different ones): {string.Join(", ", ctx.Topics)}");
+
+        AppendExclusions(parts, ctx);
 
         parts.Add("\nSuggest 4 industry topics or themes (2-5 words each) that represent the subject areas this brand should be visible in. Use confirmed products, audiences, and markets to identify relevant verticals, service areas, and domain expertise.");
 
@@ -467,6 +480,8 @@ public class OpenAiResuggestService : IResuggestService
             parts.Add($"Confirmed competitors: {string.Join(", ", ctx.Competitors)}");
         if (ctx.TrustSignals is { Count: > 0 })
             parts.Add($"Confirmed trust signals: {string.Join(", ", ctx.TrustSignals)}");
+
+        AppendExclusions(parts, ctx);
 
         parts.Add($"\n{instruction}");
         return string.Join("\n", parts);
