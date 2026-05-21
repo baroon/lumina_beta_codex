@@ -385,26 +385,30 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
         },
         {
           onSuccess: (data) => {
-            const newCandidates = data.candidates.map(toCandidate);
-            setRefreshedSections((prev) => ({ ...prev, [lens]: newCandidates }));
-            // Remember what we just excluded so subsequent refreshes keep avoiding it.
+            const incoming = data.candidates.map(toCandidate);
+            const base = refreshedSections[lens] ?? (results[lens] as CandidateDto[]) ?? [];
+            const seen = new Set(base.map((c) => c.name.toLowerCase()));
+            const appended = incoming.filter((c) => !seen.has(c.name.toLowerCase()));
+
+            // Append the new suggestions to what's already displayed (don't replace).
+            // Removed items stay in the raw list and remain hidden via removedIds.
+            setRefreshedSections((prev) => ({ ...prev, [lens]: [...base, ...appended] }));
+
+            // Remember what we excluded so subsequent refreshes keep avoiding it.
             setExcludedNames((prev) => {
               const next = new Map(prev);
               next.set(lens, new Set(exclude));
               return next;
             });
 
-            // Pre-select items with high confidence
+            // Keep prior selections; additionally preselect the new high-confidence items.
             setSelections((prev) => {
               const next = new Map(prev);
-              const custom = customItems.get(lens) || [];
-              next.set(
-                lens,
-                new Set([
-                  ...newCandidates.filter((c) => isHighConfidence(c.confidence)).map((c) => c.id),
-                  ...custom.map((c) => c.id),
-                ]),
-              );
+              const merged = new Set(next.get(lens) ?? []);
+              for (const c of appended) {
+                if (isHighConfidence(c.confidence)) merged.add(c.id);
+              }
+              next.set(lens, merged);
               return next;
             });
 

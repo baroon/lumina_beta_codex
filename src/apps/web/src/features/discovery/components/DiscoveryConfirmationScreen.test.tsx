@@ -69,10 +69,19 @@ vi.mock("./wizard", () => ({
   WizardStepProducts: ({
     candidates,
     selectedIds,
+    onRefresh,
   }: {
     candidates: CandidateDto[];
     selectedIds: Set<string>;
-  }) => renderItems("step-products", { products: { candidates, selectedIds } }),
+    onRefresh?: () => void;
+  }) => (
+    <div>
+      <button data-testid="refresh-products" onClick={() => onRefresh?.()}>
+        refresh
+      </button>
+      {renderItems("step-products", { products: { candidates, selectedIds } })}
+    </div>
+  ),
   WizardStepAudiencesMarkets: ({
     audiences,
     markets,
@@ -187,6 +196,40 @@ describe("DiscoveryConfirmationScreen", () => {
 
     await user.click(screen.getByRole("button", { name: /back/i }));
     expect(screen.getByTestId("step-brand")).toBeInTheDocument();
+  });
+
+  it("appends refreshed suggestions and keeps prior selections", async () => {
+    const user = userEvent.setup();
+    render(<DiscoveryConfirmationScreen results={makeResults()} />);
+
+    await advanceToStep(user, 1);
+    expectSelected("products-prod-high");
+    expectNotSelected("products-prod-low");
+
+    regenerateMutateMock.mockImplementationOnce(
+      (_data: unknown, options: { onSuccess: (data: { candidates: ResuggestItem[] }) => void }) => {
+        options.onSuccess({
+          candidates: [
+            {
+              name: "Fresh Product",
+              description: null,
+              confidence: 0.9,
+              source: "LLMSuggested",
+              metadata: {},
+            },
+          ],
+        });
+      },
+    );
+
+    await user.click(screen.getByTestId("refresh-products"));
+
+    // Appended, not replaced — old suggestions remain alongside the new one.
+    expect(screen.getByText("Candidate prod-high")).toBeInTheDocument();
+    expect(screen.getByText("Candidate prod-low")).toBeInTheDocument();
+    expect(screen.getByText("Fresh Product")).toBeInTheDocument();
+    // Prior selection preserved.
+    expectSelected("products-prod-high");
   });
 
   // ── Resuggest guard ──────────────────────────────────────────────
