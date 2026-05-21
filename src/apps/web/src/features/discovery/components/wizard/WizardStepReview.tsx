@@ -14,6 +14,7 @@ interface WizardStepReviewProps {
   onToggle: (sectionKey: string, id: string) => void;
   onEditSection: (sectionKey: SectionKey | "brandProfile") => void;
   aliases?: string[];
+  onRemoveAlias?: (alias: string) => void;
 }
 
 const SECTION_ORDER: { key: SectionKey; label: string }[] = [
@@ -118,6 +119,7 @@ export function WizardStepReview({
   onToggle,
   onEditSection,
   aliases = [],
+  onRemoveAlias,
 }: WizardStepReviewProps) {
   const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
 
@@ -186,8 +188,18 @@ export function WizardStepReview({
                 {DISCOVERY_COPY.confirmation.aliasesLabel}:
               </span>
               {aliases.map((alias) => (
-                <Badge key={alias} variant="secondary">
-                  {alias}
+                <Badge key={alias} variant="secondary" className="gap-1 pr-1">
+                  <span>{alias}</span>
+                  {onRemoveAlias && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveAlias(alias)}
+                      aria-label={`Remove ${alias}`}
+                      className="rounded p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
                 </Badge>
               ))}
             </div>

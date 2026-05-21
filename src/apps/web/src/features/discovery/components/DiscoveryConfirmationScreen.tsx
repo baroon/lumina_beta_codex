@@ -580,6 +580,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
             onToggle={toggleItem}
             onEditSection={handleEditSection}
             aliases={aliases}
+            onRemoveAlias={(alias) => setAliases((prev) => prev.filter((a) => a !== alias))}
           />
         )}
       </Stepper>

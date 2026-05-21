@@ -157,4 +157,22 @@ describe("WizardStepReview", () => {
       "https://flagcdn.com/us.svg",
     );
   });
+
+  it("removes an alias via its remove button", async () => {
+    const onRemoveAlias = vi.fn();
+    render(
+      <WizardStepReview
+        brandProfile={brandProfile}
+        sections={makeSections([], [])}
+        onToggle={vi.fn()}
+        onEditSection={vi.fn()}
+        aliases={["Lumina AI"]}
+        onRemoveAlias={onRemoveAlias}
+      />,
+    );
+
+    expect(screen.getByText("Lumina AI")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Remove Lumina AI" }));
+    expect(onRemoveAlias).toHaveBeenCalledWith("Lumina AI");
+  });
 });
