@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { WizardStepProducts } from "./WizardStepProducts";
 import type { CandidateDto } from "@/types/api";
 
@@ -28,5 +29,22 @@ describe("WizardStepProducts", () => {
     );
     expect(screen.getByText("Products & Services")).toBeInTheDocument();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("requires a type before a custom product can be added", async () => {
+    const user = userEvent.setup();
+    render(
+      <WizardStepProducts
+        candidates={[]}
+        selectedIds={new Set()}
+        onToggle={vi.fn()}
+        onSelectAll={vi.fn()}
+        onDeselectAll={vi.fn()}
+        onAddCustom={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /add custom/i }));
+    await user.type(screen.getByRole("textbox"), "My Product");
+    expect(screen.getByRole("button", { name: /^add$/i })).toBeDisabled();
   });
 });

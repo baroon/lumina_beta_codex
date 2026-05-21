@@ -38,6 +38,15 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
             failures.Add(new ValidationFailure("Topics", "At least one topic must be confirmed before completing discovery."));
         if (request.Products.Count == 0 && string.IsNullOrWhiteSpace(request.BrandProfile?.Category))
             failures.Add(new ValidationFailure("Products", "At least one product or service must be confirmed, or a brand category must be set, before completing discovery."));
+
+        // Type is mandatory for products and trust signals (must mirror the UX).
+        foreach (var p in request.Products)
+            if (!IsValidEnum<ProductType>(Meta(p, "productType")))
+                failures.Add(new ValidationFailure("Products", $"Product \"{p.Name}\" must have a valid type."));
+        foreach (var ts in request.TrustSignals)
+            if (!IsValidEnum<TrustSignalType>(Meta(ts, "signalType")))
+                failures.Add(new ValidationFailure("TrustSignals", $"Trust signal \"{ts.Name}\" must have a valid type."));
+
         if (failures.Count > 0)
             throw new ValidationException(failures);
 
@@ -153,4 +162,7 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
 
     private static T ParseEnum<T>(string? value, T defaultValue) where T : struct, Enum =>
         !string.IsNullOrWhiteSpace(value) && Enum.TryParse<T>(value, ignoreCase: true, out var r) ? r : defaultValue;
+
+    private static bool IsValidEnum<T>(string? value) where T : struct, Enum =>
+        !string.IsNullOrWhiteSpace(value) && Enum.TryParse<T>(value, ignoreCase: true, out _);
 }

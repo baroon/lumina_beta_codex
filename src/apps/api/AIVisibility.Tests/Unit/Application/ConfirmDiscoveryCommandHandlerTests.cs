@@ -150,4 +150,39 @@ public class ConfirmDiscoveryCommandHandlerTests
 
         await act.Should().NotThrowAsync();
     }
+
+    [Fact]
+    public async Task Handle_ShouldThrowValidation_WhenProductHasNoType()
+    {
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+
+        var command = Command(
+            brand.Id,
+            products: new() { Item("Analytics") },
+            markets: new() { Item("US") },
+            topics: new() { Item("Pricing") });
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<ValidationException>()).Which.Message.Should().Contain("type");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldThrowValidation_WhenTrustSignalHasNoType()
+    {
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+
+        var command = Command(
+            brand.Id,
+            products: new() { Item("Analytics", new() { ["productType"] = "Service" }) },
+            markets: new() { Item("US") },
+            topics: new() { Item("Pricing") },
+            trustSignals: new() { Item("SOC2") });
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<ValidationException>()).Which.Message.Should().Contain("type");
+    }
 }
