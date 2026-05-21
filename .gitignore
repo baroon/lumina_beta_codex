@@ -35,6 +35,10 @@ Desktop.ini
 .env.local
 .env.*.local
 
+# Local secrets / overrides (never commit real keys)
+appsettings.Local.json
+appsettings.*.Local.json
+
 # Testing
 coverage/
 test-results/

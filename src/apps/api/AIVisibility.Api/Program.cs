@@ -9,6 +9,10 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Local-only overrides (e.g. API keys). Gitignored; optional in all environments.
+// Loaded last so it overrides appsettings.json / appsettings.{Environment}.json.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // Core services
 builder.Services.AddControllers(options =>
 {
