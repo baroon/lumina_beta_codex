@@ -31,6 +31,14 @@ public class BrandsController : ControllerBase
         return CreatedAtAction(nameof(GetBrand), new { id = result.BrandId }, result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(List<BrandDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListBrands(CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new ListBrandsQuery(), cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BrandDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

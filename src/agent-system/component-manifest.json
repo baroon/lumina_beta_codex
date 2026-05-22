@@ -688,6 +688,15 @@
           "variants": [],
           "dependencies": ["Input", "Button"],
           "notes": "Form for adding a new brand with name and website URL."
+        },
+        {
+          "name": "BrandList",
+          "category": "Feature — Brands",
+          "path": "src/features/brands/components/BrandList.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["PageHeader", "Button", "Badge", "LoadingPage"],
+          "notes": "Brand picker: lists onboarded brands with discovery status, links to each brand's discovery/tracker flow, and an Add Brand action."
         }
       ]
     },

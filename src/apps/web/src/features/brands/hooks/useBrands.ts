@@ -3,6 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import type { CreateBrandRequest } from "@/types/api";
 
+export function useBrandsList() {
+  return useQuery({
+    queryKey: ["brands"],
+    queryFn: () => brandsApi.list(),
+  });
+}
+
 export function useBrand(brandId: string) {
   return useQuery({
     queryKey: ["brands", brandId],

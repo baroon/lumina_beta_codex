@@ -1,12 +1,7 @@
-import {
-  createRouter,
-  createRootRoute,
-  createRoute,
-  redirect,
-  Outlet,
-} from "@tanstack/react-router";
+import { createRouter, createRootRoute, createRoute, Outlet } from "@tanstack/react-router";
 import { AppShell } from "@/components/organisms/AppShell";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
+import { BrandsListPage } from "@/routes/brands/list";
 import { NewBrandPage } from "@/routes/brands/new";
 import { DiscoveryPage } from "@/routes/brands/discovery";
 
@@ -26,9 +21,7 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/brands/new" });
-  },
+  component: BrandsListPage,
 });
 
 const newBrandRoute = createRoute({
