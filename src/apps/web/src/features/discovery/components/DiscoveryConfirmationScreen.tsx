@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Alert, AlertDescription } from "@/components/atoms/alert";
 import { Stepper } from "@/components/molecules/Stepper";
 import { PageHeader } from "@/components/molecules/PageHeader";
+import { Sparkles, Package, Users, Swords, ClipboardCheck } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import {
   useConfirmDiscovery,
@@ -53,7 +54,11 @@ const SECTION_STEP_MAP: Record<SectionKey | "brandProfile", number> = {
   trustSignals: 3,
 };
 
-const WIZARD_STEPS = DISCOVERY_COPY.wizard.steps;
+const STEP_ICONS = [Sparkles, Package, Users, Swords, ClipboardCheck];
+const WIZARD_STEPS = DISCOVERY_COPY.wizard.steps.map((step, i) => ({
+  ...step,
+  icon: STEP_ICONS[i],
+}));
 
 function toCandidate(dto: ResuggestCandidateDto): CandidateDto {
   return {

@@ -1,10 +1,11 @@
-import { Check } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 import { APP_COPY } from "@/content/app";
 
 export interface StepperStep {
   label: string;
+  icon?: LucideIcon;
 }
 
 interface StepperProps {
@@ -39,6 +40,7 @@ export function Stepper({
             const isCompleted = index < currentStep;
             const isActive = index === currentStep;
             const isLast = index === steps.length - 1;
+            const StepIcon = step.icon;
 
             return (
               <li key={step.label} className={cn("flex items-center", !isLast && "flex-1")}>
@@ -51,7 +53,13 @@ export function Stepper({
                       !isCompleted && !isActive && "border-neutral-300 bg-white text-neutral-400",
                     )}
                   >
-                    {isCompleted ? <Check className="h-4 w-4" /> : index + 1}
+                    {isCompleted ? (
+                      <Check className="h-4 w-4" />
+                    ) : StepIcon ? (
+                      <StepIcon className="h-4 w-4" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <span
                     className={cn(

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Stepper } from "./Stepper";
+import { Package } from "lucide-react";
 
 const STEPS = [{ label: "Step One" }, { label: "Step Two" }, { label: "Step Three" }];
 
@@ -74,5 +75,13 @@ describe("Stepper", () => {
     );
     expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Previous" })).toBeInTheDocument();
+  });
+
+  it("renders a step icon instead of the number when provided", () => {
+    const { container } = render(
+      <Stepper steps={[{ label: "One", icon: Package }]} currentStep={0} />,
+    );
+    expect(screen.queryByText("1")).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
   });
 });

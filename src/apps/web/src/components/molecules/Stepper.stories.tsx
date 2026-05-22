@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Stepper } from "./Stepper";
+import { Sparkles, Package, Users, Swords, ClipboardCheck } from "lucide-react";
 
 const DEMO_STEPS = [
   { label: "Brand Identity" },
@@ -69,6 +70,24 @@ export const Loading: Story = {
     backLabel: "Back",
     children: (
       <div className="rounded-lg border p-8 text-center text-neutral-500">Loading state</div>
+    ),
+  },
+};
+
+export const WithStepIcons: Story = {
+  args: {
+    steps: [
+      { label: "Brand Identity", icon: Sparkles },
+      { label: "Products", icon: Package },
+      { label: "Audiences", icon: Users },
+      { label: "Landscape", icon: Swords },
+      { label: "Review", icon: ClipboardCheck },
+    ],
+    currentStep: 1,
+    nextLabel: "Next",
+    backLabel: "Back",
+    children: (
+      <div className="rounded-lg border p-8 text-center text-neutral-500">Step content</div>
     ),
   },
 };
