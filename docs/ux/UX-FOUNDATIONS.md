@@ -1,6 +1,6 @@
 # UX Foundations — Lumina AI Visibility Platform
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Status:** Active
 > **Audience:** Developers, designers, AI agents
 > **Dependencies:** `design-tokens/tokens.json`, `design-tokens/TOKENS.md`, `agent-system/component-manifest.json`
@@ -108,6 +108,20 @@ These subtle details differentiate Lumina from a generic admin panel:
 | Active nav item | `--color-primary-50` background + `--color-primary-600` text + 2px left border accent |
 | Hover states | Subtle background shift: `--color-neutral-50` → `--color-neutral-100` |
 | Badge style | Rounded-full (pill shape), small text, color-coded by semantic meaning |
+
+### A.6 Section headers & selection lists (Linear pattern)
+
+Established in Discovery; reuse across Phase 2+ for any grouped or selectable content.
+
+**Section header** — use the `SectionHeader` molecule (`components/molecules/SectionHeader.tsx`): a leading identity icon in a subtle chip (`bg-neutral-100 text-neutral-600`, `rounded-md`), a tight-tracked semibold title (`text-base font-semibold tracking-tight`), an optional muted description, and right-aligned `meta` (counts) / `actions` (buttons) slots.
+
+**Identity icons** — every domain section gets one consistent Lucide icon (see `features/discovery/sectionIcons.ts`): Brand → `Sparkles`, Products → `Package`, Audiences → `Users`, Markets → `Globe`, Topics → `MessageSquare`, Competitors → `Swords`, Trust Signals → `ShieldCheck`. The wizard `Stepper` mirrors these as per-step icons (`StepperStep.icon`).
+
+**Selectable cards** — hairline border (`border-neutral-200`); hover lifts (`hover:border-neutral-300 hover:shadow-sm`); selected = `border-primary-500 bg-primary-50 ring-1 ring-primary-500/20`. Secondary actions (e.g., remove) are hover-revealed (`opacity-0 group-hover:opacity-100`) and always visible on `pointer-coarse` (touch).
+
+**Eyebrow labels** — small property/field labels use `text-[11px] font-medium uppercase tracking-wide text-neutral-400`.
+
+**Confidence** — `ConfidenceTag` pairs a Lucide signal icon (`SignalHigh`/`SignalMedium`/`SignalLow`) with the level label; never color alone (per A.1 rule 1).
 
 ---
 
