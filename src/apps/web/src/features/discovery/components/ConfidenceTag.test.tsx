@@ -40,4 +40,9 @@ describe("ConfidenceTag", () => {
     rerender(<ConfidenceTag confidence={CONFIDENCE_THRESHOLDS.high - 0.01} />);
     expect(screen.getByText("Medium")).toBeInTheDocument();
   });
+
+  it("renders a confidence icon alongside the label", () => {
+    const { container } = render(<ConfidenceTag confidence={0.9} />);
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
 });
