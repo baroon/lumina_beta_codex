@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
-import { Sparkles, ArrowRight, Check } from "lucide-react";
+import {
+  Sparkles,
+  ArrowRight,
+  Check,
+  MessageSquare,
+  Swords,
+  Package,
+  Users,
+  Globe,
+  Eye,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
@@ -43,13 +54,13 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
     );
   }
 
-  const summary: ReadonlyArray<readonly [string, number]> = [
-    [TRACKERS_COPY.ready.summary.topics, previewData.topicCount],
-    [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount],
-    [TRACKERS_COPY.ready.summary.products, previewData.productCount],
-    [TRACKERS_COPY.ready.summary.audiences, previewData.audienceCount],
-    [TRACKERS_COPY.ready.summary.markets, previewData.marketCount],
-    [TRACKERS_COPY.ready.summary.visibilityChecks, previewData.visibilityCheckCount],
+  const summary: ReadonlyArray<readonly [string, number, LucideIcon]> = [
+    [TRACKERS_COPY.ready.summary.topics, previewData.topicCount, MessageSquare],
+    [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount, Swords],
+    [TRACKERS_COPY.ready.summary.products, previewData.productCount, Package],
+    [TRACKERS_COPY.ready.summary.audiences, previewData.audienceCount, Users],
+    [TRACKERS_COPY.ready.summary.markets, previewData.marketCount, Globe],
+    [TRACKERS_COPY.ready.summary.visibilityChecks, previewData.visibilityCheckCount, Eye],
   ];
 
   function handleCreate() {
@@ -64,10 +75,12 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
     <div className="mx-auto max-w-xl p-4">
       <Card>
         <CardHeader>
-          <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md bg-primary-50 text-primary-600">
-            <Sparkles className="h-5 w-5" />
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-600">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <CardTitle>{TRACKERS_COPY.ready.title}</CardTitle>
           </div>
-          <CardTitle>{TRACKERS_COPY.ready.title}</CardTitle>
           <CardDescription>
             {TRACKERS_COPY.ready.description.replace("{brandName}", previewData.brandName)}
           </CardDescription>
@@ -84,12 +97,15 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
               {TRACKERS_COPY.ready.coverageTitle}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {summary.map(([label, count]) => (
+              {summary.map(([label, count, Icon]) => (
                 <div
                   key={label}
                   className="flex items-center justify-between rounded-md border border-neutral-200 px-3 py-2 text-sm"
                 >
-                  <span className="text-neutral-600">{label}</span>
+                  <span className="flex items-center gap-2 text-neutral-600">
+                    <Icon className="h-4 w-4 text-neutral-400" />
+                    {label}
+                  </span>
                   <span className="font-semibold tabular-nums text-neutral-900">{count}</span>
                 </div>
               ))}
