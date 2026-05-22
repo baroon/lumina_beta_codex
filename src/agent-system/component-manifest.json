@@ -759,13 +759,13 @@
           "notes": "Tracker lifecycle status indicator badge."
         },
         {
-          "name": "ReadyToCreateScreen",
+          "name": "ReadyToCreateTrackerScreen",
           "category": "Feature — Tracker",
-          "path": "src/features/trackers/components/ReadyToCreateScreen.tsx",
-          "status": "planned",
+          "path": "src/features/trackers/components/ReadyToCreateTrackerScreen.tsx",
+          "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "Button", "PromptReviewList"],
-          "notes": "Pre-creation summary and confirmation screen for new trackers."
+          "dependencies": ["Card", "Button", "Input", "LoadingPage"],
+          "notes": "Ready-to-create screen: editable suggested tracker name + coverage summary from the setup-preview endpoint; calls POST /brands/{id}/trackers."
         }
       ]
     },

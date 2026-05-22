@@ -151,3 +151,29 @@ export interface DiscoveryProgressMessage {
   step: number;
   totalSteps: number;
 }
+
+// ── Trackers (Phase 2) ──────────────────────────────────────────────
+
+export interface TrackerSetupPreview {
+  brandId: string;
+  brandName: string;
+  suggestedName: string;
+  marketName: string | null;
+  category: string | null;
+  topicCount: number;
+  competitorCount: number;
+  productCount: number;
+  audienceCount: number;
+  marketCount: number;
+  visibilityCheckCount: number;
+  promptAllocation: number;
+}
+
+export interface CreateTrackerRequest {
+  name: string | null;
+}
+
+export interface CreateTrackerResponse {
+  trackerId: string;
+  name: string;
+}

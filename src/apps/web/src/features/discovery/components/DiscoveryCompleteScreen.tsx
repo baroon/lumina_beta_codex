@@ -6,9 +6,13 @@ import { DISCOVERY_COPY } from "@/content/discovery";
 interface DiscoveryCompleteScreenProps {
   brandName: string;
   brandId: string;
+  onCreateTracker?: () => void;
 }
 
-export function DiscoveryCompleteScreen({ brandName }: DiscoveryCompleteScreenProps) {
+export function DiscoveryCompleteScreen({
+  brandName,
+  onCreateTracker,
+}: DiscoveryCompleteScreenProps) {
   return (
     <div className="flex min-h-[400px] items-center justify-center p-4">
       <Card className="w-full max-w-md text-center">
@@ -22,11 +26,18 @@ export function DiscoveryCompleteScreen({ brandName }: DiscoveryCompleteScreenPr
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button disabled className="w-full gap-2" size="lg">
+          <Button
+            disabled={!onCreateTracker}
+            onClick={onCreateTracker}
+            className="w-full gap-2"
+            size="lg"
+          >
             {DISCOVERY_COPY.complete.createTracker}
             <ArrowRight className="h-4 w-4" />
           </Button>
-          <p className="mt-3 text-xs text-neutral-400">{DISCOVERY_COPY.complete.comingSoon}</p>
+          {!onCreateTracker && (
+            <p className="mt-3 text-xs text-neutral-400">{DISCOVERY_COPY.complete.comingSoon}</p>
+          )}
         </CardContent>
       </Card>
     </div>
