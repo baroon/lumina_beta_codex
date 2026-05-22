@@ -18,6 +18,14 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Topic> Topics => Set<Topic>();
     public DbSet<Competitor> Competitors => Set<Competitor>();
     public DbSet<TrustSignal> TrustSignals => Set<TrustSignal>();
+    public DbSet<TrackerConfiguration> TrackerConfigurations => Set<TrackerConfiguration>();
+    public DbSet<VisibilityCheck> VisibilityChecks => Set<VisibilityCheck>();
+    public DbSet<TrackerTopic> TrackerTopics => Set<TrackerTopic>();
+    public DbSet<TrackerVisibilityCheck> TrackerVisibilityChecks => Set<TrackerVisibilityCheck>();
+    public DbSet<TrackerCompetitor> TrackerCompetitors => Set<TrackerCompetitor>();
+    public DbSet<TrackerProduct> TrackerProducts => Set<TrackerProduct>();
+    public DbSet<TrackerAudience> TrackerAudiences => Set<TrackerAudience>();
+    public DbSet<TrackerMarket> TrackerMarkets => Set<TrackerMarket>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

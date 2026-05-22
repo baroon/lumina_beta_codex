@@ -15,6 +15,14 @@ public interface IAppDbContext
     DbSet<Topic> Topics { get; }
     DbSet<Competitor> Competitors { get; }
     DbSet<TrustSignal> TrustSignals { get; }
+    DbSet<TrackerConfiguration> TrackerConfigurations { get; }
+    DbSet<VisibilityCheck> VisibilityChecks { get; }
+    DbSet<TrackerTopic> TrackerTopics { get; }
+    DbSet<TrackerVisibilityCheck> TrackerVisibilityChecks { get; }
+    DbSet<TrackerCompetitor> TrackerCompetitors { get; }
+    DbSet<TrackerProduct> TrackerProducts { get; }
+    DbSet<TrackerAudience> TrackerAudiences { get; }
+    DbSet<TrackerMarket> TrackerMarkets { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

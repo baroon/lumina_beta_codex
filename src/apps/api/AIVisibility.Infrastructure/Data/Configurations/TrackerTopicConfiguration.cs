@@ -1,0 +1,18 @@
+using AIVisibility.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AIVisibility.Infrastructure.Data.Configurations;
+
+public class TrackerTopicConfiguration : IEntityTypeConfiguration<TrackerTopic>
+{
+    public void Configure(EntityTypeBuilder<TrackerTopic> builder)
+    {
+        builder.ToTable("tracker_topics");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
+        builder.Property(x => x.TopicId).HasColumnName("topic_id");
+        builder.HasIndex(x => x.TrackerConfigurationId);
+    }
+}
