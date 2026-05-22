@@ -2,6 +2,7 @@ using AIVisibility.Application.Interfaces;
 using AIVisibility.Infrastructure.Crawling;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Discovery;
+using AIVisibility.Infrastructure.Prompts;
 using AIVisibility.Infrastructure.Providers.Anthropic;
 using AIVisibility.Infrastructure.Providers.OpenAi;
 using AIVisibility.Infrastructure.Storage;
@@ -40,6 +41,9 @@ public static class DependencyInjection
 
         // Re-suggestion (enriched competitors + topics using confirmed data)
         services.AddScoped<IResuggestService, OpenAiResuggestService>();
+
+        // Prompt generation (deterministic template-fill from tracker coverage)
+        services.AddScoped<IPromptGenerator, TemplatePromptGenerator>();
 
         // Crawling
         services.AddHttpClient("Crawler", client =>
