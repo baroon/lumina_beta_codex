@@ -17,8 +17,8 @@ vi.mock("@/features/discovery/components/DiscoveryProgressScreen", () => ({
 vi.mock("@/features/discovery/components/DiscoveryConfirmationScreen", () => ({
   DiscoveryConfirmationScreen: () => <div data-testid="confirmation-screen" />,
 }));
-vi.mock("@/features/discovery/components/DiscoveryCompleteScreen", () => ({
-  DiscoveryCompleteScreen: () => <div data-testid="complete-screen" />,
+vi.mock("@/features/trackers/components/ReadyToCreateTrackerScreen", () => ({
+  ReadyToCreateTrackerScreen: () => <div data-testid="ready-to-create" />,
 }));
 
 import { useBrand } from "@/features/brands/hooks/useBrands";
@@ -64,7 +64,7 @@ describe("DiscoveryPage", () => {
     expect(screen.getByTestId("confirmation-screen")).toBeInTheDocument();
   });
 
-  it("shows the complete screen when discovery is completed", () => {
+  it("shows the ready-to-create tracker screen when discovery is completed", () => {
     progress.mockReturnValue({
       status: "AwaitingConfirmation",
       message: "",
@@ -76,7 +76,7 @@ describe("DiscoveryPage", () => {
       data: { status: "Completed", brandName: "Acme", brandId: "b1" },
     } as never);
     render(<DiscoveryPage />);
-    expect(screen.getByTestId("complete-screen")).toBeInTheDocument();
+    expect(screen.getByTestId("ready-to-create")).toBeInTheDocument();
   });
 
   it("shows the confirmation screen when results await confirmation", () => {

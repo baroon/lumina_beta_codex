@@ -6,7 +6,6 @@ import { useDiscoveryProgress } from "@/features/discovery/hooks/useDiscoveryPro
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { DiscoveryProgressScreen } from "@/features/discovery/components/DiscoveryProgressScreen";
 import { DiscoveryConfirmationScreen } from "@/features/discovery/components/DiscoveryConfirmationScreen";
-import { DiscoveryCompleteScreen } from "@/features/discovery/components/DiscoveryCompleteScreen";
 import { ReadyToCreateTrackerScreen } from "@/features/trackers/components/ReadyToCreateTrackerScreen";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { Alert, AlertDescription } from "@/components/atoms/alert";
@@ -19,7 +18,6 @@ export function DiscoveryPage() {
   const discovery = useDiscoveryResults(brandId);
   const progress = useDiscoveryProgress(brandId);
   const [manualMode, setManualMode] = useState(false);
-  const [creatingTracker, setCreatingTracker] = useState(false);
 
   if (brand.isLoading) return <LoadingPage />;
 
@@ -79,16 +77,7 @@ export function DiscoveryPage() {
 
   if (discovery.data) {
     if (discovery.data.status === "Completed") {
-      if (creatingTracker) {
-        return <ReadyToCreateTrackerScreen brandId={discovery.data.brandId} />;
-      }
-      return (
-        <DiscoveryCompleteScreen
-          brandName={discovery.data.brandName}
-          brandId={discovery.data.brandId}
-          onCreateTracker={() => setCreatingTracker(true)}
-        />
-      );
+      return <ReadyToCreateTrackerScreen brandId={discovery.data.brandId} />;
     }
     return <DiscoveryConfirmationScreen results={discovery.data} />;
   }

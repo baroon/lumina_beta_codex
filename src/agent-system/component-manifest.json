@@ -603,15 +603,6 @@
           "notes": "Discovery progress screen shown during crawl execution."
         },
         {
-          "name": "DiscoveryCompleteScreen",
-          "category": "Feature — Discovery",
-          "path": "src/features/discovery/components/DiscoveryCompleteScreen.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": ["Card", "Button"],
-          "notes": "Discovery complete screen shown after crawl finishes."
-        },
-        {
           "name": "DiscoveryStepProgress",
           "category": "Feature — Discovery",
           "path": "src/features/discovery/components/DiscoveryStepProgress.tsx",
