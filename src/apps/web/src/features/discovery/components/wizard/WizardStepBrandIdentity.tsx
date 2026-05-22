@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { Pencil, Sparkles, UserPen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/atoms/badge";
+import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { ConfidenceTag } from "../ConfidenceTag";
+import { SECTION_ICONS } from "../../sectionIcons";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import type { BrandProfileDto, CandidateSource } from "@/types/api";
 
@@ -92,7 +94,9 @@ function EditableField({
       onClick={() => !editing && setEditing(true)}
     >
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium text-neutral-400">{label}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+          {label}
+        </span>
         <SourceIcon source={source} />
       </div>
       {editing ? (
@@ -191,7 +195,9 @@ function EditableDescription({
       onClick={() => !editing && setEditing(true)}
     >
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium text-neutral-400">{label}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+          {label}
+        </span>
         <SourceIcon source={source} />
       </div>
       {editing ? (
@@ -241,7 +247,7 @@ function AliasEditor({ aliases, onChange }: AliasEditorProps) {
 
   return (
     <div className="rounded-lg border border-neutral-200 p-3">
-      <div className="mb-1 text-xs font-medium text-neutral-400">
+      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
         {DISCOVERY_COPY.confirmation.aliasesLabel}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -301,17 +307,12 @@ export function WizardStepBrandIdentity({
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-surface-card p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-neutral-900">
-            {DISCOVERY_COPY.sections.brandProfile.title}
-          </h3>
-          <ConfidenceTag confidence={brandProfile.confidence} />
-        </div>
-      </div>
-      <p className="mt-1 text-xs text-neutral-500">
-        {DISCOVERY_COPY.sections.brandProfile.description}
-      </p>
+      <SectionHeader
+        icon={SECTION_ICONS.brandProfile}
+        title={DISCOVERY_COPY.sections.brandProfile.title}
+        description={DISCOVERY_COPY.sections.brandProfile.description}
+        meta={<ConfidenceTag confidence={brandProfile.confidence} />}
+      />
 
       <div className="mt-4 space-y-2">
         <EditableDescription

@@ -1,6 +1,14 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, CheckSquare, Square, RefreshCw } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckSquare,
+  Square,
+  RefreshCw,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/atoms/button";
+import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { cn } from "@/lib/utils";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { SuggestionCard } from "./SuggestionCard";
@@ -10,6 +18,7 @@ import type { CandidateDto } from "@/types/api";
 import type { TypeOption } from "./AddCustomItemForm";
 
 interface DiscoverySectionProps {
+  icon?: LucideIcon;
   title: string;
   description: string;
   emptyMessage: string;
@@ -29,6 +38,7 @@ interface DiscoverySectionProps {
 }
 
 export function DiscoverySection({
+  icon,
   title,
   description,
   emptyMessage,
@@ -59,47 +69,51 @@ export function DiscoverySection({
     <div className="rounded-lg border border-neutral-200 bg-surface-card">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between p-4 text-left"
+        className="flex w-full items-center gap-3 p-4 text-left"
       >
-        <div className="flex items-center gap-2">
-          {expanded ? (
-            <ChevronDown className="h-4 w-4 text-neutral-500" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-neutral-500" />
-          )}
-          <div>
-            <h3 className="font-semibold text-neutral-900">{title}</h3>
-            <p className="text-xs text-neutral-500">{description}</p>
-          </div>
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={refreshesRemaining === 0 || isRefreshing}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRefresh();
-              }}
-              className="ml-2 gap-1 text-xs"
-              title={DISCOVERY_COPY.buttons.refreshLens}
-            >
-              <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
-              {refreshesRemaining !== undefined && (
-                <span className="text-neutral-400">
-                  {DISCOVERY_COPY.buttons.refreshLensRemaining.replace(
-                    "{count}",
-                    String(refreshesRemaining),
-                  )}
-                </span>
-              )}
-            </Button>
-          )}
-        </div>
-        <span className="text-sm text-neutral-500">
-          {DISCOVERY_COPY.confirmation.selectedCount
-            .replace("{selected}", String(selectedCount))
-            .replace("{total}", String(candidates.length))}
-        </span>
+        {expanded ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+        )}
+        <SectionHeader
+          icon={icon}
+          title={title}
+          description={description}
+          className="flex-1"
+          meta={
+            <span className="text-sm tabular-nums text-neutral-500">
+              {DISCOVERY_COPY.confirmation.selectedCount
+                .replace("{selected}", String(selectedCount))
+                .replace("{total}", String(candidates.length))}
+            </span>
+          }
+          actions={
+            onRefresh && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={refreshesRemaining === 0 || isRefreshing}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefresh();
+                }}
+                className="gap-1 text-xs"
+                title={DISCOVERY_COPY.buttons.refreshLens}
+              >
+                <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                {refreshesRemaining !== undefined && (
+                  <span className="text-neutral-400">
+                    {DISCOVERY_COPY.buttons.refreshLensRemaining.replace(
+                      "{count}",
+                      String(refreshesRemaining),
+                    )}
+                  </span>
+                )}
+              </Button>
+            )
+          }
+        />
       </button>
 
       {expanded && (

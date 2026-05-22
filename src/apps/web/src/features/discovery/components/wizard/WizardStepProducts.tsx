@@ -1,6 +1,7 @@
 import { Package, Wrench, Puzzle, Lightbulb, Box, BookOpen } from "lucide-react";
 import { DiscoverySection } from "../DiscoverySection";
 import { DISCOVERY_COPY } from "@/content/discovery";
+import { SECTION_ICONS } from "../../sectionIcons";
 import type { CandidateDto } from "@/types/api";
 
 const ICON_CLASS = "h-3.5 w-3.5";
@@ -47,6 +48,7 @@ export function WizardStepProducts({
 }: WizardStepProductsProps) {
   return (
     <DiscoverySection
+      icon={SECTION_ICONS.products}
       title={DISCOVERY_COPY.sections.products.title}
       description={DISCOVERY_COPY.sections.products.description}
       emptyMessage={DISCOVERY_COPY.sections.products.emptyMessage}

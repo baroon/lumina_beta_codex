@@ -56,10 +56,10 @@ export function SuggestionCard({
   return (
     <div
       className={cn(
-        "group relative flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer",
+        "group relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all",
         selected
-          ? "border-primary-600 bg-primary-50"
-          : "border-neutral-200 hover:border-neutral-300",
+          ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500/20"
+          : "border-neutral-200 hover:border-neutral-300 hover:shadow-sm",
       )}
       onClick={() => onToggle(candidate.id)}
     >

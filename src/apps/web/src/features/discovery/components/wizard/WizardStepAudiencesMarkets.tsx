@@ -1,5 +1,6 @@
 import { DiscoverySection } from "../DiscoverySection";
 import { DISCOVERY_COPY } from "@/content/discovery";
+import { SECTION_ICONS } from "../../sectionIcons";
 import type { CandidateDto } from "@/types/api";
 
 interface SectionData {
@@ -27,6 +28,7 @@ export function WizardStepAudiencesMarkets({
   return (
     <div className="space-y-4">
       <DiscoverySection
+        icon={SECTION_ICONS.audiences}
         title={DISCOVERY_COPY.sections.audiences.title}
         description={DISCOVERY_COPY.sections.audiences.description}
         emptyMessage={DISCOVERY_COPY.sections.audiences.emptyMessage}
@@ -42,6 +44,7 @@ export function WizardStepAudiencesMarkets({
         isRefreshing={audiences.isRefreshing}
       />
       <DiscoverySection
+        icon={SECTION_ICONS.markets}
         title={DISCOVERY_COPY.sections.markets.title}
         description={DISCOVERY_COPY.sections.markets.description}
         emptyMessage={DISCOVERY_COPY.sections.markets.emptyMessage}

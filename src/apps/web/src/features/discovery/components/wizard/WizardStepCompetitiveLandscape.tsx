@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { DiscoverySection } from "../DiscoverySection";
 import { DISCOVERY_COPY } from "@/content/discovery";
+import { SECTION_ICONS } from "../../sectionIcons";
 import type { CandidateDto } from "@/types/api";
 
 const ICON_CLASS = "h-3.5 w-3.5";
@@ -68,6 +69,7 @@ export function WizardStepCompetitiveLandscape({
         </div>
       )}
       <DiscoverySection
+        icon={SECTION_ICONS.competitors}
         title={DISCOVERY_COPY.sections.competitors.title}
         description={DISCOVERY_COPY.sections.competitors.description}
         emptyMessage={DISCOVERY_COPY.sections.competitors.emptyMessage}
@@ -83,6 +85,7 @@ export function WizardStepCompetitiveLandscape({
         isRefreshing={competitors.isRefreshing}
       />
       <DiscoverySection
+        icon={SECTION_ICONS.topics}
         title={DISCOVERY_COPY.sections.topics.title}
         description={DISCOVERY_COPY.sections.topics.description}
         emptyMessage={DISCOVERY_COPY.sections.topics.emptyMessage}
@@ -98,6 +101,7 @@ export function WizardStepCompetitiveLandscape({
         isRefreshing={topics.isRefreshing}
       />
       <DiscoverySection
+        icon={SECTION_ICONS.trustSignals}
         title={DISCOVERY_COPY.sections.trustSignals.title}
         description={DISCOVERY_COPY.sections.trustSignals.description}
         emptyMessage={DISCOVERY_COPY.sections.trustSignals.emptyMessage}
