@@ -23,6 +23,13 @@ public interface IAppDbContext
     DbSet<TrackerProduct> TrackerProducts { get; }
     DbSet<TrackerAudience> TrackerAudiences { get; }
     DbSet<TrackerMarket> TrackerMarkets { get; }
+    DbSet<PromptTemplate> PromptTemplates { get; }
+    DbSet<Prompt> Prompts { get; }
+    DbSet<PromptTopic> PromptTopics { get; }
+    DbSet<PromptCompetitor> PromptCompetitors { get; }
+    DbSet<PromptProduct> PromptProducts { get; }
+    DbSet<PromptAudience> PromptAudiences { get; }
+    DbSet<PromptMarket> PromptMarkets { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

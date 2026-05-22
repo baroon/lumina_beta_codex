@@ -26,6 +26,13 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<TrackerProduct> TrackerProducts => Set<TrackerProduct>();
     public DbSet<TrackerAudience> TrackerAudiences => Set<TrackerAudience>();
     public DbSet<TrackerMarket> TrackerMarkets => Set<TrackerMarket>();
+    public DbSet<PromptTemplate> PromptTemplates => Set<PromptTemplate>();
+    public DbSet<Prompt> Prompts => Set<Prompt>();
+    public DbSet<PromptTopic> PromptTopics => Set<PromptTopic>();
+    public DbSet<PromptCompetitor> PromptCompetitors => Set<PromptCompetitor>();
+    public DbSet<PromptProduct> PromptProducts => Set<PromptProduct>();
+    public DbSet<PromptAudience> PromptAudiences => Set<PromptAudience>();
+    public DbSet<PromptMarket> PromptMarkets => Set<PromptMarket>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
