@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   Sparkles,
   ArrowRight,
-  Check,
   MessageSquare,
   Swords,
   Package,
@@ -17,6 +16,7 @@ import { Input } from "@/components/atoms/input";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { useTrackerSetupPreview, useCreateTracker } from "../hooks/useTrackers";
+import { PromptReviewScreen } from "./PromptReviewScreen";
 
 interface ReadyToCreateTrackerScreenProps {
   brandId: string;
@@ -26,7 +26,7 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
   const preview = useTrackerSetupPreview(brandId);
   const createTracker = useCreateTracker(brandId);
   const [name, setName] = useState("");
-  const [createdName, setCreatedName] = useState<string | null>(null);
+  const [createdTrackerId, setCreatedTrackerId] = useState<string | null>(null);
 
   const previewData = preview.data;
   useEffect(() => {
@@ -36,22 +36,8 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
   if (preview.isLoading) return <LoadingPage />;
   if (!previewData) return null;
 
-  if (createdName) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center">
-          <CardHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-semantic-success-100 text-semantic-success-600">
-              <Check className="h-6 w-6" />
-            </div>
-            <CardTitle>{TRACKERS_COPY.created.title}</CardTitle>
-            <CardDescription>
-              {TRACKERS_COPY.created.description.replace("{name}", createdName)}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
+  if (createdTrackerId) {
+    return <PromptReviewScreen trackerId={createdTrackerId} />;
   }
 
   const summary: ReadonlyArray<readonly [string, number, LucideIcon]> = [
@@ -67,7 +53,7 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
     const trimmed = name.trim();
     createTracker.mutate(
       { name: trimmed.length > 0 ? trimmed : null },
-      { onSuccess: (res) => setCreatedName(res.name) },
+      { onSuccess: (res) => setCreatedTrackerId(res.trackerId) },
     );
   }
 

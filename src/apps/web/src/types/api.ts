@@ -177,3 +177,28 @@ export interface CreateTrackerResponse {
   trackerId: string;
   name: string;
 }
+
+export interface PromptDto {
+  id: string;
+  text: string;
+  status: string;
+  source: string;
+  visibilityCheckId: string;
+  visibilityCheckName: string;
+  primaryTopicId: string | null;
+  primaryTopicName: string | null;
+}
+
+export interface PromptList {
+  promptAllocation: number;
+  count: number;
+  prompts: PromptDto[];
+}
+
+export interface GeneratePromptsResult {
+  count: number;
+}
+
+export interface ConfirmPromptsResult {
+  activatedCount: number;
+}

@@ -714,13 +714,13 @@
           "notes": "Individual prompt display card with metadata and actions."
         },
         {
-          "name": "PromptReviewList",
+          "name": "PromptReviewScreen",
           "category": "Feature — Tracker",
-          "path": "src/features/trackers/components/PromptReviewList.tsx",
-          "status": "planned",
+          "path": "src/features/trackers/components/PromptReviewScreen.tsx",
+          "status": "implemented",
           "variants": [],
-          "dependencies": ["PromptCard", "ScrollArea"],
-          "notes": "Scrollable list of prompts for review before tracker creation."
+          "dependencies": ["PageHeader", "Button", "Badge", "Card"],
+          "notes": "Prompt review: lists generated Draft prompts grouped by Visibility Check (auto-generates on first load), with remove, regenerate-all, and confirm. Shown after tracker creation."
         },
         {
           "name": "PlatformSelector",

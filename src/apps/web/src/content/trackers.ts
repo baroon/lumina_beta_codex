@@ -20,4 +20,20 @@ export const TRACKERS_COPY = {
     title: "Visibility Tracker created",
     description: "{name} is ready. Prompt setup is coming next.",
   },
+  review: {
+    title: "Review your prompts",
+    description:
+      "These prompts will run across AI platforms. Remove any that don't fit, regenerate, or confirm to continue.",
+    generating: "Generating your prompts...",
+    allocation: "{count} / {allocation} prompts",
+    regenerate: "Regenerate all",
+    confirm: "Confirm prompts",
+    confirming: "Confirming...",
+    empty: "No prompts yet.",
+    generate: "Generate prompts",
+    custom: "Custom",
+    confirmedTitle: "Prompts confirmed",
+    confirmedDescription:
+      "{count} prompts are active. Platform & cadence selection is coming next.",
+  },
 } as const;
