@@ -30,6 +30,9 @@ export const promptsApi = {
   addCustom: (trackerId: string, data: AddCustomPromptRequest) =>
     apiClient.post<void>(`/api/trackers/${trackerId}/prompts`, data),
 
+  update: (trackerId: string, promptId: string, data: { text: string }) =>
+    apiClient.put<void>(`/api/trackers/${trackerId}/prompts/${promptId}`, data),
+
   remove: (trackerId: string, promptId: string) =>
     apiClient.delete<void>(`/api/trackers/${trackerId}/prompts/${promptId}`),
 };

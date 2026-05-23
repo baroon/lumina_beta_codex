@@ -47,3 +47,12 @@ export function useAddCustomPrompt(trackerId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] }),
   });
 }
+
+export function useUpdatePrompt(trackerId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { promptId: string; text: string }) =>
+      promptsApi.update(trackerId, vars.promptId, { text: vars.text }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] }),
+  });
+}

@@ -8,6 +8,7 @@ const generateMutate = vi.fn();
 const confirmMutate = vi.fn();
 const removeMutate = vi.fn();
 const addMutate = vi.fn();
+const updateMutate = vi.fn();
 
 let listState: { data?: PromptList; isLoading: boolean; isSuccess: boolean };
 
@@ -17,6 +18,7 @@ vi.mock("../hooks/usePrompts", () => ({
   useConfirmPrompts: () => ({ mutate: confirmMutate, isPending: false }),
   useRemovePrompt: () => ({ mutate: removeMutate, isPending: false }),
   useAddCustomPrompt: () => ({ mutate: addMutate, isPending: false }),
+  useUpdatePrompt: () => ({ mutate: updateMutate, isPending: false }),
 }));
 
 const sampleList: PromptList = {
@@ -68,17 +70,19 @@ describe("PromptReviewScreen", () => {
     confirmMutate.mockReset();
     removeMutate.mockReset();
     addMutate.mockReset();
+    updateMutate.mockReset();
     listState = { data: sampleList, isLoading: false, isSuccess: true };
   });
 
-  it("lists prompts grouped by visibility check", () => {
+  it("lists prompts grouped by visibility check with source icons", () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     expect(screen.getByText("What are the best CRM for Pricing?")).toBeInTheDocument();
     expect(screen.getByText("How does Acme compare to Rival?")).toBeInTheDocument();
     expect(screen.getByText("Discovery")).toBeInTheDocument();
     expect(screen.getByText("Competitor Comparison")).toBeInTheDocument();
     expect(screen.getByText("Pricing")).toBeInTheDocument();
-    expect(screen.getByText("Custom")).toBeInTheDocument();
+    expect(screen.getAllByTitle("AI-generated")).toHaveLength(2);
+    expect(screen.getByTitle("Added by you")).toBeInTheDocument();
   });
 
   it("removes a prompt", async () => {
@@ -87,6 +91,30 @@ describe("PromptReviewScreen", () => {
       screen.getByRole("button", { name: /Remove prompt: What are the best CRM/ }),
     );
     expect(removeMutate).toHaveBeenCalledWith("p1");
+  });
+
+  it("edits a prompt's text", async () => {
+    render(<PromptReviewScreen trackerId="tr1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "What are the best CRM for Pricing?" }),
+    );
+    const input = screen.getByRole("textbox");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Edited prompt");
+    await userEvent.keyboard("{Enter}");
+    expect(updateMutate).toHaveBeenCalledWith({ promptId: "p1", text: "Edited prompt" });
+  });
+
+  it("regenerates all prompts", async () => {
+    render(<PromptReviewScreen trackerId="tr1" />);
+    await userEvent.click(screen.getByRole("button", { name: /regenerate all/i }));
+    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
+  });
+
+  it("regenerates a single visibility check", async () => {
+    render(<PromptReviewScreen trackerId="tr1" />);
+    await userEvent.click(screen.getByRole("button", { name: "Regenerate Discovery" }));
+    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1", visibilityCheckId: "c1" });
   });
 
   it("confirms prompts and shows the confirmed state", async () => {

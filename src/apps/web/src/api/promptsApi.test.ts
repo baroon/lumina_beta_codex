@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("./apiClient", () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
 import { apiClient } from "./apiClient";
@@ -41,6 +41,11 @@ describe("promptsApi", () => {
       visibilityCheckId: "c1",
       primaryTopicId: null,
     });
+  });
+
+  it("update puts the prompt text", () => {
+    promptsApi.update("t1", "p1", { text: "Edited" });
+    expect(client.put).toHaveBeenCalledWith("/api/trackers/t1/prompts/p1", { text: "Edited" });
   });
 
   it("remove deletes the prompt", () => {

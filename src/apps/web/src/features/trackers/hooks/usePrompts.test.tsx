@@ -11,6 +11,7 @@ vi.mock("@/api/promptsApi", () => ({
     confirm: vi.fn(),
     remove: vi.fn(),
     addCustom: vi.fn(),
+    update: vi.fn(),
   },
 }));
 
@@ -21,6 +22,7 @@ import {
   useConfirmPrompts,
   useRemovePrompt,
   useAddCustomPrompt,
+  useUpdatePrompt,
 } from "./usePrompts";
 
 const api = vi.mocked(promptsApi);
@@ -115,6 +117,18 @@ describe("usePrompts hooks", () => {
       visibilityCheckId: "c1",
       primaryTopicId: null,
     });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["prompts", "t1"] });
+  });
+
+  it("useUpdatePrompt puts and invalidates", async () => {
+    api.update.mockResolvedValue(undefined as never);
+    const { wrapper, queryClient } = createWrapper();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { result } = renderHook(() => useUpdatePrompt("t1"), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ promptId: "p1", text: "Edited" });
+    });
+    expect(api.update).toHaveBeenCalledWith("t1", "p1", { text: "Edited" });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["prompts", "t1"] });
   });
 });

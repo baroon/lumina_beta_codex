@@ -5,6 +5,8 @@ import {
   X,
   ArrowRight,
   Plus,
+  Sparkles,
+  User,
   Compass,
   ShoppingCart,
   Swords,
@@ -18,6 +20,7 @@ import { Button } from "@/components/atoms/button";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
+import { InlineEdit } from "@/components/atoms/inline-edit";
 import {
   Select,
   SelectTrigger,
@@ -34,6 +37,7 @@ import {
   useConfirmPrompts,
   useRemovePrompt,
   useAddCustomPrompt,
+  useUpdatePrompt,
 } from "../hooks/usePrompts";
 
 const CHECK_ICONS: Record<string, LucideIcon> = {
@@ -55,9 +59,9 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
   const confirm = useConfirmPrompts(trackerId);
   const removePrompt = useRemovePrompt(trackerId);
   const addPrompt = useAddCustomPrompt(trackerId);
+  const updatePrompt = useUpdatePrompt(trackerId);
 
   const [confirmedCount, setConfirmedCount] = useState<number | null>(null);
-  const [regenValue, setRegenValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [draftCheck, setDraftCheck] = useState("");
@@ -120,14 +124,6 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
     groups.set(prompt.visibilityCheckName, group);
   }
 
-  function handleRegenerate(value: string) {
-    setRegenValue("");
-    if (value === "all") generate.mutate({ trackerId });
-    else if (value.startsWith("check:"))
-      generate.mutate({ trackerId, visibilityCheckId: value.slice(6) });
-    else if (value.startsWith("topic:")) generate.mutate({ trackerId, topicId: value.slice(6) });
-  }
-
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     const text = draftText.trim();
@@ -152,24 +148,16 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
   return (
     <div className="mx-auto max-w-2xl p-4">
       <PageHeader title={TRACKERS_COPY.review.title} description={TRACKERS_COPY.review.description}>
-        <Select value={regenValue} onValueChange={handleRegenerate}>
-          <SelectTrigger selectSize="sm" className="min-w-[9rem]">
-            <SelectValue placeholder={TRACKERS_COPY.review.regeneratePlaceholder} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{TRACKERS_COPY.review.scopeAll}</SelectItem>
-            {data.checks.map((c) => (
-              <SelectItem key={c.id} value={`check:${c.id}`}>
-                {TRACKERS_COPY.review.byCheckLabel}: {c.name}
-              </SelectItem>
-            ))}
-            {data.topics.map((t) => (
-              <SelectItem key={t.id} value={`topic:${t.id}`}>
-                {TRACKERS_COPY.review.byTopicLabel}: {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={generate.isPending}
+          onClick={() => generate.mutate({ trackerId })}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {TRACKERS_COPY.review.regenerate}
+        </Button>
       </PageHeader>
 
       <div className="mt-3">
@@ -208,34 +196,60 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
                   <Icon className="h-3.5 w-3.5" />
                   <span>{checkName}</span>
                   <span className="tabular-nums text-neutral-300">{items.length}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      generate.mutate({ trackerId, visibilityCheckId: items[0].visibilityCheckId })
+                    }
+                    aria-label={TRACKERS_COPY.review.regenerateCheck.replace("{check}", checkName)}
+                    className="ml-auto rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <ul className="space-y-2">
-                  {items.map((prompt) => (
-                    <li
-                      key={prompt.id}
-                      className="group flex items-start justify-between gap-3 rounded-lg border border-neutral-200 bg-surface-card p-3 transition-all hover:border-neutral-300 hover:shadow-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm text-neutral-900">{prompt.text}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <ul className="space-y-1.5">
+                  {items.map((prompt) => {
+                    const isAi = prompt.source !== "UserAdded";
+                    return (
+                      <li
+                        key={prompt.id}
+                        className="group flex items-start gap-2 rounded-lg border border-neutral-200 bg-surface-card p-2 transition-all hover:border-neutral-300 hover:shadow-sm"
+                      >
+                        <span
+                          className="mt-1.5 shrink-0 text-neutral-400"
+                          aria-label={
+                            isAi ? TRACKERS_COPY.review.sourceAi : TRACKERS_COPY.review.sourceHuman
+                          }
+                          title={
+                            isAi ? TRACKERS_COPY.review.sourceAi : TRACKERS_COPY.review.sourceHuman
+                          }
+                        >
+                          {isAi ? <Sparkles className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <InlineEdit
+                            value={prompt.text}
+                            onChange={(text) => updatePrompt.mutate({ promptId: prompt.id, text })}
+                            placeholder={TRACKERS_COPY.review.editPlaceholder}
+                            className="text-neutral-900"
+                          />
                           {prompt.primaryTopicName && (
-                            <Badge variant="secondary">{prompt.primaryTopicName}</Badge>
-                          )}
-                          {prompt.source === "UserAdded" && (
-                            <Badge variant="secondary">{TRACKERS_COPY.review.custom}</Badge>
+                            <div className="mt-1 pl-2">
+                              <Badge variant="secondary">{prompt.primaryTopicName}</Badge>
+                            </div>
                           )}
                         </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removePrompt.mutate(prompt.id)}
-                        aria-label={`Remove prompt: ${prompt.text}`}
-                        className="shrink-0 rounded-md p-1 text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 group-hover:opacity-100 pointer-coarse:opacity-100"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
+                        <button
+                          type="button"
+                          onClick={() => removePrompt.mutate(prompt.id)}
+                          aria-label={`Remove prompt: ${prompt.text}`}
+                          className="mt-1.5 shrink-0 rounded-md p-1 text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 group-hover:opacity-100 pointer-coarse:opacity-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
