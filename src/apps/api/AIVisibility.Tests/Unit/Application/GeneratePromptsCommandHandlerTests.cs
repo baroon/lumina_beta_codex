@@ -181,4 +181,30 @@ public class GeneratePromptsCommandHandlerTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [Fact]
+    public async Task Handle_RegeneratesOnlyTheFilteredCheck_AndKeepsOthers()
+    {
+        using var ctx = NewContext();
+        var tracker = await SeedTrackerWithCoverage(ctx);
+        var handler = new GeneratePromptsCommandHandler(ctx, new TemplatePromptGenerator());
+
+        await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
+        var discovery = await ctx.VisibilityChecks.FirstAsync(c => c.Code == "Discovery");
+        var keptIds = await ctx.Prompts
+            .Where(p => p.TrackerConfigurationId == tracker.Id && p.VisibilityCheckId != discovery.Id)
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        await handler.Handle(
+            new GeneratePromptsCommand(tracker.Id, VisibilityCheckId: discovery.Id),
+            CancellationToken.None);
+
+        var after = await ctx.Prompts
+            .Where(p => p.TrackerConfigurationId == tracker.Id)
+            .ToListAsync();
+        after.Where(p => p.VisibilityCheckId != discovery.Id).Select(p => p.Id)
+            .Should().BeEquivalentTo(keptIds);
+        after.Should().Contain(p => p.VisibilityCheckId == discovery.Id);
+    }
 }

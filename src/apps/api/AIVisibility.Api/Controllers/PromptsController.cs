@@ -1,3 +1,4 @@
+using AIVisibility.Api.DTOs;
 using AIVisibility.Application.Commands.Prompts;
 using AIVisibility.Application.Queries.Prompts;
 using MediatR;
@@ -28,10 +29,30 @@ public class PromptsController : ControllerBase
     [HttpPost("generate")]
     [ProducesResponseType(typeof(GeneratePromptsResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Generate(Guid trackerId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Generate(
+        Guid trackerId,
+        [FromQuery] Guid? visibilityCheckId,
+        [FromQuery] Guid? topicId,
+        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new GeneratePromptsCommand(trackerId), cancellationToken);
+        var result = await _mediator.Send(
+            new GeneratePromptsCommand(trackerId, visibilityCheckId, topicId),
+            cancellationToken);
         return Ok(result);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddCustom(
+        Guid trackerId,
+        [FromBody] AddCustomPromptRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(
+            new AddCustomPromptCommand(trackerId, request.Text, request.VisibilityCheckId, request.PrimaryTopicId),
+            cancellationToken);
+        return CreatedAtAction(nameof(List), new { trackerId }, null);
     }
 
     [HttpPost("confirm")]

@@ -60,6 +60,30 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Select(m => m.Name)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Optional filters: regenerate only a slice (by Visibility Check and/or Topic).
+        if (request.VisibilityCheckId.HasValue)
+            templates = templates.Where(t => t.VisibilityCheckId == request.VisibilityCheckId.Value).ToList();
+        if (request.TopicId.HasValue)
+            topics = topics.Where(t => t.Id == request.TopicId.Value).ToList();
+
+        // Replace only the matching Draft prompts; keep the rest and budget against the allocation.
+        var existing = await _db.Prompts
+            .Include(p => p.Topics)
+            .Include(p => p.Competitors)
+            .Include(p => p.Products)
+            .Include(p => p.Audiences)
+            .Include(p => p.Markets)
+            .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status != PromptStatus.Archived)
+            .ToListAsync(cancellationToken);
+        var matching = existing
+            .Where(p =>
+                p.Status == PromptStatus.Draft
+                && (!request.VisibilityCheckId.HasValue || p.VisibilityCheckId == request.VisibilityCheckId.Value)
+                && (!request.TopicId.HasValue || p.PrimaryTopicId == request.TopicId.Value))
+            .ToList();
+        _db.Prompts.RemoveRange(matching);
+
+        var budget = Math.Max(0, tracker.PromptAllocation - (existing.Count - matching.Count));
         var context = new PromptGenerationContext(
             brand.Name,
             brand.BrandProfile?.Category,
@@ -67,20 +91,9 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             templates,
             topics,
             competitors,
-            tracker.PromptAllocation);
+            budget);
 
         var generated = _generator.Generate(context);
-
-        // Replace any existing Draft prompts (regenerate-all semantics).
-        var existingDrafts = await _db.Prompts
-            .Include(p => p.Topics)
-            .Include(p => p.Competitors)
-            .Include(p => p.Products)
-            .Include(p => p.Audiences)
-            .Include(p => p.Markets)
-            .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status == PromptStatus.Draft)
-            .ToListAsync(cancellationToken);
-        _db.Prompts.RemoveRange(existingDrafts);
 
         var now = DateTime.UtcNow;
         foreach (var g in generated)

@@ -50,6 +50,27 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
                 p.PrimaryTopicId.HasValue && topicNames.TryGetValue(p.PrimaryTopicId.Value, out var tn) ? tn : null))
             .ToList();
 
-        return new PromptListDto(tracker.PromptAllocation, dtos.Count, dtos);
+        // Coverage options for the add-custom + regenerate-by UI.
+        var coverageCheckIds = await _db.TrackerVisibilityChecks
+            .Where(x => x.TrackerConfigurationId == tracker.Id)
+            .Select(x => x.VisibilityCheckId)
+            .ToListAsync(cancellationToken);
+        var checks = await _db.VisibilityChecks
+            .Where(v => coverageCheckIds.Contains(v.Id))
+            .OrderBy(v => v.DisplayOrder)
+            .Select(v => new PromptOptionDto(v.Id, v.Name))
+            .ToListAsync(cancellationToken);
+
+        var coverageTopicIds = await _db.TrackerTopics
+            .Where(x => x.TrackerConfigurationId == tracker.Id)
+            .Select(x => x.TopicId)
+            .ToListAsync(cancellationToken);
+        var topicOptions = await _db.Topics
+            .Where(t => coverageTopicIds.Contains(t.Id))
+            .OrderBy(t => t.Name)
+            .Select(t => new PromptOptionDto(t.Id, t.Name))
+            .ToListAsync(cancellationToken);
+
+        return new PromptListDto(tracker.PromptAllocation, dtos.Count, dtos, checks, topicOptions);
     }
 }
