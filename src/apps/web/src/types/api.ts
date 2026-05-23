@@ -189,10 +189,23 @@ export interface PromptDto {
   primaryTopicName: string | null;
 }
 
+export interface PromptOption {
+  id: string;
+  name: string;
+}
+
 export interface PromptList {
   promptAllocation: number;
   count: number;
   prompts: PromptDto[];
+  checks: PromptOption[];
+  topics: PromptOption[];
+}
+
+export interface AddCustomPromptRequest {
+  text: string;
+  visibilityCheckId: string;
+  primaryTopicId?: string | null;
 }
 
 export interface GeneratePromptsResult {

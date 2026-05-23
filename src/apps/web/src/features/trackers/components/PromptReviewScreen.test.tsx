@@ -7,6 +7,7 @@ import type { PromptList } from "@/types/api";
 const generateMutate = vi.fn();
 const confirmMutate = vi.fn();
 const removeMutate = vi.fn();
+const addMutate = vi.fn();
 
 let listState: { data?: PromptList; isLoading: boolean; isSuccess: boolean };
 
@@ -15,6 +16,7 @@ vi.mock("../hooks/usePrompts", () => ({
   useGeneratePrompts: () => ({ mutate: generateMutate, isPending: false }),
   useConfirmPrompts: () => ({ mutate: confirmMutate, isPending: false }),
   useRemovePrompt: () => ({ mutate: removeMutate, isPending: false }),
+  useAddCustomPrompt: () => ({ mutate: addMutate, isPending: false }),
 }));
 
 const sampleList: PromptList = {
@@ -52,6 +54,12 @@ const sampleList: PromptList = {
       primaryTopicName: null,
     },
   ],
+  checks: [
+    { id: "c1", name: "Discovery" },
+    { id: "c2", name: "Competitor Comparison" },
+    { id: "c3", name: "Sentiment & Trust" },
+  ],
+  topics: [{ id: "t1", name: "Pricing" }],
 };
 
 describe("PromptReviewScreen", () => {
@@ -59,6 +67,7 @@ describe("PromptReviewScreen", () => {
     generateMutate.mockReset();
     confirmMutate.mockReset();
     removeMutate.mockReset();
+    addMutate.mockReset();
     listState = { data: sampleList, isLoading: false, isSuccess: true };
   });
 
@@ -98,16 +107,44 @@ describe("PromptReviewScreen", () => {
     listState = {
       isLoading: false,
       isSuccess: true,
-      data: { promptAllocation: 30, count: 0, prompts: [] },
+      data: { promptAllocation: 30, count: 0, prompts: [], checks: [], topics: [] },
     };
     render(<PromptReviewScreen trackerId="tr1" />);
-    expect(generateMutate).toHaveBeenCalledWith("tr1");
+    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
     expect(screen.getByText(/no prompts yet/i)).toBeInTheDocument();
   });
 
-  it("regenerates all prompts", async () => {
+  it("opens the add-custom form", async () => {
     render(<PromptReviewScreen trackerId="tr1" />);
-    await userEvent.click(screen.getByRole("button", { name: /regenerate all/i }));
-    expect(generateMutate).toHaveBeenCalledWith("tr1");
+    await userEvent.click(screen.getByRole("button", { name: /add custom prompt/i }));
+    expect(screen.getByPlaceholderText("Type a prompt...")).toBeInTheDocument();
+  });
+
+  it("shows the full state at allocation and hides add", () => {
+    listState = {
+      isLoading: false,
+      isSuccess: true,
+      data: {
+        promptAllocation: 1,
+        count: 1,
+        checks: [],
+        topics: [],
+        prompts: [
+          {
+            id: "p1",
+            text: "One",
+            status: "Draft",
+            source: "Generated",
+            visibilityCheckId: "c1",
+            visibilityCheckName: "Discovery",
+            primaryTopicId: null,
+            primaryTopicName: null,
+          },
+        ],
+      },
+    };
+    render(<PromptReviewScreen trackerId="tr1" />);
+    expect(screen.getByText(/tracker is full/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
   });
 });

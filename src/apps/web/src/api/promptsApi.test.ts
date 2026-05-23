@@ -22,9 +22,25 @@ describe("promptsApi", () => {
     expect(client.post).toHaveBeenCalledWith("/api/trackers/t1/prompts/generate");
   });
 
+  it("generate includes filters in the query string", () => {
+    promptsApi.generate("t1", { visibilityCheckId: "c1", topicId: "tp1" });
+    expect(client.post).toHaveBeenCalledWith(
+      "/api/trackers/t1/prompts/generate?visibilityCheckId=c1&topicId=tp1",
+    );
+  });
+
   it("confirm posts to the confirm endpoint", () => {
     promptsApi.confirm("t1");
     expect(client.post).toHaveBeenCalledWith("/api/trackers/t1/prompts/confirm");
+  });
+
+  it("addCustom posts the prompt body", () => {
+    promptsApi.addCustom("t1", { text: "Q", visibilityCheckId: "c1", primaryTopicId: null });
+    expect(client.post).toHaveBeenCalledWith("/api/trackers/t1/prompts", {
+      text: "Q",
+      visibilityCheckId: "c1",
+      primaryTopicId: null,
+    });
   });
 
   it("remove deletes the prompt", () => {
