@@ -146,4 +146,31 @@ public class PromptReviewHandlersTests
         (await ctx.Prompts.Where(p => p.TrackerConfigurationId == tracker.Id).ToListAsync())
             .Should().OnlyContain(p => p.Status == PromptStatus.Active);
     }
+
+    [Fact]
+    public async Task Update_ChangesPromptText()
+    {
+        using var ctx = NewContext();
+        var (tracker, p1, _) = Seed(ctx);
+
+        await new UpdatePromptCommandHandler(ctx).Handle(
+            new UpdatePromptCommand(tracker.Id, p1, "  Edited prompt text  "),
+            CancellationToken.None);
+
+        var updated = await ctx.Prompts.FindAsync(p1);
+        updated!.PromptText.Should().Be("Edited prompt text");
+    }
+
+    [Fact]
+    public async Task Update_Throws_WhenTextEmpty()
+    {
+        using var ctx = NewContext();
+        var (tracker, p1, _) = Seed(ctx);
+
+        var act = () => new UpdatePromptCommandHandler(ctx).Handle(
+            new UpdatePromptCommand(tracker.Id, p1, "   "),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
 }

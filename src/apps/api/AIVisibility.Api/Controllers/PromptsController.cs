@@ -63,6 +63,19 @@ public class PromptsController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{promptId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Update(
+        Guid trackerId,
+        Guid promptId,
+        [FromBody] UpdatePromptRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(new UpdatePromptCommand(trackerId, promptId, request.Text), cancellationToken);
+        return NoContent();
+    }
+
     [HttpDelete("{promptId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Remove(Guid trackerId, Guid promptId, CancellationToken cancellationToken)
