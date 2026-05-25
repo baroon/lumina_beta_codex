@@ -3,7 +3,6 @@ import { RefreshCw, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { PageHeader } from "@/components/molecules/PageHeader";
-import { cn } from "@/lib/utils";
 import { TRACKERS_COPY } from "@/content/trackers";
 import type { PromptDto } from "@/types/api";
 import {
@@ -110,18 +109,10 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
 
   return (
     <div className="mx-auto max-w-2xl p-4">
-      <PageHeader title={TRACKERS_COPY.review.title} description={TRACKERS_COPY.review.description}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          disabled={generate.isPending}
-          onClick={() => regenerate("all", { trackerId })}
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", regenScope === "all" && "animate-spin")} />
-          {TRACKERS_COPY.review.regenerate}
-        </Button>
-      </PageHeader>
+      <PageHeader
+        title={TRACKERS_COPY.review.title}
+        description={TRACKERS_COPY.review.description}
+      />
 
       <div className="mt-3">
         <div className="mb-1 flex items-center justify-between text-xs text-neutral-500">
