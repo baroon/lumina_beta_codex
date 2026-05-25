@@ -97,6 +97,29 @@ public class ConfirmDiscoveryCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldBeIdempotent_WhenConfirmedTwice()
+    {
+        using var ctx = NewContext();
+        var (brand, _) = Seed(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+
+        var command = Command(
+            brand.Id,
+            profile: new ConfirmBrandProfileInput("A SaaS tool", "Tech", "SaaS", "Leader", 0.9, "LLMSuggested"),
+            products: new() { Item("Analytics", new() { ["productType"] = "Service" }) },
+            markets: new() { Item("United States") },
+            topics: new() { Item("Pricing") });
+
+        await handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None); // re-confirm must not duplicate
+
+        (await ctx.BrandProfiles.CountAsync(b => b.BrandId == brand.Id)).Should().Be(1);
+        (await ctx.Products.CountAsync(p => p.BrandId == brand.Id)).Should().Be(1);
+        (await ctx.Topics.CountAsync(t => t.BrandId == brand.Id)).Should().Be(1);
+        (await ctx.Markets.CountAsync(m => m.BrandId == brand.Id)).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Handle_ShouldPersistBrandAliases_TrimmedAndDeduped()
     {
         using var ctx = NewContext();

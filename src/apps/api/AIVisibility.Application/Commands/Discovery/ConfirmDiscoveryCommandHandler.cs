@@ -52,19 +52,30 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
 
         var runId = latestRun.Id;
 
+        // Idempotent confirm: clear any prior discovery rows for this brand so re-confirming
+        // (or a double-submit) replaces rather than duplicates. The brand profile is upserted in
+        // place because it has a unique index on brand_id (delete+insert would conflict).
+        _db.Products.RemoveRange(await _db.Products.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+        _db.Audiences.RemoveRange(await _db.Audiences.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+        _db.Markets.RemoveRange(await _db.Markets.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+        _db.Topics.RemoveRange(await _db.Topics.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+        _db.Competitors.RemoveRange(await _db.Competitors.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+        _db.TrustSignals.RemoveRange(await _db.TrustSignals.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
+
         if (request.BrandProfile is { } bp)
         {
-            _db.BrandProfiles.Add(new BrandProfile
+            var profile = await _db.BrandProfiles.FirstOrDefaultAsync(x => x.BrandId == brand.Id, cancellationToken);
+            if (profile is null)
             {
-                Id = Guid.NewGuid(),
-                BrandId = brand.Id,
-                ShortDescription = bp.ShortDescription,
-                Industry = bp.Industry,
-                Category = bp.Category,
-                Positioning = bp.Positioning,
-                Confidence = bp.Confidence,
-                Source = ParseSource(bp.Source),
-            });
+                profile = new BrandProfile { Id = Guid.NewGuid(), BrandId = brand.Id };
+                _db.BrandProfiles.Add(profile);
+            }
+            profile.ShortDescription = bp.ShortDescription;
+            profile.Industry = bp.Industry;
+            profile.Category = bp.Category;
+            profile.Positioning = bp.Positioning;
+            profile.Confidence = bp.Confidence;
+            profile.Source = ParseSource(bp.Source);
         }
 
         foreach (var p in request.Products)
