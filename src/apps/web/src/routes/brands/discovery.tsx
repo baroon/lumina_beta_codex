@@ -29,7 +29,16 @@ export function DiscoveryPage() {
     );
   }
 
-  const status = progress.status;
+  // Prefer the persisted run status when it's terminal: the live progress hook starts at
+  // "Pending", which would otherwise flash the progress screen when opening an already-finished
+  // brand from the brand list.
+  const knownStatus = brand.data?.latestDiscovery?.status;
+  const status =
+    knownStatus === "Completed" ||
+    knownStatus === "AwaitingConfirmation" ||
+    knownStatus === "Failed"
+      ? knownStatus
+      : progress.status;
 
   if (status === "Pending" || status === "Crawling" || status === "Extracting") {
     return <DiscoveryProgressScreen step={progress.step} totalSteps={progress.totalSteps} />;
@@ -71,6 +80,11 @@ export function DiscoveryPage() {
         </div>
       </div>
     );
+  }
+
+  // Discovery is finished — go straight to the tracker creation flow.
+  if (status === "Completed") {
+    return <ReadyToCreateTrackerScreen brandId={brandId} />;
   }
 
   if (discovery.isLoading) return <LoadingPage />;

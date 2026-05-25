@@ -79,6 +79,19 @@ describe("DiscoveryPage", () => {
     expect(screen.getByTestId("ready-to-create")).toBeInTheDocument();
   });
 
+  it("goes straight to ready-to-create for an already-completed brand without flashing progress", () => {
+    brand.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { name: "Acme", latestDiscovery: { status: "Completed" } },
+    } as never);
+    // The live progress hook still defaults to "Pending" on first render.
+    progress.mockReturnValue({ status: "Pending", message: "", step: 0, totalSteps: 5 } as never);
+    render(<DiscoveryPage />);
+    expect(screen.getByTestId("ready-to-create")).toBeInTheDocument();
+    expect(screen.queryByTestId("progress-screen")).not.toBeInTheDocument();
+  });
+
   it("shows the confirmation screen when results await confirmation", () => {
     progress.mockReturnValue({
       status: "AwaitingConfirmation",
