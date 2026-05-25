@@ -114,7 +114,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                     extraction.BrandProfile.Source.ToString())
                 : null,
             extraction.Products.Select(p => ToCandidate(p.Id, p.Name, p.Description, p.Confidence, p.Source,
-                new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString(), ["relatedPageUrl"] = p.RelatedPageUrl })).ToList(),
+                new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString() })).ToList(),
             extraction.Audiences.Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source,
                 new Dictionary<string, object?>())).ToList(),
             extraction.Markets.Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source,

@@ -78,7 +78,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = p.Confidence,
                 Source = ParseSource(p.Source),
                 ProductType = ParseEnum(Meta(p, "productType"), ProductType.Product),
-                RelatedPageUrl = Meta(p, "relatedPageUrl"),
             });
 
         foreach (var a in request.Audiences)

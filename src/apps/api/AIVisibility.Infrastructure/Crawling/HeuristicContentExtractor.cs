@@ -89,7 +89,6 @@ public class HeuristicContentExtractor : IContentExtractor
                     Id = Guid.NewGuid(),
                     Name = name,
                     ProductType = category == PageCategory.Pricing ? ProductType.Service : ProductType.Product,
-                    RelatedPageUrl = page.Url,
                     Confidence = category == PageCategory.Product ? 0.7 : 0.5,
                     Source = CandidateSource.WebsiteCrawl,
                 });

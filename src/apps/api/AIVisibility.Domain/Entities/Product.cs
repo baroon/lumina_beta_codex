@@ -9,7 +9,6 @@ public class Product
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public ProductType ProductType { get; set; }
-    public string? RelatedPageUrl { get; set; }
     public double Confidence { get; set; }
     public CandidateSource Source { get; set; }
     public Guid DiscoveryRunId { get; set; }
