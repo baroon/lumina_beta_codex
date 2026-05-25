@@ -44,6 +44,7 @@ public class GetTrackerScheduleSetupQueryHandler
             tracker.Id,
             tracker.Name,
             tracker.Cadence.ToString(),
+            tracker.Timezone,
             activePromptCount,
             platforms,
             selected);

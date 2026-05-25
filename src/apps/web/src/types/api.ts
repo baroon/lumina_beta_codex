@@ -227,6 +227,7 @@ export interface TrackerScheduleSetup {
   trackerId: string;
   trackerName: string;
   cadence: string;
+  timezone: string;
   activePromptCount: number;
   platforms: PlatformOption[];
   selectedPlatformIds: string[];

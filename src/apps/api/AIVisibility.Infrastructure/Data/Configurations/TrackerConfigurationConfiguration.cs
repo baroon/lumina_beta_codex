@@ -16,7 +16,7 @@ public class TrackerConfigurationConfiguration : IEntityTypeConfiguration<Tracke
         builder.Property(t => t.IsNameUserEdited).HasColumnName("is_name_user_edited");
         builder.Property(t => t.PromptAllocation).HasColumnName("prompt_allocation");
         builder.Property(t => t.Cadence).HasColumnName("cadence").HasConversion<string>().HasMaxLength(50);
-        builder.Property(t => t.Timezone).HasColumnName("timezone").HasMaxLength(100);
+        builder.Property(t => t.Timezone).HasColumnName("timezone").HasMaxLength(100).IsRequired();
         builder.Property(t => t.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.NextRunAt).HasColumnName("next_run_at");
         builder.Property(t => t.LastRunAt).HasColumnName("last_run_at");

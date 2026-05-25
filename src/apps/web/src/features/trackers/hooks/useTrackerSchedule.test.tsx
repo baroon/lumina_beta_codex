@@ -31,6 +31,7 @@ describe("useTrackerSchedule hooks", () => {
       trackerId: "t1",
       trackerName: "Acme",
       cadence: "Weekly",
+      timezone: "UTC",
       activePromptCount: 0,
       platforms: [],
       selectedPlatformIds: [],

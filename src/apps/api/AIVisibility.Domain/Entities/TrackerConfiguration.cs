@@ -15,7 +15,7 @@ public class TrackerConfiguration
     public bool IsNameUserEdited { get; set; }
     public int PromptAllocation { get; set; }
     public Cadence Cadence { get; set; }
-    public string? Timezone { get; set; }
+    public string Timezone { get; set; } = "UTC";
     public TrackerStatus Status { get; set; }
     public DateTime? NextRunAt { get; set; }
     public DateTime? LastRunAt { get; set; }

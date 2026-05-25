@@ -23,12 +23,21 @@ interface TrackerScheduleScreenProps {
 const CADENCES = ["OnDemand", "Daily", "Weekly"] as const;
 const CADENCE_LABELS = TRACKERS_COPY.schedule.cadence as Record<string, string>;
 
+function buildTimezones(current: string): string[] {
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const intl = Intl as { supportedValuesOf?: (key: string) => string[] };
+  const supported =
+    typeof intl.supportedValuesOf === "function" ? intl.supportedValuesOf("timeZone") : [];
+  return [...new Set<string>(["UTC", browser, current, ...supported].filter(Boolean))].sort();
+}
+
 export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps) {
   const setup = useTrackerScheduleSetup(trackerId);
   const configure = useConfigureTrackerSchedule(trackerId);
   const runScan = useRunScan(trackerId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cadence, setCadence] = useState("Daily");
+  const [timezone, setTimezone] = useState("UTC");
   const [scanStarted, setScanStarted] = useState(false);
 
   const data = setup.data;
@@ -36,6 +45,7 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
     if (!data) return;
     setSelected(new Set(data.selectedPlatformIds));
     setCadence(data.cadence);
+    setTimezone(data.timezone);
   }, [data]);
 
   if (setup.isLoading) return <LoadingPage />;
@@ -48,6 +58,7 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
 
   const scanChecks = data.activePromptCount * selected.size;
   const busy = configure.isPending || runScan.isPending;
+  const zones = buildTimezones(timezone);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -63,7 +74,7 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
       {
         platformIds: [...selected],
         cadence,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezone,
       },
       { onSuccess: () => runScan.mutate(undefined, { onSuccess: () => setScanStarted(true) }) },
     );
@@ -111,6 +122,24 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
               {CADENCES.map((c) => (
                 <SelectItem key={c} value={c}>
                   {CADENCE_LABELS[c]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+            {TRACKERS_COPY.schedule.timezoneLabel}
+          </div>
+          <Select value={timezone} onValueChange={setTimezone}>
+            <SelectTrigger className="w-full sm:w-72">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {zones.map((z) => (
+                <SelectItem key={z} value={z}>
+                  {z}
                 </SelectItem>
               ))}
             </SelectContent>

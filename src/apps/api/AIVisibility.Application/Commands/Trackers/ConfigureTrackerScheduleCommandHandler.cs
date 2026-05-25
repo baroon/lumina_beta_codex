@@ -52,7 +52,8 @@ public class ConfigureTrackerScheduleCommandHandler
 
         var now = DateTime.UtcNow;
         tracker.Cadence = cadence;
-        tracker.Timezone = request.Timezone;
+        if (!string.IsNullOrWhiteSpace(request.Timezone))
+            tracker.Timezone = request.Timezone;
         tracker.Status = TrackerStatus.Active;
         tracker.NextRunAt = NextRun(cadence, now);
         tracker.UpdatedAt = now;

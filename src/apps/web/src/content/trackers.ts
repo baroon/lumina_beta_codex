@@ -69,6 +69,7 @@ export const TRACKERS_COPY = {
     description: "Choose which AI platforms to scan {brandName} on, and how often.",
     platformsLabel: "AI platforms",
     cadenceLabel: "Cadence",
+    timezoneLabel: "Time zone",
     cadence: {
       OnDemand: "On demand",
       Daily: "Daily",

@@ -25,6 +25,7 @@ const sampleSetup: TrackerScheduleSetup = {
   trackerId: "tr1",
   trackerName: "Acme",
   cadence: "Weekly",
+  timezone: "UTC",
   activePromptCount: 10,
   platforms: [
     { id: "p1", code: "ChatGpt", name: "ChatGPT" },

@@ -10,6 +10,7 @@ public record TrackerScheduleSetupDto(
     Guid TrackerId,
     string TrackerName,
     string Cadence,
+    string Timezone,
     int ActivePromptCount,
     List<PlatformOptionDto> Platforms,
     List<Guid> SelectedPlatformIds);
