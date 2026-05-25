@@ -42,7 +42,7 @@ public class PromptsController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddCustom(
         Guid trackerId,
@@ -52,7 +52,7 @@ public class PromptsController : ControllerBase
         await _mediator.Send(
             new AddCustomPromptCommand(trackerId, request.Text, request.VisibilityCheckId, request.PrimaryTopicId),
             cancellationToken);
-        return CreatedAtAction(nameof(List), new { trackerId }, null);
+        return NoContent();
     }
 
     [HttpPost("confirm")]

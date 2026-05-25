@@ -120,4 +120,84 @@ public class TemplatePromptGeneratorTests
         result.Should().NotContain(p => p.Text == "What are the best CRM in US?");
         result.Should().Contain(p => p.Text == "Tell me about Pricing.");
     }
+
+    [Fact]
+    public void Generate_TopiclessTemplate_ProducesOnePrompt_AcrossManyTopics()
+    {
+        var ctx = new PromptGenerationContext(
+            "Nostri",
+            "Design Consultancy",
+            "Global",
+            new[] { Template("Is {brand} a reliable {category}? What is its reputation?") },
+            new[]
+            {
+                new CoverageRef(Guid.NewGuid(), "Topic A"),
+                new CoverageRef(Guid.NewGuid(), "Topic B"),
+                new CoverageRef(Guid.NewGuid(), "Topic C"),
+            },
+            Array.Empty<CoverageRef>(),
+            30);
+
+        var result = _generator.Generate(ctx);
+
+        result.Should().ContainSingle();
+        result[0].Text.Should().Be("Is Nostri a reliable Design Consultancy? What is its reputation?");
+        result[0].PrimaryTopicId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Generate_CompetitorTemplate_OnePerCompetitor_NotPerTopic()
+    {
+        var ctx = new PromptGenerationContext(
+            "Nostri",
+            "Design Consultancy",
+            "Global",
+            new[] { Template("How does {brand} compare to {competitor} for {category}?") },
+            new[]
+            {
+                new CoverageRef(Guid.NewGuid(), "Topic A"),
+                new CoverageRef(Guid.NewGuid(), "Topic B"),
+            },
+            new[]
+            {
+                new CoverageRef(Guid.NewGuid(), "Rival One"),
+                new CoverageRef(Guid.NewGuid(), "Rival Two"),
+            },
+            30);
+
+        var result = _generator.Generate(ctx);
+
+        result.Select(p => p.Text).Should().BeEquivalentTo(
+            new[]
+            {
+                "How does Nostri compare to Rival One for Design Consultancy?",
+                "How does Nostri compare to Rival Two for Design Consultancy?",
+            });
+    }
+
+    [Fact]
+    public void Generate_NeverProducesDuplicateTexts()
+    {
+        var ctx = new PromptGenerationContext(
+            "Nostri",
+            "Design Consultancy",
+            "Global",
+            new[]
+            {
+                Template("Is {brand} a reliable {category}?"),
+                Template("Best {category} for {topic}?"),
+            },
+            new[]
+            {
+                new CoverageRef(Guid.NewGuid(), "Topic A"),
+                new CoverageRef(Guid.NewGuid(), "Topic B"),
+            },
+            Array.Empty<CoverageRef>(),
+            30);
+
+        var result = _generator.Generate(ctx);
+
+        var texts = result.Select(p => p.Text).ToList();
+        texts.Should().OnlyHaveUniqueItems();
+    }
 }

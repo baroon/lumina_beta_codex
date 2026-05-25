@@ -1,4 +1,5 @@
 using AIVisibility.Application.Commands.Prompts;
+using AIVisibility.Application.Queries.Prompts;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Data;
@@ -98,5 +99,24 @@ public class AddCustomPromptCommandHandlerTests
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task Handle_AddedPrompt_AppearsInTheList()
+    {
+        using var ctx = NewContext();
+        var tracker = SeedTracker(ctx);
+
+        await new AddCustomPromptCommandHandler(ctx).Handle(
+            new AddCustomPromptCommand(tracker.Id, "My hand-written prompt", Guid.NewGuid(), null),
+            CancellationToken.None);
+
+        var list = await new ListPromptsQueryHandler(ctx).Handle(
+            new ListPromptsQuery(tracker.Id),
+            CancellationToken.None);
+
+        list!.Count.Should().Be(1);
+        list.Prompts.Should()
+            .ContainSingle(p => p.Text == "My hand-written prompt" && p.Source == "UserAdded");
     }
 }
