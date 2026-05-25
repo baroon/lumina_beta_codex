@@ -157,8 +157,8 @@ TrustSignalType
 - Description
 - Status
 
-VisibilityLens
-- VisibilityLensId
+Lens
+- LensId
 - Code
 - Name
 - Description
@@ -179,7 +179,7 @@ AIPlatform
 
 PromptTemplate
 - PromptTemplateId
-- VisibilityLensId
+- LensId
 - Name
 - TemplateText
 - RequiredInputs
@@ -211,7 +211,7 @@ Backend coverage tables:
 
 ```text
 TrackerTopic
-TrackerVisibilityLens
+TrackerLens
 TrackerCompetitor
 TrackerProductService
 TrackerAudience
@@ -233,7 +233,7 @@ Prompt
 - PromptId
 - TrackerConfigurationId
 - PromptTemplateId optional
-- VisibilityLensId optional
+- LensId optional
 - PrimaryTopicId optional
 - PromptText
 - Source: Generated | UserAdded
@@ -424,7 +424,7 @@ Finding mapping tables:
 
 ```text
 FindingTopic
-FindingVisibilityLens
+FindingLens
 FindingPrompt
 FindingCompetitor
 FindingCitation
@@ -460,7 +460,7 @@ ContentAction mapping tables:
 
 ```text
 ContentActionTopic
-ContentActionVisibilityLens
+ContentActionLens
 ContentActionCompetitor
 ContentActionPrompt
 ```

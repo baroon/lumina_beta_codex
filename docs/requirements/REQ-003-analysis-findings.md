@@ -203,7 +203,7 @@ Metrics must support these scopes:
 Overall
 Platform
 Topic
-VisibilityLens
+Lens
 Competitor
 SourceType
 ```
@@ -258,7 +258,7 @@ Every Finding must include:
 Mappings may include:
 
 - Topic
-- VisibilityLens
+- Lens
 - Prompt
 - Competitor
 - Citation
@@ -302,7 +302,7 @@ All Findings and Content Actions must be traceable back to evidence:
 - AIAnswer
 - Prompt
 - Topic
-- VisibilityLens
+- Lens
 - Mention
 - Citation
 - Source

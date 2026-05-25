@@ -34,8 +34,8 @@ const sampleList: PromptList = {
       text: "What are the best CRM for Pricing?",
       status: "Draft",
       source: "Generated",
-      visibilityLensId: "c1",
-      visibilityLensName: "Discovery",
+      lensId: "c1",
+      lensName: "Discovery",
       topics: ["Pricing"],
       reviewReason: null,
     },
@@ -44,8 +44,8 @@ const sampleList: PromptList = {
       text: "How does Acme compare to Rival?",
       status: "Draft",
       source: "Generated",
-      visibilityLensId: "c2",
-      visibilityLensName: "Competitor Comparison",
+      lensId: "c2",
+      lensName: "Competitor Comparison",
       topics: [],
       reviewReason: null,
     },
@@ -54,8 +54,8 @@ const sampleList: PromptList = {
       text: "Is Acme trustworthy?",
       status: "Draft",
       source: "UserAdded",
-      visibilityLensId: "c3",
-      visibilityLensName: "Sentiment & Trust",
+      lensId: "c3",
+      lensName: "Sentiment & Trust",
       topics: [],
       reviewReason: null,
     },
@@ -117,7 +117,7 @@ describe("PromptReviewScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
     expect(addMutate).toHaveBeenCalledWith({
       text: "New one",
-      visibilityLensId: "c1",
+      lensId: "c1",
       primaryTopicId: null,
     });
   });
@@ -126,7 +126,7 @@ describe("PromptReviewScreen", () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     await userEvent.click(screen.getByRole("button", { name: "Regenerate Discovery" }));
     expect(generateMutate).toHaveBeenCalledWith(
-      { trackerId: "tr1", visibilityLensId: "c1" },
+      { trackerId: "tr1", lensId: "c1" },
       expect.anything(),
     );
   });
@@ -171,8 +171,8 @@ describe("PromptReviewScreen", () => {
             text: "One",
             status: "Draft",
             source: "Generated",
-            visibilityLensId: "c1",
-            visibilityLensName: "Discovery",
+            lensId: "c1",
+            lensName: "Discovery",
             topics: [],
             reviewReason: null,
           },
@@ -199,8 +199,8 @@ describe("PromptReviewScreen", () => {
             text: "How does Acme compare?",
             status: "Draft",
             source: "Generated",
-            visibilityLensId: "c2",
-            visibilityLensName: "Competitor Comparison",
+            lensId: "c2",
+            lensName: "Competitor Comparison",
             topics: [],
             reviewReason: "No competitors configured to compare against.",
           },

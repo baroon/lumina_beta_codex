@@ -6,7 +6,7 @@ namespace AIVisibility.Infrastructure.Data.Configurations;
 
 public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTemplate>
 {
-    // Visibility Lens ids (see VisibilityLensConfiguration seed).
+    // Visibility Lens ids (see LensConfiguration seed).
     private static readonly Guid Discovery = new("c0000000-0000-0000-0000-000000000001");
     private static readonly Guid BuyingIntent = new("c0000000-0000-0000-0000-000000000002");
     private static readonly Guid CompetitorComparison = new("c0000000-0000-0000-0000-000000000003");
@@ -19,10 +19,10 @@ public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTempla
         builder.ToTable("prompt_templates");
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id).HasColumnName("id");
-        builder.Property(t => t.VisibilityLensId).HasColumnName("visibility_lens_id");
+        builder.Property(t => t.LensId).HasColumnName("lens_id");
         builder.Property(t => t.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
         builder.Property(t => t.TemplateText).HasColumnName("template_text").HasMaxLength(2000).IsRequired();
-        builder.HasIndex(t => t.VisibilityLensId);
+        builder.HasIndex(t => t.LensId);
 
         // Starter prompt library (ADR-002 §5): 3 example phrasings per Visibility Lens. These are
         // style anchors for the LLM generator and fill-ins for the deterministic fallback.
@@ -76,7 +76,7 @@ public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTempla
         new()
         {
             Id = new Guid(id),
-            VisibilityLensId = checkId,
+            LensId = checkId,
             Name = name,
             TemplateText = text,
         };

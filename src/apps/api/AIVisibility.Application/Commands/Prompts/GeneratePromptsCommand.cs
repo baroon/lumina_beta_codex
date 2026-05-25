@@ -8,7 +8,7 @@ namespace AIVisibility.Application.Commands.Prompts;
 /// </summary>
 public record GeneratePromptsCommand(
     Guid TrackerId,
-    Guid? VisibilityLensId = null,
+    Guid? LensId = null,
     Guid? TopicId = null) : IRequest<GeneratePromptsResult>;
 
 public record GeneratePromptsResult(int Count);

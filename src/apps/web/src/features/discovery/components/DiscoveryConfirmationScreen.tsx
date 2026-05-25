@@ -22,7 +22,7 @@ import type {
   CandidateDto,
   ConfirmCandidateInput,
   ResuggestCandidateDto,
-  VisibilityLens,
+  Lens,
 } from "@/types/api";
 import { preselectCandidates, isHighConfidence } from "../confidence";
 import { resolveCountryCode } from "../country";
@@ -382,7 +382,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       setRefreshingLens(lens);
       regenerateLensMutation.mutate(
         {
-          lens: lens as VisibilityLens,
+          lens: lens as Lens,
           industry: effectiveBrandProfile?.industry ?? null,
           category: effectiveBrandProfile?.category ?? null,
           products: getSelectedNames("products"),

@@ -420,6 +420,92 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("discovery_runs", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.Lens", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("lenses", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000001"),
+                            Code = "Discovery",
+                            Description = "Does the AI surface the brand when asked about the category or topic?",
+                            DisplayOrder = 1,
+                            Name = "Discovery"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000002"),
+                            Code = "BuyingIntent",
+                            Description = "Is the brand recommended for high-intent, purchase-oriented prompts?",
+                            DisplayOrder = 2,
+                            Name = "Buying Intent"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000003"),
+                            Code = "CompetitorComparison",
+                            Description = "How does the AI compare the brand against its competitors?",
+                            DisplayOrder = 3,
+                            Name = "Competitor Comparison"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000004"),
+                            Code = "SentimentAndTrust",
+                            Description = "What sentiment and trust signals does the AI express about the brand?",
+                            DisplayOrder = 4,
+                            Name = "Sentiment & Trust"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000005"),
+                            Code = "CitationVisibility",
+                            Description = "Is the brand's own content cited as a source in AI answers?",
+                            DisplayOrder = 5,
+                            Name = "Citation Visibility"
+                        },
+                        new
+                        {
+                            Id = new Guid("c0000000-0000-0000-0000-000000000006"),
+                            Code = "ContentGaps",
+                            Description = "Where is the brand absent from AI answers when it should be present?",
+                            DisplayOrder = 6,
+                            Name = "Content Gaps"
+                        });
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.Market", b =>
                 {
                     b.Property<Guid>("Id")
@@ -531,6 +617,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid>("LensId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lens_id");
+
                     b.Property<Guid?>("PromptTemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("prompt_template_id");
@@ -560,10 +650,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
-
-                    b.Property<Guid>("VisibilityLensId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("visibility_lens_id");
 
                     b.HasKey("Id");
 
@@ -716,6 +802,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("LensId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lens_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -728,13 +818,9 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("template_text");
 
-                    b.Property<Guid>("VisibilityLensId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("visibility_lens_id");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("VisibilityLensId");
+                    b.HasIndex("LensId");
 
                     b.ToTable("prompt_templates", (string)null);
 
@@ -742,128 +828,128 @@ namespace AIVisibility.Infrastructure.Migrations
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000101"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000001"),
                             Name = "Category discovery",
-                            TemplateText = "What are the best {category} options in {market}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            TemplateText = "What are the best {category} options in {market}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000102"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000001"),
                             Name = "Category recommendation",
-                            TemplateText = "Which {category} would you recommend in {market}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            TemplateText = "Which {category} would you recommend in {market}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000103"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000001"),
                             Name = "Leading providers",
-                            TemplateText = "Who are the leading {category} providers right now?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            TemplateText = "Who are the leading {category} providers right now?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000201"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000002"),
                             Name = "Buying intent",
-                            TemplateText = "I want to buy {category} for {topic} — which do you recommend?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            TemplateText = "I want to buy {category} for {topic} — which do you recommend?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000202"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000002"),
                             Name = "Budget choice",
-                            TemplateText = "What's the best {category} for {topic} on a budget?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            TemplateText = "What's the best {category} for {topic} on a budget?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000203"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000002"),
                             Name = "Ready to choose",
-                            TemplateText = "I'm ready to choose a {category} for {topic} — what should I go with?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            TemplateText = "I'm ready to choose a {category} for {topic} — what should I go with?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000301"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000003"),
                             Name = "Head to head",
-                            TemplateText = "How does {brand} compare to {competitor} for {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            TemplateText = "How does {brand} compare to {competitor} for {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000302"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000003"),
                             Name = "Which is better",
-                            TemplateText = "Is {brand} or {competitor} the better {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            TemplateText = "Is {brand} or {competitor} the better {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000303"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000003"),
                             Name = "Key differences",
-                            TemplateText = "What are the main differences between {brand} and {competitor}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            TemplateText = "What are the main differences between {brand} and {competitor}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000401"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000004"),
                             Name = "Reliability",
-                            TemplateText = "Is {brand} a reliable {category}? What is its reputation?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            TemplateText = "Is {brand} a reliable {category}? What is its reputation?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000402"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000004"),
                             Name = "Reviews",
-                            TemplateText = "What do people say about {brand}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            TemplateText = "What do people say about {brand}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000403"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000004"),
                             Name = "Trust",
-                            TemplateText = "Can I trust {brand} for {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            TemplateText = "Can I trust {brand} for {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000501"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000005"),
                             Name = "Authoritative sources",
-                            TemplateText = "What are the most authoritative sources about {topic} in {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            TemplateText = "What are the most authoritative sources about {topic} in {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000502"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000005"),
                             Name = "Experts to follow",
-                            TemplateText = "Which experts or publications should I follow on {topic}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            TemplateText = "Which experts or publications should I follow on {topic}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000503"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000005"),
                             Name = "Trustworthy info",
-                            TemplateText = "Where can I find trustworthy information about {topic}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            TemplateText = "Where can I find trustworthy information about {topic}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000601"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000006"),
                             Name = "Considerations",
-                            TemplateText = "What should I consider about {topic} when choosing a {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            TemplateText = "What should I consider about {topic} when choosing a {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000602"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000006"),
                             Name = "Questions to ask",
-                            TemplateText = "What questions should I ask about {topic} before choosing a {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            TemplateText = "What questions should I ask about {topic} before choosing a {category}?"
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000603"),
+                            LensId = new Guid("c0000000-0000-0000-0000-000000000006"),
                             Name = "Overlooked factors",
-                            TemplateText = "What do most people overlook about {topic} when it comes to {category}?",
-                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            TemplateText = "What do most people overlook about {topic} when it comes to {category}?"
                         });
                 });
 
@@ -1099,6 +1185,28 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("tracker_configurations", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerLens", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("LensId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lens_id");
+
+                    b.Property<Guid>("TrackerConfigurationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tracker_configuration_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackerConfigurationId");
+
+                    b.ToTable("tracker_lenses", (string)null);
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerMarket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1187,28 +1295,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("tracker_topics", (string)null);
                 });
 
-            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityLens", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
-
-                    b.Property<Guid>("VisibilityLensId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("visibility_lens_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
-
-                    b.ToTable("tracker_visibility_lenses", (string)null);
-                });
-
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrustSignal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1258,92 +1344,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasIndex("DiscoveryRunId");
 
                     b.ToTable("trust_signals", (string)null);
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.VisibilityLens", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("code");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("description");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("display_order");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("visibility_lenses", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000001"),
-                            Code = "Discovery",
-                            Description = "Does the AI surface the brand when asked about the category or topic?",
-                            DisplayOrder = 1,
-                            Name = "Discovery"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000002"),
-                            Code = "BuyingIntent",
-                            Description = "Is the brand recommended for high-intent, purchase-oriented prompts?",
-                            DisplayOrder = 2,
-                            Name = "Buying Intent"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000003"),
-                            Code = "CompetitorComparison",
-                            Description = "How does the AI compare the brand against its competitors?",
-                            DisplayOrder = 3,
-                            Name = "Competitor Comparison"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000004"),
-                            Code = "SentimentAndTrust",
-                            Description = "What sentiment and trust signals does the AI express about the brand?",
-                            DisplayOrder = 4,
-                            Name = "Sentiment & Trust"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000005"),
-                            Code = "CitationVisibility",
-                            Description = "Is the brand's own content cited as a source in AI answers?",
-                            DisplayOrder = 5,
-                            Name = "Citation Visibility"
-                        },
-                        new
-                        {
-                            Id = new Guid("c0000000-0000-0000-0000-000000000006"),
-                            Code = "ContentGaps",
-                            Description = "Where is the brand absent from AI answers when it should be present?",
-                            DisplayOrder = 6,
-                            Name = "Content Gaps"
-                        });
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.AIAnswer", b =>
@@ -1606,6 +1606,17 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("Brand");
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerLens", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
+                        .WithMany("Lenses")
+                        .HasForeignKey("TrackerConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TrackerConfiguration");
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerMarket", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
@@ -1643,17 +1654,6 @@ namespace AIVisibility.Infrastructure.Migrations
                 {
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Topics")
-                        .HasForeignKey("TrackerConfigurationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TrackerConfiguration");
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityLens", b =>
-                {
-                    b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
-                        .WithMany("VisibilityLenses")
                         .HasForeignKey("TrackerConfigurationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1745,13 +1745,13 @@ namespace AIVisibility.Infrastructure.Migrations
 
                     b.Navigation("Competitors");
 
+                    b.Navigation("Lenses");
+
                     b.Navigation("Markets");
 
                     b.Navigation("Products");
 
                     b.Navigation("Topics");
-
-                    b.Navigation("VisibilityLenses");
                 });
 #pragma warning restore 612, 618
         }

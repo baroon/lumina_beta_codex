@@ -52,7 +52,7 @@ public class TemplatePromptGenerator : IPromptGenerator
                 : new List<Guid>();
             results.Add(new GeneratedPrompt(
                 text,
-                template.VisibilityLensId,
+                template.LensId,
                 template.PromptTemplateId,
                 topicIds,
                 competitor is not null ? new List<Guid> { competitor.Id } : new List<Guid>(),

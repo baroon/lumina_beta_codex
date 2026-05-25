@@ -16,9 +16,9 @@ public interface IAppDbContext
     DbSet<Competitor> Competitors { get; }
     DbSet<TrustSignal> TrustSignals { get; }
     DbSet<TrackerConfiguration> TrackerConfigurations { get; }
-    DbSet<VisibilityLens> VisibilityLenses { get; }
+    DbSet<Lens> Lenses { get; }
     DbSet<TrackerTopic> TrackerTopics { get; }
-    DbSet<TrackerVisibilityLens> TrackerVisibilityLenses { get; }
+    DbSet<TrackerLens> TrackerLenses { get; }
     DbSet<TrackerCompetitor> TrackerCompetitors { get; }
     DbSet<TrackerProduct> TrackerProducts { get; }
     DbSet<TrackerAudience> TrackerAudiences { get; }

@@ -26,7 +26,7 @@ public class TrackerConfiguration
 
     // Backend coverage (ADR-002 §4) — created from confirmed Discovery outputs.
     public ICollection<TrackerTopic> Topics { get; set; } = new List<TrackerTopic>();
-    public ICollection<TrackerVisibilityLens> VisibilityLenses { get; set; } = new List<TrackerVisibilityLens>();
+    public ICollection<TrackerLens> Lenses { get; set; } = new List<TrackerLens>();
     public ICollection<TrackerCompetitor> Competitors { get; set; } = new List<TrackerCompetitor>();
     public ICollection<TrackerProduct> Products { get; set; } = new List<TrackerProduct>();
     public ICollection<TrackerAudience> Audiences { get; set; } = new List<TrackerAudience>();

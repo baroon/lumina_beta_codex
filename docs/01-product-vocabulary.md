@@ -38,7 +38,7 @@
 | ScanRun | Scan Run |
 | PromptRun | Scan Check, hidden except progress count |
 | Topic | Topic |
-| VisibilityLens | Visibility Lens |
+| Lens | Visibility Lens |
 | Finding | Finding |
 | ContentAction | Content Action |
 | AnswerSignal | Hidden analysis summary |

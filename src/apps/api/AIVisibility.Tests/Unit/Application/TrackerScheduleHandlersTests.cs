@@ -60,7 +60,7 @@ public class TrackerScheduleHandlersTests
                 Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 PromptText = $"Q{i}",
-                VisibilityLensId = Guid.NewGuid(),
+                LensId = Guid.NewGuid(),
                 Status = PromptStatus.Active,
                 Source = PromptSource.Generated,
                 CreatedAt = DateTime.UtcNow,

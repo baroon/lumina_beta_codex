@@ -45,7 +45,7 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
     }
   }, [prompts.isSuccess, prompts.data, generate, trackerId]);
 
-  function regenerate(scope: string, vars: { trackerId: string; visibilityLensId?: string }) {
+  function regenerate(scope: string, vars: { trackerId: string; lensId?: string }) {
     setRegenScope(scope);
     generate.mutate(vars, { onSettled: () => setRegenScope(null) });
   }
@@ -77,9 +77,9 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
 
   const groups = new Map<string, PromptDto[]>();
   for (const prompt of data.prompts) {
-    const group = groups.get(prompt.visibilityLensName) ?? [];
+    const group = groups.get(prompt.lensName) ?? [];
     group.push(prompt);
-    groups.set(prompt.visibilityLensName, group);
+    groups.set(prompt.lensName, group);
   }
   // Stable section order by Visibility Lens (coverage order), not by prompt timestamp.
   const checkOrder = new Map(data.checks.map((c, i) => [c.name, i]));
@@ -136,12 +136,12 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
               prompts={items}
               topics={data.topics}
               canAdd={!isFull}
-              isRegenerating={regenScope === items[0].visibilityLensId}
+              isRegenerating={regenScope === items[0].lensId}
               reviewReason={items[0].reviewReason ?? undefined}
               onRegenerate={() =>
-                regenerate(items[0].visibilityLensId, {
+                regenerate(items[0].lensId, {
                   trackerId,
-                  visibilityLensId: items[0].visibilityLensId,
+                  lensId: items[0].lensId,
                 })
               }
               onRemove={(promptId) => removePrompt.mutate(promptId)}
@@ -149,7 +149,7 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
               onAdd={(text, topicId) =>
                 addPrompt.mutate({
                   text,
-                  visibilityLensId: items[0].visibilityLensId,
+                  lensId: items[0].lensId,
                   primaryTopicId: topicId,
                 })
               }

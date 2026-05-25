@@ -135,7 +135,7 @@ Recommended backend mapping tables:
 
 ```text
 TrackerTopic
-TrackerVisibilityLens
+TrackerLens
 TrackerCompetitor
 TrackerProduct
 TrackerAudience
@@ -183,7 +183,7 @@ Industry/category-specific prompt packs, later
 V1 can start with:
 
 ```text
-VisibilityLens → PromptTemplates
+Lens → PromptTemplates
 ```
 
 Future extension:
@@ -199,7 +199,7 @@ Suggested schema:
 ```text
 PromptTemplate
 - PromptTemplateId
-- VisibilityLensId
+- LensId
 - Name
 - TemplateText
 - RequiredInputs
@@ -328,7 +328,7 @@ Prompt
 - PromptId
 - TrackerConfigurationId
 - PromptText
-- VisibilityLensId
+- LensId
 - PrimaryTopicId optional
 - PromptTemplateId optional
 - Status

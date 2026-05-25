@@ -27,7 +27,7 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        var checkNames = await _db.VisibilityLenses
+        var checkNames = await _db.Lenses
             .ToDictionaryAsync(v => v.Id, v => v.Name, cancellationToken);
 
         var topicIds = prompts
@@ -39,11 +39,11 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
             .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
 
         // Coverage options for the add-custom + regenerate-by UI.
-        var coverageCheckIds = await _db.TrackerVisibilityLenses
+        var coverageCheckIds = await _db.TrackerLenses
             .Where(x => x.TrackerConfigurationId == tracker.Id)
-            .Select(x => x.VisibilityLensId)
+            .Select(x => x.LensId)
             .ToListAsync(cancellationToken);
-        var checks = await _db.VisibilityLenses
+        var checks = await _db.Lenses
             .Where(v => coverageCheckIds.Contains(v.Id))
             .OrderBy(v => v.DisplayOrder)
             .Select(v => new PromptOptionDto(v.Id, v.Name))
@@ -61,12 +61,12 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
 
         // Review flags: a check whose template needs a dimension the tracker is missing
         // (e.g. Competitor Comparison with no competitors) yields generic prompts → flag them.
-        var promptCheckIds = prompts.Select(p => p.VisibilityLensId).Distinct().ToList();
+        var promptCheckIds = prompts.Select(p => p.LensId).Distinct().ToList();
         var checkNeeds = (await _db.PromptTemplates
-            .Where(t => promptCheckIds.Contains(t.VisibilityLensId))
-            .Select(t => new { t.VisibilityLensId, t.TemplateText })
+            .Where(t => promptCheckIds.Contains(t.LensId))
+            .Select(t => new { t.LensId, t.TemplateText })
             .ToListAsync(cancellationToken))
-            .GroupBy(t => t.VisibilityLensId)
+            .GroupBy(t => t.LensId)
             .ToDictionary(
                 g => g.Key,
                 g => (
@@ -92,14 +92,14 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
                 p.PromptText,
                 p.Status.ToString(),
                 p.Source.ToString(),
-                p.VisibilityLensId,
-                checkNames.TryGetValue(p.VisibilityLensId, out var cn) ? cn : string.Empty,
+                p.LensId,
+                checkNames.TryGetValue(p.LensId, out var cn) ? cn : string.Empty,
                 p.Topics
                     .Select(t => topicNames.TryGetValue(t.TopicId, out var tn) ? tn : null)
                     .Where(n => n is not null)
                     .Select(n => n!)
                     .ToList(),
-                ReviewReason(p.VisibilityLensId)))
+                ReviewReason(p.LensId)))
             .ToList();
 
         return new PromptListDto(tracker.PromptAllocation, dtos.Count, dtos, checks, topicOptions);

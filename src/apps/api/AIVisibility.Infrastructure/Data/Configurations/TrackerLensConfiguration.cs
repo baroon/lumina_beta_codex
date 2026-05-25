@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AIVisibility.Infrastructure.Data.Configurations;
 
-public class TrackerVisibilityLensConfiguration : IEntityTypeConfiguration<TrackerVisibilityLens>
+public class TrackerLensConfiguration : IEntityTypeConfiguration<TrackerLens>
 {
-    public void Configure(EntityTypeBuilder<TrackerVisibilityLens> builder)
+    public void Configure(EntityTypeBuilder<TrackerLens> builder)
     {
-        builder.ToTable("tracker_visibility_lenses");
+        builder.ToTable("tracker_lenses");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
-        builder.Property(x => x.VisibilityLensId).HasColumnName("visibility_lens_id");
+        builder.Property(x => x.LensId).HasColumnName("lens_id");
         builder.HasIndex(x => x.TrackerConfigurationId);
     }
 }

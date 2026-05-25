@@ -31,12 +31,12 @@ public class PromptsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Generate(
         Guid trackerId,
-        [FromQuery] Guid? visibilityLensId,
+        [FromQuery] Guid? lensId,
         [FromQuery] Guid? topicId,
         CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(
-            new GeneratePromptsCommand(trackerId, visibilityLensId, topicId),
+            new GeneratePromptsCommand(trackerId, lensId, topicId),
             cancellationToken);
         return Ok(result);
     }
@@ -50,7 +50,7 @@ public class PromptsController : ControllerBase
         CancellationToken cancellationToken)
     {
         await _mediator.Send(
-            new AddCustomPromptCommand(trackerId, request.Text, request.VisibilityLensId, request.PrimaryTopicId),
+            new AddCustomPromptCommand(trackerId, request.Text, request.LensId, request.PrimaryTopicId),
             cancellationToken);
         return NoContent();
     }

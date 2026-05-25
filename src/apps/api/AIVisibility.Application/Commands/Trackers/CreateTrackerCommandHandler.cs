@@ -27,7 +27,7 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
         var topics = await _db.Topics.Where(t => t.BrandId == brand.Id).ToListAsync(cancellationToken);
         var competitors = await _db.Competitors.Where(c => c.BrandId == brand.Id).ToListAsync(cancellationToken);
         var audiences = await _db.Audiences.Where(a => a.BrandId == brand.Id).ToListAsync(cancellationToken);
-        var checks = await _db.VisibilityLenses.ToListAsync(cancellationToken);
+        var checks = await _db.Lenses.ToListAsync(cancellationToken);
 
         var generatedName = TrackerNaming.Generate(
             markets.FirstOrDefault()?.Name,
@@ -58,8 +58,8 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
             Products = products.Select(p => new TrackerProduct { Id = Guid.NewGuid(), ProductId = p.Id }).ToList(),
             Audiences = audiences.Select(a => new TrackerAudience { Id = Guid.NewGuid(), AudienceId = a.Id }).ToList(),
             Markets = markets.Select(m => new TrackerMarket { Id = Guid.NewGuid(), MarketId = m.Id }).ToList(),
-            VisibilityLenses = checks
-                .Select(vc => new TrackerVisibilityLens { Id = Guid.NewGuid(), VisibilityLensId = vc.Id })
+            Lenses = checks
+                .Select(vc => new TrackerLens { Id = Guid.NewGuid(), LensId = vc.Id })
                 .ToList(),
         };
 

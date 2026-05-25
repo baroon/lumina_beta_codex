@@ -119,16 +119,10 @@ export interface ResuggestResponse {
   topics: ResuggestCandidateDto[];
 }
 
-export type VisibilityLens =
-  | "products"
-  | "audiences"
-  | "markets"
-  | "topics"
-  | "competitors"
-  | "trustSignals";
+export type Lens = "products" | "audiences" | "markets" | "topics" | "competitors" | "trustSignals";
 
 export interface RegenerateLensRequest {
-  lens: VisibilityLens;
+  lens: Lens;
   industry: string | null;
   category: string | null;
   products: string[];
@@ -165,7 +159,7 @@ export interface TrackerSetupPreview {
   productCount: number;
   audienceCount: number;
   marketCount: number;
-  visibilityLensCount: number;
+  lensCount: number;
   promptAllocation: number;
 }
 
@@ -183,8 +177,8 @@ export interface PromptDto {
   text: string;
   status: string;
   source: string;
-  visibilityLensId: string;
-  visibilityLensName: string;
+  lensId: string;
+  lensName: string;
   topics: string[];
   reviewReason: string | null;
 }
@@ -204,7 +198,7 @@ export interface PromptList {
 
 export interface AddCustomPromptRequest {
   text: string;
-  visibilityLensId: string;
+  lensId: string;
   primaryTopicId?: string | null;
 }
 

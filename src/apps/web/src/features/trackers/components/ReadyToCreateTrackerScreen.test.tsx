@@ -15,7 +15,7 @@ const preview: TrackerSetupPreview = {
   productCount: 4,
   audienceCount: 1,
   marketCount: 1,
-  visibilityLensCount: 6,
+  lensCount: 6,
   promptAllocation: 30,
 };
 

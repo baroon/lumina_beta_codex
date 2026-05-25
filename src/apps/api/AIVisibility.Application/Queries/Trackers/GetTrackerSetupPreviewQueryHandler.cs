@@ -27,7 +27,7 @@ public class GetTrackerSetupPreviewQueryHandler
         var topicCount = await _db.Topics.CountAsync(t => t.BrandId == brand.Id, cancellationToken);
         var competitorCount = await _db.Competitors.CountAsync(c => c.BrandId == brand.Id, cancellationToken);
         var audienceCount = await _db.Audiences.CountAsync(a => a.BrandId == brand.Id, cancellationToken);
-        var checkCount = await _db.VisibilityLenses.CountAsync(cancellationToken);
+        var checkCount = await _db.Lenses.CountAsync(cancellationToken);
 
         var marketName = markets.FirstOrDefault()?.Name;
         var category = brand.BrandProfile?.Category;

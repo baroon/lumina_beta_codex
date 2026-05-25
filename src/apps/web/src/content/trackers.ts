@@ -13,7 +13,7 @@ export const TRACKERS_COPY = {
       products: "Products & Services",
       audiences: "Audiences",
       markets: "Markets",
-      visibilityLenses: "Visibility Lenses",
+      lenses: "Visibility Lenses",
     },
   },
   created: {

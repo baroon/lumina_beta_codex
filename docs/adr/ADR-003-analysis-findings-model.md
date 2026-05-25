@@ -465,7 +465,7 @@ MetricScope values:
 Overall
 Platform
 Topic
-VisibilityLens
+Lens
 Competitor
 SourceType
 ```
@@ -569,9 +569,9 @@ FindingTopic
 - FindingId
 - TopicId
 
-FindingVisibilityLens
+FindingLens
 - FindingId
-- VisibilityLensId
+- LensId
 
 FindingPrompt
 - FindingId
@@ -670,9 +670,9 @@ ContentActionTopic
 - ContentActionId
 - TopicId
 
-ContentActionVisibilityLens
+ContentActionLens
 - ContentActionId
-- VisibilityLensId
+- LensId
 
 ContentActionCompetitor
 - ContentActionId

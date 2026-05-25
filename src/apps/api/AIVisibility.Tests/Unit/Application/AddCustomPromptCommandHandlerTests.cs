@@ -58,7 +58,7 @@ public class AddCustomPromptCommandHandlerTests
         prompt.PromptText.Should().Be("My custom prompt");
         prompt.Source.Should().Be(PromptSource.UserAdded);
         prompt.Status.Should().Be(PromptStatus.Draft);
-        prompt.VisibilityLensId.Should().Be(checkId);
+        prompt.LensId.Should().Be(checkId);
         prompt.Topics.Should().ContainSingle(t => t.TopicId == topicId);
     }
 
@@ -72,7 +72,7 @@ public class AddCustomPromptCommandHandlerTests
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "existing",
-            VisibilityLensId = Guid.NewGuid(),
+            LensId = Guid.NewGuid(),
             Status = PromptStatus.Draft,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,

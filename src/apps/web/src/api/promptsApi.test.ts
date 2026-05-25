@@ -23,9 +23,9 @@ describe("promptsApi", () => {
   });
 
   it("generate includes filters in the query string", () => {
-    promptsApi.generate("t1", { visibilityLensId: "c1", topicId: "tp1" });
+    promptsApi.generate("t1", { lensId: "c1", topicId: "tp1" });
     expect(client.post).toHaveBeenCalledWith(
-      "/api/trackers/t1/prompts/generate?visibilityLensId=c1&topicId=tp1",
+      "/api/trackers/t1/prompts/generate?lensId=c1&topicId=tp1",
     );
   });
 
@@ -35,10 +35,10 @@ describe("promptsApi", () => {
   });
 
   it("addCustom posts the prompt body", () => {
-    promptsApi.addCustom("t1", { text: "Q", visibilityLensId: "c1", primaryTopicId: null });
+    promptsApi.addCustom("t1", { text: "Q", lensId: "c1", primaryTopicId: null });
     expect(client.post).toHaveBeenCalledWith("/api/trackers/t1/prompts", {
       text: "Q",
-      visibilityLensId: "c1",
+      lensId: "c1",
       primaryTopicId: null,
     });
   });

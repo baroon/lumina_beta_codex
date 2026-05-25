@@ -25,7 +25,7 @@ public class TrackerConfigurationConfiguration : IEntityTypeConfiguration<Tracke
 
         builder.HasOne(t => t.Brand).WithMany().HasForeignKey(t => t.BrandId);
         builder.HasMany(t => t.Topics).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);
-        builder.HasMany(t => t.VisibilityLenses).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);
+        builder.HasMany(t => t.Lenses).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);
         builder.HasMany(t => t.Competitors).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);
         builder.HasMany(t => t.Products).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);
         builder.HasMany(t => t.Audiences).WithOne(x => x.TrackerConfiguration).HasForeignKey(x => x.TrackerConfigurationId);

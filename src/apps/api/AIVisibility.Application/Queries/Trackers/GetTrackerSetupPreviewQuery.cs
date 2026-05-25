@@ -16,5 +16,5 @@ public record TrackerSetupPreviewDto(
     int ProductCount,
     int AudienceCount,
     int MarketCount,
-    int VisibilityLensCount,
+    int LensCount,
     int PromptAllocation);

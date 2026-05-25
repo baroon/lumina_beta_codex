@@ -59,7 +59,7 @@ public class OpenAiPromptGenerator : IPromptGenerator
         if (ctx.Templates.Count == 0 || ctx.PromptAllocation <= 0)
             return Array.Empty<GeneratedPrompt>();
 
-        var checks = ctx.Templates.GroupBy(t => t.VisibilityLensId).ToList();
+        var checks = ctx.Templates.GroupBy(t => t.LensId).ToList();
         var perCheck = Math.Max(1, (int)Math.Ceiling((double)ctx.PromptAllocation / checks.Count));
 
         var topicByName = ByName(ctx.Topics);

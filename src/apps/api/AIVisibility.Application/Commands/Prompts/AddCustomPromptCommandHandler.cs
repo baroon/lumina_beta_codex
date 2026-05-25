@@ -37,7 +37,7 @@ public class AddCustomPromptCommandHandler : IRequestHandler<AddCustomPromptComm
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = text,
-            VisibilityLensId = request.VisibilityLensId,
+            LensId = request.LensId,
             Status = PromptStatus.Draft,
             Source = PromptSource.UserAdded,
             CreatedAt = now,

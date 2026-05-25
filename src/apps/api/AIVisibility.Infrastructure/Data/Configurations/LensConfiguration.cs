@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AIVisibility.Infrastructure.Data.Configurations;
 
-public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLens>
+public class LensConfiguration : IEntityTypeConfiguration<Lens>
 {
-    public void Configure(EntityTypeBuilder<VisibilityLens> builder)
+    public void Configure(EntityTypeBuilder<Lens> builder)
     {
-        builder.ToTable("visibility_lenses");
+        builder.ToTable("lenses");
         builder.HasKey(v => v.Id);
         builder.Property(v => v.Id).HasColumnName("id");
         builder.Property(v => v.Code).HasColumnName("code").HasMaxLength(100).IsRequired();
@@ -19,7 +19,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
 
         // V1 Visibility Lenses (ADR-001) — static seed data.
         builder.HasData(
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000001"),
                 Code = "Discovery",
@@ -27,7 +27,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
                 Description = "Does the AI surface the brand when asked about the category or topic?",
                 DisplayOrder = 1,
             },
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000002"),
                 Code = "BuyingIntent",
@@ -35,7 +35,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
                 Description = "Is the brand recommended for high-intent, purchase-oriented prompts?",
                 DisplayOrder = 2,
             },
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000003"),
                 Code = "CompetitorComparison",
@@ -43,7 +43,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
                 Description = "How does the AI compare the brand against its competitors?",
                 DisplayOrder = 3,
             },
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000004"),
                 Code = "SentimentAndTrust",
@@ -51,7 +51,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
                 Description = "What sentiment and trust signals does the AI express about the brand?",
                 DisplayOrder = 4,
             },
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000005"),
                 Code = "CitationVisibility",
@@ -59,7 +59,7 @@ public class VisibilityLensConfiguration : IEntityTypeConfiguration<VisibilityLe
                 Description = "Is the brand's own content cited as a source in AI answers?",
                 DisplayOrder = 5,
             },
-            new VisibilityLens
+            new Lens
             {
                 Id = new Guid("c0000000-0000-0000-0000-000000000006"),
                 Code = "ContentGaps",

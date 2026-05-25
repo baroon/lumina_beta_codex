@@ -8,7 +8,7 @@ namespace AIVisibility.Domain.Entities;
 public class PromptTemplate
 {
     public Guid Id { get; set; }
-    public Guid VisibilityLensId { get; set; }
+    public Guid LensId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TemplateText { get; set; } = string.Empty;
 }

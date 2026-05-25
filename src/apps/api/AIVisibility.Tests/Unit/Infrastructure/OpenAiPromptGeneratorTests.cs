@@ -51,7 +51,7 @@ public class OpenAiPromptGeneratorTests
         result.Should().HaveCount(2);
         result.Should().Contain(p => p.Text == "Which CRM is best for pricing?" && p.TopicIds.Contains(topicId));
         result.Should().Contain(p => p.Text == "Top CRM tools in the US?" && p.TopicIds.Count == 0);
-        result.Should().OnlyContain(p => p.VisibilityLensId == checkId);
+        result.Should().OnlyContain(p => p.LensId == checkId);
     }
 
     [Fact]

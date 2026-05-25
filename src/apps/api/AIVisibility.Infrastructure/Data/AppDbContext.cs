@@ -19,9 +19,9 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Competitor> Competitors => Set<Competitor>();
     public DbSet<TrustSignal> TrustSignals => Set<TrustSignal>();
     public DbSet<TrackerConfiguration> TrackerConfigurations => Set<TrackerConfiguration>();
-    public DbSet<VisibilityLens> VisibilityLenses => Set<VisibilityLens>();
+    public DbSet<Lens> Lenses => Set<Lens>();
     public DbSet<TrackerTopic> TrackerTopics => Set<TrackerTopic>();
-    public DbSet<TrackerVisibilityLens> TrackerVisibilityLenses => Set<TrackerVisibilityLens>();
+    public DbSet<TrackerLens> TrackerLenses => Set<TrackerLens>();
     public DbSet<TrackerCompetitor> TrackerCompetitors => Set<TrackerCompetitor>();
     public DbSet<TrackerProduct> TrackerProducts => Set<TrackerProduct>();
     public DbSet<TrackerAudience> TrackerAudiences => Set<TrackerAudience>();

@@ -35,7 +35,7 @@ public class ScanExecutorTests
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "What is best?",
-            VisibilityLensId = Guid.NewGuid(),
+            LensId = Guid.NewGuid(),
             Status = PromptStatus.Active,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,

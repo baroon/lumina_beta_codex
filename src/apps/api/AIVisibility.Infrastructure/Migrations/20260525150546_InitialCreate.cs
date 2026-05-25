@@ -46,21 +46,7 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "prompt_templates",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    visibility_lens_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    template_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_prompt_templates", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "visibility_lenses",
+                name: "lenses",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -71,7 +57,21 @@ namespace AIVisibility.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_visibility_lenses", x => x.id);
+                    table.PrimaryKey("PK_lenses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "prompt_templates",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    lens_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    template_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_prompt_templates", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -356,7 +356,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
-                    visibility_lens_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    lens_id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_template_id = table.Column<Guid>(type: "uuid", nullable: true),
                     status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
@@ -441,6 +441,25 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "tracker_lenses",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    lens_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_tracker_lenses", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_tracker_lenses_tracker_configurations_tracker_configuration~",
+                        column: x => x.tracker_configuration_id,
+                        principalTable: "tracker_configurations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "tracker_markets",
                 columns: table => new
                 {
@@ -510,25 +529,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     table.PrimaryKey("PK_tracker_topics", x => x.id);
                     table.ForeignKey(
                         name: "FK_tracker_topics_tracker_configurations_tracker_configuration~",
-                        column: x => x.tracker_configuration_id,
-                        principalTable: "tracker_configurations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "tracker_visibility_lenses",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    visibility_lens_id = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_tracker_visibility_lenses", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_tracker_visibility_lenses_tracker_configurations_tracker_co~",
                         column: x => x.tracker_configuration_id,
                         principalTable: "tracker_configurations",
                         principalColumn: "id",
@@ -690,32 +690,7 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.InsertData(
-                table: "prompt_templates",
-                columns: new[] { "id", "name", "template_text", "visibility_lens_id" },
-                values: new object[,]
-                {
-                    { new Guid("70000000-0000-0000-0000-000000000101"), "Category discovery", "What are the best {category} options in {market}?", new Guid("c0000000-0000-0000-0000-000000000001") },
-                    { new Guid("70000000-0000-0000-0000-000000000102"), "Category recommendation", "Which {category} would you recommend in {market}?", new Guid("c0000000-0000-0000-0000-000000000001") },
-                    { new Guid("70000000-0000-0000-0000-000000000103"), "Leading providers", "Who are the leading {category} providers right now?", new Guid("c0000000-0000-0000-0000-000000000001") },
-                    { new Guid("70000000-0000-0000-0000-000000000201"), "Buying intent", "I want to buy {category} for {topic} — which do you recommend?", new Guid("c0000000-0000-0000-0000-000000000002") },
-                    { new Guid("70000000-0000-0000-0000-000000000202"), "Budget choice", "What's the best {category} for {topic} on a budget?", new Guid("c0000000-0000-0000-0000-000000000002") },
-                    { new Guid("70000000-0000-0000-0000-000000000203"), "Ready to choose", "I'm ready to choose a {category} for {topic} — what should I go with?", new Guid("c0000000-0000-0000-0000-000000000002") },
-                    { new Guid("70000000-0000-0000-0000-000000000301"), "Head to head", "How does {brand} compare to {competitor} for {category}?", new Guid("c0000000-0000-0000-0000-000000000003") },
-                    { new Guid("70000000-0000-0000-0000-000000000302"), "Which is better", "Is {brand} or {competitor} the better {category}?", new Guid("c0000000-0000-0000-0000-000000000003") },
-                    { new Guid("70000000-0000-0000-0000-000000000303"), "Key differences", "What are the main differences between {brand} and {competitor}?", new Guid("c0000000-0000-0000-0000-000000000003") },
-                    { new Guid("70000000-0000-0000-0000-000000000401"), "Reliability", "Is {brand} a reliable {category}? What is its reputation?", new Guid("c0000000-0000-0000-0000-000000000004") },
-                    { new Guid("70000000-0000-0000-0000-000000000402"), "Reviews", "What do people say about {brand}?", new Guid("c0000000-0000-0000-0000-000000000004") },
-                    { new Guid("70000000-0000-0000-0000-000000000403"), "Trust", "Can I trust {brand} for {category}?", new Guid("c0000000-0000-0000-0000-000000000004") },
-                    { new Guid("70000000-0000-0000-0000-000000000501"), "Authoritative sources", "What are the most authoritative sources about {topic} in {category}?", new Guid("c0000000-0000-0000-0000-000000000005") },
-                    { new Guid("70000000-0000-0000-0000-000000000502"), "Experts to follow", "Which experts or publications should I follow on {topic}?", new Guid("c0000000-0000-0000-0000-000000000005") },
-                    { new Guid("70000000-0000-0000-0000-000000000503"), "Trustworthy info", "Where can I find trustworthy information about {topic}?", new Guid("c0000000-0000-0000-0000-000000000005") },
-                    { new Guid("70000000-0000-0000-0000-000000000601"), "Considerations", "What should I consider about {topic} when choosing a {category}?", new Guid("c0000000-0000-0000-0000-000000000006") },
-                    { new Guid("70000000-0000-0000-0000-000000000602"), "Questions to ask", "What questions should I ask about {topic} before choosing a {category}?", new Guid("c0000000-0000-0000-0000-000000000006") },
-                    { new Guid("70000000-0000-0000-0000-000000000603"), "Overlooked factors", "What do most people overlook about {topic} when it comes to {category}?", new Guid("c0000000-0000-0000-0000-000000000006") }
-                });
-
-            migrationBuilder.InsertData(
-                table: "visibility_lenses",
+                table: "lenses",
                 columns: new[] { "id", "code", "description", "display_order", "name" },
                 values: new object[,]
                 {
@@ -725,6 +700,31 @@ namespace AIVisibility.Infrastructure.Migrations
                     { new Guid("c0000000-0000-0000-0000-000000000004"), "SentimentAndTrust", "What sentiment and trust signals does the AI express about the brand?", 4, "Sentiment & Trust" },
                     { new Guid("c0000000-0000-0000-0000-000000000005"), "CitationVisibility", "Is the brand's own content cited as a source in AI answers?", 5, "Citation Visibility" },
                     { new Guid("c0000000-0000-0000-0000-000000000006"), "ContentGaps", "Where is the brand absent from AI answers when it should be present?", 6, "Content Gaps" }
+                });
+
+            migrationBuilder.InsertData(
+                table: "prompt_templates",
+                columns: new[] { "id", "lens_id", "name", "template_text" },
+                values: new object[,]
+                {
+                    { new Guid("70000000-0000-0000-0000-000000000101"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category discovery", "What are the best {category} options in {market}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000102"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category recommendation", "Which {category} would you recommend in {market}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000103"), new Guid("c0000000-0000-0000-0000-000000000001"), "Leading providers", "Who are the leading {category} providers right now?" },
+                    { new Guid("70000000-0000-0000-0000-000000000201"), new Guid("c0000000-0000-0000-0000-000000000002"), "Buying intent", "I want to buy {category} for {topic} — which do you recommend?" },
+                    { new Guid("70000000-0000-0000-0000-000000000202"), new Guid("c0000000-0000-0000-0000-000000000002"), "Budget choice", "What's the best {category} for {topic} on a budget?" },
+                    { new Guid("70000000-0000-0000-0000-000000000203"), new Guid("c0000000-0000-0000-0000-000000000002"), "Ready to choose", "I'm ready to choose a {category} for {topic} — what should I go with?" },
+                    { new Guid("70000000-0000-0000-0000-000000000301"), new Guid("c0000000-0000-0000-0000-000000000003"), "Head to head", "How does {brand} compare to {competitor} for {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000302"), new Guid("c0000000-0000-0000-0000-000000000003"), "Which is better", "Is {brand} or {competitor} the better {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000303"), new Guid("c0000000-0000-0000-0000-000000000003"), "Key differences", "What are the main differences between {brand} and {competitor}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000401"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reliability", "Is {brand} a reliable {category}? What is its reputation?" },
+                    { new Guid("70000000-0000-0000-0000-000000000402"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reviews", "What do people say about {brand}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000403"), new Guid("c0000000-0000-0000-0000-000000000004"), "Trust", "Can I trust {brand} for {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000501"), new Guid("c0000000-0000-0000-0000-000000000005"), "Authoritative sources", "What are the most authoritative sources about {topic} in {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000502"), new Guid("c0000000-0000-0000-0000-000000000005"), "Experts to follow", "Which experts or publications should I follow on {topic}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000503"), new Guid("c0000000-0000-0000-0000-000000000005"), "Trustworthy info", "Where can I find trustworthy information about {topic}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000601"), new Guid("c0000000-0000-0000-0000-000000000006"), "Considerations", "What should I consider about {topic} when choosing a {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000602"), new Guid("c0000000-0000-0000-0000-000000000006"), "Questions to ask", "What questions should I ask about {topic} before choosing a {category}?" },
+                    { new Guid("70000000-0000-0000-0000-000000000603"), new Guid("c0000000-0000-0000-0000-000000000006"), "Overlooked factors", "What do most people overlook about {topic} when it comes to {category}?" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -774,6 +774,12 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_discovery_runs_brand_id",
                 table: "discovery_runs",
                 column: "brand_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_lenses_code",
+                table: "lenses",
+                column: "code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_markets_brand_id",
@@ -826,9 +832,9 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "status");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_templates_visibility_lens_id",
+                name: "IX_prompt_templates_lens_id",
                 table: "prompt_templates",
-                column: "visibility_lens_id");
+                column: "lens_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_prompt_topics_prompt_id",
@@ -881,6 +887,11 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "brand_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_tracker_lenses_tracker_configuration_id",
+                table: "tracker_lenses",
+                column: "tracker_configuration_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_tracker_markets_tracker_configuration_id",
                 table: "tracker_markets",
                 column: "tracker_configuration_id");
@@ -901,11 +912,6 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "tracker_configuration_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_visibility_lenses_tracker_configuration_id",
-                table: "tracker_visibility_lenses",
-                column: "tracker_configuration_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_trust_signals_brand_id",
                 table: "trust_signals",
                 column: "brand_id");
@@ -914,12 +920,6 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_trust_signals_discovery_run_id",
                 table: "trust_signals",
                 column: "discovery_run_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_visibility_lenses_code",
-                table: "visibility_lenses",
-                column: "code",
-                unique: true);
         }
 
         /// <inheritdoc />
@@ -942,6 +942,9 @@ namespace AIVisibility.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "crawled_pages");
+
+            migrationBuilder.DropTable(
+                name: "lenses");
 
             migrationBuilder.DropTable(
                 name: "markets");
@@ -977,6 +980,9 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_competitors");
 
             migrationBuilder.DropTable(
+                name: "tracker_lenses");
+
+            migrationBuilder.DropTable(
                 name: "tracker_markets");
 
             migrationBuilder.DropTable(
@@ -989,13 +995,7 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_topics");
 
             migrationBuilder.DropTable(
-                name: "tracker_visibility_lenses");
-
-            migrationBuilder.DropTable(
                 name: "trust_signals");
-
-            migrationBuilder.DropTable(
-                name: "visibility_lenses");
 
             migrationBuilder.DropTable(
                 name: "prompt_runs");

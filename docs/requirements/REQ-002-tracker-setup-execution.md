@@ -307,7 +307,7 @@ Core entities:
 ```text
 TrackerConfiguration
 TrackerTopic
-TrackerVisibilityLens
+TrackerLens
 TrackerCompetitor
 TrackerProduct
 TrackerAudience

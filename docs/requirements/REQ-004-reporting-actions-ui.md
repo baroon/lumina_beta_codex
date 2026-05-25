@@ -331,7 +331,7 @@ No automatic PDF attachment in v1.
 - Summary
 - EvidenceSummary
 - RelatedTopic
-- RelatedVisibilityLens
+- RelatedLens
 - RelatedPlatform optional
 - RelatedCompetitor optional
 - Status
@@ -355,7 +355,7 @@ No automatic PDF attachment in v1.
 - PromptText
 - Platform
 - Topic
-- VisibilityLens
+- Lens
 - BrandMentioned
 - BrandRecommended
 - Position
