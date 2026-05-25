@@ -33,6 +33,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<PromptProduct> PromptProducts => Set<PromptProduct>();
     public DbSet<PromptAudience> PromptAudiences => Set<PromptAudience>();
     public DbSet<PromptMarket> PromptMarkets => Set<PromptMarket>();
+    public DbSet<AIPlatform> AIPlatforms => Set<AIPlatform>();
+    public DbSet<TrackerPlatform> TrackerPlatforms => Set<TrackerPlatform>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

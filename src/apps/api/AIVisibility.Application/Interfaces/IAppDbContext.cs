@@ -30,6 +30,8 @@ public interface IAppDbContext
     DbSet<PromptProduct> PromptProducts { get; }
     DbSet<PromptAudience> PromptAudiences { get; }
     DbSet<PromptMarket> PromptMarkets { get; }
+    DbSet<AIPlatform> AIPlatforms { get; }
+    DbSet<TrackerPlatform> TrackerPlatforms { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
