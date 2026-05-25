@@ -259,7 +259,6 @@ public class HeuristicContentExtractor : IContentExtractor
                         SignalType = signalType,
                         Name = signalType.ToString(),
                         Description = $"Detected from page: {page.Url}",
-                        SourcePagesJson = JsonSerializer.Serialize(new[] { page.Url }),
                         Confidence = 0.7,
                         Source = CandidateSource.WebsiteCrawl,
                     });
@@ -295,7 +294,6 @@ public class HeuristicContentExtractor : IContentExtractor
                             SignalType = signalType,
                             Name = signalType.ToString(),
                             Description = $"Detected from heading: {heading.Text}",
-                            SourcePagesJson = JsonSerializer.Serialize(new[] { page.Url }),
                             Confidence = 0.6,
                             Source = CandidateSource.WebsiteCrawl,
                         });
