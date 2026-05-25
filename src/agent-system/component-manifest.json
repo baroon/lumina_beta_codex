@@ -737,8 +737,8 @@
           "path": "src/features/trackers/components/TrackerScheduleScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Button", "Checkbox", "Select", "ScanProgressScreen"],
-          "notes": "Platform + cadence selection after prompt confirm: choose AI platforms, pick a cadence, see the scan-check estimate, and activate the tracker (Draft -> Active) — which immediately runs the first scan."
+          "dependencies": ["Card", "Button", "Checkbox", "Select", "ScanProgressScreen"],
+          "notes": "Platform + cadence + timezone setup after prompt confirm (card with header/section icons, selectable platform tiles, scan-check estimate). Timezone defaults to the browser zone. Activate (Draft -> Active) immediately runs the first scan."
         },
         {
           "name": "ScanProgressScreen",
