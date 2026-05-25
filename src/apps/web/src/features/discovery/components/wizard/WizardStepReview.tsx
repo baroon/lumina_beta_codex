@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { countryCodeToFlagUrl } from "../../flag";
 import type { CandidateDto, BrandProfileDto } from "@/types/api";
@@ -174,9 +174,11 @@ export function WizardStepReview({
             <button
               type="button"
               onClick={() => onEditSection("brandProfile")}
-              className="text-xs font-medium text-primary-700 hover:text-primary-800"
+              aria-label={DISCOVERY_COPY.review.editSection}
+              title={DISCOVERY_COPY.review.editSection}
+              className="rounded-md p-1 text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800"
             >
-              {DISCOVERY_COPY.review.editSection}
+              <Pencil className="h-3.5 w-3.5" />
             </button>
           </div>
           <p className="mt-1 text-sm text-neutral-600">
@@ -230,9 +232,11 @@ export function WizardStepReview({
                 <button
                   type="button"
                   onClick={() => onEditSection(key)}
-                  className="text-xs font-medium text-primary-700 hover:text-primary-800"
+                  aria-label={DISCOVERY_COPY.review.editSection}
+                  title={DISCOVERY_COPY.review.editSection}
+                  className="rounded-md p-1 text-primary-700 transition-colors hover:bg-primary-50 hover:text-primary-800"
                 >
-                  {DISCOVERY_COPY.review.editSection}
+                  <Pencil className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
