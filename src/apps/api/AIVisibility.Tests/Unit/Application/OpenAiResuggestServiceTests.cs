@@ -102,6 +102,28 @@ public class OpenAiResuggestServiceTests
     }
 
     [Fact]
+    public async Task RegenerateLensAsync_Products_IncludesProductTypeMetadata()
+    {
+        // Regenerated products must carry a productType so they pass confirm validation.
+        SetupAny("[{\"name\":\"Widget\",\"description\":\"A widget\",\"type\":\"Service\",\"confidence\":0.85}]");
+
+        var result = await CreateService().RegenerateLensAsync(Context(), "products", CancellationToken.None);
+
+        result.Candidates.Should().ContainSingle();
+        result.Candidates[0].Metadata["productType"].Should().Be("Service");
+    }
+
+    [Fact]
+    public async Task RegenerateLensAsync_Products_DefaultsMissingOrInvalidTypeToProduct()
+    {
+        SetupAny("[{\"name\":\"Widget\",\"confidence\":0.85}]");
+
+        var result = await CreateService().RegenerateLensAsync(Context(), "products", CancellationToken.None);
+
+        result.Candidates[0].Metadata["productType"].Should().Be("Product");
+    }
+
+    [Fact]
     public async Task RegenerateLensAsync_TrustSignals_IncludesSignalTypeMetadata()
     {
         SetupAny("[{\"name\":\"SOC2\",\"description\":\"Certified\",\"type\":\"CertificationsAndAccreditations\",\"confidence\":0.8}]");

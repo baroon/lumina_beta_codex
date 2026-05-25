@@ -263,13 +263,50 @@ public class OpenAiResuggestService : IResuggestService
 
             If products/services are already confirmed, treat them as a signal for the kind of offerings that are relevant — suggest complementary or related items the brand likely also offers. Do not repeat any confirmed items.
 
+            Classify each with a type: Product, Service, Feature, Solution, Tool, or Resource.
+
             Return JSON only:
-            [{"name": "Product Name", "description": "Brief description", "confidence": 0.85}]
+            [{"name": "Product Name", "description": "Brief description", "type": "Product", "confidence": 0.85}]
             """;
 
-        var prompt = BuildLensPrompt(ctx, "Suggest 4 products or services this brand likely offers.");
-        return await CallLensAsync(system, prompt, "LLMSuggested", ct);
+        var prompt = BuildLensPrompt(ctx, "Suggest 4 products or services this brand likely offers. Include a type for each.");
+        try
+        {
+            var response = await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct);
+            if (string.IsNullOrWhiteSpace(response))
+                return new LensRegenerateResult(new List<LensCandidate>());
+
+            var json = ExtractJson(response);
+            var items = JsonSerializer.Deserialize<List<ProductLensDto>>(json, JsonOptions);
+            if (items == null) return new LensRegenerateResult(new List<LensCandidate>());
+
+            var candidates = items
+                .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+                .Select(i => new LensCandidate(
+                    Name: i.Name!,
+                    Description: i.Description,
+                    Confidence: Math.Clamp(i.Confidence, 0.0, 1.0),
+                    Source: "LLMSuggested",
+                    // Always carry a valid productType so the regenerated item can be confirmed.
+                    Metadata: new Dictionary<string, object?>
+                    {
+                        ["productType"] = Enum.TryParse<ProductType>(i.Type, ignoreCase: true, out var t)
+                            ? t.ToString()
+                            : nameof(ProductType.Product),
+                    }))
+                .Take(4)
+                .ToList();
+
+            return new LensRegenerateResult(candidates);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "RegenerateLens: product regeneration failed");
+            return new LensRegenerateResult(new List<LensCandidate>());
+        }
     }
+
+    private record ProductLensDto(string? Name, string? Description, string? Type, double Confidence);
 
     private async Task<LensRegenerateResult> RegenerateAudiencesAsync(ResuggestContext ctx, CancellationToken ct)
     {
