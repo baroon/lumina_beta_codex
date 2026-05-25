@@ -32,6 +32,9 @@ public interface IAppDbContext
     DbSet<PromptMarket> PromptMarkets { get; }
     DbSet<AIPlatform> AIPlatforms { get; }
     DbSet<TrackerPlatform> TrackerPlatforms { get; }
+    DbSet<ScanRun> ScanRuns { get; }
+    DbSet<PromptRun> PromptRuns { get; }
+    DbSet<AIAnswer> AIAnswers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

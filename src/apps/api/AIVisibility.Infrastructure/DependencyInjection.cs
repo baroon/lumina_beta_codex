@@ -3,6 +3,7 @@ using AIVisibility.Infrastructure.Crawling;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Discovery;
 using AIVisibility.Infrastructure.Prompts;
+using AIVisibility.Infrastructure.Scanning;
 using AIVisibility.Infrastructure.Providers.Anthropic;
 using AIVisibility.Infrastructure.Providers.OpenAi;
 using AIVisibility.Infrastructure.Storage;
@@ -45,6 +46,12 @@ public static class DependencyInjection
         // Prompt generation (LLM-backed, with deterministic template-fill fallback)
         services.AddScoped<TemplatePromptGenerator>();
         services.AddScoped<IPromptGenerator, OpenAiPromptGenerator>();
+
+        // Scan execution (Phase 2): in-process queue + background runner + provider
+        services.AddSingleton<IScanQueue, ScanQueue>();
+        services.AddScoped<IScanProvider, OpenAiScanProvider>();
+        services.AddScoped<IScanExecutor, ScanExecutor>();
+        services.AddHostedService<ScanRunner>();
 
         // Crawling
         services.AddHttpClient("Crawler", client =>
