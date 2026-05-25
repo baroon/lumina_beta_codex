@@ -38,8 +38,8 @@ public class TrackerScheduleHandlersTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
-        var p1 = new AIPlatform { Id = Guid.NewGuid(), Code = "ChatGpt", Name = "ChatGPT", DisplayOrder = 1 };
-        var p2 = new AIPlatform { Id = Guid.NewGuid(), Code = "Gemini", Name = "Gemini", DisplayOrder = 2 };
+        var p1 = new AIPlatform { Id = Guid.NewGuid(), Code = "ChatGpt", Name = "ChatGPT", DisplayOrder = 1, IsDefaultSelected = true };
+        var p2 = new AIPlatform { Id = Guid.NewGuid(), Code = "Gemini", Name = "Gemini", DisplayOrder = 2, IsDefaultSelected = false };
         ctx.Brands.Add(brand);
         ctx.TrackerConfigurations.Add(tracker);
         ctx.AIPlatforms.AddRange(p1, p2);
@@ -62,10 +62,10 @@ public class TrackerScheduleHandlersTests
     }
 
     [Fact]
-    public async Task GetSetup_ReturnsPlatforms_DefaultsAllSelected_AndActiveCount()
+    public async Task GetSetup_ReturnsPlatforms_WithDefaultSelected_AndActiveCount()
     {
         using var ctx = NewContext();
-        var (tracker, _, _) = Seed(ctx);
+        var (tracker, p1, _) = Seed(ctx);
 
         var result = await new GetTrackerScheduleSetupQueryHandler(ctx).Handle(
             new GetTrackerScheduleSetupQuery(tracker.Id),
@@ -73,7 +73,7 @@ public class TrackerScheduleHandlersTests
 
         result.Should().NotBeNull();
         result!.Platforms.Should().HaveCount(2);
-        result.SelectedPlatformIds.Should().HaveCount(2);
+        result.SelectedPlatformIds.Should().ContainSingle().Which.Should().Be(p1);
         result.ActivePromptCount.Should().Be(2);
         result.Cadence.Should().Be("Weekly");
     }

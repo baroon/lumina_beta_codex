@@ -32,9 +32,12 @@ public class GetTrackerScheduleSetupQueryHandler
             .Where(x => x.TrackerConfigurationId == tracker.Id)
             .Select(x => x.AIPlatformId)
             .ToListAsync(cancellationToken);
-        // Default to all platforms when none have been chosen yet (ADR-002 §14).
+        // Default to the platforms marked default-selected when none chosen yet (ADR-002 §14).
         if (selected.Count == 0)
-            selected = platforms.Select(p => p.Id).ToList();
+            selected = await _db.AIPlatforms
+                .Where(p => p.IsDefaultSelected)
+                .Select(p => p.Id)
+                .ToListAsync(cancellationToken);
 
         var activePromptCount = await _db.Prompts.CountAsync(
             p => p.TrackerConfigurationId == tracker.Id && p.Status == PromptStatus.Active,
