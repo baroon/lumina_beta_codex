@@ -24,3 +24,12 @@ export const Empty: Story = {
     onChange: () => {},
   },
 };
+
+export const Multiline: Story = {
+  args: {
+    value:
+      "What are the best CRM options for a small team weighing pricing, onboarding, and support quality?",
+    multiline: true,
+    onChange: () => {},
+  },
+};

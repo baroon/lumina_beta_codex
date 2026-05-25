@@ -75,7 +75,7 @@ describe("PromptCheckGroup", () => {
     const input = screen.getByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "Edited");
-    await userEvent.keyboard("{Enter}");
+    await userEvent.tab();
     expect(onEdit).toHaveBeenCalledWith("p1", "Edited");
   });
 });

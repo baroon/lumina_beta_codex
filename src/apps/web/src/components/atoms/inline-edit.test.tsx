@@ -62,4 +62,25 @@ describe("InlineEdit", () => {
     await userEvent.keyboard("{Enter}");
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("renders a textarea and commits on blur in multiline mode", async () => {
+    const onChange = vi.fn();
+    render(<InlineEdit value="Line one" onChange={onChange} multiline />);
+    await userEvent.click(screen.getByRole("button", { name: /Line one/ }));
+    const textarea = screen.getByRole("textbox");
+    expect(textarea.tagName).toBe("TEXTAREA");
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, "New text");
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledWith("New text");
+  });
+
+  it("treats Enter as a newline (no commit) in multiline mode", async () => {
+    const onChange = vi.fn();
+    render(<InlineEdit value="A" onChange={onChange} multiline />);
+    await userEvent.click(screen.getByRole("button", { name: /A/ }));
+    await userEvent.type(screen.getByRole("textbox"), "{Enter}B");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
 });

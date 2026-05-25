@@ -98,7 +98,7 @@ export function PromptCheckGroup({
             return (
               <li
                 key={prompt.id}
-                className="group flex items-start gap-3 rounded-lg border border-neutral-200 p-3 transition-all hover:border-neutral-300 hover:shadow-sm"
+                className="group flex items-start gap-3 rounded-lg border border-neutral-200 bg-surface-page p-3 transition-all hover:border-neutral-300 hover:shadow-sm"
               >
                 <span
                   className="mt-1.5 shrink-0 text-neutral-400"
@@ -113,6 +113,7 @@ export function PromptCheckGroup({
                     onChange={(text) => onEdit(prompt.id, text)}
                     placeholder={TRACKERS_COPY.review.editPlaceholder}
                     className="text-neutral-900"
+                    multiline
                   />
                   {prompt.primaryTopicName && (
                     <div className="mt-1 pl-2">

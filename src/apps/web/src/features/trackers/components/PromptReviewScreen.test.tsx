@@ -101,7 +101,7 @@ describe("PromptReviewScreen", () => {
     const input = screen.getByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, "Edited prompt");
-    await userEvent.keyboard("{Enter}");
+    await userEvent.tab();
     expect(updateMutate).toHaveBeenCalledWith({ promptId: "p1", text: "Edited prompt" });
   });
 
