@@ -23,6 +23,7 @@ interface AddCustomItemFormProps {
   typeOptions?: TypeOption[];
   metadataKey?: string;
   typeRequired?: boolean;
+  captureDomain?: boolean;
 }
 
 export function AddCustomItemForm({
@@ -31,20 +32,24 @@ export function AddCustomItemForm({
   typeOptions,
   metadataKey = "productType",
   typeRequired = false,
+  captureDomain = false,
 }: AddCustomItemFormProps) {
   const [value, setValue] = useState("");
   const [selectedType, setSelectedType] = useState("");
+  const [domain, setDomain] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim()) {
-      const metadata = typeOptions && selectedType ? { [metadataKey]: selectedType } : undefined;
-      onAdd(value.trim(), metadata);
-      setValue("");
-      setSelectedType("");
-      setIsOpen(false);
-    }
+    if (!value.trim()) return;
+    const metadata: Record<string, string> = {};
+    if (typeOptions && selectedType) metadata[metadataKey] = selectedType;
+    if (captureDomain && domain.trim()) metadata.domain = domain.trim();
+    onAdd(value.trim(), Object.keys(metadata).length > 0 ? metadata : undefined);
+    setValue("");
+    setSelectedType("");
+    setDomain("");
+    setIsOpen(false);
   };
 
   if (!isOpen) {
@@ -65,6 +70,14 @@ export function AddCustomItemForm({
         className="h-8 text-sm"
         autoFocus
       />
+      {captureDomain && (
+        <Input
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder={DISCOVERY_COPY.customItem.domainPlaceholder}
+          className="h-8 text-sm"
+        />
+      )}
       {typeOptions && (
         <Select value={selectedType} onValueChange={setSelectedType}>
           <SelectTrigger selectSize="sm" className="min-w-[7rem] shrink-0">
@@ -96,6 +109,7 @@ export function AddCustomItemForm({
           setIsOpen(false);
           setValue("");
           setSelectedType("");
+          setDomain("");
         }}
       >
         {DISCOVERY_COPY.customItem.cancel}

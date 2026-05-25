@@ -114,6 +114,7 @@ export const DISCOVERY_COPY = {
     cancel: "Cancel",
     typePlaceholder: "Type",
     addPlaceholder: "Add a {item}...",
+    domainPlaceholder: "Domain (optional)",
   },
   productTypes: {
     Product: "Product",

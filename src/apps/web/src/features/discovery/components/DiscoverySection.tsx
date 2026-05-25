@@ -35,6 +35,7 @@ interface DiscoverySectionProps {
   typeOptions?: TypeOption[];
   typeMetadataKey?: string;
   typeRequired?: boolean;
+  captureDomain?: boolean;
 }
 
 export function DiscoverySection({
@@ -55,6 +56,7 @@ export function DiscoverySection({
   typeOptions,
   typeMetadataKey,
   typeRequired,
+  captureDomain,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
@@ -164,6 +166,7 @@ export function DiscoverySection({
             typeOptions={typeOptions}
             metadataKey={typeMetadataKey}
             typeRequired={typeRequired}
+            captureDomain={captureDomain}
           />
         </div>
       )}

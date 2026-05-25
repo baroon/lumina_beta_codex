@@ -104,4 +104,15 @@ describe("SuggestionCard", () => {
     render(<SuggestionCard candidate={candidate()} selected={false} onToggle={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /remove/i })).not.toBeInTheDocument();
   });
+
+  it("renders the domain when present in metadata", () => {
+    render(
+      <SuggestionCard
+        candidate={candidate({ metadata: { domain: "acme.com" } })}
+        selected={false}
+        onToggle={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("acme.com")).toBeInTheDocument();
+  });
 });

@@ -93,4 +93,23 @@ describe("AddCustomItemForm", () => {
     await user.click(screen.getByRole("button", { name: /^add$/i }));
     expect(onAdd).toHaveBeenLastCalledWith("Second", undefined);
   });
+
+  it("captures an optional domain when captureDomain is set", async () => {
+    const onAdd = vi.fn();
+    render(<AddCustomItemForm placeholder="Add competitor" onAdd={onAdd} captureDomain />);
+    await userEvent.click(screen.getByRole("button", { name: /add custom/i }));
+    await userEvent.type(screen.getByPlaceholderText("Add competitor"), "Acme");
+    await userEvent.type(screen.getByPlaceholderText("Domain (optional)"), "acme.com");
+    await userEvent.click(screen.getByRole("button", { name: /^add$/i }));
+    expect(onAdd).toHaveBeenCalledWith("Acme", { domain: "acme.com" });
+  });
+
+  it("omits domain metadata when the domain is left blank", async () => {
+    const onAdd = vi.fn();
+    render(<AddCustomItemForm placeholder="Add competitor" onAdd={onAdd} captureDomain />);
+    await userEvent.click(screen.getByRole("button", { name: /add custom/i }));
+    await userEvent.type(screen.getByPlaceholderText("Add competitor"), "Acme");
+    await userEvent.click(screen.getByRole("button", { name: /^add$/i }));
+    expect(onAdd).toHaveBeenCalledWith("Acme", undefined);
+  });
 });

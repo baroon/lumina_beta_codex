@@ -86,6 +86,9 @@ export function SuggestionCard({
           )}
           <ConfidenceTag confidence={candidate.confidence} />
         </div>
+        {candidate.metadata?.domain && (
+          <p className="mt-0.5 truncate text-xs text-neutral-400">{candidate.metadata.domain}</p>
+        )}
         {candidate.description && (
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{candidate.description}</p>
         )}

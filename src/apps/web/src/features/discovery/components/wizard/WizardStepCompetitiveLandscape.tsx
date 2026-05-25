@@ -83,6 +83,7 @@ export function WizardStepCompetitiveLandscape({
         onRefresh={competitors.onRefresh}
         refreshesRemaining={competitors.refreshesRemaining}
         isRefreshing={competitors.isRefreshing}
+        captureDomain
       />
       <DiscoverySection
         icon={SECTION_ICONS.topics}
