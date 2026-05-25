@@ -5,6 +5,7 @@ using AIVisibility.Infrastructure.Discovery;
 using AIVisibility.Infrastructure.Prompts;
 using AIVisibility.Infrastructure.Scanning;
 using AIVisibility.Infrastructure.Providers.Anthropic;
+using AIVisibility.Infrastructure.Providers.Gemini;
 using AIVisibility.Infrastructure.Providers.OpenAi;
 using AIVisibility.Infrastructure.Storage;
 using Azure.Storage.Blobs;
@@ -29,8 +30,15 @@ public static class DependencyInjection
         services.AddSingleton(new BlobServiceClient(storageConnectionString));
         services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
 
-        // Anthropic (kept for reference, no longer used for competitors)
+        // Anthropic / Claude (Claude scan checks)
         services.Configure<AnthropicConfig>(configuration.GetSection(AnthropicConfig.SectionName));
+        services.AddHttpClient("Anthropic");
+        services.AddScoped<IClaudeService, ClaudeService>();
+
+        // Google Gemini (Gemini scan checks)
+        services.Configure<GeminiConfig>(configuration.GetSection(GeminiConfig.SectionName));
+        services.AddHttpClient("Gemini");
+        services.AddScoped<IGeminiService, GeminiService>();
 
         // OpenAI
         services.Configure<OpenAiConfig>(configuration.GetSection(OpenAiConfig.SectionName));
@@ -47,10 +55,13 @@ public static class DependencyInjection
         services.AddScoped<TemplatePromptGenerator>();
         services.AddScoped<IPromptGenerator, OpenAiPromptGenerator>();
 
-        // Scan execution (Phase 2): in-process queue + background runner + provider
+        // Scan execution (Phase 2): in-process queue + background runner + per-platform clients
         services.AddSingleton<IScanQueue, ScanQueue>();
-        services.AddScoped<IScanProvider, OpenAiScanProvider>();
         services.AddScoped<IScanExecutor, ScanExecutor>();
+        services.AddScoped<IPlatformClient, OpenAiPlatformClient>();
+        services.AddScoped<IPlatformClient, ClaudePlatformClient>();
+        services.AddScoped<IPlatformClient, GeminiPlatformClient>();
+        services.AddScoped<IScanProvider, ScanProviderRouter>();
         services.AddHostedService<ScanRunner>();
 
         // Crawling
