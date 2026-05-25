@@ -121,13 +121,16 @@ describe("PromptReviewScreen", () => {
   it("regenerates all prompts", async () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     await userEvent.click(screen.getByRole("button", { name: /regenerate all/i }));
-    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
+    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" }, expect.anything());
   });
 
   it("regenerates a single visibility check", async () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     await userEvent.click(screen.getByRole("button", { name: "Regenerate Discovery" }));
-    expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1", visibilityCheckId: "c1" });
+    expect(generateMutate).toHaveBeenCalledWith(
+      { trackerId: "tr1", visibilityCheckId: "c1" },
+      expect.anything(),
+    );
   });
 
   it("confirms prompts and shows the confirmed state", async () => {

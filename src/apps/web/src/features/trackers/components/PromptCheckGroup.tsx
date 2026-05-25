@@ -28,6 +28,7 @@ import {
   SelectItem,
 } from "@/components/atoms/select";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
+import { cn } from "@/lib/utils";
 import { TRACKERS_COPY } from "@/content/trackers";
 import type { PromptDto, PromptOption } from "@/types/api";
 
@@ -47,6 +48,7 @@ interface PromptCheckGroupProps {
   prompts: PromptDto[];
   topics: PromptOption[];
   canAdd: boolean;
+  isRegenerating?: boolean;
   onRegenerate: () => void;
   onRemove: (promptId: string) => void;
   onEdit: (promptId: string, text: string) => void;
@@ -58,6 +60,7 @@ export function PromptCheckGroup({
   prompts,
   topics,
   canAdd,
+  isRegenerating = false,
   onRegenerate,
   onRemove,
   onEdit,
@@ -107,6 +110,7 @@ export function PromptCheckGroup({
               variant="ghost"
               size="sm"
               className="gap-1 text-xs"
+              disabled={isRegenerating}
               aria-label={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
               title={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
               onClick={(e) => {
@@ -114,7 +118,7 @@ export function PromptCheckGroup({
                 onRegenerate();
               }}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className={cn("h-3.5 w-3.5", isRegenerating && "animate-spin")} />
             </Button>
           }
         />
