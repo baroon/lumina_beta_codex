@@ -8,6 +8,7 @@ import {
   X,
   Plus,
   AlertTriangle,
+  SignalHigh,
   Compass,
   ShoppingCart,
   Swords,
@@ -73,6 +74,7 @@ export function PromptCheckGroup({
   const [adding, setAdding] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [draftTopic, setDraftTopic] = useState("");
+  const [showReason, setShowReason] = useState(false);
   const Icon = CHECK_ICONS[title] ?? Eye;
   const description = CHECK_DESCRIPTIONS[title];
 
@@ -109,14 +111,26 @@ export function PromptCheckGroup({
           className="flex-1"
           meta={
             <div className="flex items-center gap-2">
-              {reviewReason && (
-                <span
-                  title={reviewReason}
-                  className="inline-flex items-center gap-1 rounded-full bg-semantic-warning-50 px-2 py-0.5 text-[11px] font-medium text-semantic-warning-700"
+              {reviewReason ? (
+                <button
+                  type="button"
+                  aria-expanded={showReason}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowReason((v) => !v);
+                  }}
+                  className="rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-semantic-warning-400"
                 >
-                  <AlertTriangle className="h-3 w-3" />
-                  {TRACKERS_COPY.review.needsReview}
-                </span>
+                  <Badge variant="warning" className="cursor-pointer gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {TRACKERS_COPY.review.needsReview}
+                  </Badge>
+                </button>
+              ) : (
+                <Badge variant="success" className="gap-1">
+                  <SignalHigh className="h-3 w-3" />
+                  {TRACKERS_COPY.review.confidenceHigh}
+                </Badge>
               )}
               <span className="text-sm tabular-nums text-neutral-500">{prompts.length}</span>
             </div>
@@ -139,6 +153,13 @@ export function PromptCheckGroup({
           }
         />
       </button>
+
+      {showReason && reviewReason && (
+        <div className="flex items-start gap-2 border-t border-semantic-warning-100 bg-semantic-warning-50 px-4 py-2 text-xs text-semantic-warning-700">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{reviewReason}</span>
+        </div>
+      )}
 
       {expanded && (
         <div className="space-y-2 px-4 pb-4">

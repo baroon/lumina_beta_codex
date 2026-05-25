@@ -100,8 +100,15 @@ describe("PromptCheckGroup", () => {
     expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
   });
 
-  it("shows a review badge when a reason is provided", () => {
+  it("shows a High badge when there is no review reason", () => {
+    setup();
+    expect(screen.getByText("High")).toBeInTheDocument();
+  });
+
+  it("shows a clickable Review badge that reveals the reason", async () => {
     setup(true, "No competitors configured to compare against.");
-    expect(screen.getByText("Review")).toBeInTheDocument();
+    expect(screen.queryByText(/No competitors configured/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /review/i }));
+    expect(screen.getByText(/No competitors configured to compare against/)).toBeInTheDocument();
   });
 });
