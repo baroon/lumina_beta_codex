@@ -18,12 +18,12 @@ public class AIPlatformConfiguration : IEntityTypeConfiguration<AIPlatform>
         builder.HasIndex(p => p.Code).IsUnique();
 
         // v1 platforms (ADR-002 §11). Fixed GUIDs so the seed is stable across environments.
-        // Default-selected: ChatGPT, Gemini, Claude. Others are opt-in.
+        // Default-selected: ChatGPT only (the others need API keys before they return answers).
         builder.HasData(
             Platform("a0000000-0000-0000-0000-000000000001", "ChatGpt", "ChatGPT", 1, true),
             Platform("a0000000-0000-0000-0000-000000000002", "ChatGptSearch", "ChatGPT Search", 2, false),
-            Platform("a0000000-0000-0000-0000-000000000003", "Gemini", "Gemini", 3, true),
-            Platform("a0000000-0000-0000-0000-000000000004", "Claude", "Claude", 4, true),
+            Platform("a0000000-0000-0000-0000-000000000003", "Gemini", "Gemini", 3, false),
+            Platform("a0000000-0000-0000-0000-000000000004", "Claude", "Claude", 4, false),
             Platform("a0000000-0000-0000-0000-000000000005", "Grok", "Grok", 5, false),
             Platform("a0000000-0000-0000-0000-000000000006", "Perplexity", "Perplexity", 6, false),
             Platform("a0000000-0000-0000-0000-000000000007", "Copilot", "Copilot", 7, false)
