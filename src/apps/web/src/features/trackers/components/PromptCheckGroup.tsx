@@ -58,7 +58,7 @@ export function PromptCheckGroup({
           ? TRACKERS_COPY.review.collapse
           : TRACKERS_COPY.review.expand
         ).replace("{check}", title)}
-        className="flex w-full items-center gap-3 p-3 text-left"
+        className="flex w-full items-center gap-3 p-4 text-left"
       >
         {expanded ? (
           <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
@@ -89,7 +89,7 @@ export function PromptCheckGroup({
       </button>
 
       {expanded && (
-        <ul className="space-y-1.5 border-t border-neutral-100 p-3">
+        <ul className="space-y-2 border-t border-neutral-100 p-4">
           {prompts.map((prompt) => {
             const isAi = prompt.source !== "UserAdded";
             const sourceLabel = isAi
@@ -98,7 +98,7 @@ export function PromptCheckGroup({
             return (
               <li
                 key={prompt.id}
-                className="group flex items-start gap-2 rounded-lg border border-neutral-200 p-2 transition-colors hover:border-neutral-300"
+                className="group flex items-start gap-3 rounded-lg border border-neutral-200 p-3 transition-all hover:border-neutral-300 hover:shadow-sm"
               >
                 <span
                   className="mt-1.5 shrink-0 text-neutral-400"
