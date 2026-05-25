@@ -144,33 +144,44 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
             <div className="grid gap-2 sm:grid-cols-2">
               {data.platforms.map((p) => {
                 const isSelected = selected.has(p.id);
+                const disabled = !p.configured;
                 return (
                   <div
                     key={p.id}
-                    onClick={() => toggle(p.id)}
+                    onClick={disabled ? undefined : () => toggle(p.id)}
                     className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
-                      isSelected
-                        ? "border-primary-500 bg-primary-50"
-                        : "border-neutral-200 hover:border-neutral-300",
+                      "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                      disabled
+                        ? "cursor-not-allowed border-neutral-200 bg-neutral-50 opacity-60"
+                        : isSelected
+                          ? "cursor-pointer border-primary-500 bg-primary-50"
+                          : "cursor-pointer border-neutral-200 hover:border-neutral-300",
                     )}
                   >
                     <Checkbox
-                      checked={isSelected}
+                      checked={isSelected && !disabled}
+                      disabled={disabled}
                       onCheckedChange={() => toggle(p.id)}
                       onClick={(e) => e.stopPropagation()}
                     />
                     <span
                       className={cn(
                         "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                        isSelected
-                          ? "bg-primary-100 text-primary-700"
-                          : "bg-neutral-100 text-neutral-500",
+                        disabled
+                          ? "bg-neutral-100 text-neutral-300"
+                          : isSelected
+                            ? "bg-primary-100 text-primary-700"
+                            : "bg-neutral-100 text-neutral-500",
                       )}
                     >
                       <Bot className="h-4 w-4" />
                     </span>
-                    <span className="text-sm font-medium text-neutral-900">{p.name}</span>
+                    <span className="flex-1 text-sm font-medium text-neutral-900">{p.name}</span>
+                    {disabled && (
+                      <span className="text-[11px] font-medium text-neutral-400">
+                        {TRACKERS_COPY.schedule.platformNeedsKey}
+                      </span>
+                    )}
                   </div>
                 );
               })}

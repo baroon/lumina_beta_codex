@@ -15,4 +15,4 @@ public record TrackerScheduleSetupDto(
     List<PlatformOptionDto> Platforms,
     List<Guid> SelectedPlatformIds);
 
-public record PlatformOptionDto(Guid Id, string Code, string Name);
+public record PlatformOptionDto(Guid Id, string Code, string Name, bool Configured);

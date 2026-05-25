@@ -12,6 +12,8 @@ public class PerplexityPlatformClient : IPlatformClient
         _perplexity = perplexity;
     }
 
+    public bool IsConfigured => _perplexity.IsConfigured;
+
     public bool Handles(string platformCode) =>
         string.Equals(platformCode, "Perplexity", StringComparison.OrdinalIgnoreCase);
 

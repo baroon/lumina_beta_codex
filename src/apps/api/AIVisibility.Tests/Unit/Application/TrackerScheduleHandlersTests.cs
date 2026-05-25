@@ -1,4 +1,5 @@
 using AIVisibility.Application.Commands.Trackers;
+using AIVisibility.Application.Interfaces;
 using AIVisibility.Application.Queries.Trackers;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
@@ -10,6 +11,15 @@ namespace AIVisibility.Tests.Unit.Application;
 
 public class TrackerScheduleHandlersTests
 {
+    private sealed class StubScanProvider : IScanProvider
+    {
+        public Task<ScanAnswer> GetAnswerAsync(
+            string platformCode, string prompt, CancellationToken ct = default) =>
+            Task.FromResult(new ScanAnswer(true, string.Empty, null));
+
+        public bool IsConfigured(string platformCode) => true;
+    }
+
     private static AppDbContext NewContext() =>
         new(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -67,7 +77,7 @@ public class TrackerScheduleHandlersTests
         using var ctx = NewContext();
         var (tracker, p1, _) = Seed(ctx);
 
-        var result = await new GetTrackerScheduleSetupQueryHandler(ctx).Handle(
+        var result = await new GetTrackerScheduleSetupQueryHandler(ctx, new StubScanProvider()).Handle(
             new GetTrackerScheduleSetupQuery(tracker.Id),
             CancellationToken.None);
 
@@ -82,7 +92,7 @@ public class TrackerScheduleHandlersTests
     public async Task GetSetup_ReturnsNull_WhenTrackerMissing()
     {
         using var ctx = NewContext();
-        var result = await new GetTrackerScheduleSetupQueryHandler(ctx).Handle(
+        var result = await new GetTrackerScheduleSetupQueryHandler(ctx, new StubScanProvider()).Handle(
             new GetTrackerScheduleSetupQuery(Guid.NewGuid()),
             CancellationToken.None);
         result.Should().BeNull();

@@ -29,4 +29,7 @@ public class ScanProviderRouter : IScanProvider
                 $"No provider configured for platform '{platformCode}'."))
             : client.GetAnswerAsync(prompt, cancellationToken);
     }
+
+    public bool IsConfigured(string platformCode) =>
+        _clients.FirstOrDefault(c => c.Handles(platformCode))?.IsConfigured ?? false;
 }

@@ -12,4 +12,6 @@ public interface ICopilotService
         int maxTokens = 1024,
         double temperature = 0.7,
         CancellationToken cancellationToken = default);
+
+    bool IsConfigured { get; }
 }

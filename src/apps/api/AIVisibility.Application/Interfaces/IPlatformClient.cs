@@ -7,4 +7,7 @@ public interface IPlatformClient
     bool Handles(string platformCode);
 
     Task<ScanAnswer> GetAnswerAsync(string prompt, CancellationToken cancellationToken = default);
+
+    /// <summary>Whether this client has an API key (and endpoint) configured.</summary>
+    bool IsConfigured { get; }
 }

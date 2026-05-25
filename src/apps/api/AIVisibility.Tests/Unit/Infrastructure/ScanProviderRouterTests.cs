@@ -37,4 +37,16 @@ public class ScanProviderRouterTests
         result.Success.Should().BeFalse();
         result.Error.Should().Contain("Grok");
     }
+
+    [Fact]
+    public void IsConfigured_ReflectsTheHandlingClient()
+    {
+        var gemini = new Mock<IPlatformClient>();
+        gemini.Setup(c => c.Handles("Gemini")).Returns(true);
+        gemini.Setup(c => c.IsConfigured).Returns(true);
+        var router = new ScanProviderRouter(new[] { gemini.Object });
+
+        router.IsConfigured("Gemini").Should().BeTrue();
+        router.IsConfigured("Grok").Should().BeFalse(); // no client handles it
+    }
 }

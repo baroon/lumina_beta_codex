@@ -12,6 +12,8 @@ public class CopilotPlatformClient : IPlatformClient
         _copilot = copilot;
     }
 
+    public bool IsConfigured => _copilot.IsConfigured;
+
     public bool Handles(string platformCode) =>
         string.Equals(platformCode, "Copilot", StringComparison.OrdinalIgnoreCase);
 

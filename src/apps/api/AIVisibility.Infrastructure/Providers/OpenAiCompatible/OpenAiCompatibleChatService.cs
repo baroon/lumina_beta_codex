@@ -26,6 +26,8 @@ public abstract class OpenAiCompatibleChatService
     protected abstract string BaseUrl { get; }
     protected abstract string Model { get; }
 
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseUrl);
+
     public async Task<string> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,

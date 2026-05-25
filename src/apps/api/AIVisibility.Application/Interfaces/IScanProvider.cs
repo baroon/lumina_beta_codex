@@ -7,6 +7,9 @@ public interface IScanProvider
         string platformCode,
         string prompt,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Whether a client with an API key is configured for this platform.</summary>
+    bool IsConfigured(string platformCode);
 }
 
 public record ScanAnswer(bool Success, string Text, string? Error, string? RawResponse = null);

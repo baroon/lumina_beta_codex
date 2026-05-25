@@ -157,4 +157,16 @@ public class PlatformClientTests
         SetupCopilot(copilot, string.Empty);
         (await new CopilotPlatformClient(copilot.Object).GetAnswerAsync("q")).Success.Should().BeFalse();
     }
+
+    [Fact]
+    public void IsConfigured_DelegatesToService()
+    {
+        var openAi = new Mock<IOpenAiService>();
+        openAi.Setup(s => s.IsConfigured).Returns(true);
+        new OpenAiPlatformClient(openAi.Object).IsConfigured.Should().BeTrue();
+
+        var claude = new Mock<IClaudeService>();
+        claude.Setup(s => s.IsConfigured).Returns(false);
+        new ClaudePlatformClient(claude.Object).IsConfigured.Should().BeFalse();
+    }
 }

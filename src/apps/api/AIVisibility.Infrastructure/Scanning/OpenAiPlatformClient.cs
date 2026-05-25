@@ -15,6 +15,8 @@ public class OpenAiPlatformClient : IPlatformClient
         _openAi = openAi;
     }
 
+    public bool IsConfigured => _openAi.IsConfigured;
+
     public bool Handles(string platformCode) => Codes.Contains(platformCode);
 
     public async Task<ScanAnswer> GetAnswerAsync(string prompt, CancellationToken cancellationToken = default)

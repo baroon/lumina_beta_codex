@@ -221,6 +221,7 @@ export interface PlatformOption {
   id: string;
   code: string;
   name: string;
+  configured: boolean;
 }
 
 export interface TrackerScheduleSetup {

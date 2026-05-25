@@ -12,6 +12,8 @@ public class ClaudePlatformClient : IPlatformClient
         _claude = claude;
     }
 
+    public bool IsConfigured => _claude.IsConfigured;
+
     public bool Handles(string platformCode) =>
         string.Equals(platformCode, "Claude", StringComparison.OrdinalIgnoreCase);
 

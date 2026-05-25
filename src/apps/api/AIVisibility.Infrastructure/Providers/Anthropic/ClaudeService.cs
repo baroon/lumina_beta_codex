@@ -22,6 +22,8 @@ public class ClaudeService : IClaudeService
         _logger = logger;
     }
 
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_config.ApiKey);
+
     public async Task<string> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,

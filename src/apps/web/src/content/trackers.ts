@@ -70,6 +70,7 @@ export const TRACKERS_COPY = {
     platformsLabel: "AI platforms",
     cadenceLabel: "Cadence",
     timezoneLabel: "Time zone",
+    platformNeedsKey: "Needs API key",
     cadence: {
       OnDemand: "On demand",
       Daily: "Daily",

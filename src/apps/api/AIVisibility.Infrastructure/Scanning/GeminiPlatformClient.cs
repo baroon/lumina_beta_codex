@@ -12,6 +12,8 @@ public class GeminiPlatformClient : IPlatformClient
         _gemini = gemini;
     }
 
+    public bool IsConfigured => _gemini.IsConfigured;
+
     public bool Handles(string platformCode) =>
         string.Equals(platformCode, "Gemini", StringComparison.OrdinalIgnoreCase);
 

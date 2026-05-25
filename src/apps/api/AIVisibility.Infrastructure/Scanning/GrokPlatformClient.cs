@@ -12,6 +12,8 @@ public class GrokPlatformClient : IPlatformClient
         _grok = grok;
     }
 
+    public bool IsConfigured => _grok.IsConfigured;
+
     public bool Handles(string platformCode) =>
         string.Equals(platformCode, "Grok", StringComparison.OrdinalIgnoreCase);
 
