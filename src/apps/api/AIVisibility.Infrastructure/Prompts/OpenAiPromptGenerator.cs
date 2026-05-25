@@ -19,17 +19,21 @@ public class OpenAiPromptGenerator : IPromptGenerator
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private const string SystemPrompt = """
-        You write natural-language prompts that real people type into an AI assistant (ChatGPT,
-        Gemini, etc.) when researching a product category. They are used to test whether a specific
-        brand surfaces in AI answers.
+        You write realistic prompts that real people type into an AI assistant (ChatGPT, Gemini,
+        Perplexity) when researching a product category. They test whether a specific brand
+        surfaces in AI answers.
 
-        Rules:
-        - Each prompt must read like a genuine user question, not a fill-in-the-blank template.
-        - Stay within the given Visibility Check's intent, shown via example phrasings.
-        - Use the brand's category, market, topics, and competitors where natural.
-        - Do NOT mention the brand name unless the example phrasings do (e.g. comparison/sentiment).
-        - Never repeat or lightly paraphrase anything in the EXCLUDE list.
-        - Make every prompt distinct from the others.
+        Make them authentic and varied:
+        - Cover different buyer personas and scenarios — first-time buyer, switching vendors,
+          technical evaluator, budget-conscious, enterprise vs. small team, a specific use case.
+        - Vary the structure and phrasing — open questions, "best X for Y", "recommend...",
+          comparisons, "is X worth it?". Never reuse the same skeleton twice.
+        - Ground every prompt in THIS brand's niche: weave in its specific topics, products,
+          audiences, market, and positioning so the prompts probe where this brand should appear,
+          not generic category trivia.
+        - Stay within the given Visibility Check's intent.
+        - Do NOT mention the brand name unless the check is about comparison or sentiment.
+        - Never repeat or paraphrase anything in the EXCLUDE list.
 
         Return ONLY a JSON array of objects, no prose:
         [{"prompt": "the question text", "topic": "one of the provided topics, or null"}]
@@ -63,6 +67,8 @@ public class OpenAiPromptGenerator : IPromptGenerator
                 ctx,
                 g.Key,
                 g.First().PromptTemplateId,
+                g.First().CheckName,
+                g.First().CheckDescription,
                 g.Select(t => t.TemplateText).ToList(),
                 perCheck,
                 cancellationToken));
@@ -102,14 +108,16 @@ public class OpenAiPromptGenerator : IPromptGenerator
         PromptGenerationContext ctx,
         Guid checkId,
         Guid templateId,
+        string checkName,
+        string checkDescription,
         List<string> examples,
         int count,
         CancellationToken ct)
     {
         try
         {
-            var user = BuildUserPrompt(ctx, examples, count);
-            var response = await _openAi.ChatCompletionAsync(SystemPrompt, user, 800, 0.7, ct);
+            var user = BuildUserPrompt(ctx, checkName, checkDescription, examples, count);
+            var response = await _openAi.ChatCompletionAsync(SystemPrompt, user, 1000, 0.9, ct);
             if (string.IsNullOrWhiteSpace(response)) return new List<RawPrompt>();
 
             var json = ExtractJson(response);
@@ -134,19 +142,38 @@ public class OpenAiPromptGenerator : IPromptGenerator
             ? null
             : topic.Trim();
 
-    private static string BuildUserPrompt(PromptGenerationContext ctx, List<string> examples, int count)
+    private static string BuildUserPrompt(
+        PromptGenerationContext ctx,
+        string checkName,
+        string checkDescription,
+        List<string> examples,
+        int count)
     {
-        var parts = new List<string> { $"Brand: \"{ctx.BrandName}\"" };
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(checkName))
+            parts.Add(
+                string.IsNullOrWhiteSpace(checkDescription)
+                    ? $"Visibility Check: {checkName}"
+                    : $"Visibility Check: {checkName} — {checkDescription}");
+        parts.Add($"Brand: \"{ctx.BrandName}\"");
         if (!string.IsNullOrWhiteSpace(ctx.Category)) parts.Add($"Category: {ctx.Category}");
+        if (!string.IsNullOrWhiteSpace(ctx.Industry)) parts.Add($"Industry: {ctx.Industry}");
+        if (!string.IsNullOrWhiteSpace(ctx.Positioning)) parts.Add($"Positioning: {ctx.Positioning}");
         if (!string.IsNullOrWhiteSpace(ctx.MarketName)) parts.Add($"Market: {ctx.MarketName}");
         if (ctx.Topics.Count > 0)
             parts.Add($"Topics: {string.Join(", ", ctx.Topics.Select(t => t.Name))}");
+        if (ctx.Products is { Count: > 0 })
+            parts.Add($"Products/services: {string.Join(", ", ctx.Products)}");
+        if (ctx.Audiences is { Count: > 0 })
+            parts.Add($"Audiences: {string.Join(", ", ctx.Audiences)}");
         if (ctx.Competitors.Count > 0)
             parts.Add($"Competitors: {string.Join(", ", ctx.Competitors.Select(c => c.Name))}");
-        parts.Add("Visibility Check style — example phrasings:\n- " + string.Join("\n- ", examples));
+        parts.Add("Example phrasing for this check:\n- " + string.Join("\n- ", examples));
         if (ctx.Exclude is { Count: > 0 })
             parts.Add("EXCLUDE (do not repeat or paraphrase): " + string.Join(" | ", ctx.Exclude));
-        parts.Add($"\nWrite {count} distinct prompts in this style. Return the JSON array only.");
+        parts.Add(
+            $"\nWrite {count} DISTINCT prompts for this check — vary persona, scenario, and phrasing. "
+            + "Return the JSON array only.");
         return string.Join("\n", parts);
     }
 

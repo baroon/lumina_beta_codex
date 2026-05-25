@@ -31,11 +31,24 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Where(x => x.TrackerConfigurationId == tracker.Id)
             .Select(x => x.VisibilityCheckId)
             .ToListAsync(cancellationToken);
-        var templates = await _db.PromptTemplates
+        var checkById = (await _db.VisibilityChecks
+            .Where(v => checkIds.Contains(v.Id))
+            .Select(v => new { v.Id, v.Name, v.Description })
+            .ToListAsync(cancellationToken))
+            .ToDictionary(c => c.Id);
+        var rawTemplates = await _db.PromptTemplates
             .Where(t => checkIds.Contains(t.VisibilityCheckId))
             .OrderBy(t => t.DisplayOrder)
-            .Select(t => new PromptTemplateInput(t.Id, t.VisibilityCheckId, t.TemplateText))
+            .Select(t => new { t.Id, t.VisibilityCheckId, t.TemplateText })
             .ToListAsync(cancellationToken);
+        var templates = rawTemplates
+            .Select(t => new PromptTemplateInput(
+                t.Id,
+                t.VisibilityCheckId,
+                t.TemplateText,
+                checkById.TryGetValue(t.VisibilityCheckId, out var c) ? c.Name : string.Empty,
+                checkById.TryGetValue(t.VisibilityCheckId, out var d) ? d.Description ?? string.Empty : string.Empty))
+            .ToList();
 
         var topicIds = await _db.TrackerTopics
             .Where(x => x.TrackerConfigurationId == tracker.Id)
@@ -59,6 +72,24 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Where(m => m.BrandId == tracker.BrandId)
             .Select(m => m.Name)
             .FirstOrDefaultAsync(cancellationToken);
+
+        var productIds = await _db.TrackerProducts
+            .Where(x => x.TrackerConfigurationId == tracker.Id)
+            .Select(x => x.ProductId)
+            .ToListAsync(cancellationToken);
+        var products = await _db.Products
+            .Where(p => productIds.Contains(p.Id))
+            .Select(p => p.Name)
+            .ToListAsync(cancellationToken);
+
+        var audienceIds = await _db.TrackerAudiences
+            .Where(x => x.TrackerConfigurationId == tracker.Id)
+            .Select(x => x.AudienceId)
+            .ToListAsync(cancellationToken);
+        var audiences = await _db.Audiences
+            .Where(a => audienceIds.Contains(a.Id))
+            .Select(a => a.Name)
+            .ToListAsync(cancellationToken);
 
         // Optional filters: regenerate only a slice (by Visibility Check and/or Topic).
         if (request.VisibilityCheckId.HasValue)
@@ -105,7 +136,11 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             topics,
             competitors,
             budget,
-            exclude);
+            exclude,
+            brand.BrandProfile?.Industry,
+            brand.BrandProfile?.Positioning,
+            products,
+            audiences);
 
         var generated = await _generator.GenerateAsync(context, cancellationToken);
 

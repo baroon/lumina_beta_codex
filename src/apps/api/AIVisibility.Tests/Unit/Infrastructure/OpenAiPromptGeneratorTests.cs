@@ -94,4 +94,49 @@ public class OpenAiPromptGeneratorTests
         result.Should().ContainSingle();
         result[0].Text.Should().Be("What are the best CRM in US?");
     }
+
+    [Fact]
+    public async Task GenerateAsync_PassesBrandContextAndCheckIntentToTheLlm()
+    {
+        string? captured = null;
+        _openAi
+            .Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<string, string, int, double, CancellationToken>((_, user, _, _, _) => captured = user)
+            .ReturnsAsync("[{\"prompt\":\"x\"}]");
+
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[]
+            {
+                new PromptTemplateInput(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    "Best {category}?",
+                    "Buying Intent",
+                    "Purchase-ready prompts"),
+            },
+            new[] { new CoverageRef(Guid.NewGuid(), "Pricing") },
+            Array.Empty<CoverageRef>(),
+            10,
+            Exclude: null,
+            Industry: "Software",
+            Positioning: "Affordable CRM for small teams",
+            Products: new[] { "Lead Tracker" },
+            Audiences: new[] { "Small businesses" });
+
+        await CreateGenerator().GenerateAsync(ctx);
+
+        captured.Should().NotBeNull();
+        captured!.Should().Contain("Buying Intent");
+        captured.Should().Contain("Lead Tracker");
+        captured.Should().Contain("Affordable CRM for small teams");
+        captured.Should().Contain("Small businesses");
+    }
 }

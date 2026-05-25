@@ -11,7 +11,12 @@ public interface IPromptGenerator
         CancellationToken cancellationToken = default);
 }
 
-public record PromptTemplateInput(Guid PromptTemplateId, Guid VisibilityCheckId, string TemplateText);
+public record PromptTemplateInput(
+    Guid PromptTemplateId,
+    Guid VisibilityCheckId,
+    string TemplateText,
+    string CheckName = "",
+    string CheckDescription = "");
 
 public record CoverageRef(Guid Id, string Name);
 
@@ -24,7 +29,12 @@ public record PromptGenerationContext(
     IReadOnlyList<CoverageRef> Competitors,
     int PromptAllocation,
     // Prompt texts to avoid reproducing (removed prompts + already-kept prompts).
-    IReadOnlyCollection<string>? Exclude = null);
+    IReadOnlyCollection<string>? Exclude = null,
+    // Extra brand context for niche-specific LLM generation (ignored by the template fallback).
+    string? Industry = null,
+    string? Positioning = null,
+    IReadOnlyList<string>? Products = null,
+    IReadOnlyList<string>? Audiences = null);
 
 public record GeneratedPrompt(
     string Text,
