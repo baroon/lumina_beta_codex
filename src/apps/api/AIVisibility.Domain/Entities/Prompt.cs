@@ -17,7 +17,6 @@ public class Prompt
     public Guid? PromptTemplateId { get; set; }
     public PromptStatus Status { get; set; }
     public PromptSource Source { get; set; }
-    public Guid? ReplacesPromptId { get; set; }
     public DateTime? ArchivedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -18,7 +18,6 @@ public class PromptConfiguration : IEntityTypeConfiguration<Prompt>
         builder.Property(p => p.PromptTemplateId).HasColumnName("prompt_template_id");
         builder.Property(p => p.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
         builder.Property(p => p.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
-        builder.Property(p => p.ReplacesPromptId).HasColumnName("replaces_prompt_id");
         builder.Property(p => p.ArchivedAt).HasColumnName("archived_at");
         builder.Property(p => p.CreatedAt).HasColumnName("created_at");
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
