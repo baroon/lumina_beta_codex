@@ -40,12 +40,14 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
     return <PromptReviewScreen trackerId={createdTrackerId} />;
   }
 
+  // Mirror the discovery onboarding order: Products, Audiences, Markets, Topics, Competitors,
+  // then the (static) Visibility Checks last.
   const summary: ReadonlyArray<readonly [string, number, LucideIcon]> = [
-    [TRACKERS_COPY.ready.summary.topics, previewData.topicCount, MessageSquare],
-    [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount, Swords],
     [TRACKERS_COPY.ready.summary.products, previewData.productCount, Package],
     [TRACKERS_COPY.ready.summary.audiences, previewData.audienceCount, Users],
     [TRACKERS_COPY.ready.summary.markets, previewData.marketCount, Globe],
+    [TRACKERS_COPY.ready.summary.topics, previewData.topicCount, MessageSquare],
+    [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount, Swords],
     [TRACKERS_COPY.ready.summary.visibilityChecks, previewData.visibilityCheckCount, Eye],
   ];
 
