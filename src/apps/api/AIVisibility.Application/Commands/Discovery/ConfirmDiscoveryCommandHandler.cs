@@ -111,7 +111,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 BrandId = brand.Id,
                 DiscoveryRunId = runId,
                 Name = t.Name,
-                Description = t.Description,
                 Confidence = t.Confidence,
                 Source = ParseSource(t.Source),
             });

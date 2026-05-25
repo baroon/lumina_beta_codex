@@ -46,7 +46,7 @@ public class ResuggestCommandHandler : IRequestHandler<ResuggestCommand, Resugge
             )).ToList(),
             Topics: result.Topics.Select(t => new ResuggestCandidateDto(
                 Name: t.Name,
-                Description: t.Description,
+                Description: null,
                 Confidence: t.Confidence,
                 Source: t.Source.ToString(),
                 Metadata: new Dictionary<string, object?>()

@@ -119,7 +119,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 new Dictionary<string, object?>())).ToList(),
             extraction.Markets.Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source,
                 new Dictionary<string, object?> { ["countryCode"] = m.CountryCode })).ToList(),
-            extraction.Topics.Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source,
+            extraction.Topics.Select(t => ToCandidate(t.Id, t.Name, null, t.Confidence, t.Source,
                 new Dictionary<string, object?>())).ToList(),
             new List<CandidateDto>(),
             extraction.TrustSignals.Select(ts => ToCandidate(ts.Id, ts.Name, ts.Description, ts.Confidence, ts.Source,
