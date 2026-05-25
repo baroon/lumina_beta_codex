@@ -113,7 +113,7 @@ public class CreateTrackerCommandHandlerTests
             .SingleAsync();
 
         tracker.Status.Should().Be(TrackerStatus.Draft);
-        tracker.Cadence.Should().Be(Cadence.Weekly);
+        tracker.Cadence.Should().Be(Cadence.Daily);
         tracker.PromptAllocation.Should().Be(30);
         tracker.IsNameUserEdited.Should().BeFalse();
         tracker.Name.Should().Be("United States SaaS Visibility Tracker");

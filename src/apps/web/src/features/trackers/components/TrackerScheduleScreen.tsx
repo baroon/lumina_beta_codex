@@ -26,7 +26,7 @@ export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps)
   const setup = useTrackerScheduleSetup(trackerId);
   const configure = useConfigureTrackerSchedule(trackerId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cadence, setCadence] = useState("Weekly");
+  const [cadence, setCadence] = useState("Daily");
   const [activated, setActivated] = useState<{ checks: number; cadence: string } | null>(null);
 
   const data = setup.data;
