@@ -66,24 +66,37 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
         if (request.TopicId.HasValue)
             topics = topics.Where(t => t.Id == request.TopicId.Value).ToList();
 
-        // Replace only the matching Draft prompts; keep the rest and budget against the allocation.
-        var existing = await _db.Prompts
+        // Load every prompt for the tracker (incl. archived) so we can keep user-added ones,
+        // replace only matching generated drafts, and exclude removed prompts from regeneration.
+        var all = await _db.Prompts
             .Include(p => p.Topics)
             .Include(p => p.Competitors)
             .Include(p => p.Products)
             .Include(p => p.Audiences)
             .Include(p => p.Markets)
-            .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status != PromptStatus.Archived)
+            .Where(p => p.TrackerConfigurationId == tracker.Id)
             .ToListAsync(cancellationToken);
-        var matching = existing
+
+        // Replace only generated Draft prompts in the targeted slice; user-added + active prompts stay.
+        var replaced = all
             .Where(p =>
                 p.Status == PromptStatus.Draft
+                && p.Source == PromptSource.Generated
                 && (!request.VisibilityCheckId.HasValue || p.VisibilityCheckId == request.VisibilityCheckId.Value)
                 && (!request.TopicId.HasValue || p.PrimaryTopicId == request.TopicId.Value))
             .ToList();
-        _db.Prompts.RemoveRange(matching);
+        _db.Prompts.RemoveRange(replaced);
 
-        var budget = Math.Max(0, tracker.PromptAllocation - (existing.Count - matching.Count));
+        var kept = all.Where(p => p.Status != PromptStatus.Archived && !replaced.Contains(p)).ToList();
+
+        // Don't resurface removed (archived) prompts, and don't duplicate what's kept.
+        var exclude = all
+            .Where(p => p.Status == PromptStatus.Archived)
+            .Select(p => p.PromptText)
+            .Concat(kept.Select(p => p.PromptText))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var budget = Math.Max(0, tracker.PromptAllocation - kept.Count);
         var context = new PromptGenerationContext(
             brand.Name,
             brand.BrandProfile?.Category,
@@ -91,7 +104,8 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             templates,
             topics,
             competitors,
-            budget);
+            budget,
+            exclude);
 
         var generated = _generator.Generate(context);
 

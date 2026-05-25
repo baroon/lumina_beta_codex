@@ -207,4 +207,58 @@ public class GeneratePromptsCommandHandlerTests
             .Should().BeEquivalentTo(keptIds);
         after.Should().Contain(p => p.VisibilityCheckId == discovery.Id);
     }
+
+    [Fact]
+    public async Task Handle_KeepsUserAddedPrompts_OnRegenerate()
+    {
+        using var ctx = NewContext();
+        var tracker = await SeedTrackerWithCoverage(ctx);
+        var handler = new GeneratePromptsCommandHandler(ctx, new TemplatePromptGenerator());
+        await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
+
+        var check = await ctx.VisibilityChecks.FirstAsync(c => c.Code == "Discovery");
+        ctx.Prompts.Add(new Prompt
+        {
+            Id = Guid.NewGuid(),
+            TrackerConfigurationId = tracker.Id,
+            PromptText = "My hand-written prompt",
+            VisibilityCheckId = check.Id,
+            Status = PromptStatus.Draft,
+            Source = PromptSource.UserAdded,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+
+        await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
+
+        var prompts = await ctx.Prompts
+            .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status != PromptStatus.Archived)
+            .ToListAsync();
+        prompts.Should().ContainSingle(p =>
+            p.PromptText == "My hand-written prompt" && p.Source == PromptSource.UserAdded);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotResurfaceRemovedPrompts_OnRegenerate()
+    {
+        using var ctx = NewContext();
+        var tracker = await SeedTrackerWithCoverage(ctx);
+        var handler = new GeneratePromptsCommandHandler(ctx, new TemplatePromptGenerator());
+        await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
+
+        var toRemove = await ctx.Prompts.FirstAsync(p =>
+            p.TrackerConfigurationId == tracker.Id && p.Status == PromptStatus.Draft);
+        var removedText = toRemove.PromptText;
+        await new RemovePromptCommandHandler(ctx).Handle(
+            new RemovePromptCommand(tracker.Id, toRemove.Id),
+            CancellationToken.None);
+
+        await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
+
+        var active = await ctx.Prompts
+            .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status != PromptStatus.Archived)
+            .ToListAsync();
+        active.Should().NotContain(p => p.PromptText == removedText);
+    }
 }

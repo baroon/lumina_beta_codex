@@ -97,4 +97,27 @@ public class TemplatePromptGeneratorTests
         result[0].Text.Should().Be("Tell me about CRM.");
         result[0].PrimaryTopicId.Should().BeNull();
     }
+
+    [Fact]
+    public void Generate_SkipsExcludedTexts()
+    {
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[]
+            {
+                Template("What are the best {category} in {market}?"),
+                Template("Tell me about {topic}."),
+            },
+            new[] { new CoverageRef(Guid.NewGuid(), "Pricing") },
+            Array.Empty<CoverageRef>(),
+            10,
+            new[] { "What are the best CRM in US?" });
+
+        var result = _generator.Generate(ctx);
+
+        result.Should().NotContain(p => p.Text == "What are the best CRM in US?");
+        result.Should().Contain(p => p.Text == "Tell me about Pricing.");
+    }
 }

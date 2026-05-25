@@ -20,7 +20,9 @@ public record PromptGenerationContext(
     IReadOnlyList<PromptTemplateInput> Templates,
     IReadOnlyList<CoverageRef> Topics,
     IReadOnlyList<CoverageRef> Competitors,
-    int PromptAllocation);
+    int PromptAllocation,
+    // Prompt texts to avoid reproducing (removed prompts + already-kept prompts).
+    IReadOnlyCollection<string>? Exclude = null);
 
 public record GeneratedPrompt(
     string Text,

@@ -18,6 +18,10 @@ public class TemplatePromptGenerator : IPromptGenerator
         var market = string.IsNullOrWhiteSpace(ctx.MarketName) ? "your market" : ctx.MarketName!;
         // Fall back to a single synthetic "topic" (the category) so category-only prompts still generate.
         var topics = ctx.Topics.Count > 0 ? ctx.Topics : new List<CoverageRef> { new(Guid.Empty, category) };
+        // Skip prompts the user already removed (or that duplicate kept prompts).
+        var exclude = ctx.Exclude is { Count: > 0 }
+            ? new HashSet<string>(ctx.Exclude, StringComparer.OrdinalIgnoreCase)
+            : null;
         var competitorIndex = 0;
 
         foreach (var topic in topics)
@@ -40,6 +44,8 @@ public class TemplatePromptGenerator : IPromptGenerator
                     .Replace("{topic}", topic.Name)
                     .Replace("{competitor}", competitor?.Name ?? string.Empty)
                     .Trim();
+
+                if (exclude != null && exclude.Contains(text)) continue;
 
                 Guid? primaryTopicId = topic.Id == Guid.Empty ? null : topic.Id;
                 results.Add(new GeneratedPrompt(
