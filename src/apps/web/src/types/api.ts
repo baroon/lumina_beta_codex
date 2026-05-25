@@ -187,6 +187,7 @@ export interface PromptDto {
   visibilityCheckName: string;
   primaryTopicId: string | null;
   primaryTopicName: string | null;
+  reviewReason: string | null;
 }
 
 export interface PromptOption {

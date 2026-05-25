@@ -160,6 +160,7 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
               topics={data.topics}
               canAdd={!isFull}
               isRegenerating={regenScope === items[0].visibilityCheckId}
+              reviewReason={items[0].reviewReason ?? undefined}
               onRegenerate={() =>
                 regenerate(items[0].visibilityCheckId, {
                   trackerId,

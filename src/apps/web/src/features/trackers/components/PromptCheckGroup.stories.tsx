@@ -23,6 +23,7 @@ const meta: Meta<typeof PromptCheckGroup> = {
         visibilityCheckName: "Discovery",
         primaryTopicId: "t1",
         primaryTopicName: "Pricing",
+        reviewReason: null,
       },
       {
         id: "p2",
@@ -33,6 +34,7 @@ const meta: Meta<typeof PromptCheckGroup> = {
         visibilityCheckName: "Discovery",
         primaryTopicId: null,
         primaryTopicName: null,
+        reviewReason: null,
       },
     ],
   },

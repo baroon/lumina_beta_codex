@@ -34,6 +34,7 @@ const sampleList: PromptList = {
       visibilityCheckName: "Discovery",
       primaryTopicId: "t1",
       primaryTopicName: "Pricing",
+      reviewReason: null,
     },
     {
       id: "p2",
@@ -44,6 +45,7 @@ const sampleList: PromptList = {
       visibilityCheckName: "Competitor Comparison",
       primaryTopicId: null,
       primaryTopicName: null,
+      reviewReason: null,
     },
     {
       id: "p3",
@@ -54,6 +56,7 @@ const sampleList: PromptList = {
       visibilityCheckName: "Sentiment & Trust",
       primaryTopicId: null,
       primaryTopicName: null,
+      reviewReason: null,
     },
   ],
   checks: [
@@ -177,6 +180,7 @@ describe("PromptReviewScreen", () => {
             visibilityCheckName: "Discovery",
             primaryTopicId: null,
             primaryTopicName: null,
+            reviewReason: null,
           },
         ],
       },
@@ -184,5 +188,33 @@ describe("PromptReviewScreen", () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     expect(screen.getByText(/tracker is full/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a review badge when a prompt's check is flagged", () => {
+    listState = {
+      isLoading: false,
+      isSuccess: true,
+      data: {
+        promptAllocation: 30,
+        count: 1,
+        checks: [{ id: "c2", name: "Competitor Comparison" }],
+        topics: [],
+        prompts: [
+          {
+            id: "p1",
+            text: "How does Acme compare?",
+            status: "Draft",
+            source: "Generated",
+            visibilityCheckId: "c2",
+            visibilityCheckName: "Competitor Comparison",
+            primaryTopicId: null,
+            primaryTopicName: null,
+            reviewReason: "No competitors configured to compare against.",
+          },
+        ],
+      },
+    };
+    render(<PromptReviewScreen trackerId="tr1" />);
+    expect(screen.getByText("Review")).toBeInTheDocument();
   });
 });

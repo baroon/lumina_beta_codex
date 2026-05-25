@@ -14,6 +14,7 @@ const prompts: PromptDto[] = [
     visibilityCheckName: "Discovery",
     primaryTopicId: "t1",
     primaryTopicName: "Pricing",
+    reviewReason: null,
   },
   {
     id: "p2",
@@ -24,10 +25,11 @@ const prompts: PromptDto[] = [
     visibilityCheckName: "Discovery",
     primaryTopicId: null,
     primaryTopicName: null,
+    reviewReason: null,
   },
 ];
 
-function setup(canAdd = true) {
+function setup(canAdd = true, reviewReason?: string) {
   const onRegenerate = vi.fn();
   const onRemove = vi.fn();
   const onEdit = vi.fn();
@@ -38,6 +40,7 @@ function setup(canAdd = true) {
       prompts={prompts}
       topics={[{ id: "t1", name: "Pricing" }]}
       canAdd={canAdd}
+      reviewReason={reviewReason}
       onRegenerate={onRegenerate}
       onRemove={onRemove}
       onEdit={onEdit}
@@ -95,5 +98,10 @@ describe("PromptCheckGroup", () => {
   it("hides the add control when the tracker is full", () => {
     setup(false);
     expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a review badge when a reason is provided", () => {
+    setup(true, "No competitors configured to compare against.");
+    expect(screen.getByText("Review")).toBeInTheDocument();
   });
 });

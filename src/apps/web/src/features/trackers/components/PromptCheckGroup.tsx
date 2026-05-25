@@ -7,6 +7,7 @@ import {
   User,
   X,
   Plus,
+  AlertTriangle,
   Compass,
   ShoppingCart,
   Swords,
@@ -49,6 +50,7 @@ interface PromptCheckGroupProps {
   topics: PromptOption[];
   canAdd: boolean;
   isRegenerating?: boolean;
+  reviewReason?: string;
   onRegenerate: () => void;
   onRemove: (promptId: string) => void;
   onEdit: (promptId: string, text: string) => void;
@@ -61,6 +63,7 @@ export function PromptCheckGroup({
   topics,
   canAdd,
   isRegenerating = false,
+  reviewReason,
   onRegenerate,
   onRemove,
   onEdit,
@@ -104,7 +107,20 @@ export function PromptCheckGroup({
           title={title}
           description={description}
           className="flex-1"
-          meta={<span className="text-sm tabular-nums text-neutral-500">{prompts.length}</span>}
+          meta={
+            <div className="flex items-center gap-2">
+              {reviewReason && (
+                <span
+                  title={reviewReason}
+                  className="inline-flex items-center gap-1 rounded-full bg-semantic-warning-50 px-2 py-0.5 text-[11px] font-medium text-semantic-warning-700"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  {TRACKERS_COPY.review.needsReview}
+                </span>
+              )}
+              <span className="text-sm tabular-nums text-neutral-500">{prompts.length}</span>
+            </div>
+          }
           actions={
             <Button
               variant="ghost"

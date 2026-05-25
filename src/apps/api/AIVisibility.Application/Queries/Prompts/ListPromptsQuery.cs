@@ -21,4 +21,5 @@ public record PromptDto(
     Guid VisibilityCheckId,
     string VisibilityCheckName,
     Guid? PrimaryTopicId,
-    string? PrimaryTopicName);
+    string? PrimaryTopicName,
+    string? ReviewReason);

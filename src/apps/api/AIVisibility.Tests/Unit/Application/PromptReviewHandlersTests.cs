@@ -173,4 +173,85 @@ public class PromptReviewHandlersTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [Fact]
+    public async Task List_FlagsPromptForReview_WhenCheckLacksItsDimension()
+    {
+        using var ctx = NewContext();
+        var brand = new Brand
+        {
+            Id = Guid.NewGuid(),
+            Name = "Acme",
+            WebsiteUrl = "https://acme.com",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        var check = new VisibilityCheck
+        {
+            Id = Guid.NewGuid(),
+            Code = "CompetitorComparison",
+            Name = "Competitor Comparison",
+            DisplayOrder = 1,
+        };
+        var tracker = new TrackerConfiguration
+        {
+            Id = Guid.NewGuid(),
+            BrandId = brand.Id,
+            Name = "T",
+            PromptAllocation = 30,
+            Cadence = Cadence.Weekly,
+            Status = TrackerStatus.Draft,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        ctx.Brands.Add(brand);
+        ctx.VisibilityChecks.Add(check);
+        ctx.PromptTemplates.Add(new PromptTemplate
+        {
+            Id = Guid.NewGuid(),
+            VisibilityCheckId = check.Id,
+            Name = "C",
+            TemplateText = "How does {brand} compare to {competitor}?",
+            DisplayOrder = 1,
+        });
+        ctx.TrackerConfigurations.Add(tracker);
+        ctx.TrackerVisibilityChecks.Add(new TrackerVisibilityCheck
+        {
+            Id = Guid.NewGuid(),
+            TrackerConfigurationId = tracker.Id,
+            VisibilityCheckId = check.Id,
+        });
+        ctx.Prompts.Add(new Prompt
+        {
+            Id = Guid.NewGuid(),
+            TrackerConfigurationId = tracker.Id,
+            PromptText = "How does Acme compare to others?",
+            VisibilityCheckId = check.Id,
+            Status = PromptStatus.Draft,
+            Source = PromptSource.Generated,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+
+        var result = await new ListPromptsQueryHandler(ctx).Handle(
+            new ListPromptsQuery(tracker.Id),
+            CancellationToken.None);
+
+        result!.Prompts.Should().ContainSingle();
+        result.Prompts[0].ReviewReason.Should().Contain("competitors");
+    }
+
+    [Fact]
+    public async Task List_DoesNotFlag_OrdinaryPrompts()
+    {
+        using var ctx = NewContext();
+        var (tracker, _, _) = Seed(ctx);
+
+        var result = await new ListPromptsQueryHandler(ctx).Handle(
+            new ListPromptsQuery(tracker.Id),
+            CancellationToken.None);
+
+        result!.Prompts.Should().OnlyContain(p => p.ReviewReason == null);
+    }
 }

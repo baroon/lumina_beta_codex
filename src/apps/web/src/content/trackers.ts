@@ -33,6 +33,7 @@ export const TRACKERS_COPY = {
     sourceAi: "AI-generated",
     sourceHuman: "Added by you",
     editPlaceholder: "Edit prompt",
+    needsReview: "Review",
     checkDescriptions: {
       Discovery: "Does AI surface your brand for category and topic questions?",
       "Buying Intent": "Is your brand recommended for purchase-ready prompts?",
