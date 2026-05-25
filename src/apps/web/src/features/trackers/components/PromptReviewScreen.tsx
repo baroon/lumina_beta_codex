@@ -1,26 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  RefreshCw,
-  Check,
-  X,
-  ArrowRight,
-  Plus,
-  Sparkles,
-  User,
-  Compass,
-  ShoppingCart,
-  Swords,
-  Heart,
-  Quote,
-  FileSearch,
-  Eye,
-  type LucideIcon,
-} from "lucide-react";
+import { RefreshCw, Check, ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/atoms/button";
-import { Badge } from "@/components/atoms/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
-import { InlineEdit } from "@/components/atoms/inline-edit";
 import {
   Select,
   SelectTrigger,
@@ -39,15 +21,7 @@ import {
   useAddCustomPrompt,
   useUpdatePrompt,
 } from "../hooks/usePrompts";
-
-const CHECK_ICONS: Record<string, LucideIcon> = {
-  Discovery: Compass,
-  "Buying Intent": ShoppingCart,
-  "Competitor Comparison": Swords,
-  "Sentiment & Trust": Heart,
-  "Citation Visibility": Quote,
-  "Content Gaps": FileSearch,
-};
+import { PromptCheckGroup } from "./PromptCheckGroup";
 
 interface PromptReviewScreenProps {
   trackerId: string;
@@ -187,75 +161,21 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
           </Button>
         </div>
       ) : (
-        <div className="mt-5 space-y-5">
-          {[...groups.entries()].map(([checkName, items]) => {
-            const Icon = CHECK_ICONS[checkName] ?? Eye;
-            return (
-              <div key={checkName}>
-                <div className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{checkName}</span>
-                  <span className="tabular-nums text-neutral-300">{items.length}</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      generate.mutate({ trackerId, visibilityCheckId: items[0].visibilityCheckId })
-                    }
-                    aria-label={TRACKERS_COPY.review.regenerateCheck.replace("{check}", checkName)}
-                    className="ml-auto rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <ul className="space-y-1.5">
-                  {items.map((prompt) => {
-                    const isAi = prompt.source !== "UserAdded";
-                    return (
-                      <li
-                        key={prompt.id}
-                        className="group flex items-start gap-2 rounded-lg border border-neutral-200 bg-surface-card p-2 transition-all hover:border-neutral-300 hover:shadow-sm"
-                      >
-                        <span
-                          className="mt-1.5 shrink-0 text-neutral-400"
-                          aria-label={
-                            isAi ? TRACKERS_COPY.review.sourceAi : TRACKERS_COPY.review.sourceHuman
-                          }
-                          title={
-                            isAi ? TRACKERS_COPY.review.sourceAi : TRACKERS_COPY.review.sourceHuman
-                          }
-                        >
-                          {isAi ? <Sparkles className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <InlineEdit
-                            value={prompt.text}
-                            onChange={(text) => updatePrompt.mutate({ promptId: prompt.id, text })}
-                            placeholder={TRACKERS_COPY.review.editPlaceholder}
-                            className="text-neutral-900"
-                          />
-                          {prompt.primaryTopicName && (
-                            <div className="mt-1 pl-2">
-                              <Badge variant="secondary">{prompt.primaryTopicName}</Badge>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removePrompt.mutate(prompt.id)}
-                          aria-label={`Remove prompt: ${prompt.text}`}
-                          className="mt-1.5 shrink-0 rounded-md p-1 text-neutral-400 opacity-0 transition-all hover:bg-neutral-100 hover:text-neutral-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-300 group-hover:opacity-100 pointer-coarse:opacity-100"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
+        <div className="mt-5 space-y-3">
+          {[...groups.entries()].map(([checkName, items]) => (
+            <PromptCheckGroup
+              key={checkName}
+              title={checkName}
+              prompts={items}
+              onRegenerate={() =>
+                generate.mutate({ trackerId, visibilityCheckId: items[0].visibilityCheckId })
+              }
+              onRemove={(promptId) => removePrompt.mutate(promptId)}
+              onEdit={(promptId, text) => updatePrompt.mutate({ promptId, text })}
+            />
+          ))}
 
-          <div>
+          <div className="pt-1">
             {isFull ? (
               <p className="text-xs text-neutral-400">{TRACKERS_COPY.review.full}</p>
             ) : adding ? (

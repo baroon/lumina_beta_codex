@@ -719,8 +719,17 @@
           "path": "src/features/trackers/components/PromptReviewScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Button", "Badge", "Card"],
-          "notes": "Prompt review: lists generated Draft prompts grouped by Visibility Check (auto-generates on first load), with remove, regenerate-all, and confirm. Shown after tracker creation."
+          "dependencies": ["PageHeader", "Button", "Card", "Input", "Select", "PromptCheckGroup"],
+          "notes": "Prompt review: collapsible per-Visibility-Check cards (auto-generates on first load), allocation bar, add-custom form, regenerate all, and confirm. Shown after tracker creation."
+        },
+        {
+          "name": "PromptCheckGroup",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PromptCheckGroup.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["SectionHeader", "Button", "Badge", "InlineEdit"],
+          "notes": "Collapsible card for one Visibility Check: lists its prompts with AI/human source icon, inline-editable text, per-prompt remove, and a per-check regenerate."
         },
         {
           "name": "PlatformSelector",

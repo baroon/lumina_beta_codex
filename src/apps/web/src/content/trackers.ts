@@ -28,6 +28,8 @@ export const TRACKERS_COPY = {
     allocation: "{count} / {allocation} prompts",
     regenerate: "Regenerate all",
     regenerateCheck: "Regenerate {check}",
+    collapse: "Collapse {check}",
+    expand: "Expand {check}",
     sourceAi: "AI-generated",
     sourceHuman: "Added by you",
     editPlaceholder: "Edit prompt",
