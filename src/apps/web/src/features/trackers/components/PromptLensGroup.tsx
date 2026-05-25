@@ -15,7 +15,7 @@ import {
   Heart,
   Quote,
   FileSearch,
-  Eye,
+  Aperture,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
@@ -75,7 +75,7 @@ export function PromptLensGroup({
   const [draftText, setDraftText] = useState("");
   const [draftTopic, setDraftTopic] = useState("");
   const [showReason, setShowReason] = useState(false);
-  const Icon = CHECK_ICONS[title] ?? Eye;
+  const Icon = CHECK_ICONS[title] ?? Aperture;
   const description = CHECK_DESCRIPTIONS[title];
 
   function handleAdd(e: React.FormEvent) {

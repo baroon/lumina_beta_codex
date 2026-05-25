@@ -7,7 +7,7 @@ import {
   Package,
   Users,
   Globe,
-  Eye,
+  Aperture,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/atoms/button";
@@ -48,7 +48,7 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
     [TRACKERS_COPY.ready.summary.markets, previewData.marketCount, Globe],
     [TRACKERS_COPY.ready.summary.topics, previewData.topicCount, MessageSquare],
     [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount, Swords],
-    [TRACKERS_COPY.ready.summary.lenses, previewData.lensCount, Eye],
+    [TRACKERS_COPY.ready.summary.lenses, previewData.lensCount, Aperture],
   ];
 
   function handleCreate() {
