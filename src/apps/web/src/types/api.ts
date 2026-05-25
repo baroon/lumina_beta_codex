@@ -216,3 +216,29 @@ export interface GeneratePromptsResult {
 export interface ConfirmPromptsResult {
   activatedCount: number;
 }
+
+export interface PlatformOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface TrackerScheduleSetup {
+  trackerId: string;
+  trackerName: string;
+  cadence: string;
+  activePromptCount: number;
+  platforms: PlatformOption[];
+  selectedPlatformIds: string[];
+}
+
+export interface ConfigureTrackerScheduleRequest {
+  platformIds: string[];
+  cadence: string;
+  timezone?: string | null;
+}
+
+export interface ConfigureTrackerScheduleResult {
+  scanCheckCount: number;
+  cadence: string;
+}

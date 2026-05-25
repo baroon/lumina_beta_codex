@@ -21,6 +21,10 @@ vi.mock("../hooks/usePrompts", () => ({
   useUpdatePrompt: () => ({ mutate: updateMutate, isPending: false }),
 }));
 
+vi.mock("./TrackerScheduleScreen", () => ({
+  TrackerScheduleScreen: () => <div data-testid="schedule-screen" />,
+}));
+
 const sampleList: PromptList = {
   promptAllocation: 30,
   count: 3,
@@ -130,12 +134,12 @@ describe("PromptReviewScreen", () => {
     );
   });
 
-  it("confirms prompts and shows the confirmed state", async () => {
+  it("confirms prompts and advances to the schedule screen", async () => {
     confirmMutate.mockImplementation((_arg, opts) => opts.onSuccess({ activatedCount: 2 }));
     render(<PromptReviewScreen trackerId="tr1" />);
     await userEvent.click(screen.getByRole("button", { name: /confirm prompts/i }));
     expect(confirmMutate).toHaveBeenCalled();
-    expect(screen.getByText("Prompts confirmed")).toBeInTheDocument();
+    expect(screen.getByTestId("schedule-screen")).toBeInTheDocument();
   });
 
   it("shows the generating state while loading", () => {

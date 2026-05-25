@@ -64,4 +64,22 @@ export const TRACKERS_COPY = {
     confirmedDescription:
       "{count} prompts are active. Platform & cadence selection is coming next.",
   },
+  schedule: {
+    title: "Set up scanning",
+    description: "Choose which AI platforms to scan {brandName} on, and how often.",
+    platformsLabel: "AI platforms",
+    cadenceLabel: "Cadence",
+    cadence: {
+      OnDemand: "On demand",
+      Daily: "Daily",
+      Weekly: "Weekly",
+      Monthly: "Monthly",
+    },
+    estimate: "{prompts} prompts × {platforms} platforms = {checks} scan checks",
+    noPlatforms: "Select at least one platform.",
+    activate: "Activate tracker",
+    activating: "Activating...",
+    activatedTitle: "Tracker is active",
+    activatedDescription: "{checks} scan checks, {cadence} cadence.",
+  },
 } as const;
