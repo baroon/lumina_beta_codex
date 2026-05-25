@@ -105,6 +105,19 @@ describe("PromptReviewScreen", () => {
     expect(updateMutate).toHaveBeenCalledWith({ promptId: "p1", text: "Edited prompt" });
   });
 
+  it("adds a custom prompt scoped to its section", async () => {
+    render(<PromptReviewScreen trackerId="tr1" />);
+    const addButtons = screen.getAllByRole("button", { name: /add custom prompt/i });
+    await userEvent.click(addButtons[0]);
+    await userEvent.type(screen.getByPlaceholderText("Type a prompt..."), "New one");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    expect(addMutate).toHaveBeenCalledWith({
+      text: "New one",
+      visibilityCheckId: "c1",
+      primaryTopicId: null,
+    });
+  });
+
   it("regenerates all prompts", async () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     await userEvent.click(screen.getByRole("button", { name: /regenerate all/i }));
@@ -140,12 +153,6 @@ describe("PromptReviewScreen", () => {
     render(<PromptReviewScreen trackerId="tr1" />);
     expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
     expect(screen.getByText(/no prompts yet/i)).toBeInTheDocument();
-  });
-
-  it("opens the add-custom form", async () => {
-    render(<PromptReviewScreen trackerId="tr1" />);
-    await userEvent.click(screen.getByRole("button", { name: /add custom prompt/i }));
-    expect(screen.getByPlaceholderText("Type a prompt...")).toBeInTheDocument();
   });
 
   it("shows the full state at allocation and hides add", () => {

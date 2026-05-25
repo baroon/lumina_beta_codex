@@ -27,27 +27,32 @@ const prompts: PromptDto[] = [
   },
 ];
 
-function setup() {
+function setup(canAdd = true) {
   const onRegenerate = vi.fn();
   const onRemove = vi.fn();
   const onEdit = vi.fn();
+  const onAdd = vi.fn();
   render(
     <PromptCheckGroup
       title="Discovery"
       prompts={prompts}
+      topics={[{ id: "t1", name: "Pricing" }]}
+      canAdd={canAdd}
       onRegenerate={onRegenerate}
       onRemove={onRemove}
       onEdit={onEdit}
+      onAdd={onAdd}
     />,
   );
-  return { onRegenerate, onRemove, onEdit };
+  return { onRegenerate, onRemove, onEdit, onAdd };
 }
 
 describe("PromptCheckGroup", () => {
-  it("renders prompts with source icons and topic", () => {
+  it("renders prompts, the check description, source icons, and topic", () => {
     setup();
     expect(screen.getByText("AI prompt")).toBeInTheDocument();
     expect(screen.getByText("Custom prompt")).toBeInTheDocument();
+    expect(screen.getByText(/Does AI surface your brand/)).toBeInTheDocument();
     expect(screen.getByTitle("AI-generated")).toBeInTheDocument();
     expect(screen.getByTitle("Added by you")).toBeInTheDocument();
     expect(screen.getByText("Pricing")).toBeInTheDocument();
@@ -77,5 +82,18 @@ describe("PromptCheckGroup", () => {
     await userEvent.type(input, "Edited");
     await userEvent.tab();
     expect(onEdit).toHaveBeenCalledWith("p1", "Edited");
+  });
+
+  it("adds a custom prompt from the section", async () => {
+    const { onAdd } = setup();
+    await userEvent.click(screen.getByRole("button", { name: /add custom prompt/i }));
+    await userEvent.type(screen.getByPlaceholderText("Type a prompt..."), "My prompt");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    expect(onAdd).toHaveBeenCalledWith("My prompt", null);
+  });
+
+  it("hides the add control when the tracker is full", () => {
+    setup(false);
+    expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
   });
 });

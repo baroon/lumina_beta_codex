@@ -728,8 +728,8 @@
           "path": "src/features/trackers/components/PromptCheckGroup.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["SectionHeader", "Button", "Badge", "InlineEdit"],
-          "notes": "Collapsible card for one Visibility Check: lists its prompts with AI/human source icon, inline-editable text, per-prompt remove, and a per-check regenerate."
+          "dependencies": ["SectionHeader", "Button", "Badge", "Input", "Select", "InlineEdit"],
+          "notes": "Collapsible card for one Visibility Check (description, count, per-check regenerate): tinted prompt rows with AI/human source icon, multi-line inline-editable text, per-prompt remove, and an inline add-custom form."
         },
         {
           "name": "PlatformSelector",

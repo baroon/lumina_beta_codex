@@ -7,9 +7,12 @@ const meta: Meta<typeof PromptCheckGroup> = {
   tags: ["autodocs"],
   args: {
     title: "Discovery",
+    topics: [{ id: "t1", name: "Pricing" }],
+    canAdd: true,
     onRegenerate: () => {},
     onRemove: () => {},
     onEdit: () => {},
+    onAdd: () => {},
     prompts: [
       {
         id: "p1",
