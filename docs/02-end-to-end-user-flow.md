@@ -18,7 +18,7 @@
 4. Backend creates TrackerConfiguration and backend coverage from Discovery.
 5. System generates Draft prompts.
 6. User reviews prompts.
-7. User can remove, add custom prompts, regenerate all, regenerate by Topic, Visibility Check, or Topic + Visibility Check.
+7. User can remove, add custom prompts, regenerate all, regenerate by Topic, Visibility Lens, or Topic + Visibility Lens.
 8. User confirms prompts.
 9. User selects platforms and cadence.
 10. User runs first scan.

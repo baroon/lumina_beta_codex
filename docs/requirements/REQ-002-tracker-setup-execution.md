@@ -82,7 +82,7 @@ Status = Draft until prompts/platform/cadence confirmed
 
 ### FR-003: Create backend Coverage
 
-The backend shall create tracker coverage from confirmed Discovery outputs and default Visibility Checks.
+The backend shall create tracker coverage from confirmed Discovery outputs and default Visibility Lenses.
 
 Coverage is not a user-facing step.
 
@@ -98,7 +98,7 @@ Topics
 Competitors
 Market
 Audience optional
-Visibility Checks
+Visibility Lenses
 Prompt templates
 PromptAllocation
 ```
@@ -114,8 +114,8 @@ Remove prompt
 Add custom prompt
 Regenerate all prompts
 Regenerate by Topic
-Regenerate by Visibility Check
-Regenerate by Topic + Visibility Check
+Regenerate by Visibility Lens
+Regenerate by Topic + Visibility Lens
 Confirm prompts
 ```
 
@@ -129,7 +129,7 @@ Suggested mappings:
 
 ```text
 Topic
-Visibility Check
+Visibility Lens
 Competitor
 Product / Service
 Audience
@@ -307,7 +307,7 @@ Core entities:
 ```text
 TrackerConfiguration
 TrackerTopic
-TrackerVisibilityCheck
+TrackerVisibilityLens
 TrackerCompetitor
 TrackerProduct
 TrackerAudience

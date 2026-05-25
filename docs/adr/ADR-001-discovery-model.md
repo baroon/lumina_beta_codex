@@ -378,14 +378,14 @@ Distinction:
 
 ```text
 Topic = what subject we test
-Visibility Check = what kind of visibility gap we test for
+Visibility Lens = what kind of visibility gap we test for
 ```
 
 Example:
 
 ```text
 Topic: Pricing
-Visibility Check: Sentiment & Trust
+Visibility Lens: Sentiment & Trust
 Prompt: Is Brand X worth the price?
 ```
 
@@ -492,11 +492,11 @@ Important rule:
 If a signal is not found, say "not detected on crawled pages", not "missing".
 ```
 
-## Visibility Checks and Prompt Library are static system data
+## Visibility Lenses and Prompt Library are static system data
 
-Visibility Checks are not extracted from crawl. They are predefined product capabilities used later in Phase 2.
+Visibility Lenses are not extracted from crawl. They are predefined product capabilities used later in Phase 2.
 
-V1 Visibility Checks:
+V1 Visibility Lenses:
 
 ```text
 Discovery

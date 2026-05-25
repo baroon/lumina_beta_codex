@@ -9,7 +9,7 @@ Use these terms:
 - Brand
 - Visibility Tracker
 - Topic
-- Visibility Check
+- Visibility Lens
 - Prompt
 - Scan Run
 - Finding

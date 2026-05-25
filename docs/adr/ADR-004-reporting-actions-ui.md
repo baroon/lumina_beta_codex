@@ -74,7 +74,7 @@ Each Finding card must include:
 - Short summary
 - Evidence summary
 - Related topic
-- Related visibility check
+- Related visibility lens
 - Related platform/competitor, if applicable
 - Primary CTA: View evidence
 
@@ -129,7 +129,7 @@ Required columns/fields:
 - Prompt
 - AI platform
 - Topic
-- Visibility Check
+- Visibility Lens
 - Brand mentioned
 - Recommended
 - Position
@@ -142,7 +142,7 @@ Filters:
 
 - Platform
 - Topic
-- Visibility Check
+- Visibility Lens
 - Competitor
 - Sentiment
 - Mentioned / Not mentioned

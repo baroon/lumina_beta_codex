@@ -36,7 +36,7 @@ Backend coverage mappings include:
 
 ```text
 TrackerTopic
-TrackerVisibilityCheck
+TrackerVisibilityLens
 TrackerCompetitor
 TrackerProduct
 TrackerAudience

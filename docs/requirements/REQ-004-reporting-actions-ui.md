@@ -96,7 +96,7 @@ Each Finding card must show:
 - Short summary
 - Evidence summary
 - Related topic
-- Related visibility check
+- Related visibility lens
 - Related platform/competitor, if applicable
 - Primary CTA: View evidence
 
@@ -137,7 +137,7 @@ Must include a table with:
 - Prompt
 - AI platform
 - Topic
-- Visibility Check
+- Visibility Lens
 - Brand mentioned
 - Recommended
 - Position
@@ -150,7 +150,7 @@ Filters:
 
 - Platform
 - Topic
-- Visibility Check
+- Visibility Lens
 - Competitor
 - Sentiment
 - Mentioned / Not mentioned
@@ -331,7 +331,7 @@ No automatic PDF attachment in v1.
 - Summary
 - EvidenceSummary
 - RelatedTopic
-- RelatedVisibilityCheck
+- RelatedVisibilityLens
 - RelatedPlatform optional
 - RelatedCompetitor optional
 - Status
@@ -355,7 +355,7 @@ No automatic PDF attachment in v1.
 - PromptText
 - Platform
 - Topic
-- VisibilityCheck
+- VisibilityLens
 - BrandMentioned
 - BrandRecommended
 - Position

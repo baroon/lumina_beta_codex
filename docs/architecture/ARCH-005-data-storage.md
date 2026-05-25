@@ -67,7 +67,7 @@ Reference/taxonomy data lives in PostgreSQL and is seeded through idempotent see
 
 Seeded v1 data:
 
-- Visibility Checks
+- Visibility Lenses
 - TrustSignal types
 - Source types
 - Content Action types

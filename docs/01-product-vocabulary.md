@@ -9,7 +9,7 @@
 | Visibility Tracker | Saved setup that monitors how AI platforms mention, compare, cite, and recommend a brand. |
 | Scan Run | One execution of a Visibility Tracker. |
 | Topic | Subject being tested, such as Pricing, Support, Security, ATS Compatibility. |
-| Visibility Check | Predefined type of AI visibility test, such as Discovery or Buying Intent. |
+| Visibility Lens | Predefined type of AI visibility test, such as Discovery or Buying Intent. |
 | Prompt | Question asked to AI platforms. |
 | Finding | Evidence-backed issue, strength, risk, or opportunity found from the scan. |
 | Content Action | Recommended action to improve AI visibility. |
@@ -38,7 +38,7 @@
 | ScanRun | Scan Run |
 | PromptRun | Scan Check, hidden except progress count |
 | Topic | Topic |
-| VisibilityCheck | Visibility Check |
+| VisibilityLens | Visibility Lens |
 | Finding | Finding |
 | ContentAction | Content Action |
 | AnswerSignal | Hidden analysis summary |

@@ -116,7 +116,7 @@ Monthly
 
 Coverage remains a **backend concept only**.
 
-Coverage represents what the tracker is intended to monitor. It is created automatically from confirmed Discovery outputs and default Visibility Checks.
+Coverage represents what the tracker is intended to monitor. It is created automatically from confirmed Discovery outputs and default Visibility Lenses.
 
 Coverage is not a separate user-facing step.
 
@@ -124,7 +124,7 @@ Coverage may include:
 
 ```text
 Topics
-Visibility Checks
+Visibility Lenses
 Competitors
 Products / Services
 Audiences
@@ -135,7 +135,7 @@ Recommended backend mapping tables:
 
 ```text
 TrackerTopic
-TrackerVisibilityCheck
+TrackerVisibilityLens
 TrackerCompetitor
 TrackerProduct
 TrackerAudience
@@ -168,7 +168,7 @@ Prompt templates are used for:
 ```text
 Initial prompt suggestions during tracker setup
 Future prompt expansion/regeneration
-Prompt packs by visibility check and later industry/category
+Prompt packs by visibility lens and later industry/category
 ```
 
 A prompt library contains:
@@ -183,7 +183,7 @@ Industry/category-specific prompt packs, later
 V1 can start with:
 
 ```text
-VisibilityCheck → PromptTemplates
+VisibilityLens → PromptTemplates
 ```
 
 Future extension:
@@ -199,7 +199,7 @@ Suggested schema:
 ```text
 PromptTemplate
 - PromptTemplateId
-- VisibilityCheckId
+- VisibilityLensId
 - Name
 - TemplateText
 - RequiredInputs
@@ -220,7 +220,7 @@ Topics
 Competitors
 Market
 Audience, optional
-Visibility Checks
+Visibility Lenses
 PromptAllocation
 Prompt Templates
 ```
@@ -228,7 +228,7 @@ Prompt Templates
 Prompt generation should balance across:
 
 ```text
-Visibility Checks
+Visibility Lenses
 Topics
 Competitors, if selected
 Products / Services, if available
@@ -287,8 +287,8 @@ Remove prompt
 Add custom prompt
 Regenerate all prompts
 Regenerate by Topic
-Regenerate by Visibility Check
-Regenerate by Topic + Visibility Check
+Regenerate by Visibility Lens
+Regenerate by Topic + Visibility Lens
 Confirm prompts
 ```
 
@@ -328,7 +328,7 @@ Prompt
 - PromptId
 - TrackerConfigurationId
 - PromptText
-- VisibilityCheckId
+- VisibilityLensId
 - PrimaryTopicId optional
 - PromptTemplateId optional
 - Status
@@ -362,7 +362,7 @@ Mappings to infer/store:
 
 ```text
 Topic
-Visibility Check
+Visibility Lens
 Competitor, if present
 Product / Service, if relevant
 Audience, if relevant

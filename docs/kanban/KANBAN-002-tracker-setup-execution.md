@@ -18,7 +18,7 @@
 ### Reference data
 
 - [ ] Seed AI platforms: ChatGPT, ChatGPT Search, Gemini, Claude
-- [ ] Seed Visibility Checks
+- [ ] Seed Visibility Lenses
 - [ ] Seed initial Prompt Templates
 - [ ] Define prompt allocation defaults
 
@@ -45,8 +45,8 @@
 - [ ] Infer mappings for custom prompt
 - [ ] Regenerate all prompts
 - [ ] Regenerate by Topic
-- [ ] Regenerate by Visibility Check
-- [ ] Regenerate by Topic + Visibility Check
+- [ ] Regenerate by Visibility Lens
+- [ ] Regenerate by Topic + Visibility Lens
 - [ ] Confirm prompts
 
 ### Platform and cadence UX
