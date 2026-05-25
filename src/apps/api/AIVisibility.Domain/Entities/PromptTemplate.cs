@@ -11,5 +11,4 @@ public class PromptTemplate
     public Guid VisibilityCheckId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TemplateText { get; set; } = string.Empty;
-    public int DisplayOrder { get; set; }
 }

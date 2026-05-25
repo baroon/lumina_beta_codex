@@ -212,7 +212,6 @@ public class PromptReviewHandlersTests
             VisibilityCheckId = check.Id,
             Name = "C",
             TemplateText = "How does {brand} compare to {competitor}?",
-            DisplayOrder = 1,
         });
         ctx.TrackerConfigurations.Add(tracker);
         ctx.TrackerVisibilityChecks.Add(new TrackerVisibilityCheck

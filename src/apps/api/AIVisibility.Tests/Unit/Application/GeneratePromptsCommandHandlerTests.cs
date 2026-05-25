@@ -89,7 +89,6 @@ public class GeneratePromptsCommandHandlerTests
                 VisibilityCheckId = check1.Id,
                 Name = "Discovery",
                 TemplateText = "What are the best {category} for {topic} in {market}?",
-                DisplayOrder = 1,
             },
             new PromptTemplate
             {
@@ -97,7 +96,6 @@ public class GeneratePromptsCommandHandlerTests
                 VisibilityCheckId = check2.Id,
                 Name = "Comparison",
                 TemplateText = "How does {brand} compare to {competitor}?",
-                DisplayOrder = 2,
             });
 
         var tracker = new TrackerConfiguration

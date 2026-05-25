@@ -38,7 +38,6 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .ToDictionary(c => c.Id);
         var rawTemplates = await _db.PromptTemplates
             .Where(t => checkIds.Contains(t.VisibilityCheckId))
-            .OrderBy(t => t.DisplayOrder)
             .Select(t => new { t.Id, t.VisibilityCheckId, t.TemplateText })
             .ToListAsync(cancellationToken);
         var templates = rawTemplates
