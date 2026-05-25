@@ -102,9 +102,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = m.Confidence,
                 Source = ParseSource(m.Source),
                 CountryCode = Meta(m, "countryCode"),
-                Region = Meta(m, "region"),
-                LanguageCode = Meta(m, "languageCode"),
-                CurrencyCode = Meta(m, "currencyCode"),
             });
 
         foreach (var t in request.Topics)

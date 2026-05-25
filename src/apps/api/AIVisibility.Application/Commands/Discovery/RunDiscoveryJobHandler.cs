@@ -118,7 +118,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
             extraction.Audiences.Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source,
                 new Dictionary<string, object?>())).ToList(),
             extraction.Markets.Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source,
-                new Dictionary<string, object?> { ["countryCode"] = m.CountryCode, ["region"] = m.Region, ["languageCode"] = m.LanguageCode, ["currencyCode"] = m.CurrencyCode })).ToList(),
+                new Dictionary<string, object?> { ["countryCode"] = m.CountryCode })).ToList(),
             extraction.Topics.Select(t => ToCandidate(t.Id, t.Name, t.Description, t.Confidence, t.Source,
                 new Dictionary<string, object?>())).ToList(),
             new List<CandidateDto>(),

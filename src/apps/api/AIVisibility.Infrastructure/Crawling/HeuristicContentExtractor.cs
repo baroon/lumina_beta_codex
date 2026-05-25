@@ -219,7 +219,6 @@ public class HeuristicContentExtractor : IContentExtractor
                         Id = Guid.NewGuid(),
                         Name = cm.Name,
                         CountryCode = cm.Code,
-                        CurrencyCode = cm.Currency,
                         Confidence = 0.5,
                         Source = CandidateSource.WebsiteCrawl,
                     });
