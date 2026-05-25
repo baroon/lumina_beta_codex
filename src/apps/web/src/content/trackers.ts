@@ -81,4 +81,11 @@ export const TRACKERS_COPY = {
     activatedTitle: "Tracker is active",
     activatedDescription: "{checks} scan checks, {cadence} cadence.",
   },
+  scan: {
+    running: "Running your prompts across AI platforms…",
+    runningDetail: "{done} of {total} scan checks complete",
+    completeTitle: "First scan complete",
+    completeDescription: "{completed} answers collected across your platforms.",
+    completeWithFailures: "{completed} answers collected · {failed} couldn’t be reached.",
+  },
 } as const;

@@ -5,11 +5,20 @@ import { TrackerScheduleScreen } from "./TrackerScheduleScreen";
 import type { TrackerScheduleSetup } from "@/types/api";
 
 const configureMutate = vi.fn();
+const runScanMutate = vi.fn();
 let setupState: { data?: TrackerScheduleSetup; isLoading: boolean };
 
 vi.mock("../hooks/useTrackerSchedule", () => ({
   useTrackerScheduleSetup: () => setupState,
   useConfigureTrackerSchedule: () => ({ mutate: configureMutate, isPending: false }),
+}));
+
+vi.mock("../hooks/useScans", () => ({
+  useRunScan: () => ({ mutate: runScanMutate, isPending: false }),
+}));
+
+vi.mock("./ScanProgressScreen", () => ({
+  ScanProgressScreen: () => <div data-testid="scan-progress" />,
 }));
 
 const sampleSetup: TrackerScheduleSetup = {
@@ -27,6 +36,7 @@ const sampleSetup: TrackerScheduleSetup = {
 describe("TrackerScheduleScreen", () => {
   beforeEach(() => {
     configureMutate.mockReset();
+    runScanMutate.mockReset();
     setupState = { data: sampleSetup, isLoading: false };
   });
 
@@ -37,9 +47,10 @@ describe("TrackerScheduleScreen", () => {
     expect(screen.getByText(/20 scan checks/)).toBeInTheDocument();
   });
 
-  it("activates with the selected platforms and cadence, then shows the active state", async () => {
-    configureMutate.mockImplementation((_vars, opts) =>
-      opts.onSuccess({ scanCheckCount: 20, cadence: "Weekly" }),
+  it("activates, runs the first scan, and shows scan progress", async () => {
+    configureMutate.mockImplementation((_vars, opts) => opts.onSuccess());
+    runScanMutate.mockImplementation((_vars, opts) =>
+      opts.onSuccess({ scanRunId: "s1", scanCheckCount: 20 }),
     );
     render(<TrackerScheduleScreen trackerId="tr1" />);
 
@@ -52,7 +63,8 @@ describe("TrackerScheduleScreen", () => {
       }),
       expect.anything(),
     );
-    expect(screen.getByText("Tracker is active")).toBeInTheDocument();
+    expect(runScanMutate).toHaveBeenCalled();
+    expect(screen.getByTestId("scan-progress")).toBeInTheDocument();
   });
 
   it("disables activate when no platform is selected", async () => {

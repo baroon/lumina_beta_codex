@@ -737,8 +737,17 @@
           "path": "src/features/trackers/components/TrackerScheduleScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Button", "Card", "Checkbox", "Select"],
-          "notes": "Platform + cadence selection after prompt confirm: choose AI platforms, pick a cadence, see the scan-check estimate, and activate the tracker (Draft -> Active)."
+          "dependencies": ["PageHeader", "Button", "Checkbox", "Select", "ScanProgressScreen"],
+          "notes": "Platform + cadence selection after prompt confirm: choose AI platforms, pick a cadence, see the scan-check estimate, and activate the tracker (Draft -> Active) — which immediately runs the first scan."
+        },
+        {
+          "name": "ScanProgressScreen",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/ScanProgressScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card"],
+          "notes": "Live scan progress: polls the latest scan run every 2s, shows a progress bar (completed/total checks), and a completed state with the answer count."
         },
         {
           "name": "PlatformSelector",

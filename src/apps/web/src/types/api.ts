@@ -242,3 +242,19 @@ export interface ConfigureTrackerScheduleResult {
   scanCheckCount: number;
   cadence: string;
 }
+
+export interface RunScanResult {
+  scanRunId: string;
+  scanCheckCount: number;
+}
+
+export interface ScanStatus {
+  scanRunId: string;
+  status: string;
+  triggerType: string;
+  scanCheckCount: number;
+  completedCount: number;
+  failedCount: number;
+  startedAt: string;
+  completedAt: string | null;
+}
