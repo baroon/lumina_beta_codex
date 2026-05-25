@@ -11,7 +11,7 @@ public class TemplatePromptGeneratorTests
     private static PromptTemplateInput Template(string text) => new(Guid.NewGuid(), Guid.NewGuid(), text);
 
     [Fact]
-    public void Generate_FillsPlaceholders()
+    public async Task Generate_FillsPlaceholders()
     {
         var ctx = new PromptGenerationContext(
             "Acme",
@@ -22,14 +22,14 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             10);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("What are the best CRM in US?");
     }
 
     [Fact]
-    public void Generate_CapsAtAllocation()
+    public async Task Generate_CapsAtAllocation()
     {
         var ctx = new PromptGenerationContext(
             "Acme",
@@ -40,12 +40,11 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             3);
 
-        // 2 templates x 2 topics = 4 possible, capped at allocation 3
-        _generator.Generate(ctx).Should().HaveCount(3);
+        (await _generator.GenerateAsync(ctx)).Should().HaveCount(3);
     }
 
     [Fact]
-    public void Generate_SkipsCompetitorTemplates_WhenNoCompetitors()
+    public async Task Generate_SkipsCompetitorTemplates_WhenNoCompetitors()
     {
         var ctx = new PromptGenerationContext(
             "Acme",
@@ -56,11 +55,11 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             10);
 
-        _generator.Generate(ctx).Should().BeEmpty();
+        (await _generator.GenerateAsync(ctx)).Should().BeEmpty();
     }
 
     [Fact]
-    public void Generate_FillsCompetitor_AndRecordsMapping()
+    public async Task Generate_FillsCompetitor_AndRecordsMapping()
     {
         var competitorId = Guid.NewGuid();
         var ctx = new PromptGenerationContext(
@@ -72,7 +71,7 @@ public class TemplatePromptGeneratorTests
             new[] { new CoverageRef(competitorId, "Rival") },
             10);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("How does Acme compare to Rival?");
@@ -80,7 +79,7 @@ public class TemplatePromptGeneratorTests
     }
 
     [Fact]
-    public void Generate_UsesCategory_WhenNoTopics()
+    public async Task Generate_UsesCategory_WhenNoTopics()
     {
         var ctx = new PromptGenerationContext(
             "Acme",
@@ -91,7 +90,7 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             10);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("Tell me about CRM.");
@@ -99,7 +98,7 @@ public class TemplatePromptGeneratorTests
     }
 
     [Fact]
-    public void Generate_SkipsExcludedTexts()
+    public async Task Generate_SkipsExcludedTexts()
     {
         var ctx = new PromptGenerationContext(
             "Acme",
@@ -115,14 +114,14 @@ public class TemplatePromptGeneratorTests
             10,
             new[] { "What are the best CRM in US?" });
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Should().NotContain(p => p.Text == "What are the best CRM in US?");
         result.Should().Contain(p => p.Text == "Tell me about Pricing.");
     }
 
     [Fact]
-    public void Generate_TopiclessTemplate_ProducesOnePrompt_AcrossManyTopics()
+    public async Task Generate_TopiclessTemplate_ProducesOnePrompt_AcrossManyTopics()
     {
         var ctx = new PromptGenerationContext(
             "Nostri",
@@ -138,7 +137,7 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             30);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("Is Nostri a reliable Design Consultancy? What is its reputation?");
@@ -146,7 +145,7 @@ public class TemplatePromptGeneratorTests
     }
 
     [Fact]
-    public void Generate_CompetitorTemplate_OnePerCompetitor_NotPerTopic()
+    public async Task Generate_CompetitorTemplate_OnePerCompetitor_NotPerTopic()
     {
         var ctx = new PromptGenerationContext(
             "Nostri",
@@ -165,7 +164,7 @@ public class TemplatePromptGeneratorTests
             },
             30);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
         result.Select(p => p.Text).Should().BeEquivalentTo(
             new[]
@@ -176,7 +175,7 @@ public class TemplatePromptGeneratorTests
     }
 
     [Fact]
-    public void Generate_NeverProducesDuplicateTexts()
+    public async Task Generate_NeverProducesDuplicateTexts()
     {
         var ctx = new PromptGenerationContext(
             "Nostri",
@@ -195,9 +194,8 @@ public class TemplatePromptGeneratorTests
             Array.Empty<CoverageRef>(),
             30);
 
-        var result = _generator.Generate(ctx);
+        var result = await _generator.GenerateAsync(ctx);
 
-        var texts = result.Select(p => p.Text).ToList();
-        texts.Should().OnlyHaveUniqueItems();
+        result.Select(p => p.Text).Should().OnlyHaveUniqueItems();
     }
 }

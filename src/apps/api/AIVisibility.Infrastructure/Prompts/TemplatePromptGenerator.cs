@@ -3,15 +3,22 @@ using AIVisibility.Application.Interfaces;
 namespace AIVisibility.Infrastructure.Prompts;
 
 /// <summary>
-/// Deterministic template-fill prompt generator. Each template is varied over the dimension it
-/// actually references — topics (for {topic}), competitors (for {competitor}), or nothing — so
-/// topic-less templates produce a single prompt instead of one identical copy per topic. Texts
+/// Deterministic template-fill prompt generator (LLM-free fallback). Each template is varied over
+/// the dimension it references — topics (for {topic}), competitors (for {competitor}), or nothing —
+/// so topic-less templates produce a single prompt instead of one identical copy per topic. Texts
 /// are de-duplicated, the Exclude set (removed/kept prompts) is honoured, and output is capped at
 /// PromptAllocation.
 /// </summary>
 public class TemplatePromptGenerator : IPromptGenerator
 {
-    public IReadOnlyList<GeneratedPrompt> Generate(PromptGenerationContext ctx)
+    public Task<IReadOnlyList<GeneratedPrompt>> GenerateAsync(
+        PromptGenerationContext context,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Build(context));
+    }
+
+    private static IReadOnlyList<GeneratedPrompt> Build(PromptGenerationContext ctx)
     {
         var results = new List<GeneratedPrompt>();
         if (ctx.Templates.Count == 0 || ctx.PromptAllocation <= 0) return results;

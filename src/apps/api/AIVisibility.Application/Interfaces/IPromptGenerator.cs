@@ -6,7 +6,9 @@ namespace AIVisibility.Application.Interfaces;
 /// </summary>
 public interface IPromptGenerator
 {
-    IReadOnlyList<GeneratedPrompt> Generate(PromptGenerationContext context);
+    Task<IReadOnlyList<GeneratedPrompt>> GenerateAsync(
+        PromptGenerationContext context,
+        CancellationToken cancellationToken = default);
 }
 
 public record PromptTemplateInput(Guid PromptTemplateId, Guid VisibilityCheckId, string TemplateText);

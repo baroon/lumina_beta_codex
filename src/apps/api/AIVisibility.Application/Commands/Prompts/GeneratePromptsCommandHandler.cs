@@ -107,7 +107,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             budget,
             exclude);
 
-        var generated = _generator.Generate(context);
+        var generated = await _generator.GenerateAsync(context, cancellationToken);
 
         var now = DateTime.UtcNow;
         foreach (var g in generated)

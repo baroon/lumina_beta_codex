@@ -1,0 +1,97 @@
+using AIVisibility.Application.Interfaces;
+using AIVisibility.Infrastructure.Prompts;
+using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+namespace AIVisibility.Tests.Unit.Infrastructure;
+
+public class OpenAiPromptGeneratorTests
+{
+    private readonly Mock<IOpenAiService> _openAi = new();
+
+    private OpenAiPromptGenerator CreateGenerator() =>
+        new(
+            _openAi.Object,
+            new TemplatePromptGenerator(),
+            new Mock<ILogger<OpenAiPromptGenerator>>().Object);
+
+    private void SetupResponse(string response) =>
+        _openAi
+            .Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+    private static PromptTemplateInput Template(Guid checkId, string text) =>
+        new(Guid.NewGuid(), checkId, text);
+
+    [Fact]
+    public async Task GenerateAsync_MapsLlmPrompts_AndTopics()
+    {
+        var checkId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        SetupResponse(
+            "[{\"prompt\":\"Which CRM is best for pricing?\",\"topic\":\"Pricing\"},"
+            + "{\"prompt\":\"Top CRM tools in the US?\",\"topic\":null}]");
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[] { Template(checkId, "What are the best {category}?") },
+            new[] { new CoverageRef(topicId, "Pricing") },
+            Array.Empty<CoverageRef>(),
+            10);
+
+        var result = await CreateGenerator().GenerateAsync(ctx);
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(p => p.Text == "Which CRM is best for pricing?" && p.PrimaryTopicId == topicId);
+        result.Should().Contain(p => p.Text == "Top CRM tools in the US?" && p.PrimaryTopicId == null);
+        result.Should().OnlyContain(p => p.VisibilityCheckId == checkId);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_DeduplicatesAndHonoursExclude()
+    {
+        var checkId = Guid.NewGuid();
+        SetupResponse(
+            "[{\"prompt\":\"Repeated prompt\"},{\"prompt\":\"Repeated prompt\"},{\"prompt\":\"Removed one\"}]");
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[] { Template(checkId, "Best {category}?") },
+            Array.Empty<CoverageRef>(),
+            Array.Empty<CoverageRef>(),
+            10,
+            new[] { "Removed one" });
+
+        var result = await CreateGenerator().GenerateAsync(ctx);
+
+        result.Should().ContainSingle();
+        result[0].Text.Should().Be("Repeated prompt");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_FallsBackToTemplates_WhenLlmEmpty()
+    {
+        SetupResponse(string.Empty); // no API key or failure → empty response
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[] { Template(Guid.NewGuid(), "What are the best {category} in {market}?") },
+            Array.Empty<CoverageRef>(),
+            Array.Empty<CoverageRef>(),
+            10);
+
+        var result = await CreateGenerator().GenerateAsync(ctx);
+
+        result.Should().ContainSingle();
+        result[0].Text.Should().Be("What are the best CRM in US?");
+    }
+}
