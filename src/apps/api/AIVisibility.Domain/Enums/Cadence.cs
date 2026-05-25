@@ -5,5 +5,4 @@ public enum Cadence
     OnDemand,
     Daily,
     Weekly,
-    Monthly,
 }

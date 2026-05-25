@@ -19,7 +19,7 @@ interface TrackerScheduleScreenProps {
   trackerId: string;
 }
 
-const CADENCES = ["OnDemand", "Daily", "Weekly", "Monthly"] as const;
+const CADENCES = ["OnDemand", "Daily", "Weekly"] as const;
 const CADENCE_LABELS = TRACKERS_COPY.schedule.cadence as Record<string, string>;
 
 export function TrackerScheduleScreen({ trackerId }: TrackerScheduleScreenProps) {

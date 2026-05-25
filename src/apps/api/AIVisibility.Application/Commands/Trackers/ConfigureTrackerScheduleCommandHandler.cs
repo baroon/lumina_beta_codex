@@ -70,7 +70,6 @@ public class ConfigureTrackerScheduleCommandHandler
         {
             Cadence.Daily => from.AddDays(1),
             Cadence.Weekly => from.AddDays(7),
-            Cadence.Monthly => from.AddMonths(1),
             _ => null, // OnDemand — manual only
         };
 }

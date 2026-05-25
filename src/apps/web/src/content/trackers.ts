@@ -73,7 +73,6 @@ export const TRACKERS_COPY = {
       OnDemand: "On demand",
       Daily: "Daily",
       Weekly: "Weekly",
-      Monthly: "Monthly",
     },
     estimate: "{prompts} prompts × {platforms} platforms = {checks} scan checks",
     noPlatforms: "Select at least one platform.",
