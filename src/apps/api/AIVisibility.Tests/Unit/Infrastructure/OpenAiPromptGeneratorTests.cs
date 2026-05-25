@@ -35,8 +35,8 @@ public class OpenAiPromptGeneratorTests
         var checkId = Guid.NewGuid();
         var topicId = Guid.NewGuid();
         SetupResponse(
-            "[{\"prompt\":\"Which CRM is best for pricing?\",\"topic\":\"Pricing\"},"
-            + "{\"prompt\":\"Top CRM tools in the US?\",\"topic\":null}]");
+            "[{\"prompt\":\"Which CRM is best for pricing?\",\"topics\":[\"Pricing\"]},"
+            + "{\"prompt\":\"Top CRM tools in the US?\",\"topics\":[]}]");
         var ctx = new PromptGenerationContext(
             "Acme",
             "CRM",
@@ -49,8 +49,8 @@ public class OpenAiPromptGeneratorTests
         var result = await CreateGenerator().GenerateAsync(ctx);
 
         result.Should().HaveCount(2);
-        result.Should().Contain(p => p.Text == "Which CRM is best for pricing?" && p.PrimaryTopicId == topicId);
-        result.Should().Contain(p => p.Text == "Top CRM tools in the US?" && p.PrimaryTopicId == null);
+        result.Should().Contain(p => p.Text == "Which CRM is best for pricing?" && p.TopicIds.Contains(topicId));
+        result.Should().Contain(p => p.Text == "Top CRM tools in the US?" && p.TopicIds.Count == 0);
         result.Should().OnlyContain(p => p.VisibilityCheckId == checkId);
     }
 
@@ -128,8 +128,8 @@ public class OpenAiPromptGeneratorTests
             Exclude: null,
             Industry: "Software",
             Positioning: "Affordable CRM for small teams",
-            Products: new[] { "Lead Tracker" },
-            Audiences: new[] { "Small businesses" });
+            Products: new[] { new CoverageRef(Guid.NewGuid(), "Lead Tracker") },
+            Audiences: new[] { new CoverageRef(Guid.NewGuid(), "Small businesses") });
 
         await CreateGenerator().GenerateAsync(ctx);
 
@@ -138,5 +138,42 @@ public class OpenAiPromptGeneratorTests
         captured.Should().Contain("Lead Tracker");
         captured.Should().Contain("Affordable CRM for small teams");
         captured.Should().Contain("Small businesses");
+    }
+
+    [Fact]
+    public async Task GenerateAsync_MapsAllReferencedDimensions()
+    {
+        var checkId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var competitorId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var audienceId = Guid.NewGuid();
+        var marketId = Guid.NewGuid();
+        SetupResponse(
+            "[{\"prompt\":\"q\",\"topics\":[\"T\"],\"competitors\":[\"C\"],"
+            + "\"products\":[\"P\"],\"audiences\":[\"A\"],\"markets\":[\"M\"]}]");
+        var ctx = new PromptGenerationContext(
+            "Acme",
+            "CRM",
+            "US",
+            new[] { Template(checkId, "Best {category}?") },
+            new[] { new CoverageRef(topicId, "T") },
+            new[] { new CoverageRef(competitorId, "C") },
+            10,
+            Exclude: null,
+            Industry: null,
+            Positioning: null,
+            Products: new[] { new CoverageRef(productId, "P") },
+            Audiences: new[] { new CoverageRef(audienceId, "A") },
+            Markets: new[] { new CoverageRef(marketId, "M") });
+
+        var result = await CreateGenerator().GenerateAsync(ctx);
+
+        var p = result.Should().ContainSingle().Subject;
+        p.TopicIds.Should().ContainSingle().Which.Should().Be(topicId);
+        p.CompetitorIds.Should().ContainSingle().Which.Should().Be(competitorId);
+        p.ProductIds.Should().ContainSingle().Which.Should().Be(productId);
+        p.AudienceIds.Should().ContainSingle().Which.Should().Be(audienceId);
+        p.MarketIds.Should().ContainSingle().Which.Should().Be(marketId);
     }
 }

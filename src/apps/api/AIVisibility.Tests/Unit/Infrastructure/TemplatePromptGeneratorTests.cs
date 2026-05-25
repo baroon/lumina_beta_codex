@@ -94,7 +94,7 @@ public class TemplatePromptGeneratorTests
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("Tell me about CRM.");
-        result[0].PrimaryTopicId.Should().BeNull();
+        result[0].TopicIds.Should().BeEmpty();
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class TemplatePromptGeneratorTests
 
         result.Should().ContainSingle();
         result[0].Text.Should().Be("Is Nostri a reliable Design Consultancy? What is its reputation?");
-        result[0].PrimaryTopicId.Should().BeNull();
+        result[0].TopicIds.Should().BeEmpty();
     }
 
     [Fact]

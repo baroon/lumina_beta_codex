@@ -22,6 +22,7 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
 
         // Non-archived prompts only (Draft + Active).
         var prompts = await _db.Prompts
+            .Include(p => p.Topics)
             .Where(p => p.TrackerConfigurationId == tracker.Id && p.Status != PromptStatus.Archived)
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -30,8 +31,7 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
             .ToDictionaryAsync(v => v.Id, v => v.Name, cancellationToken);
 
         var topicIds = prompts
-            .Where(p => p.PrimaryTopicId.HasValue)
-            .Select(p => p.PrimaryTopicId!.Value)
+            .SelectMany(p => p.Topics.Select(t => t.TopicId))
             .Distinct()
             .ToList();
         var topicNames = await _db.Topics
@@ -94,10 +94,11 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
                 p.Source.ToString(),
                 p.VisibilityCheckId,
                 checkNames.TryGetValue(p.VisibilityCheckId, out var cn) ? cn : string.Empty,
-                p.PrimaryTopicId,
-                p.PrimaryTopicId.HasValue && topicNames.TryGetValue(p.PrimaryTopicId.Value, out var tn)
-                    ? tn
-                    : null,
+                p.Topics
+                    .Select(t => topicNames.TryGetValue(t.TopicId, out var tn) ? tn : null)
+                    .Where(n => n is not null)
+                    .Select(n => n!)
+                    .ToList(),
                 ReviewReason(p.VisibilityCheckId)))
             .ToList();
 

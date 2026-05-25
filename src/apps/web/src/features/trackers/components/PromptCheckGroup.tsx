@@ -189,9 +189,13 @@ export function PromptCheckGroup({
                       className="text-neutral-900 hover:bg-primary-100"
                       multiline
                     />
-                    {prompt.primaryTopicName && (
-                      <div className="mt-1 pl-2">
-                        <Badge variant="secondary">{prompt.primaryTopicName}</Badge>
+                    {prompt.topics.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1 pl-2">
+                        {prompt.topics.map((t) => (
+                          <Badge key={t} variant="secondary">
+                            {t}
+                          </Badge>
+                        ))}
                       </div>
                     )}
                   </div>

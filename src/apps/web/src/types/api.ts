@@ -185,8 +185,7 @@ export interface PromptDto {
   source: string;
   visibilityCheckId: string;
   visibilityCheckName: string;
-  primaryTopicId: string | null;
-  primaryTopicName: string | null;
+  topics: string[];
   reviewReason: string | null;
 }
 

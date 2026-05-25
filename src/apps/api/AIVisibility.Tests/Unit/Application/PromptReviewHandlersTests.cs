@@ -59,11 +59,11 @@ public class PromptReviewHandlersTests
             TrackerConfigurationId = tracker.Id,
             PromptText = "What are the best CRM for Pricing?",
             VisibilityCheckId = check.Id,
-            PrimaryTopicId = topic.Id,
             Status = PromptStatus.Draft,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
+            Topics = new List<PromptTopic> { new() { Id = Guid.NewGuid(), TopicId = topic.Id } },
         };
         var p2 = new Prompt
         {
@@ -99,7 +99,7 @@ public class PromptReviewHandlersTests
         result!.PromptAllocation.Should().Be(30);
         result.Count.Should().Be(2);
         result.Prompts.Should().Contain(p => p.VisibilityCheckName == "Discovery");
-        result.Prompts.Should().Contain(p => p.PrimaryTopicName == "Pricing");
+        result.Prompts.Should().Contain(p => p.Topics.Contains("Pricing"));
     }
 
     [Fact]

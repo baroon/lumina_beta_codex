@@ -47,14 +47,18 @@ public class TemplatePromptGenerator : IPromptGenerator
 
             if (!seen.Add(text)) return true; // duplicate or excluded — skip, keep going
 
-            Guid? primaryTopicId = topic is not null && topic.Id != Guid.Empty ? topic.Id : null;
+            var topicIds = topic is not null && topic.Id != Guid.Empty
+                ? new List<Guid> { topic.Id }
+                : new List<Guid>();
             results.Add(new GeneratedPrompt(
                 text,
                 template.VisibilityCheckId,
                 template.PromptTemplateId,
-                primaryTopicId,
-                primaryTopicId.HasValue ? new List<Guid> { primaryTopicId.Value } : new List<Guid>(),
-                competitor is not null ? new List<Guid> { competitor.Id } : new List<Guid>()));
+                topicIds,
+                competitor is not null ? new List<Guid> { competitor.Id } : new List<Guid>(),
+                new List<Guid>(),
+                new List<Guid>(),
+                new List<Guid>()));
             return true;
         }
 

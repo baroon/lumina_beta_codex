@@ -78,7 +78,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .ToListAsync(cancellationToken);
         var products = await _db.Products
             .Where(p => productIds.Contains(p.Id))
-            .Select(p => p.Name)
+            .Select(p => new CoverageRef(p.Id, p.Name))
             .ToListAsync(cancellationToken);
 
         var audienceIds = await _db.TrackerAudiences
@@ -87,7 +87,16 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .ToListAsync(cancellationToken);
         var audiences = await _db.Audiences
             .Where(a => audienceIds.Contains(a.Id))
-            .Select(a => a.Name)
+            .Select(a => new CoverageRef(a.Id, a.Name))
+            .ToListAsync(cancellationToken);
+
+        var marketIds = await _db.TrackerMarkets
+            .Where(x => x.TrackerConfigurationId == tracker.Id)
+            .Select(x => x.MarketId)
+            .ToListAsync(cancellationToken);
+        var markets = await _db.Markets
+            .Where(m => marketIds.Contains(m.Id))
+            .Select(m => new CoverageRef(m.Id, m.Name))
             .ToListAsync(cancellationToken);
 
         // Optional filters: regenerate only a slice (by Visibility Check and/or Topic).
@@ -113,7 +122,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 p.Status == PromptStatus.Draft
                 && p.Source == PromptSource.Generated
                 && (!request.VisibilityCheckId.HasValue || p.VisibilityCheckId == request.VisibilityCheckId.Value)
-                && (!request.TopicId.HasValue || p.PrimaryTopicId == request.TopicId.Value))
+                && (!request.TopicId.HasValue || p.Topics.Any(t => t.TopicId == request.TopicId.Value)))
             .ToList();
         _db.Prompts.RemoveRange(replaced);
 
@@ -139,7 +148,8 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             brand.BrandProfile?.Industry,
             brand.BrandProfile?.Positioning,
             products,
-            audiences);
+            audiences,
+            markets);
 
         var generated = await _generator.GenerateAsync(context, cancellationToken);
 
@@ -152,7 +162,6 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 TrackerConfigurationId = tracker.Id,
                 PromptText = g.Text,
                 VisibilityCheckId = g.VisibilityCheckId,
-                PrimaryTopicId = g.PrimaryTopicId,
                 PromptTemplateId = g.PromptTemplateId,
                 Status = PromptStatus.Draft,
                 Source = PromptSource.Generated,
@@ -161,6 +170,15 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 Topics = g.TopicIds.Select(id => new PromptTopic { Id = Guid.NewGuid(), TopicId = id }).ToList(),
                 Competitors = g.CompetitorIds
                     .Select(id => new PromptCompetitor { Id = Guid.NewGuid(), CompetitorId = id })
+                    .ToList(),
+                Products = g.ProductIds
+                    .Select(id => new PromptProduct { Id = Guid.NewGuid(), ProductId = id })
+                    .ToList(),
+                Audiences = g.AudienceIds
+                    .Select(id => new PromptAudience { Id = Guid.NewGuid(), AudienceId = id })
+                    .ToList(),
+                Markets = g.MarketIds
+                    .Select(id => new PromptMarket { Id = Guid.NewGuid(), MarketId = id })
                     .ToList(),
             });
         }

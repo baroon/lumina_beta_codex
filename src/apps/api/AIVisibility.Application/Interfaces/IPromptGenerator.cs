@@ -33,13 +33,16 @@ public record PromptGenerationContext(
     // Extra brand context for niche-specific LLM generation (ignored by the template fallback).
     string? Industry = null,
     string? Positioning = null,
-    IReadOnlyList<string>? Products = null,
-    IReadOnlyList<string>? Audiences = null);
+    IReadOnlyList<CoverageRef>? Products = null,
+    IReadOnlyList<CoverageRef>? Audiences = null,
+    IReadOnlyList<CoverageRef>? Markets = null);
 
 public record GeneratedPrompt(
     string Text,
     Guid VisibilityCheckId,
     Guid PromptTemplateId,
-    Guid? PrimaryTopicId,
     IReadOnlyList<Guid> TopicIds,
-    IReadOnlyList<Guid> CompetitorIds);
+    IReadOnlyList<Guid> CompetitorIds,
+    IReadOnlyList<Guid> ProductIds,
+    IReadOnlyList<Guid> AudienceIds,
+    IReadOnlyList<Guid> MarketIds);

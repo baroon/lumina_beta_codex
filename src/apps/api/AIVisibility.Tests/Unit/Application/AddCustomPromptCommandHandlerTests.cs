@@ -59,7 +59,6 @@ public class AddCustomPromptCommandHandlerTests
         prompt.Source.Should().Be(PromptSource.UserAdded);
         prompt.Status.Should().Be(PromptStatus.Draft);
         prompt.VisibilityCheckId.Should().Be(checkId);
-        prompt.PrimaryTopicId.Should().Be(topicId);
         prompt.Topics.Should().ContainSingle(t => t.TopicId == topicId);
     }
 

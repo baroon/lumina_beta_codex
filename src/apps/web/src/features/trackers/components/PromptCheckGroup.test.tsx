@@ -12,8 +12,7 @@ const prompts: PromptDto[] = [
     source: "Generated",
     visibilityCheckId: "c1",
     visibilityCheckName: "Discovery",
-    primaryTopicId: "t1",
-    primaryTopicName: "Pricing",
+    topics: ["Pricing"],
     reviewReason: null,
   },
   {
@@ -23,8 +22,7 @@ const prompts: PromptDto[] = [
     source: "UserAdded",
     visibilityCheckId: "c1",
     visibilityCheckName: "Discovery",
-    primaryTopicId: null,
-    primaryTopicName: null,
+    topics: [],
     reviewReason: null,
   },
 ];
