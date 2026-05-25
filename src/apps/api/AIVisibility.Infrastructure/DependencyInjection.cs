@@ -7,6 +7,7 @@ using AIVisibility.Infrastructure.Scanning;
 using AIVisibility.Infrastructure.Providers.Anthropic;
 using AIVisibility.Infrastructure.Providers.Gemini;
 using AIVisibility.Infrastructure.Providers.OpenAi;
+using AIVisibility.Infrastructure.Providers.OpenAiCompatible;
 using AIVisibility.Infrastructure.Storage;
 using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,17 @@ public static class DependencyInjection
         services.AddHttpClient("Gemini");
         services.AddScoped<IGeminiService, GeminiService>();
 
+        // OpenAI-compatible providers: Grok (xAI), Perplexity, Copilot (configurable endpoint)
+        services.Configure<GrokConfig>(configuration.GetSection(GrokConfig.SectionName));
+        services.AddHttpClient("Grok");
+        services.AddScoped<IGrokService, GrokService>();
+        services.Configure<PerplexityConfig>(configuration.GetSection(PerplexityConfig.SectionName));
+        services.AddHttpClient("Perplexity");
+        services.AddScoped<IPerplexityService, PerplexityService>();
+        services.Configure<CopilotConfig>(configuration.GetSection(CopilotConfig.SectionName));
+        services.AddHttpClient("Copilot");
+        services.AddScoped<ICopilotService, CopilotService>();
+
         // OpenAI
         services.Configure<OpenAiConfig>(configuration.GetSection(OpenAiConfig.SectionName));
         services.AddHttpClient("OpenAI");
@@ -61,6 +73,9 @@ public static class DependencyInjection
         services.AddScoped<IPlatformClient, OpenAiPlatformClient>();
         services.AddScoped<IPlatformClient, ClaudePlatformClient>();
         services.AddScoped<IPlatformClient, GeminiPlatformClient>();
+        services.AddScoped<IPlatformClient, GrokPlatformClient>();
+        services.AddScoped<IPlatformClient, PerplexityPlatformClient>();
+        services.AddScoped<IPlatformClient, CopilotPlatformClient>();
         services.AddScoped<IScanProvider, ScanProviderRouter>();
         services.AddHostedService<ScanRunner>();
 

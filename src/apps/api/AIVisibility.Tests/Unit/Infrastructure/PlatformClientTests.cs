@@ -25,6 +25,24 @@ public class PlatformClientTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
+    private static void SetupGrok(Mock<IGrokService> m, string response) =>
+        m.Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+    private static void SetupPerplexity(Mock<IPerplexityService> m, string response) =>
+        m.Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
+    private static void SetupCopilot(Mock<ICopilotService> m, string response) =>
+        m.Setup(o => o.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+
     [Fact]
     public void OpenAi_Handles_OnlyChatGptCodes()
     {
@@ -87,5 +105,56 @@ public class PlatformClientTests
         var gemini = new Mock<IGeminiService>();
         SetupGemini(gemini, string.Empty);
         (await new GeminiPlatformClient(gemini.Object).GetAnswerAsync("q")).Success.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Grok_Handles_AndReturnsAnswer()
+    {
+        var grok = new Mock<IGrokService>();
+        SetupGrok(grok, "Grok answer.");
+        var client = new GrokPlatformClient(grok.Object);
+
+        client.Handles("Grok").Should().BeTrue();
+        client.Handles("Gemini").Should().BeFalse();
+        var result = await client.GetAnswerAsync("q");
+        result.Success.Should().BeTrue();
+        result.Text.Should().Be("Grok answer.");
+
+        SetupGrok(grok, string.Empty);
+        (await new GrokPlatformClient(grok.Object).GetAnswerAsync("q")).Success.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Perplexity_Handles_AndReturnsAnswer()
+    {
+        var perplexity = new Mock<IPerplexityService>();
+        SetupPerplexity(perplexity, "Perplexity answer.");
+        var client = new PerplexityPlatformClient(perplexity.Object);
+
+        client.Handles("Perplexity").Should().BeTrue();
+        client.Handles("Grok").Should().BeFalse();
+        var result = await client.GetAnswerAsync("q");
+        result.Success.Should().BeTrue();
+        result.Text.Should().Be("Perplexity answer.");
+
+        SetupPerplexity(perplexity, string.Empty);
+        (await new PerplexityPlatformClient(perplexity.Object).GetAnswerAsync("q")).Success.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Copilot_Handles_AndReturnsAnswer()
+    {
+        var copilot = new Mock<ICopilotService>();
+        SetupCopilot(copilot, "Copilot answer.");
+        var client = new CopilotPlatformClient(copilot.Object);
+
+        client.Handles("Copilot").Should().BeTrue();
+        client.Handles("Perplexity").Should().BeFalse();
+        var result = await client.GetAnswerAsync("q");
+        result.Success.Should().BeTrue();
+        result.Text.Should().Be("Copilot answer.");
+
+        SetupCopilot(copilot, string.Empty);
+        (await new CopilotPlatformClient(copilot.Object).GetAnswerAsync("q")).Success.Should().BeFalse();
     }
 }
