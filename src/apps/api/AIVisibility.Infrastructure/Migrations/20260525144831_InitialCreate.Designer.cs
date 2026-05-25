@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIVisibility.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260525102441_ExpandPromptTemplatesDropDisplayOrder")]
-    partial class ExpandPromptTemplatesDropDisplayOrder
+    [Migration("20260525144831_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,6 +74,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("display_order");
 
+                    b.Property<bool>("IsDefaultSelected")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default_selected");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -93,6 +97,7 @@ namespace AIVisibility.Infrastructure.Migrations
                             Id = new Guid("a0000000-0000-0000-0000-000000000001"),
                             Code = "ChatGpt",
                             DisplayOrder = 1,
+                            IsDefaultSelected = true,
                             Name = "ChatGPT"
                         },
                         new
@@ -100,6 +105,7 @@ namespace AIVisibility.Infrastructure.Migrations
                             Id = new Guid("a0000000-0000-0000-0000-000000000002"),
                             Code = "ChatGptSearch",
                             DisplayOrder = 2,
+                            IsDefaultSelected = false,
                             Name = "ChatGPT Search"
                         },
                         new
@@ -107,6 +113,7 @@ namespace AIVisibility.Infrastructure.Migrations
                             Id = new Guid("a0000000-0000-0000-0000-000000000003"),
                             Code = "Gemini",
                             DisplayOrder = 3,
+                            IsDefaultSelected = false,
                             Name = "Gemini"
                         },
                         new
@@ -114,7 +121,32 @@ namespace AIVisibility.Infrastructure.Migrations
                             Id = new Guid("a0000000-0000-0000-0000-000000000004"),
                             Code = "Claude",
                             DisplayOrder = 4,
+                            IsDefaultSelected = false,
                             Name = "Claude"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000005"),
+                            Code = "Grok",
+                            DisplayOrder = 5,
+                            IsDefaultSelected = false,
+                            Name = "Grok"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000006"),
+                            Code = "Perplexity",
+                            DisplayOrder = 6,
+                            IsDefaultSelected = false,
+                            Name = "Perplexity"
+                        },
+                        new
+                        {
+                            Id = new Guid("a0000000-0000-0000-0000-000000000007"),
+                            Code = "Copilot",
+                            DisplayOrder = 7,
+                            IsDefaultSelected = false,
+                            Name = "Copilot"
                         });
                 });
 
@@ -402,11 +434,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("brand_id");
 
-                    b.Property<string>("City")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("city");
-
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
@@ -416,34 +443,15 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("country_code");
 
-                    b.Property<string>("CurrencyCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("currency_code");
-
                     b.Property<Guid>("DiscoveryRunId")
                         .HasColumnType("uuid")
                         .HasColumnName("discovery_run_id");
-
-                    b.Property<bool>("IsCustom")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_custom");
-
-                    b.Property<string>("LanguageCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("language_code");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
                         .HasColumnName("name");
-
-                    b.Property<string>("Region")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("region");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -496,11 +504,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("product_type");
 
-                    b.Property<string>("RelatedPageUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)")
-                        .HasColumnName("related_page_url");
-
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -531,10 +534,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid?>("PrimaryTopicId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("primary_topic_id");
-
                     b.Property<Guid?>("PromptTemplateId")
                         .HasColumnType("uuid")
                         .HasColumnName("prompt_template_id");
@@ -544,10 +543,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("prompt_text");
-
-                    b.Property<Guid?>("ReplacesPromptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("replaces_prompt_id");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -569,9 +564,9 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.Property<Guid>("VisibilityCheckId")
+                    b.Property<Guid>("VisibilityLensId")
                         .HasColumnType("uuid")
-                        .HasColumnName("visibility_check_id");
+                        .HasColumnName("visibility_lens_id");
 
                     b.HasKey("Id");
 
@@ -736,13 +731,13 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("template_text");
 
-                    b.Property<Guid>("VisibilityCheckId")
+                    b.Property<Guid>("VisibilityLensId")
                         .HasColumnType("uuid")
-                        .HasColumnName("visibility_check_id");
+                        .HasColumnName("visibility_lens_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("VisibilityCheckId");
+                    b.HasIndex("VisibilityLensId");
 
                     b.ToTable("prompt_templates", (string)null);
 
@@ -752,126 +747,126 @@ namespace AIVisibility.Infrastructure.Migrations
                             Id = new Guid("70000000-0000-0000-0000-000000000101"),
                             Name = "Category discovery",
                             TemplateText = "What are the best {category} options in {market}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000102"),
                             Name = "Category recommendation",
                             TemplateText = "Which {category} would you recommend in {market}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000103"),
                             Name = "Leading providers",
                             TemplateText = "Who are the leading {category} providers right now?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000001")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000001")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000201"),
                             Name = "Buying intent",
                             TemplateText = "I want to buy {category} for {topic} — which do you recommend?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000202"),
                             Name = "Budget choice",
                             TemplateText = "What's the best {category} for {topic} on a budget?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000203"),
                             Name = "Ready to choose",
                             TemplateText = "I'm ready to choose a {category} for {topic} — what should I go with?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000002")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000002")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000301"),
                             Name = "Head to head",
                             TemplateText = "How does {brand} compare to {competitor} for {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000302"),
                             Name = "Which is better",
                             TemplateText = "Is {brand} or {competitor} the better {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000303"),
                             Name = "Key differences",
                             TemplateText = "What are the main differences between {brand} and {competitor}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000003")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000003")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000401"),
                             Name = "Reliability",
                             TemplateText = "Is {brand} a reliable {category}? What is its reputation?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000402"),
                             Name = "Reviews",
                             TemplateText = "What do people say about {brand}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000403"),
                             Name = "Trust",
                             TemplateText = "Can I trust {brand} for {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000004")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000004")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000501"),
                             Name = "Authoritative sources",
                             TemplateText = "What are the most authoritative sources about {topic} in {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000502"),
                             Name = "Experts to follow",
                             TemplateText = "Which experts or publications should I follow on {topic}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000503"),
                             Name = "Trustworthy info",
                             TemplateText = "Where can I find trustworthy information about {topic}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000005")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000005")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000601"),
                             Name = "Considerations",
                             TemplateText = "What should I consider about {topic} when choosing a {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000602"),
                             Name = "Questions to ask",
                             TemplateText = "What questions should I ask about {topic} before choosing a {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
                         },
                         new
                         {
                             Id = new Guid("70000000-0000-0000-0000-000000000603"),
                             Name = "Overlooked factors",
                             TemplateText = "What do most people overlook about {topic} when it comes to {category}?",
-                            VisibilityCheckId = new Guid("c0000000-0000-0000-0000-000000000006")
+                            VisibilityLensId = new Guid("c0000000-0000-0000-0000-000000000006")
                         });
                 });
 
@@ -964,10 +959,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("AliasesJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("aliases");
-
                     b.Property<Guid>("BrandId")
                         .HasColumnType("uuid")
                         .HasColumnName("brand_id");
@@ -975,11 +966,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("description");
 
                     b.Property<Guid>("DiscoveryRunId")
                         .HasColumnType("uuid")
@@ -1100,6 +1086,7 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnName("status");
 
                     b.Property<string>("Timezone")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("timezone");
@@ -1203,7 +1190,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("tracker_topics", (string)null);
                 });
 
-            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityCheck", b =>
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityLens", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1214,15 +1201,15 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tracker_configuration_id");
 
-                    b.Property<Guid>("VisibilityCheckId")
+                    b.Property<Guid>("VisibilityLensId")
                         .HasColumnType("uuid")
-                        .HasColumnName("visibility_check_id");
+                        .HasColumnName("visibility_lens_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("TrackerConfigurationId");
 
-                    b.ToTable("tracker_visibility_checks", (string)null);
+                    b.ToTable("tracker_visibility_lenses", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrustSignal", b =>
@@ -1267,10 +1254,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
 
-                    b.Property<string>("SourcePagesJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("source_pages");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BrandId");
@@ -1280,7 +1263,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("trust_signals", (string)null);
                 });
 
-            modelBuilder.Entity("AIVisibility.Domain.Entities.VisibilityCheck", b =>
+            modelBuilder.Entity("AIVisibility.Domain.Entities.VisibilityLens", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1313,7 +1296,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("visibility_checks", (string)null);
+                    b.ToTable("visibility_lenses", (string)null);
 
                     b.HasData(
                         new
@@ -1670,10 +1653,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("TrackerConfiguration");
                 });
 
-            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityCheck", b =>
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerVisibilityLens", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
-                        .WithMany("VisibilityChecks")
+                        .WithMany("VisibilityLenses")
                         .HasForeignKey("TrackerConfigurationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1771,7 +1754,7 @@ namespace AIVisibility.Infrastructure.Migrations
 
                     b.Navigation("Topics");
 
-                    b.Navigation("VisibilityChecks");
+                    b.Navigation("VisibilityLenses");
                 });
 #pragma warning restore 612, 618
         }

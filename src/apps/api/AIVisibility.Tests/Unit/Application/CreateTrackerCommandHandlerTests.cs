@@ -109,7 +109,7 @@ public class CreateTrackerCommandHandlerTests
             .Include(t => t.Products)
             .Include(t => t.Audiences)
             .Include(t => t.Markets)
-            .Include(t => t.VisibilityChecks)
+            .Include(t => t.VisibilityLenses)
             .SingleAsync();
 
         tracker.Status.Should().Be(TrackerStatus.Draft);
@@ -124,7 +124,7 @@ public class CreateTrackerCommandHandlerTests
         tracker.Products.Should().ContainSingle();
         tracker.Audiences.Should().ContainSingle();
         tracker.Markets.Should().ContainSingle();
-        tracker.VisibilityChecks.Should().HaveCount(await ctx.VisibilityChecks.CountAsync());
+        tracker.VisibilityLenses.Should().HaveCount(await ctx.VisibilityLenses.CountAsync());
     }
 
     [Fact]

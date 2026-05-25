@@ -67,10 +67,10 @@ describe("usePrompts hooks", () => {
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     const { result } = renderHook(() => useGeneratePrompts(), { wrapper });
     await act(async () => {
-      await result.current.mutateAsync({ trackerId: "t1", visibilityCheckId: "c1" });
+      await result.current.mutateAsync({ trackerId: "t1", visibilityLensId: "c1" });
     });
     expect(api.generate).toHaveBeenCalledWith("t1", {
-      visibilityCheckId: "c1",
+      visibilityLensId: "c1",
       topicId: undefined,
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["prompts", "t1"] });
@@ -108,13 +108,13 @@ describe("usePrompts hooks", () => {
     await act(async () => {
       await result.current.mutateAsync({
         text: "Q",
-        visibilityCheckId: "c1",
+        visibilityLensId: "c1",
         primaryTopicId: null,
       });
     });
     expect(api.addCustom).toHaveBeenCalledWith("t1", {
       text: "Q",
-      visibilityCheckId: "c1",
+      visibilityLensId: "c1",
       primaryTopicId: null,
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["prompts", "t1"] });

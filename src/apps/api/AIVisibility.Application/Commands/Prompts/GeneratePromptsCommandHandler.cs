@@ -27,26 +27,26 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Include(b => b.BrandProfile)
             .FirstAsync(b => b.Id == tracker.BrandId, cancellationToken);
 
-        var checkIds = await _db.TrackerVisibilityChecks
+        var checkIds = await _db.TrackerVisibilityLenses
             .Where(x => x.TrackerConfigurationId == tracker.Id)
-            .Select(x => x.VisibilityCheckId)
+            .Select(x => x.VisibilityLensId)
             .ToListAsync(cancellationToken);
-        var checkById = (await _db.VisibilityChecks
+        var checkById = (await _db.VisibilityLenses
             .Where(v => checkIds.Contains(v.Id))
             .Select(v => new { v.Id, v.Name, v.Description })
             .ToListAsync(cancellationToken))
             .ToDictionary(c => c.Id);
         var rawTemplates = await _db.PromptTemplates
-            .Where(t => checkIds.Contains(t.VisibilityCheckId))
-            .Select(t => new { t.Id, t.VisibilityCheckId, t.TemplateText })
+            .Where(t => checkIds.Contains(t.VisibilityLensId))
+            .Select(t => new { t.Id, t.VisibilityLensId, t.TemplateText })
             .ToListAsync(cancellationToken);
         var templates = rawTemplates
             .Select(t => new PromptTemplateInput(
                 t.Id,
-                t.VisibilityCheckId,
+                t.VisibilityLensId,
                 t.TemplateText,
-                checkById.TryGetValue(t.VisibilityCheckId, out var c) ? c.Name : string.Empty,
-                checkById.TryGetValue(t.VisibilityCheckId, out var d) ? d.Description ?? string.Empty : string.Empty))
+                checkById.TryGetValue(t.VisibilityLensId, out var c) ? c.Name : string.Empty,
+                checkById.TryGetValue(t.VisibilityLensId, out var d) ? d.Description ?? string.Empty : string.Empty))
             .ToList();
 
         var topicIds = await _db.TrackerTopics
@@ -99,9 +99,9 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Select(m => new CoverageRef(m.Id, m.Name))
             .ToListAsync(cancellationToken);
 
-        // Optional filters: regenerate only a slice (by Visibility Check and/or Topic).
-        if (request.VisibilityCheckId.HasValue)
-            templates = templates.Where(t => t.VisibilityCheckId == request.VisibilityCheckId.Value).ToList();
+        // Optional filters: regenerate only a slice (by Visibility Lens and/or Topic).
+        if (request.VisibilityLensId.HasValue)
+            templates = templates.Where(t => t.VisibilityLensId == request.VisibilityLensId.Value).ToList();
         if (request.TopicId.HasValue)
             topics = topics.Where(t => t.Id == request.TopicId.Value).ToList();
 
@@ -121,7 +121,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .Where(p =>
                 p.Status == PromptStatus.Draft
                 && p.Source == PromptSource.Generated
-                && (!request.VisibilityCheckId.HasValue || p.VisibilityCheckId == request.VisibilityCheckId.Value)
+                && (!request.VisibilityLensId.HasValue || p.VisibilityLensId == request.VisibilityLensId.Value)
                 && (!request.TopicId.HasValue || p.Topics.Any(t => t.TopicId == request.TopicId.Value)))
             .ToList();
         _db.Prompts.RemoveRange(replaced);
@@ -161,7 +161,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 PromptText = g.Text,
-                VisibilityCheckId = g.VisibilityCheckId,
+                VisibilityLensId = g.VisibilityLensId,
                 PromptTemplateId = g.PromptTemplateId,
                 Status = PromptStatus.Draft,
                 Source = PromptSource.Generated,

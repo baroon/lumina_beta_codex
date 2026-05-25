@@ -13,9 +13,9 @@ export function usePrompts(trackerId: string) {
 export function useGeneratePrompts() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { trackerId: string; visibilityCheckId?: string; topicId?: string }) =>
+    mutationFn: (vars: { trackerId: string; visibilityLensId?: string; topicId?: string }) =>
       promptsApi.generate(vars.trackerId, {
-        visibilityCheckId: vars.visibilityCheckId,
+        visibilityLensId: vars.visibilityLensId,
         topicId: vars.topicId,
       }),
     onSuccess: (_data, vars) => {

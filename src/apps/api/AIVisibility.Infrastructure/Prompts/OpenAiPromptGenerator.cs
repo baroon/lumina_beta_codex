@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace AIVisibility.Infrastructure.Prompts;
 
 /// <summary>
-/// LLM-backed prompt generator. For each Visibility Check it asks OpenAI for fresh, natural
+/// LLM-backed prompt generator. For each Visibility Lens it asks OpenAI for fresh, natural
 /// end-user prompts in that check's style, scoped to the brand's coverage and avoiding the Exclude
 /// set (removed/kept prompts). Each returned prompt also reports which coverage entities it
 /// references (topics/competitors/products/audiences/markets) for per-dimension reporting. Falls
@@ -31,7 +31,7 @@ public class OpenAiPromptGenerator : IPromptGenerator
           comparisons, "is X worth it?". Never reuse the same skeleton twice.
         - Ground every prompt in THIS brand's niche: weave in its specific topics, products,
           audiences, market, and positioning so the prompts probe where this brand should appear.
-        - Stay within the given Visibility Check's intent.
+        - Stay within the given Visibility Lens's intent.
         - Do NOT mention the brand name unless the check is about comparison or sentiment.
         - Never repeat or paraphrase anything in the EXCLUDE list.
 
@@ -59,7 +59,7 @@ public class OpenAiPromptGenerator : IPromptGenerator
         if (ctx.Templates.Count == 0 || ctx.PromptAllocation <= 0)
             return Array.Empty<GeneratedPrompt>();
 
-        var checks = ctx.Templates.GroupBy(t => t.VisibilityCheckId).ToList();
+        var checks = ctx.Templates.GroupBy(t => t.VisibilityLensId).ToList();
         var perCheck = Math.Max(1, (int)Math.Ceiling((double)ctx.PromptAllocation / checks.Count));
 
         var topicByName = ByName(ctx.Topics);
@@ -161,7 +161,7 @@ public class OpenAiPromptGenerator : IPromptGenerator
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Prompt generation failed for Visibility Check {CheckId}", checkId);
+            _logger.LogWarning(ex, "Prompt generation failed for Visibility Lens {CheckId}", checkId);
             return new List<RawPrompt>();
         }
     }
@@ -177,8 +177,8 @@ public class OpenAiPromptGenerator : IPromptGenerator
         if (!string.IsNullOrWhiteSpace(checkName))
             parts.Add(
                 string.IsNullOrWhiteSpace(checkDescription)
-                    ? $"Visibility Check: {checkName}"
-                    : $"Visibility Check: {checkName} — {checkDescription}");
+                    ? $"Visibility Lens: {checkName}"
+                    : $"Visibility Lens: {checkName} — {checkDescription}");
         parts.Add($"Brand: \"{ctx.BrandName}\"");
         if (!string.IsNullOrWhiteSpace(ctx.Category)) parts.Add($"Category: {ctx.Category}");
         if (!string.IsNullOrWhiteSpace(ctx.Industry)) parts.Add($"Industry: {ctx.Industry}");

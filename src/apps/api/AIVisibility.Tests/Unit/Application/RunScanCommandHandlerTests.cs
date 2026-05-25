@@ -52,7 +52,7 @@ public class RunScanCommandHandlerTests
                 Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 PromptText = $"Q{i}",
-                VisibilityCheckId = Guid.NewGuid(),
+                VisibilityLensId = Guid.NewGuid(),
                 Status = PromptStatus.Active,
                 Source = PromptSource.Generated,
                 CreatedAt = DateTime.UtcNow,

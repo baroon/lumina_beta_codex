@@ -18,7 +18,7 @@ public record PromptDto(
     string Text,
     string Status,
     string Source,
-    Guid VisibilityCheckId,
-    string VisibilityCheckName,
+    Guid VisibilityLensId,
+    string VisibilityLensName,
     List<string> Topics,
     string? ReviewReason);

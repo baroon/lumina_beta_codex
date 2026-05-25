@@ -13,7 +13,7 @@ public interface IPromptGenerator
 
 public record PromptTemplateInput(
     Guid PromptTemplateId,
-    Guid VisibilityCheckId,
+    Guid VisibilityLensId,
     string TemplateText,
     string CheckName = "",
     string CheckDescription = "");
@@ -39,7 +39,7 @@ public record PromptGenerationContext(
 
 public record GeneratedPrompt(
     string Text,
-    Guid VisibilityCheckId,
+    Guid VisibilityLensId,
     Guid PromptTemplateId,
     IReadOnlyList<Guid> TopicIds,
     IReadOnlyList<Guid> CompetitorIds,

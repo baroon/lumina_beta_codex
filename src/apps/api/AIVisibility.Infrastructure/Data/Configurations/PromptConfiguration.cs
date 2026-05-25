@@ -13,7 +13,7 @@ public class PromptConfiguration : IEntityTypeConfiguration<Prompt>
         builder.Property(p => p.Id).HasColumnName("id");
         builder.Property(p => p.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(p => p.PromptText).HasColumnName("prompt_text").HasMaxLength(2000).IsRequired();
-        builder.Property(p => p.VisibilityCheckId).HasColumnName("visibility_check_id");
+        builder.Property(p => p.VisibilityLensId).HasColumnName("visibility_lens_id");
         builder.Property(p => p.PromptTemplateId).HasColumnName("prompt_template_id");
         builder.Property(p => p.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
         builder.Property(p => p.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);

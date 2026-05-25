@@ -41,14 +41,14 @@ export function ReadyToCreateTrackerScreen({ brandId }: ReadyToCreateTrackerScre
   }
 
   // Mirror the discovery onboarding order: Products, Audiences, Markets, Topics, Competitors,
-  // then the (static) Visibility Checks last.
+  // then the (static) Visibility Lenses last.
   const summary: ReadonlyArray<readonly [string, number, LucideIcon]> = [
     [TRACKERS_COPY.ready.summary.products, previewData.productCount, Package],
     [TRACKERS_COPY.ready.summary.audiences, previewData.audienceCount, Users],
     [TRACKERS_COPY.ready.summary.markets, previewData.marketCount, Globe],
     [TRACKERS_COPY.ready.summary.topics, previewData.topicCount, MessageSquare],
     [TRACKERS_COPY.ready.summary.competitors, previewData.competitorCount, Swords],
-    [TRACKERS_COPY.ready.summary.visibilityChecks, previewData.visibilityCheckCount, Eye],
+    [TRACKERS_COPY.ready.summary.visibilityLenses, previewData.visibilityLensCount, Eye],
   ];
 
   function handleCreate() {

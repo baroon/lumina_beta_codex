@@ -73,27 +73,27 @@ public class GeneratePromptsCommandHandlerTests
         });
 
         // Seed checks + templates explicitly (the in-memory provider does not apply HasData).
-        var check1 = new VisibilityCheck { Id = Guid.NewGuid(), Code = "Discovery", Name = "Discovery", DisplayOrder = 1 };
-        var check2 = new VisibilityCheck
+        var check1 = new VisibilityLens { Id = Guid.NewGuid(), Code = "Discovery", Name = "Discovery", DisplayOrder = 1 };
+        var check2 = new VisibilityLens
         {
             Id = Guid.NewGuid(),
             Code = "CompetitorComparison",
             Name = "Competitor Comparison",
             DisplayOrder = 2,
         };
-        ctx.VisibilityChecks.AddRange(check1, check2);
+        ctx.VisibilityLenses.AddRange(check1, check2);
         ctx.PromptTemplates.AddRange(
             new PromptTemplate
             {
                 Id = Guid.NewGuid(),
-                VisibilityCheckId = check1.Id,
+                VisibilityLensId = check1.Id,
                 Name = "Discovery",
                 TemplateText = "What are the best {category} for {topic} in {market}?",
             },
             new PromptTemplate
             {
                 Id = Guid.NewGuid(),
-                VisibilityCheckId = check2.Id,
+                VisibilityLensId = check2.Id,
                 Name = "Comparison",
                 TemplateText = "How does {brand} compare to {competitor}?",
             });
@@ -110,18 +110,18 @@ public class GeneratePromptsCommandHandlerTests
             UpdatedAt = DateTime.UtcNow,
         };
         ctx.TrackerConfigurations.Add(tracker);
-        ctx.TrackerVisibilityChecks.AddRange(
-            new TrackerVisibilityCheck
+        ctx.TrackerVisibilityLenses.AddRange(
+            new TrackerVisibilityLens
             {
                 Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
-                VisibilityCheckId = check1.Id,
+                VisibilityLensId = check1.Id,
             },
-            new TrackerVisibilityCheck
+            new TrackerVisibilityLens
             {
                 Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
-                VisibilityCheckId = check2.Id,
+                VisibilityLensId = check2.Id,
             });
         ctx.TrackerTopics.Add(new TrackerTopic
         {
@@ -188,22 +188,22 @@ public class GeneratePromptsCommandHandlerTests
         var handler = new GeneratePromptsCommandHandler(ctx, new TemplatePromptGenerator());
 
         await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
-        var discovery = await ctx.VisibilityChecks.FirstAsync(c => c.Code == "Discovery");
+        var discovery = await ctx.VisibilityLenses.FirstAsync(c => c.Code == "Discovery");
         var keptIds = await ctx.Prompts
-            .Where(p => p.TrackerConfigurationId == tracker.Id && p.VisibilityCheckId != discovery.Id)
+            .Where(p => p.TrackerConfigurationId == tracker.Id && p.VisibilityLensId != discovery.Id)
             .Select(p => p.Id)
             .ToListAsync();
 
         await handler.Handle(
-            new GeneratePromptsCommand(tracker.Id, VisibilityCheckId: discovery.Id),
+            new GeneratePromptsCommand(tracker.Id, VisibilityLensId: discovery.Id),
             CancellationToken.None);
 
         var after = await ctx.Prompts
             .Where(p => p.TrackerConfigurationId == tracker.Id)
             .ToListAsync();
-        after.Where(p => p.VisibilityCheckId != discovery.Id).Select(p => p.Id)
+        after.Where(p => p.VisibilityLensId != discovery.Id).Select(p => p.Id)
             .Should().BeEquivalentTo(keptIds);
-        after.Should().Contain(p => p.VisibilityCheckId == discovery.Id);
+        after.Should().Contain(p => p.VisibilityLensId == discovery.Id);
     }
 
     [Fact]
@@ -214,13 +214,13 @@ public class GeneratePromptsCommandHandlerTests
         var handler = new GeneratePromptsCommandHandler(ctx, new TemplatePromptGenerator());
         await handler.Handle(new GeneratePromptsCommand(tracker.Id), CancellationToken.None);
 
-        var check = await ctx.VisibilityChecks.FirstAsync(c => c.Code == "Discovery");
+        var check = await ctx.VisibilityLenses.FirstAsync(c => c.Code == "Discovery");
         ctx.Prompts.Add(new Prompt
         {
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "My hand-written prompt",
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
             Status = PromptStatus.Draft,
             Source = PromptSource.UserAdded,
             CreatedAt = DateTime.UtcNow,

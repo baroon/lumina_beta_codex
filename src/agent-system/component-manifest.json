@@ -719,17 +719,17 @@
           "path": "src/features/trackers/components/PromptReviewScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Button", "PromptCheckGroup", "TrackerScheduleScreen"],
+          "dependencies": ["PageHeader", "Button", "PromptLensGroup", "TrackerScheduleScreen"],
           "notes": "Prompt review: collapsible per-Visibility-Check cards (auto-generates on first load), allocation bar, per-check add-custom + regenerate, and confirm. Confirm advances to the platform/cadence screen."
         },
         {
-          "name": "PromptCheckGroup",
+          "name": "PromptLensGroup",
           "category": "Feature — Tracker",
-          "path": "src/features/trackers/components/PromptCheckGroup.tsx",
+          "path": "src/features/trackers/components/PromptLensGroup.tsx",
           "status": "implemented",
           "variants": [],
           "dependencies": ["SectionHeader", "Button", "Badge", "Input", "Select", "InlineEdit"],
-          "notes": "Collapsible card for one Visibility Check (description, count, per-check regenerate): tinted prompt rows with AI/human source icon, multi-line inline-editable text, per-prompt remove, and an inline add-custom form."
+          "notes": "Collapsible card for one Visibility Lens (description, count, per-check regenerate): tinted prompt rows with AI/human source icon, multi-line inline-editable text, per-prompt remove, and an inline add-custom form."
         },
         {
           "name": "TrackerScheduleScreen",

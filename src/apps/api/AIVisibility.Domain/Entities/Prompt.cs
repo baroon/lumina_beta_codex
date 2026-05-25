@@ -12,7 +12,7 @@ public class Prompt
     public Guid Id { get; set; }
     public Guid TrackerConfigurationId { get; set; }
     public string PromptText { get; set; } = string.Empty;
-    public Guid VisibilityCheckId { get; set; }
+    public Guid VisibilityLensId { get; set; }
     public Guid? PromptTemplateId { get; set; }
     public PromptStatus Status { get; set; }
     public PromptSource Source { get; set; }

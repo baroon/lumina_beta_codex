@@ -6,5 +6,5 @@ namespace AIVisibility.Application.Commands.Prompts;
 public record AddCustomPromptCommand(
     Guid TrackerId,
     string Text,
-    Guid VisibilityCheckId,
+    Guid VisibilityLensId,
     Guid? PrimaryTopicId) : IRequest<Unit>;

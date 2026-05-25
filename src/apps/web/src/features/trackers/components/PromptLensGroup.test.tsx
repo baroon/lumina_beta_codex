@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
-import { PromptCheckGroup } from "./PromptCheckGroup";
+import { PromptLensGroup } from "./PromptLensGroup";
 import type { PromptDto } from "@/types/api";
 
 const prompts: PromptDto[] = [
@@ -10,8 +10,8 @@ const prompts: PromptDto[] = [
     text: "AI prompt",
     status: "Draft",
     source: "Generated",
-    visibilityCheckId: "c1",
-    visibilityCheckName: "Discovery",
+    visibilityLensId: "c1",
+    visibilityLensName: "Discovery",
     topics: ["Pricing"],
     reviewReason: null,
   },
@@ -20,8 +20,8 @@ const prompts: PromptDto[] = [
     text: "Custom prompt",
     status: "Draft",
     source: "UserAdded",
-    visibilityCheckId: "c1",
-    visibilityCheckName: "Discovery",
+    visibilityLensId: "c1",
+    visibilityLensName: "Discovery",
     topics: [],
     reviewReason: null,
   },
@@ -33,7 +33,7 @@ function setup(canAdd = true, reviewReason?: string) {
   const onEdit = vi.fn();
   const onAdd = vi.fn();
   render(
-    <PromptCheckGroup
+    <PromptLensGroup
       title="Discovery"
       prompts={prompts}
       topics={[{ id: "t1", name: "Pricing" }]}
@@ -48,7 +48,7 @@ function setup(canAdd = true, reviewReason?: string) {
   return { onRegenerate, onRemove, onEdit, onAdd };
 }
 
-describe("PromptCheckGroup", () => {
+describe("PromptLensGroup", () => {
   it("renders prompts, the check description, source icons, and topic", () => {
     setup();
     expect(screen.getByText("AI prompt")).toBeInTheDocument();

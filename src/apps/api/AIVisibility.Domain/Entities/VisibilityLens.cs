@@ -4,7 +4,7 @@ namespace AIVisibility.Domain.Entities;
 /// Predefined type of AI visibility test (ADR-001). Static reference/seed data, not
 /// extracted from crawl. Used as a tracker coverage dimension and to drive prompt generation.
 /// </summary>
-public class VisibilityCheck
+public class VisibilityLens
 {
     public Guid Id { get; set; }
     public string Code { get; set; } = string.Empty;

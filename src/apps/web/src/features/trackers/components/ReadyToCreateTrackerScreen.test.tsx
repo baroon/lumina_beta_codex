@@ -15,7 +15,7 @@ const preview: TrackerSetupPreview = {
   productCount: 4,
   audienceCount: 1,
   marketCount: 1,
-  visibilityCheckCount: 6,
+  visibilityLensCount: 6,
   promptAllocation: 30,
 };
 
@@ -39,7 +39,7 @@ describe("ReadyToCreateTrackerScreen", () => {
     render(<ReadyToCreateTrackerScreen brandId="b1" />);
     expect(screen.getByDisplayValue("United States SaaS Visibility Tracker")).toBeInTheDocument();
     expect(screen.getByText("Topics")).toBeInTheDocument();
-    expect(screen.getByText("Visibility Checks")).toBeInTheDocument();
+    expect(screen.getByText("Visibility Lenses")).toBeInTheDocument();
   });
 
   it("creates the tracker with the edited name", async () => {

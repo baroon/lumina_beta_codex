@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { PromptCheckGroup } from "./PromptCheckGroup";
+import { PromptLensGroup } from "./PromptLensGroup";
 
-const meta: Meta<typeof PromptCheckGroup> = {
-  title: "Features/Trackers/PromptCheckGroup",
-  component: PromptCheckGroup,
+const meta: Meta<typeof PromptLensGroup> = {
+  title: "Features/Trackers/PromptLensGroup",
+  component: PromptLensGroup,
   tags: ["autodocs"],
   args: {
     title: "Discovery",
@@ -19,8 +19,8 @@ const meta: Meta<typeof PromptCheckGroup> = {
         text: "What are the best CRM options in the US?",
         status: "Draft",
         source: "Generated",
-        visibilityCheckId: "c1",
-        visibilityCheckName: "Discovery",
+        visibilityLensId: "c1",
+        visibilityLensName: "Discovery",
         topics: ["Pricing"],
         reviewReason: null,
       },
@@ -29,8 +29,8 @@ const meta: Meta<typeof PromptCheckGroup> = {
         text: "Which CRM should a small team pick?",
         status: "Draft",
         source: "UserAdded",
-        visibilityCheckId: "c1",
-        visibilityCheckName: "Discovery",
+        visibilityLensId: "c1",
+        visibilityLensName: "Discovery",
         topics: [],
         reviewReason: null,
       },
@@ -39,6 +39,6 @@ const meta: Meta<typeof PromptCheckGroup> = {
 };
 
 export default meta;
-type Story = StoryObj<typeof PromptCheckGroup>;
+type Story = StoryObj<typeof PromptLensGroup>;
 
 export const Default: Story = {};

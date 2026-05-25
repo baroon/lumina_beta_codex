@@ -165,7 +165,7 @@ export interface TrackerSetupPreview {
   productCount: number;
   audienceCount: number;
   marketCount: number;
-  visibilityCheckCount: number;
+  visibilityLensCount: number;
   promptAllocation: number;
 }
 
@@ -183,8 +183,8 @@ export interface PromptDto {
   text: string;
   status: string;
   source: string;
-  visibilityCheckId: string;
-  visibilityCheckName: string;
+  visibilityLensId: string;
+  visibilityLensName: string;
   topics: string[];
   reviewReason: string | null;
 }
@@ -204,7 +204,7 @@ export interface PromptList {
 
 export interface AddCustomPromptRequest {
   text: string;
-  visibilityCheckId: string;
+  visibilityLensId: string;
   primaryTopicId?: string | null;
 }
 

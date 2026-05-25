@@ -7,7 +7,7 @@ import type {
 } from "@/types/api";
 
 export interface RegenerateFilters {
-  visibilityCheckId?: string;
+  visibilityLensId?: string;
   topicId?: string;
 }
 
@@ -16,7 +16,7 @@ export const promptsApi = {
 
   generate: (trackerId: string, filters?: RegenerateFilters) => {
     const params = new URLSearchParams();
-    if (filters?.visibilityCheckId) params.set("visibilityCheckId", filters.visibilityCheckId);
+    if (filters?.visibilityLensId) params.set("visibilityLensId", filters.visibilityLensId);
     if (filters?.topicId) params.set("topicId", filters.topicId);
     const qs = params.toString();
     return apiClient.post<GeneratePromptsResult>(

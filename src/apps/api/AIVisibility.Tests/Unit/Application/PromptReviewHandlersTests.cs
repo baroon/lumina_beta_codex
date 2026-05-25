@@ -32,7 +32,7 @@ public class PromptReviewHandlersTests
             Status = DiscoveryStatus.Completed,
             StartedAt = DateTime.UtcNow,
         };
-        var check = new VisibilityCheck { Id = Guid.NewGuid(), Code = "Discovery", Name = "Discovery", DisplayOrder = 1 };
+        var check = new VisibilityLens { Id = Guid.NewGuid(), Code = "Discovery", Name = "Discovery", DisplayOrder = 1 };
         var topic = new Topic
         {
             Id = Guid.NewGuid(),
@@ -58,7 +58,7 @@ public class PromptReviewHandlersTests
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "What are the best CRM for Pricing?",
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
             Status = PromptStatus.Draft,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,
@@ -70,7 +70,7 @@ public class PromptReviewHandlersTests
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "How does Acme compare to Rival?",
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
             Status = PromptStatus.Draft,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow.AddSeconds(1),
@@ -78,7 +78,7 @@ public class PromptReviewHandlersTests
         };
         ctx.Brands.Add(brand);
         ctx.DiscoveryRuns.Add(run);
-        ctx.VisibilityChecks.Add(check);
+        ctx.VisibilityLenses.Add(check);
         ctx.Topics.Add(topic);
         ctx.TrackerConfigurations.Add(tracker);
         ctx.Prompts.AddRange(p1, p2);
@@ -98,7 +98,7 @@ public class PromptReviewHandlersTests
         result.Should().NotBeNull();
         result!.PromptAllocation.Should().Be(30);
         result.Count.Should().Be(2);
-        result.Prompts.Should().Contain(p => p.VisibilityCheckName == "Discovery");
+        result.Prompts.Should().Contain(p => p.VisibilityLensName == "Discovery");
         result.Prompts.Should().Contain(p => p.Topics.Contains("Pricing"));
     }
 
@@ -186,7 +186,7 @@ public class PromptReviewHandlersTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
-        var check = new VisibilityCheck
+        var check = new VisibilityLens
         {
             Id = Guid.NewGuid(),
             Code = "CompetitorComparison",
@@ -205,27 +205,27 @@ public class PromptReviewHandlersTests
             UpdatedAt = DateTime.UtcNow,
         };
         ctx.Brands.Add(brand);
-        ctx.VisibilityChecks.Add(check);
+        ctx.VisibilityLenses.Add(check);
         ctx.PromptTemplates.Add(new PromptTemplate
         {
             Id = Guid.NewGuid(),
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
             Name = "C",
             TemplateText = "How does {brand} compare to {competitor}?",
         });
         ctx.TrackerConfigurations.Add(tracker);
-        ctx.TrackerVisibilityChecks.Add(new TrackerVisibilityCheck
+        ctx.TrackerVisibilityLenses.Add(new TrackerVisibilityLens
         {
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
         });
         ctx.Prompts.Add(new Prompt
         {
             Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             PromptText = "How does Acme compare to others?",
-            VisibilityCheckId = check.Id,
+            VisibilityLensId = check.Id,
             Status = PromptStatus.Draft,
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,

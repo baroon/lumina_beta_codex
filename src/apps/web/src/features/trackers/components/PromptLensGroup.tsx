@@ -45,7 +45,7 @@ const CHECK_ICONS: Record<string, LucideIcon> = {
 
 const CHECK_DESCRIPTIONS = TRACKERS_COPY.review.checkDescriptions as Record<string, string>;
 
-interface PromptCheckGroupProps {
+interface PromptLensGroupProps {
   title: string;
   prompts: PromptDto[];
   topics: PromptOption[];
@@ -58,7 +58,7 @@ interface PromptCheckGroupProps {
   onAdd: (text: string, topicId: string | null) => void;
 }
 
-export function PromptCheckGroup({
+export function PromptLensGroup({
   title,
   prompts,
   topics,
@@ -69,7 +69,7 @@ export function PromptCheckGroup({
   onRemove,
   onEdit,
   onAdd,
-}: PromptCheckGroupProps) {
+}: PromptLensGroupProps) {
   const [expanded, setExpanded] = useState(true);
   const [adding, setAdding] = useState(false);
   const [draftText, setDraftText] = useState("");
