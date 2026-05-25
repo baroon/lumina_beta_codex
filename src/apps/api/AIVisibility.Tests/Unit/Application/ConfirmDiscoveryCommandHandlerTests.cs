@@ -1,4 +1,6 @@
 using AIVisibility.Application.Commands.Discovery;
+using AIVisibility.Application.Interfaces;
+using AIVisibility.Application.Queries.Discovery;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Data;
@@ -10,6 +12,14 @@ namespace AIVisibility.Tests.Unit.Application;
 
 public class ConfirmDiscoveryCommandHandlerTests
 {
+    private sealed class FakeDraftStore : IDiscoveryDraftStore
+    {
+        private readonly Dictionary<Guid, DiscoveryResultsDto> _drafts = new();
+        public void Save(Guid id, DiscoveryResultsDto draft) => _drafts[id] = draft;
+        public DiscoveryResultsDto? Get(Guid id) => _drafts.TryGetValue(id, out var d) ? d : null;
+        public void Remove(Guid id) => _drafts.Remove(id);
+    }
+
     private static AppDbContext NewContext() =>
         new(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -57,7 +67,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     public async Task Handle_ShouldThrowWhenBrandNotFound()
     {
         using var ctx = NewContext();
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var act = () => handler.Handle(Command(Guid.NewGuid()), CancellationToken.None);
 
@@ -69,7 +79,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, run) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,
@@ -101,7 +111,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,
@@ -120,11 +130,36 @@ public class ConfirmDiscoveryCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldClearDraft_SoResultsReportTheCompletedRun()
+    {
+        using var ctx = NewContext();
+        var (brand, run) = Seed(ctx);
+        var draftStore = new FakeDraftStore();
+        draftStore.Save(run.Id, new DiscoveryResultsDto(
+            brand.Id, brand.Name, "AwaitingConfirmation", null,
+            new List<CandidateDto>(), new List<CandidateDto>(), new List<CandidateDto>(),
+            new List<CandidateDto>(), new List<CandidateDto>(), new List<CandidateDto>(),
+            new List<string>()));
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, draftStore);
+
+        await handler.Handle(
+            Command(
+                brand.Id,
+                products: new() { Item("Analytics", new() { ["productType"] = "Service" }) },
+                markets: new() { Item("US") },
+                topics: new() { Item("Pricing") }),
+            CancellationToken.None);
+
+        // Draft gone → GetDiscoveryResults falls through to the completed run status.
+        draftStore.Get(run.Id).Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_ShouldPersistBrandAliases_TrimmedAndDeduped()
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,
@@ -144,7 +179,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(brand.Id, products: new() { Item("P") }, topics: new() { Item("T") });
         var act = () => handler.Handle(command, CancellationToken.None);
@@ -157,7 +192,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(brand.Id, products: new() { Item("P") }, markets: new() { Item("US") });
         var act = () => handler.Handle(command, CancellationToken.None);
@@ -170,7 +205,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(brand.Id, markets: new() { Item("US") }, topics: new() { Item("T") });
         var act = () => handler.Handle(command, CancellationToken.None);
@@ -183,7 +218,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,
@@ -200,7 +235,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,
@@ -217,7 +252,7 @@ public class ConfirmDiscoveryCommandHandlerTests
     {
         using var ctx = NewContext();
         var (brand, _) = Seed(ctx);
-        var handler = new ConfirmDiscoveryCommandHandler(ctx);
+        var handler = new ConfirmDiscoveryCommandHandler(ctx, new FakeDraftStore());
 
         var command = Command(
             brand.Id,

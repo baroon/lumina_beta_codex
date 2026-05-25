@@ -11,10 +11,12 @@ namespace AIVisibility.Application.Commands.Discovery;
 public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCommand, Unit>
 {
     private readonly IAppDbContext _db;
+    private readonly IDiscoveryDraftStore _draftStore;
 
-    public ConfirmDiscoveryCommandHandler(IAppDbContext db)
+    public ConfirmDiscoveryCommandHandler(IAppDbContext db, IDiscoveryDraftStore draftStore)
     {
         _db = db;
+        _draftStore = draftStore;
     }
 
     public async Task<Unit> Handle(ConfirmDiscoveryCommand request, CancellationToken cancellationToken)
@@ -161,6 +163,10 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
             .ToList();
         brand.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        // The transient draft is now obsolete — drop it so GetDiscoveryResults reports the
+        // completed run status and the UI advances past the confirmation screen.
+        _draftStore.Remove(latestRun.Id);
 
         return Unit.Value;
     }

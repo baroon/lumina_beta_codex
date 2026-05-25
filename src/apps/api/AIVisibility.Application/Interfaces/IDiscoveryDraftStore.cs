@@ -11,4 +11,5 @@ public interface IDiscoveryDraftStore
 {
     void Save(Guid discoveryRunId, DiscoveryResultsDto draft);
     DiscoveryResultsDto? Get(Guid discoveryRunId);
+    void Remove(Guid discoveryRunId);
 }

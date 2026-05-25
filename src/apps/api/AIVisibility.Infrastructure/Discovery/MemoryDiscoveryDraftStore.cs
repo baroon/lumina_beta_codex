@@ -17,5 +17,7 @@ public class MemoryDiscoveryDraftStore : IDiscoveryDraftStore
     public DiscoveryResultsDto? Get(Guid discoveryRunId) =>
         _cache.TryGetValue(Key(discoveryRunId), out DiscoveryResultsDto? draft) ? draft : null;
 
+    public void Remove(Guid discoveryRunId) => _cache.Remove(Key(discoveryRunId));
+
     private static string Key(Guid discoveryRunId) => $"discovery-draft:{discoveryRunId}";
 }
