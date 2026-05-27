@@ -153,7 +153,84 @@ public class MetricAggregator
             citations.Count(c => c.Classification == SourceClassification.ThirdParty), now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.UnknownCitationCount,
             citations.Count(c => c.Classification == SourceClassification.Unknown), now);
+
+        // Slice-(c)-followup aggregates: only at Overall scope for now. Adding
+        // them at other scopes is a per-scope decision (e.g. per-platform SoV
+        // could double-count answers mapped to multiple platforms; needs design
+        // before shipping) — punt to a later focused slice.
+        if (scope == ScanMetricScope.Overall)
+        {
+            foreach (var row in BuildShareOfVoice(scanRunId, mentions, now)) yield return row;
+            foreach (var row in BuildSentimentDistribution(scanRunId, contexts, now)) yield return row;
+            foreach (var row in BuildTopCitedSources(scanRunId, citations, now)) yield return row;
+        }
     }
+
+    private static IEnumerable<ScanMetric> BuildShareOfVoice(
+        Guid scanRunId, List<Mention> mentions, DateTime now)
+    {
+        var brand = mentions.Count(m => m.EntityType == MentionEntityType.Brand);
+        var competitor = mentions.Count(m => m.EntityType == MentionEntityType.Competitor);
+        var denom = brand + competitor;
+        // Denominator-zero guard — no "voice" to share. Skip rather than emit
+        // 0 or NaN; reporting consumers should treat absent-metric as "no data".
+        if (denom == 0) yield break;
+        yield return MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandShareOfVoice, (double)brand / denom, now);
+    }
+
+    private static IEnumerable<ScanMetric> BuildSentimentDistribution(
+        Guid scanRunId, List<AnswerContext> contexts, DateTime now)
+    {
+        // Group by observed sentiment value and emit one row per group. Unobserved
+        // sentiment values produce no row (the distribution matches reality, not
+        // the enum surface).
+        foreach (var grp in contexts.GroupBy(c => c.Signal.BrandSentiment))
+        {
+            yield return MetricRowWithMetadata(scanRunId, ScanMetricScope.Overall, null,
+                MetricNames.BrandSentimentDistribution, grp.Count(),
+                $"{{\"value\":\"{grp.Key}\"}}", now);
+        }
+    }
+
+    private static IEnumerable<ScanMetric> BuildTopCitedSources(
+        Guid scanRunId, List<Citation> citations, DateTime now)
+    {
+        // Top-K most cited (K=5) by NormalizedSourceName. Ties broken by name
+        // alphabetically — deterministic for tests and reporting consistency.
+        const int TopK = 5;
+        var ranked = citations
+            .GroupBy(c => c.NormalizedSourceName)
+            .Select(g => new { Source = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Source, StringComparer.Ordinal)
+            .Take(TopK)
+            .ToList();
+
+        var rank = 1;
+        foreach (var entry in ranked)
+        {
+            yield return MetricRowWithMetadata(scanRunId, ScanMetricScope.Overall, null,
+                MetricNames.TopCitedSource, entry.Count,
+                $"{{\"source_name\":{System.Text.Json.JsonEncodedText.Encode(entry.Source)},\"rank\":{rank}}}",
+                now);
+            rank++;
+        }
+    }
+
+    private static ScanMetric MetricRowWithMetadata(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        string name, double value, string metadataJson, DateTime now) => new()
+    {
+        Id = Guid.NewGuid(),
+        ScanRunId = scanRunId,
+        Scope = scope,
+        ScopeId = scopeId,
+        MetricName = name,
+        MetricValue = value,
+        MetadataJson = metadataJson,
+        CreatedAt = now,
+    };
 
     private static ScanMetric MetricRow(
         Guid scanRunId, ScanMetricScope scope, Guid? scopeId,

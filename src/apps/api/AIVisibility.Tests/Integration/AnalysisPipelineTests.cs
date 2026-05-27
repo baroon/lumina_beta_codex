@@ -368,18 +368,27 @@ public class AnalysisPipelineTests
         var metrics = await ctx.ScanMetrics.AsNoTracking().ToListAsync();
         // The fixture exercises 1 platform + 1 lens + 0 topics (the seed doesn't
         // create PromptTopic rows). Acme is the only competitor mentioned.
-        // Per non-competitor scope: 10 metrics — BrandMentionRate, Brand-
+        //
+        // Non-Competitor scope base: 10 metrics — BrandMentionRate, Brand-
         // RecommendationRate, AverageBrandRank (1 signal had rank=1),
         // CompetitorMentionCount, ProductMentionCount, CitationCount,
         // OwnedCitationCount, CompetitorCitationCount, ThirdPartyCitationCount,
-        // UnknownCitationCount. Competitor scope: 2 metrics (MentionCount +
-        // RecommendationCount).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(10);
+        // UnknownCitationCount.
+        //
+        // Overall scope only also emits the Slice-(c)-followup aggregates:
+        //   +1 BrandShareOfVoice (1 brand mention vs 1 competitor mention = 0.5)
+        //   +2 BrandSentimentDistribution (Positive ×1, Unknown ×3 — D13
+        //      coerced answer #1's Negative to Unknown)
+        //   +3 TopCitedSource (3 distinct sources on answer #0)
+        // = 16 at Overall.
+        //
+        // Competitor scope: 2 metrics (MentionCount + RecommendationCount).
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(16);
         metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(10);
         metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(10);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(2);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(32);
+        metrics.Should().HaveCount(38);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

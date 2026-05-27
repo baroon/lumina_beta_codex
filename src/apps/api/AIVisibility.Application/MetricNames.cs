@@ -62,4 +62,31 @@ public static class MetricNames
     /// this metric.
     /// </summary>
     public const string UnknownCitationCount = "UnknownCitationCount";
+
+    // -- Aggregate metrics added in the Slice (c) follow-up (ADR-003 carry-over). --
+
+    /// <summary>
+    /// Brand share of voice: brand mentions / (brand + competitor mentions),
+    /// in [0, 1]. Products don't count toward the denominator — they're a
+    /// different conversation. Omitted (no row emitted) when the denominator
+    /// is zero (no brand AND no competitor mentions in scope).
+    /// </summary>
+    public const string BrandShareOfVoice = "BrandShareOfVoice";
+
+    /// <summary>
+    /// Distribution of <c>BrandSentiment</c> across scoped AnswerSignals.
+    /// Emitted as multiple rows (one per observed sentiment value) with
+    /// <c>metadata_json={"value":"Positive"|"Neutral"|"Negative"|"Mixed"|"Unknown"}</c>
+    /// and <c>metric_value</c> = signal count. Unobserved values produce no
+    /// row — the shape matches the data, not the enum.
+    /// </summary>
+    public const string BrandSentimentDistribution = "BrandSentimentDistribution";
+
+    /// <summary>
+    /// Top-5 most-cited sources (by <c>NormalizedSourceName</c>) in scope.
+    /// Emitted as up to 5 rows with <c>metadata_json={"source_name":"X","rank":N}</c>
+    /// and <c>metric_value</c> = citation count. Ties broken by source name
+    /// for deterministic ordering. Fewer than 5 distinct sources → fewer rows.
+    /// </summary>
+    public const string TopCitedSource = "TopCitedSource";
 }

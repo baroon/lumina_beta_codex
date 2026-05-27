@@ -39,7 +39,17 @@ public class MetricAggregatorTests
         bool BrandRecommended,
         int? BrandRank,
         IEnumerable<(MentionEntityType Type, Guid EntityId, bool Recommended)> Mentions,
-        IEnumerable<SourceClassification> Citations);
+        IEnumerable<SourceClassification> Citations)
+    {
+        /// <summary>Optional: overrides AnswerSignal.BrandSentiment. Default Unknown.</summary>
+        public Sentiment BrandSentiment { get; init; } = Sentiment.Unknown;
+
+        /// <summary>
+        /// Optional: when set, takes precedence over <see cref="Citations"/> and lets the
+        /// test give each citation a distinct source name (for top-cited-sources tests).
+        /// </summary>
+        public IReadOnlyList<(SourceClassification Class, string Source)>? NamedCitations { get; init; }
+    }
 
     private static Guid SeedScanAndAnswers(AppDbContext ctx, params AnswerSetup[] answers)
     {
@@ -116,6 +126,7 @@ public class MetricAggregatorTests
                 BrandMentioned = a.BrandMentioned,
                 BrandRecommended = a.BrandRecommended,
                 BrandRank = a.BrandRank,
+                BrandSentiment = a.BrandSentiment,
                 CreatedAt = DateTime.UtcNow,
             });
 
@@ -130,15 +141,33 @@ public class MetricAggregatorTests
                 });
             }
 
-            foreach (var c in a.Citations)
+            // NamedCitations takes precedence over Citations when set, so a test
+            // can give each citation a unique source name (top-cited-sources).
+            if (a.NamedCitations is { Count: > 0 } named)
             {
-                ctx.Citations.Add(new Citation
+                foreach (var c in named)
                 {
-                    Id = Guid.NewGuid(), AIAnswerId = answer.Id,
-                    SourceName = "s", NormalizedSourceName = "s",
-                    Classification = c, CitationType = CitationType.ExplicitUrl,
-                    CreatedAt = DateTime.UtcNow,
-                });
+                    ctx.Citations.Add(new Citation
+                    {
+                        Id = Guid.NewGuid(), AIAnswerId = answer.Id,
+                        SourceName = c.Source, NormalizedSourceName = c.Source.ToLowerInvariant(),
+                        Classification = c.Class, CitationType = CitationType.ExplicitUrl,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
+            }
+            else
+            {
+                foreach (var c in a.Citations)
+                {
+                    ctx.Citations.Add(new Citation
+                    {
+                        Id = Guid.NewGuid(), AIAnswerId = answer.Id,
+                        SourceName = "s", NormalizedSourceName = "s",
+                        Classification = c, CitationType = CitationType.ExplicitUrl,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
             }
         }
 
@@ -375,5 +404,165 @@ public class MetricAggregatorTests
         // Competitor scope must NOT include the never-mentioned one — slice (c)
         // doesn't emit zero-rows for tracked entities that didn't show up.
         rows.Should().NotContain(r => r.Scope == ScanMetricScope.Competitor && r.ScopeId == untouchedCompetitor);
+    }
+
+    [Fact]
+    public async Task BrandShareOfVoice_IsBrandMentionsDividedByBrandPlusCompetitorMentions()
+    {
+        // SoV definition (ADR-003): the brand's share of voice = brand mentions
+        // / (brand mentions + competitor mentions). Products don't count toward
+        // the denominator — they're a different conversation. Value is in [0, 1].
+        var brandId = Guid.NewGuid();
+        var competitorA = Guid.NewGuid();
+
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: true, BrandRecommended: false, BrandRank: null,
+                Mentions: new[]
+                {
+                    (MentionEntityType.Brand, brandId, true),
+                    (MentionEntityType.Competitor, competitorA, false),
+                    (MentionEntityType.Competitor, competitorA, false),
+                },
+                Citations: Array.Empty<SourceClassification>()));
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+
+        // 1 brand mention / (1 brand + 2 competitor) = 1/3.
+        rows.Single(r => r.Scope == ScanMetricScope.Overall && r.MetricName == MetricNames.BrandShareOfVoice)
+            .MetricValue.Should().BeApproximately(1.0 / 3.0, 1e-9);
+    }
+
+    [Fact]
+    public async Task BrandShareOfVoice_Omitted_WhenNoBrandOrCompetitorMentions()
+    {
+        // Denominator-zero guard: no brand AND no competitor mentions means
+        // there's no "voice" to share. Skip the metric rather than emit 0 or
+        // NaN.
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+                Citations: Array.Empty<SourceClassification>()));
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+
+        rows.Should().NotContain(r => r.MetricName == MetricNames.BrandShareOfVoice);
+    }
+
+    [Fact]
+    public async Task BrandSentimentDistribution_EmitsOneRowPerObservedSentimentValue()
+    {
+        // SentimentDistribution as multiple rows (one per sentiment value with
+        // metadata_json identifying which value), rather than a single jsonb
+        // row, so the breakdown is queryable in plain SQL. Counts include
+        // Unknown — that's a real value, not absence.
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            // 3 Positive, 2 Neutral, 1 Negative, 1 Unknown.
+            BuildSentimentAnswer(Sentiment.Positive),
+            BuildSentimentAnswer(Sentiment.Positive),
+            BuildSentimentAnswer(Sentiment.Positive),
+            BuildSentimentAnswer(Sentiment.Neutral),
+            BuildSentimentAnswer(Sentiment.Neutral),
+            BuildSentimentAnswer(Sentiment.Negative),
+            BuildSentimentAnswer(Sentiment.Unknown));
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+        var distribution = rows
+            .Where(r => r.Scope == ScanMetricScope.Overall && r.MetricName == MetricNames.BrandSentimentDistribution)
+            .ToList();
+
+        ExpectSentimentCount(distribution, "Positive", 3);
+        ExpectSentimentCount(distribution, "Neutral", 2);
+        ExpectSentimentCount(distribution, "Negative", 1);
+        ExpectSentimentCount(distribution, "Unknown", 1);
+        // Mixed not observed in this scan; the metric should NOT emit a zero row
+        // for unobserved values — distribution shape matches reality, not the enum.
+        distribution.Should().NotContain(r => r.MetadataJson != null && r.MetadataJson.Contains("Mixed"));
+    }
+
+    private static AnswerSetup BuildSentimentAnswer(Sentiment sentiment) =>
+        new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+            BrandMentioned: sentiment != Sentiment.Unknown,
+            BrandRecommended: false,
+            BrandRank: null,
+            Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+            Citations: Array.Empty<SourceClassification>())
+        { BrandSentiment = sentiment };
+
+    private static void ExpectSentimentCount(List<ScanMetric> distribution, string sentimentValue, int expectedCount)
+    {
+        var row = distribution.Single(r =>
+            r.MetadataJson != null && r.MetadataJson.Contains($"\"{sentimentValue}\""));
+        row.MetricValue.Should().Be(expectedCount, $"expected {expectedCount} signals at sentiment={sentimentValue}");
+    }
+
+    [Fact]
+    public async Task TopCitedSource_EmitsTop5_RankedByCitationCount()
+    {
+        // Top-K most-cited sources for the scan. Ties broken by source name
+        // (deterministic ordering for tests). Capped at 5 — if there are 4
+        // distinct sources, only 4 rows. metadata_json carries the source
+        // name + rank (1-based) so reporting can render the leaderboard
+        // without a second query.
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+                Citations: Array.Empty<SourceClassification>())
+            {
+                NamedCitations = new[]
+                {
+                    (SourceClassification.ThirdParty, "Trustpilot"),
+                    (SourceClassification.ThirdParty, "Trustpilot"),
+                    (SourceClassification.ThirdParty, "Trustpilot"),
+                    (SourceClassification.ThirdParty, "G2"),
+                    (SourceClassification.ThirdParty, "G2"),
+                    (SourceClassification.ThirdParty, "Wikipedia"),
+                    (SourceClassification.Unknown, "BlogPost"),
+                },
+            });
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+        var top = rows
+            .Where(r => r.Scope == ScanMetricScope.Overall && r.MetricName == MetricNames.TopCitedSource)
+            .OrderByDescending(r => r.MetricValue)
+            .ThenBy(r => r.MetadataJson)
+            .ToList();
+
+        top.Should().HaveCount(4);   // four distinct sources, not 5
+        top[0].MetricValue.Should().Be(3); // Trustpilot
+        // Aggregator groups by NormalizedSourceName (lowercased by the seeder
+        // to mirror what real Citation rows look like), so the JSON contains
+        // the normalized form.
+        top[0].MetadataJson.Should().Contain("trustpilot").And.Contain("\"rank\":1");
+        top[1].MetricValue.Should().Be(2); // G2
+        top[1].MetadataJson.Should().Contain("g2").And.Contain("\"rank\":2");
+        top[2].MetricValue.Should().Be(1);
+        top[3].MetricValue.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task TopCitedSource_CappedAtFive_WhenManyDistinctSources()
+    {
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+                Citations: Array.Empty<SourceClassification>())
+            {
+                NamedCitations = Enumerable.Range(1, 8)
+                    .Select(i => (SourceClassification.ThirdParty, $"Source{i:D2}"))
+                    .ToList(),
+            });
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+        rows.Where(r => r.Scope == ScanMetricScope.Overall && r.MetricName == MetricNames.TopCitedSource)
+            .Should().HaveCount(5);
     }
 }
