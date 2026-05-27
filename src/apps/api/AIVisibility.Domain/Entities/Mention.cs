@@ -1,0 +1,41 @@
+using AIVisibility.Domain.Enums;
+
+namespace AIVisibility.Domain.Entities;
+
+/// <summary>
+/// One occurrence of a tracked entity (brand / competitor / product) inside an
+/// AIAnswer (Phase 3 plan §3, D12 + D18). Polymorphic: <see cref="EntityId"/>
+/// points at the Brand / Competitor / Product row of the corresponding
+/// <see cref="EntityType"/>. ENFORCED by a DB CHECK constraint that EntityId
+/// is never null — D18 dropped the `Other` type, so unresolved entities go to
+/// <see cref="MentionCandidate"/> instead.
+///
+/// Multiple mentions per answer expected (e.g. brand + 3 competitors in one
+/// answer, each with its own sentiment + recommendation strength).
+///
+/// Created by <c>SignalExtractor</c> per AIAnswer. Append-only (D16).
+/// </summary>
+public class Mention
+{
+    public Guid Id { get; set; }
+    public Guid AIAnswerId { get; set; }
+
+    public MentionEntityType EntityType { get; set; }
+    /// <summary>FK to Brand / Competitor / Product row. Always non-null (CHECK constraint).</summary>
+    public Guid EntityId { get; set; }
+
+    /// <summary>Canonical name used for grouping/deduping (matches the tracked entity's Name).</summary>
+    public string NormalizedName { get; set; } = string.Empty;
+
+    public bool IsRecommended { get; set; }
+    public RecommendationStrength RecommendationStrength { get; set; } = RecommendationStrength.Unknown;
+    public Sentiment Sentiment { get; set; } = Sentiment.Unknown;
+
+    public double ConfidenceScore { get; set; }
+    /// <summary>Short text snippet (sentence/paragraph) supporting the mention; truncated to 2000 chars.</summary>
+    public string EvidenceSnippet { get; set; } = string.Empty;
+
+    public DateTime CreatedAt { get; set; }
+
+    public AIAnswer AIAnswer { get; set; } = null!;
+}

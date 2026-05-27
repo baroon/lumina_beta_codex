@@ -82,8 +82,10 @@ public static class DependencyInjection
 
         // Phase 3 analysis pipeline: two Hangfire-invoked jobs chained via ContinueJobWith.
         // ScanExecutor enqueues SignalExtractionJob on scan completion; that job's success
-        // triggers MetricAggregationJob via continuation. Slice 1 ships skeleton implementations
-        // (status transitions only); Slices 2 + 4 fill in the real work.
+        // triggers MetricAggregationJob via continuation. Slice 2 ships real per-answer
+        // LLM extraction inside SignalExtractionJob; aggregation is still skeleton (Slice 4).
+        services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
+        services.AddScoped<SignalExtractor>();
         services.AddScoped<ISignalExtractionJob, SignalExtractionJob>();
         services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();
 

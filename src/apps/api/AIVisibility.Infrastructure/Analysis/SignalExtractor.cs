@@ -1,0 +1,404 @@
+using System.Text;
+using System.Text.Json;
+using AIVisibility.Application.Interfaces;
+using AIVisibility.Domain.Entities;
+using AIVisibility.Domain.Enums;
+using Microsoft.Extensions.Logging;
+
+namespace AIVisibility.Infrastructure.Analysis;
+
+/// <summary>
+/// LLM-driven extractor that turns one <see cref="AIAnswer"/> into structured
+/// signal + mention + citation rows (Phase 3 plan §2 D5/D6/D8). One OpenAI
+/// call per answer returns a JSON envelope with all three; this class parses
+/// the envelope, resolves LLM-named entities against the tracker's tracked
+/// universe (D12/D18/D19), classifies citations by URL-domain match
+/// (D14 Option A), and post-processes <c>AnswerSignal</c> source counts (D11).
+///
+/// Concrete class (not behind an interface) per D8 — <see cref="IOpenAiService"/>
+/// is the test seam. Per-answer failures return null so the calling job can
+/// catch-and-continue with siblings (D3).
+/// </summary>
+public class SignalExtractor
+{
+    private readonly IOpenAiService _openAi;
+    private readonly ILogger<SignalExtractor> _logger;
+
+    public SignalExtractor(IOpenAiService openAi, ILogger<SignalExtractor> logger)
+    {
+        _openAi = openAi;
+        _logger = logger;
+    }
+
+    private const string SystemPrompt = """
+        You are an analyst extracting structured signals from an AI assistant's answer
+        about a specific brand and its market. Return ONLY a single JSON object — no
+        prose, no markdown fences. The JSON must match this exact schema:
+
+        {
+          "answer_signal": {
+            "brand_mentioned": bool,
+            "brand_recommended": bool,
+            "brand_rank": int|null,          // 1-based rank in any ranked list; null otherwise
+            "brand_sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
+            "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
+            "top_recommended_entity": string|null,
+            "answer_has_ranking": bool,
+            "answer_has_comparison": bool,
+            "answer_has_citations": bool,
+            "confidence_score": number       // 0.0-1.0
+          },
+          "mentions": [
+            {
+              "entity_type": "Brand|Competitor|Product",
+              "name": string,                // exact mention text from the answer
+              "is_recommended": bool,
+              "recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
+              "sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
+              "evidence_snippet": string,    // ≤500 chars; quoted sentence(s) from the answer
+              "confidence_score": number     // 0.0-1.0
+            }
+          ],
+          "citations": [
+            {
+              "source_name": string,         // e.g. "Trustpilot", "G2", "Acme blog"
+              "url": string|null,            // null when the answer cites a source without URL
+              "confidence_score": number     // 0.0-1.0
+            }
+          ]
+        }
+
+        Rules:
+        - Absence is not negative. If the brand is not mentioned, set brand_sentiment=Unknown.
+        - Mention only what is in the answer. Do not infer entities not present.
+        - "Brand" entity_type is for the tracked brand only.
+        - "Competitor" and "Product" entity_types should use the names exactly as the answer
+          phrases them (even if they don't appear in the tracked list — the caller resolves them).
+        - Recommendation strength scale: Strong (top pick / unreserved), Moderate (with caveats),
+          Weak (mentioned as an option), NotRecommended (recommended against), Unknown (cannot tell).
+        - If the answer has no citations or sources, return citations: [].
+        """;
+
+    public async Task<SignalExtractionResult?> ExtractAsync(
+        AIAnswer answer,
+        SignalExtractionContext context,
+        CancellationToken cancellationToken)
+    {
+        var userPrompt = BuildUserPrompt(answer, context);
+
+        var raw = await _openAi.ChatCompletionAsync(
+            SystemPrompt,
+            userPrompt,
+            maxTokens: 2048,
+            temperature: 0.1,
+            ct: cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            _logger.LogWarning("Signal extraction returned empty response for AIAnswer {AIAnswerId}", answer.Id);
+            return null;
+        }
+
+        JsonElement root;
+        try
+        {
+            root = ParseEnvelope(raw);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex,
+                "Signal extraction JSON parse failed for AIAnswer {AIAnswerId}. Response prefix: {Prefix}",
+                answer.Id, Truncate(raw, 200));
+            return null;
+        }
+
+        try
+        {
+            var citations = BuildCitations(root, answer.Id, context).ToList();
+            var (mentions, candidates) = BuildMentions(root, answer.Id, context);
+            var signal = BuildSignal(root, answer.Id, citations);
+            return new SignalExtractionResult(signal, mentions, candidates, citations);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Signal extraction shape error for AIAnswer {AIAnswerId}",
+                answer.Id);
+            return null;
+        }
+    }
+
+    private static string BuildUserPrompt(AIAnswer answer, SignalExtractionContext context)
+    {
+        var sb = new StringBuilder();
+        sb.Append("Tracked brand: ").AppendLine(context.Brand.Name);
+        if (!string.IsNullOrWhiteSpace(context.Brand.WebsiteUrl))
+        {
+            sb.Append("Brand website: ").AppendLine(context.Brand.WebsiteUrl);
+        }
+        if (context.Brand.Aliases.Count > 0)
+        {
+            sb.Append("Brand aliases: ").AppendLine(string.Join(", ", context.Brand.Aliases));
+        }
+        if (context.TrackedCompetitors.Count > 0)
+        {
+            sb.Append("Tracked competitors: ")
+                .AppendLine(string.Join(", ", context.TrackedCompetitors.Select(c => c.Name)));
+        }
+        if (context.TrackedProducts.Count > 0)
+        {
+            sb.Append("Tracked products: ")
+                .AppendLine(string.Join(", ", context.TrackedProducts.Select(p => p.Name)));
+        }
+        sb.AppendLine();
+        sb.AppendLine("Answer to analyze:");
+        sb.AppendLine("---");
+        sb.AppendLine(answer.AnswerText);
+        sb.AppendLine("---");
+        return sb.ToString();
+    }
+
+    private static JsonElement ParseEnvelope(string raw)
+    {
+        // LLMs sometimes wrap JSON in markdown fences or prepend a sentence.
+        // Trim to the outer object.
+        var start = raw.IndexOf('{');
+        var end = raw.LastIndexOf('}');
+        if (start < 0 || end <= start)
+        {
+            throw new JsonException("No JSON object found in LLM response.");
+        }
+        var trimmed = raw.AsSpan(start, end - start + 1);
+        using var doc = JsonDocument.Parse(trimmed.ToString());
+        return doc.RootElement.Clone();
+    }
+
+    private AnswerSignal BuildSignal(JsonElement root, Guid aiAnswerId, IReadOnlyList<Citation> citations)
+    {
+        var s = root.GetProperty("answer_signal");
+        var now = DateTime.UtcNow;
+        return new AnswerSignal
+        {
+            Id = Guid.NewGuid(),
+            AIAnswerId = aiAnswerId,
+            BrandMentioned = s.GetProperty("brand_mentioned").GetBoolean(),
+            BrandRecommended = s.GetProperty("brand_recommended").GetBoolean(),
+            BrandRank = TryGetNullableInt(s, "brand_rank"),
+            BrandSentiment = ParseEnum<Sentiment>(s, "brand_sentiment", Sentiment.Unknown),
+            BrandRecommendationStrength = ParseEnum<RecommendationStrength>(
+                s, "brand_recommendation_strength", RecommendationStrength.Unknown),
+            TopRecommendedEntity = TryGetNullableString(s, "top_recommended_entity"),
+            AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
+            AnswerHasComparison = s.GetProperty("answer_has_comparison").GetBoolean(),
+            AnswerHasCitations = s.GetProperty("answer_has_citations").GetBoolean(),
+            OwnedSourceCount = citations.Count(c => c.Classification == SourceClassification.Owned),
+            CompetitorSourceCount = citations.Count(c => c.Classification == SourceClassification.Competitor),
+            ThirdPartySourceCount = citations.Count(c => c.Classification == SourceClassification.ThirdParty),
+            ConfidenceScore = TryGetDouble(s, "confidence_score") ?? 0.5,
+            CreatedAt = now,
+        };
+    }
+
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates) BuildMentions(
+        JsonElement root, Guid aiAnswerId, SignalExtractionContext context)
+    {
+        var mentions = new List<Mention>();
+        var candidates = new List<MentionCandidate>();
+        if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
+        {
+            return (mentions, candidates);
+        }
+
+        var now = DateTime.UtcNow;
+        foreach (var m in arr.EnumerateArray())
+        {
+            var entityType = ParseEnum<MentionEntityType>(m, "entity_type", MentionEntityType.Competitor);
+            var name = TryGetNullableString(m, "name") ?? string.Empty;
+            var normalized = Normalize(name);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                continue;
+            }
+
+            var resolved = ResolveEntity(entityType, normalized, context);
+            var evidence = Truncate(TryGetNullableString(m, "evidence_snippet") ?? string.Empty, 2000);
+
+            if (resolved is not null)
+            {
+                mentions.Add(new Mention
+                {
+                    Id = Guid.NewGuid(),
+                    AIAnswerId = aiAnswerId,
+                    EntityType = entityType,
+                    EntityId = resolved.Value,
+                    NormalizedName = normalized,
+                    IsRecommended = TryGetBoolean(m, "is_recommended") ?? false,
+                    RecommendationStrength = ParseEnum<RecommendationStrength>(
+                        m, "recommendation_strength", RecommendationStrength.Unknown),
+                    Sentiment = ParseEnum<Sentiment>(m, "sentiment", Sentiment.Unknown),
+                    ConfidenceScore = TryGetDouble(m, "confidence_score") ?? 0.5,
+                    EvidenceSnippet = evidence,
+                    CreatedAt = now,
+                });
+            }
+            else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
+            {
+                // Untracked LLM-named entity per D19 — preserve as candidate for the
+                // future "promote to tracked" screen. Brand mentions that don't resolve
+                // are dropped: the LLM should only emit Brand for the tracked brand.
+                candidates.Add(new MentionCandidate
+                {
+                    Id = Guid.NewGuid(),
+                    AIAnswerId = aiAnswerId,
+                    ClaimedEntityType = entityType,
+                    ClaimedName = Truncate(name, 500),
+                    NormalizedName = normalized,
+                    EvidenceSnippet = evidence,
+                    ConfidenceScore = TryGetDouble(m, "confidence_score") ?? 0.5,
+                    CreatedAt = now,
+                });
+            }
+        }
+        return (mentions, candidates);
+    }
+
+    private static IEnumerable<Citation> BuildCitations(
+        JsonElement root, Guid aiAnswerId, SignalExtractionContext context)
+    {
+        if (!root.TryGetProperty("citations", out var arr) || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+
+        var brandDomain = NormalizeDomain(context.Brand.WebsiteUrl);
+        var competitorDomains = context.TrackedCompetitors
+            .Select(c => NormalizeDomain(c.Domain))
+            .Where(d => !string.IsNullOrEmpty(d))
+            .Select(d => d!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var now = DateTime.UtcNow;
+        foreach (var c in arr.EnumerateArray())
+        {
+            var sourceName = TryGetNullableString(c, "source_name");
+            if (string.IsNullOrWhiteSpace(sourceName))
+            {
+                continue;
+            }
+            var url = TryGetNullableString(c, "url");
+            var hasUrl = !string.IsNullOrWhiteSpace(url);
+            var domain = hasUrl ? NormalizeDomain(url) : null;
+
+            var classification = ClassifyCitation(domain, brandDomain, competitorDomains, hasUrl);
+
+            yield return new Citation
+            {
+                Id = Guid.NewGuid(),
+                AIAnswerId = aiAnswerId,
+                SourceName = Truncate(sourceName, 500),
+                NormalizedSourceName = Normalize(sourceName),
+                Url = hasUrl ? Truncate(url!, 2048) : null,
+                NormalizedDomain = domain,
+                Classification = classification,
+                CitationType = hasUrl ? CitationType.ExplicitUrl : CitationType.MentionedSource,
+                ConfidenceScore = TryGetDouble(c, "confidence_score") ?? 0.5,
+                CreatedAt = now,
+            };
+        }
+    }
+
+    private static SourceClassification ClassifyCitation(
+        string? domain, string? brandDomain, HashSet<string> competitorDomains, bool hasUrl)
+    {
+        if (!hasUrl || string.IsNullOrEmpty(domain))
+        {
+            return SourceClassification.Unknown;
+        }
+        if (!string.IsNullOrEmpty(brandDomain) && DomainMatches(domain, brandDomain))
+        {
+            return SourceClassification.Owned;
+        }
+        if (competitorDomains.Any(cd => DomainMatches(domain, cd)))
+        {
+            return SourceClassification.Competitor;
+        }
+        return SourceClassification.ThirdParty;
+    }
+
+    private static bool DomainMatches(string a, string b)
+    {
+        // Exact or subdomain match: "blog.acme.com" matches "acme.com", but
+        // "fake-acme.com" does NOT match "acme.com".
+        if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) return true;
+        return a.EndsWith("." + b, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Guid? ResolveEntity(
+        MentionEntityType entityType, string normalizedName, SignalExtractionContext context)
+    {
+        return entityType switch
+        {
+            MentionEntityType.Brand => ResolveBrand(normalizedName, context.Brand),
+            MentionEntityType.Competitor => context.TrackedCompetitors
+                .FirstOrDefault(c => Normalize(c.Name) == normalizedName)?.Id,
+            MentionEntityType.Product => context.TrackedProducts
+                .FirstOrDefault(p => Normalize(p.Name) == normalizedName)?.Id,
+            _ => null,
+        };
+    }
+
+    private static Guid? ResolveBrand(string normalizedName, Brand brand)
+    {
+        if (Normalize(brand.Name) == normalizedName) return brand.Id;
+        return brand.Aliases.Any(a => Normalize(a) == normalizedName) ? brand.Id : null;
+    }
+
+    private static string Normalize(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var collapsed = string.Join(' ',
+            value.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return collapsed.Trim();
+    }
+
+    private static string? NormalizeDomain(string? urlOrDomain)
+    {
+        if (string.IsNullOrWhiteSpace(urlOrDomain)) return null;
+        var s = urlOrDomain.Trim();
+        if (!s.Contains("://", StringComparison.Ordinal))
+        {
+            s = "https://" + s;
+        }
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.Host))
+        {
+            return null;
+        }
+        var host = uri.Host.ToLowerInvariant();
+        return host.StartsWith("www.", StringComparison.Ordinal) ? host[4..] : host;
+    }
+
+    private static string Truncate(string value, int max) =>
+        value.Length <= max ? value : value[..max];
+
+    private static int? TryGetNullableInt(JsonElement parent, string name) =>
+        parent.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
+            ? v.GetInt32() : null;
+
+    private static double? TryGetDouble(JsonElement parent, string name) =>
+        parent.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
+            ? v.GetDouble() : null;
+
+    private static bool? TryGetBoolean(JsonElement parent, string name) =>
+        parent.TryGetProperty(name, out var v) && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False)
+            ? v.GetBoolean() : null;
+
+    private static string? TryGetNullableString(JsonElement parent, string name) =>
+        parent.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String
+            ? v.GetString() : null;
+
+    private static T ParseEnum<T>(JsonElement parent, string name, T fallback) where T : struct, Enum
+    {
+        var s = TryGetNullableString(parent, name);
+        return !string.IsNullOrEmpty(s) && Enum.TryParse<T>(s, ignoreCase: true, out var v) ? v : fallback;
+    }
+}

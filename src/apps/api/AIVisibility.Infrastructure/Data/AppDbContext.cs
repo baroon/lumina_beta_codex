@@ -39,6 +39,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<PromptRun> PromptRuns => Set<PromptRun>();
     public DbSet<AIAnswer> AIAnswers => Set<AIAnswer>();
     public DbSet<AnalysisJob> AnalysisJobs => Set<AnalysisJob>();
+    public DbSet<AnswerSignal> AnswerSignals => Set<AnswerSignal>();
+    public DbSet<Mention> Mentions => Set<Mention>();
+    public DbSet<MentionCandidate> MentionCandidates => Set<MentionCandidate>();
+    public DbSet<Citation> Citations => Set<Citation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
