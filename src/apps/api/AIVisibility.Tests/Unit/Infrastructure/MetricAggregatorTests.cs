@@ -215,6 +215,52 @@ public class MetricAggregatorTests
     }
 
     [Fact]
+    public async Task UnknownCitationCount_IsEmitted_AndAccountsForCitationsWithNoUrl()
+    {
+        // verify-e2e against gpt-4o-mini consistently shows the LLM emitting
+        // source names without URLs ("according to Trustpilot"-style citations).
+        // Those get classification=Unknown. Without an UnknownCitationCount
+        // metric, the four breakdown counts (Owned+Competitor+ThirdParty) sum
+        // to less than CitationCount, leaving "missing" citations invisible to
+        // reporting. The aggregator MUST emit UnknownCitationCount alongside
+        // the other three so the breakdown is complete.
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+                Citations: new[]
+                {
+                    SourceClassification.Unknown,
+                    SourceClassification.Unknown,
+                    SourceClassification.Owned,
+                }));
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+        var overall = rows.Where(r => r.Scope == ScanMetricScope.Overall).ToList();
+
+        overall.Single(r => r.MetricName == MetricNames.CitationCount)
+            .MetricValue.Should().Be(3);
+        overall.Single(r => r.MetricName == MetricNames.OwnedCitationCount)
+            .MetricValue.Should().Be(1);
+        overall.Single(r => r.MetricName == MetricNames.CompetitorCitationCount)
+            .MetricValue.Should().Be(0);
+        overall.Single(r => r.MetricName == MetricNames.ThirdPartyCitationCount)
+            .MetricValue.Should().Be(0);
+        overall.Single(r => r.MetricName == MetricNames.UnknownCitationCount)
+            .MetricValue.Should().Be(2);
+
+        // The four breakdowns must sum to CitationCount — the invariant that
+        // motivates having UnknownCitationCount at all.
+        var sum =
+            overall.Single(r => r.MetricName == MetricNames.OwnedCitationCount).MetricValue +
+            overall.Single(r => r.MetricName == MetricNames.CompetitorCitationCount).MetricValue +
+            overall.Single(r => r.MetricName == MetricNames.ThirdPartyCitationCount).MetricValue +
+            overall.Single(r => r.MetricName == MetricNames.UnknownCitationCount).MetricValue;
+        sum.Should().Be(overall.Single(r => r.MetricName == MetricNames.CitationCount).MetricValue);
+    }
+
+    [Fact]
     public async Task AverageBrandRank_Omitted_WhenNoSignalHasRank()
     {
         // D11 + plan note: AverageBrandRank only emits when at least one signal

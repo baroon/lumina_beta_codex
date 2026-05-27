@@ -52,4 +52,14 @@ public static class MetricNames
 
     /// <summary>Citations classified ThirdParty.</summary>
     public const string ThirdPartyCitationCount = "ThirdPartyCitationCount";
+
+    /// <summary>
+    /// Citations classified Unknown (no URL to classify by, or URL present
+    /// but not matching brand or any tracked competitor and Slice (c) chose
+    /// not to default unmatched URLs to ThirdParty). The four classification
+    /// counts (Owned + Competitor + ThirdParty + Unknown) MUST sum to
+    /// <see cref="CitationCount"/>; that invariant is what motivates having
+    /// this metric.
+    /// </summary>
+    public const string UnknownCitationCount = "UnknownCitationCount";
 }

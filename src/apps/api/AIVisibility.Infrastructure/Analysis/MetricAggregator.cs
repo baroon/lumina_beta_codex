@@ -151,6 +151,8 @@ public class MetricAggregator
             citations.Count(c => c.Classification == SourceClassification.Competitor), now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.ThirdPartyCitationCount,
             citations.Count(c => c.Classification == SourceClassification.ThirdParty), now);
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.UnknownCitationCount,
+            citations.Count(c => c.Classification == SourceClassification.Unknown), now);
     }
 
     private static ScanMetric MetricRow(

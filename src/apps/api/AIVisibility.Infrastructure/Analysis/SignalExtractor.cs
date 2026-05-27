@@ -62,11 +62,24 @@ public class SignalExtractor
           "citations": [
             {
               "source_name": string,         // e.g. "Trustpilot", "G2", "Acme blog"
-              "url": string|null,            // null when the answer cites a source without URL
+              "url": string|null,            // see citation rules below for when null is allowed
               "confidence_score": number     // 0.0-1.0
             }
           ]
         }
+
+        Citation rules:
+        - If the answer contains a URL or markdown link for a source, the citation's
+          "url" MUST be that URL (verbatim, including scheme).
+        - "url" may be null ONLY when the answer names a source without any URL
+          (e.g. "according to Trustpilot" with no link). This is the
+          mentioned-source case — do not invent a URL.
+        - Do not paraphrase or shorten URLs. If the answer says
+          "https://example.com/path?q=1", emit exactly that.
+        - Source classification (Owned vs Competitor vs ThirdParty) is computed
+          downstream from the URL host, so omitting a URL that exists in the
+          answer turns useful classification signal into Unknown — only emit
+          null when there really is no URL in the source text.
 
         Rules:
         - Absence is NOT negative. When brand_mentioned=false, ALL of the following MUST hold:

@@ -368,17 +368,28 @@ public class AnalysisPipelineTests
         var metrics = await ctx.ScanMetrics.AsNoTracking().ToListAsync();
         // The fixture exercises 1 platform + 1 lens + 0 topics (the seed doesn't
         // create PromptTopic rows). Acme is the only competitor mentioned.
-        // Per non-competitor scope: 9 metrics — BrandMentionRate, Brand-
+        // Per non-competitor scope: 10 metrics — BrandMentionRate, Brand-
         // RecommendationRate, AverageBrandRank (1 signal had rank=1),
         // CompetitorMentionCount, ProductMentionCount, CitationCount,
-        // OwnedCitationCount, CompetitorCitationCount, ThirdPartyCitationCount.
-        // Competitor scope: 2 metrics (MentionCount + RecommendationCount).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(9);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(9);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(9);
+        // OwnedCitationCount, CompetitorCitationCount, ThirdPartyCitationCount,
+        // UnknownCitationCount. Competitor scope: 2 metrics (MentionCount +
+        // RecommendationCount).
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(10);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(10);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(10);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(2);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(29);
+        metrics.Should().HaveCount(32);
+
+        // The four classification counts MUST sum to CitationCount — the
+        // invariant added in the UnknownCitationCount fix.
+        var overallSum =
+            metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.OwnedCitationCount).MetricValue +
+            metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.CompetitorCitationCount).MetricValue +
+            metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.ThirdPartyCitationCount).MetricValue +
+            metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.UnknownCitationCount).MetricValue;
+        overallSum.Should().Be(metrics.Single(m =>
+            m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.CitationCount).MetricValue);
 
         // BrandMentionRate: 2/4 signals (answers 0+2 have brand mentions
         // via the extracted Mention rows — Slice 2's BrandMentioned signal
