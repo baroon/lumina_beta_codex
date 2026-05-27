@@ -75,3 +75,7 @@ app.MapControllers();
 app.MapHub<DiscoveryHub>("/hubs/discovery");
 
 app.Run();
+
+// Expose the auto-generated Program class so WebApplicationFactory<Program> in the
+// test project can boot the host for smoke tests.
+public partial class Program;

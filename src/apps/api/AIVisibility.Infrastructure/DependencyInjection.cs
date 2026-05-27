@@ -67,8 +67,9 @@ public static class DependencyInjection
         services.AddScoped<TemplatePromptGenerator>();
         services.AddScoped<IPromptGenerator, OpenAiPromptGenerator>();
 
-        // Scan execution (Phase 2): in-process queue + background runner + per-platform clients
-        services.AddSingleton<IScanQueue, ScanQueue>();
+        // Scan execution: Hangfire dispatches IScanExecutor jobs (Phase 3 Slice 0).
+        // IBackgroundJobClient (from AddHangfire in Program.cs) injects the enqueuer;
+        // Hangfire workers pull jobs, resolve IScanExecutor in a fresh DI scope, invoke.
         services.AddScoped<IScanExecutor, ScanExecutor>();
         services.AddScoped<IPlatformClient, OpenAiPlatformClient>();
         services.AddScoped<IPlatformClient, ClaudePlatformClient>();
@@ -77,7 +78,6 @@ public static class DependencyInjection
         services.AddScoped<IPlatformClient, PerplexityPlatformClient>();
         services.AddScoped<IPlatformClient, CopilotPlatformClient>();
         services.AddScoped<IScanProvider, ScanProviderRouter>();
-        services.AddHostedService<ScanRunner>();
 
         // Crawling
         services.AddHttpClient("Crawler", client =>

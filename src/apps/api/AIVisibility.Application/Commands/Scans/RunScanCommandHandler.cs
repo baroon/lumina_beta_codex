@@ -1,6 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
+using Hangfire;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,12 +10,12 @@ namespace AIVisibility.Application.Commands.Scans;
 public class RunScanCommandHandler : IRequestHandler<RunScanCommand, RunScanResult>
 {
     private readonly IAppDbContext _db;
-    private readonly IScanQueue _queue;
+    private readonly IBackgroundJobClient _jobs;
 
-    public RunScanCommandHandler(IAppDbContext db, IScanQueue queue)
+    public RunScanCommandHandler(IAppDbContext db, IBackgroundJobClient jobs)
     {
         _db = db;
-        _queue = queue;
+        _jobs = jobs;
     }
 
     public async Task<RunScanResult> Handle(RunScanCommand request, CancellationToken cancellationToken)
@@ -77,7 +78,11 @@ public class RunScanCommandHandler : IRequestHandler<RunScanCommand, RunScanResu
         tracker.UpdatedAt = now;
         await _db.SaveChangesAsync(cancellationToken);
 
-        _queue.Enqueue(run.Id);
+        // Hand off to Hangfire. Hangfire serializes (type, method, args), persists to its
+        // job store, and a worker picks it up in a fresh DI scope. The CancellationToken.None
+        // here is a placeholder for serialization — Hangfire substitutes its own shutdown CT
+        // at execution time.
+        _jobs.Enqueue<IScanExecutor>(x => x.ExecuteAsync(run.Id, CancellationToken.None));
         return new RunScanResult(run.Id, run.ScanCheckCount);
     }
 }
