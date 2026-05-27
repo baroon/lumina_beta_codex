@@ -81,6 +81,38 @@ public class SignalExtractor
           answer turns useful classification signal into Unknown — only emit
           null when there really is no URL in the source text.
 
+        Rank rules (brand_rank, answer_has_ranking):
+        - answer_has_ranking=true means the answer presents a ranked or ordered
+          list of entities. Bulleted lists without order are NOT rankings.
+        - When answer_has_ranking=true AND the tracked brand appears in that
+          ranked list, brand_rank MUST be the brand's 1-based position. Do not
+          leave it null in that case — extracting the position is the whole
+          point of the field.
+        - Examples:
+            "1. Acme  2. Lumina  3. Beta"               -> brand_rank = 2 (if Lumina is the tracked brand)
+            "Top picks: Lumina, Acme, Beta"             -> brand_rank = 1
+            "The top three are: Acme, Beta, Charlie"    -> brand_rank = null (brand not in list)
+            "Lumina, Acme, and Beta are all good"       -> brand_rank = null (not ordered)
+        - When answer_has_ranking=false, brand_rank MUST be null.
+
+        Top-recommended-entity rules (top_recommended_entity):
+        - When the answer endorses ONE entity as the clear top pick (above all
+          others mentioned), top_recommended_entity MUST be that entity's name
+          exactly as written — regardless of whether it's the tracked brand or
+          a competitor.
+        - When the answer treats multiple entities as roughly equal options
+          (e.g. "X, Y, and Z are all strong choices") OR doesn't endorse any
+          single entity, top_recommended_entity MUST be null.
+        - Examples:
+            "I'd recommend Acme as the best option"     -> "Acme"
+            "Lumina is my #1 choice"                    -> "Lumina"
+            "Acme leads the pack, with Beta close behind" -> "Acme"
+            "There are several good options: X, Y, Z"   -> null
+            "It depends on your needs"                  -> null
+        - If brand_rank=1 (the tracked brand is ranked #1), top_recommended_
+          entity MUST be the tracked brand's name — those two fields cannot
+          disagree.
+
         Rules:
         - Absence is NOT negative. When brand_mentioned=false, ALL of the following MUST hold:
             brand_recommended = false
