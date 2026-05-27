@@ -1,4 +1,5 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Infrastructure.Analysis;
 using AIVisibility.Infrastructure.Crawling;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Discovery;
@@ -78,6 +79,13 @@ public static class DependencyInjection
         services.AddScoped<IPlatformClient, PerplexityPlatformClient>();
         services.AddScoped<IPlatformClient, CopilotPlatformClient>();
         services.AddScoped<IScanProvider, ScanProviderRouter>();
+
+        // Phase 3 analysis pipeline: two Hangfire-invoked jobs chained via ContinueJobWith.
+        // ScanExecutor enqueues SignalExtractionJob on scan completion; that job's success
+        // triggers MetricAggregationJob via continuation. Slice 1 ships skeleton implementations
+        // (status transitions only); Slices 2 + 4 fill in the real work.
+        services.AddScoped<ISignalExtractionJob, SignalExtractionJob>();
+        services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();
 
         // Crawling
         services.AddHttpClient("Crawler", client =>

@@ -1,6 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -10,12 +11,18 @@ public class ScanExecutor : IScanExecutor
 {
     private readonly IAppDbContext _db;
     private readonly IScanProvider _provider;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<ScanExecutor> _logger;
 
-    public ScanExecutor(IAppDbContext db, IScanProvider provider, ILogger<ScanExecutor> logger)
+    public ScanExecutor(
+        IAppDbContext db,
+        IScanProvider provider,
+        IBackgroundJobClient jobs,
+        ILogger<ScanExecutor> logger)
     {
         _db = db;
         _provider = provider;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -88,5 +95,25 @@ public class ScanExecutor : IScanExecutor
         run.Status = ScanRunStatus.Completed;
         run.CompletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Phase 3 analysis handoff (plan §4): write the AnalysisJob audit row, then enqueue
+        // SignalExtractionJob with MetricAggregationJob chained as a continuation. Hangfire
+        // owns retries and persistence; only Completed scans trigger analysis (Failed/Cancelled
+        // scans never reach this point).
+        var analysisJob = new AnalysisJob
+        {
+            Id = Guid.NewGuid(),
+            ScanRunId = run.Id,
+            Status = AnalysisJobStatus.Queued,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.AnalysisJobs.Add(analysisJob);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var extractJobId = _jobs.Enqueue<ISignalExtractionJob>(
+            j => j.ExtractAsync(analysisJob.Id, CancellationToken.None));
+        _jobs.ContinueJobWith<IMetricAggregationJob>(
+            extractJobId,
+            j => j.AggregateAsync(analysisJob.Id, CancellationToken.None));
     }
 }

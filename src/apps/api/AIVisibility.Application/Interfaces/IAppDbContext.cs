@@ -35,6 +35,7 @@ public interface IAppDbContext
     DbSet<ScanRun> ScanRuns { get; }
     DbSet<PromptRun> PromptRuns { get; }
     DbSet<AIAnswer> AIAnswers { get; }
+    DbSet<AnalysisJob> AnalysisJobs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

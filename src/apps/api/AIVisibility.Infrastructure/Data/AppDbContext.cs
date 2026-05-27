@@ -38,6 +38,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
     public DbSet<PromptRun> PromptRuns => Set<PromptRun>();
     public DbSet<AIAnswer> AIAnswers => Set<AIAnswer>();
+    public DbSet<AnalysisJob> AnalysisJobs => Set<AnalysisJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

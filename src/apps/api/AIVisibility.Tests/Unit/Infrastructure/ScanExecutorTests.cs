@@ -4,6 +4,9 @@ using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Scanning;
 using FluentAssertions;
+using Hangfire;
+using Hangfire.Common;
+using Hangfire.States;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -70,8 +73,18 @@ public class ScanExecutorTests
         return (run.Id, pr.Id);
     }
 
-    private static ScanExecutor Executor(AppDbContext ctx, IScanProvider provider) =>
-        new(ctx, provider, new Mock<ILogger<ScanExecutor>>().Object);
+    private static Mock<IBackgroundJobClient> NewJobs()
+    {
+        var jobs = new Mock<IBackgroundJobClient>();
+        // Hangfire's Enqueue<T> / ContinueJobWith<T> extensions internally call Create(Job, IState).
+        // Stub the return so the extensions have a job id to return for chaining.
+        jobs.Setup(j => j.Create(It.IsAny<Job>(), It.IsAny<IState>()))
+            .Returns("stub-job-id");
+        return jobs;
+    }
+
+    private static ScanExecutor Executor(AppDbContext ctx, IScanProvider provider, IBackgroundJobClient? jobs = null) =>
+        new(ctx, provider, jobs ?? NewJobs().Object, new Mock<ILogger<ScanExecutor>>().Object);
 
     [Fact]
     public async Task Execute_StoresAnswer_AndCompletes()
@@ -110,5 +123,44 @@ public class ScanExecutorTests
         run.Status.Should().Be(ScanRunStatus.Completed);
         (await ctx.PromptRuns.FindAsync(prId))!.Status.Should().Be(PromptRunStatus.Failed);
         (await ctx.AIAnswers.AnyAsync(a => a.PromptRunId == prId)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_CreatesAnalysisJob_AndEnqueuesExtractWithAggregateContinuation()
+    {
+        using var ctx = NewContext();
+        var (runId, _) = Seed(ctx);
+        var provider = new Mock<IScanProvider>();
+        provider
+            .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ScanAnswer(true, "answer", null, "raw"));
+        var jobs = NewJobs();
+
+        await Executor(ctx, provider.Object, jobs.Object).ExecuteAsync(runId, CancellationToken.None);
+
+        // AnalysisJob row exists, references the right ScanRun, starts in Queued status.
+        var analysisJob = await ctx.AnalysisJobs.SingleAsync(j => j.ScanRunId == runId);
+        analysisJob.Status.Should().Be(AnalysisJobStatus.Queued);
+        analysisJob.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        analysisJob.ExtractStartedAt.Should().BeNull();   // jobs haven't run yet
+        analysisJob.AggregateCompletedAt.Should().BeNull();
+
+        // Hangfire received an ISignalExtractionJob.ExtractAsync(analysisJobId) enqueued normally.
+        jobs.Verify(j => j.Create(
+                It.Is<Job>(job =>
+                    job.Type == typeof(ISignalExtractionJob)
+                    && job.Method.Name == nameof(ISignalExtractionJob.ExtractAsync)
+                    && (Guid)job.Args[0] == analysisJob.Id),
+                It.IsAny<EnqueuedState>()),
+            Times.Once);
+
+        // And an IMetricAggregationJob.AggregateAsync chained via continuation (AwaitingState).
+        jobs.Verify(j => j.Create(
+                It.Is<Job>(job =>
+                    job.Type == typeof(IMetricAggregationJob)
+                    && job.Method.Name == nameof(IMetricAggregationJob.AggregateAsync)
+                    && (Guid)job.Args[0] == analysisJob.Id),
+                It.IsAny<AwaitingState>()),
+            Times.Once);
     }
 }
