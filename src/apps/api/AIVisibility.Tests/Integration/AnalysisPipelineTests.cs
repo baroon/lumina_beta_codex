@@ -185,12 +185,17 @@ public class AnalysisPipelineTests
     }
 
     private static (SignalExtractionJob Extract, MetricAggregationJob Aggregate) BuildJobs(
-        AppDbContext ctx, IOpenAiService openAi, int concurrency = 5)
+        AppDbContext ctx, IOpenAiService openAi, ISourceClassifier? classifier = null, int concurrency = 5)
     {
         var extractor = new SignalExtractor(openAi, new Mock<ILogger<SignalExtractor>>().Object);
         var options = Options.Create(new AnalysisOptions { ExtractionConcurrency = concurrency });
+        // Phase 4 Slice 1: SignalExtractionJob now takes ISourceClassifier.
+        // Tests that don't care default to a stub that returns null for every
+        // call — leaves rows at their RuleBased verdict (the pre-Phase 4
+        // behavior the existing assertions were written for).
+        classifier ??= new Mock<ISourceClassifier>().Object;
         var extract = new SignalExtractionJob(
-            ctx, extractor, options, new Mock<ILogger<SignalExtractionJob>>().Object);
+            ctx, extractor, classifier, options, new Mock<ILogger<SignalExtractionJob>>().Object);
         var aggregator = new MetricAggregator(ctx, new Mock<ILogger<MetricAggregator>>().Object);
         var aggregate = new MetricAggregationJob(
             ctx, aggregator, new Mock<ILogger<MetricAggregationJob>>().Object);
@@ -473,6 +478,187 @@ public class AnalysisPipelineTests
     {
         var citation = citations.Single(c => c.Source.NormalizedDomain == normalizedDomain);
         return classificationBySourceId[citation.SourceId];
+    }
+
+    [Fact]
+    public async Task FullPipeline_PromotesRuleBasedUnknown_ToLlmClassifiedSourceType_WhenClassifierReturnsVerdict()
+    {
+        // Phase 4 v1 Slice 1: rule-based-Unknown sources get re-classified
+        // by the LLM at persistence time (Phase 4 plan D1/D5). Rule-based
+        // Owned/Competitor verdicts are kept — classifier is never called
+        // for them.
+        using var ctx = NewContext();
+        var fx = SeedFixture(ctx, answerCount: 1);
+
+        // Single answer with three citations:
+        //   1. blog.lumina.io   -> URL matcher classifies Owned       (skip LLM)
+        //   2. acme.com         -> URL matcher classifies Competitor  (skip LLM)
+        //   3. en.wikipedia.org -> URL matcher returns Unknown        (LLM runs, returns Reference)
+        const string answer = """
+            {
+              "answer_signal": {
+                "brand_mentioned": true, "brand_recommended": true,
+                "brand_rank": 1, "brand_sentiment": "Positive",
+                "brand_recommendation_strength": "Strong",
+                "top_recommended_entity": "Lumina",
+                "answer_has_ranking": false, "answer_has_comparison": false,
+                "answer_has_citations": true, "confidence_score": 0.9
+              },
+              "mentions": [],
+              "citations": [
+                { "source_name": "Lumina blog", "url": "https://blog.lumina.io/x", "confidence_score": 0.9 },
+                { "source_name": "Acme",        "url": "https://acme.com/y",       "confidence_score": 0.8 },
+                { "source_name": "Wikipedia",   "url": "https://en.wikipedia.org/z","confidence_score": 0.7 }
+              ]
+            }
+            """;
+        var openAi = new Mock<IOpenAiService>();
+        openAi.Setup(s => s.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(answer);
+
+        var classifier = new Mock<ISourceClassifier>();
+        // Verdict: any rule-based-Unknown source we see is "Reference".
+        classifier.Setup(c => c.ClassifyAsync(
+                It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SourceClassificationVerdict(SourceType.Reference, 0.95, "Wikipedia is reference."));
+
+        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
+        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+
+        var classifications = await ctx.BrandSourceClassifications.AsNoTracking()
+            .Where(c => c.BrandId == fx.Brand.Id)
+            .ToListAsync();
+        var sources = await ctx.Sources.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s);
+
+        // Three classifications — one per Source row created.
+        classifications.Should().HaveCount(3);
+
+        // Owned: blog.lumina.io stays RuleBased + Owned + Active. Classifier MUST NOT be called.
+        var ownedRow = classifications.Single(c => sources[c.SourceId].NormalizedDomain == "blog.lumina.io");
+        ownedRow.SourceType.Should().Be(SourceType.Owned);
+        ownedRow.ProvenanceSource.Should().Be(ClassificationSource.RuleBased);
+        ownedRow.Status.Should().Be(ClassificationStatus.Active);
+
+        // Competitor: acme.com stays RuleBased + Competitor.
+        var competitorRow = classifications.Single(c => sources[c.SourceId].NormalizedDomain == "acme.com");
+        competitorRow.SourceType.Should().Be(SourceType.Competitor);
+        competitorRow.ProvenanceSource.Should().Be(ClassificationSource.RuleBased);
+
+        // Wikipedia: was RuleBased+Unknown, promoted to LLMClassified+Reference+Active.
+        var wikipediaRow = classifications.Single(c => sources[c.SourceId].NormalizedDomain == "en.wikipedia.org");
+        wikipediaRow.SourceType.Should().Be(SourceType.Reference);
+        wikipediaRow.ProvenanceSource.Should().Be(ClassificationSource.LLMClassified);
+        wikipediaRow.Status.Should().Be(ClassificationStatus.Active);
+        wikipediaRow.ConfidenceScore.Should().BeApproximately(0.95, 1e-9);
+
+        // Classifier was called once and only for the rule-based-Unknown source.
+        // D5: skip-when-decisive — Owned + Competitor verdicts MUST NOT trigger an LLM call.
+        classifier.Verify(c => c.ClassifyAsync(
+            It.Is<SourceClassificationRequest>(r => r.NormalizedDomain == "en.wikipedia.org"),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+        classifier.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task FullPipeline_LeavesRowAtRuleBasedUnknown_WhenClassifierReturnsNull()
+    {
+        // D4: classifier failure must not stop the rest of the scan persisting.
+        // The row stays at RuleBased/Unknown; the job logs and continues.
+        using var ctx = NewContext();
+        var fx = SeedFixture(ctx, answerCount: 1);
+
+        const string answer = """
+            {
+              "answer_signal": {
+                "brand_mentioned": false, "brand_recommended": false,
+                "brand_rank": null, "brand_sentiment": "Unknown",
+                "brand_recommendation_strength": "Unknown",
+                "top_recommended_entity": null,
+                "answer_has_ranking": false, "answer_has_comparison": false,
+                "answer_has_citations": true, "confidence_score": 0.5
+              },
+              "mentions": [],
+              "citations": [
+                { "source_name": "Trustpilot", "url": null, "confidence_score": 0.6 }
+              ]
+            }
+            """;
+        var openAi = new Mock<IOpenAiService>();
+        openAi.Setup(s => s.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(answer);
+
+        var classifier = new Mock<ISourceClassifier>();
+        classifier.Setup(c => c.ClassifyAsync(
+                It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SourceClassificationVerdict?)null);
+
+        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
+        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+
+        var classification = await ctx.BrandSourceClassifications.AsNoTracking()
+            .SingleAsync(c => c.BrandId == fx.Brand.Id);
+        classification.SourceType.Should().Be(SourceType.Unknown);
+        classification.ProvenanceSource.Should().Be(ClassificationSource.RuleBased);
+        classification.Status.Should().Be(ClassificationStatus.Unknown);
+
+        // Job still completed — failure was isolated to the one classification row.
+        var job = await ctx.AnalysisJobs.AsNoTracking().FirstAsync(j => j.Id == fx.AnalysisJobId);
+        job.ErrorMessage.Should().BeNull();
+        job.ExtractCompletedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task FullPipeline_LeavesRowAtRuleBasedUnknown_WhenClassifierThrows()
+    {
+        // D4: defense-in-depth — if the classifier throws (e.g. OpenAI 500
+        // not handled by the impl), the job catches per-source and continues.
+        using var ctx = NewContext();
+        var fx = SeedFixture(ctx, answerCount: 1);
+
+        const string answer = """
+            {
+              "answer_signal": {
+                "brand_mentioned": false, "brand_recommended": false,
+                "brand_rank": null, "brand_sentiment": "Unknown",
+                "brand_recommendation_strength": "Unknown",
+                "top_recommended_entity": null,
+                "answer_has_ranking": false, "answer_has_comparison": false,
+                "answer_has_citations": true, "confidence_score": 0.5
+              },
+              "mentions": [],
+              "citations": [
+                { "source_name": "Some Source", "url": "https://random-unknown.example.com/x", "confidence_score": 0.5 }
+              ]
+            }
+            """;
+        var openAi = new Mock<IOpenAiService>();
+        openAi.Setup(s => s.ChatCompletionAsync(
+                It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(answer);
+
+        var classifier = new Mock<ISourceClassifier>();
+        classifier.Setup(c => c.ClassifyAsync(
+                It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("simulated upstream failure"));
+
+        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
+        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+
+        var classification = await ctx.BrandSourceClassifications.AsNoTracking()
+            .SingleAsync(c => c.BrandId == fx.Brand.Id);
+        classification.ProvenanceSource.Should().Be(ClassificationSource.RuleBased);
+
+        var job = await ctx.AnalysisJobs.AsNoTracking().FirstAsync(j => j.Id == fx.AnalysisJobId);
+        job.ErrorMessage.Should().BeNull(); // per-source catch absorbed the throw
     }
 
     [Fact]

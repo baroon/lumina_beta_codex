@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
         services.AddScoped<SignalExtractor>();
         services.AddScoped<MetricAggregator>();
+        services.AddScoped<ISourceClassifier, LlmSourceClassifier>();
         services.AddScoped<ISignalExtractionJob, SignalExtractionJob>();
         services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();
 

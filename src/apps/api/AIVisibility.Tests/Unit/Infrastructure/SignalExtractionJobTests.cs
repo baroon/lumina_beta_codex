@@ -120,7 +120,12 @@ public class SignalExtractionJobTests
     {
         var extractor = new SignalExtractor(openAi, new Mock<ILogger<SignalExtractor>>().Object);
         var options = Options.Create(new AnalysisOptions { ExtractionConcurrency = concurrency });
-        return new SignalExtractionJob(ctx, extractor, options, new Mock<ILogger<SignalExtractionJob>>().Object);
+        // Phase 4 Slice 1: SignalExtractionJob now takes ISourceClassifier.
+        // These tests focus on the per-answer extraction loop, not classification,
+        // so the stub returns null (leaves rows at RuleBased) and is silent.
+        var classifier = new Mock<ISourceClassifier>().Object;
+        return new SignalExtractionJob(
+            ctx, extractor, classifier, options, new Mock<ILogger<SignalExtractionJob>>().Object);
     }
 
     private const string MinimalEnvelope = """

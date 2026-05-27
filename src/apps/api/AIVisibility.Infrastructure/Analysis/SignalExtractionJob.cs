@@ -20,17 +20,20 @@ public class SignalExtractionJob : ISignalExtractionJob
 {
     private readonly IAppDbContext _db;
     private readonly SignalExtractor _extractor;
+    private readonly ISourceClassifier _classifier;
     private readonly AnalysisOptions _options;
     private readonly ILogger<SignalExtractionJob> _logger;
 
     public SignalExtractionJob(
         IAppDbContext db,
         SignalExtractor extractor,
+        ISourceClassifier classifier,
         IOptions<AnalysisOptions> options,
         ILogger<SignalExtractionJob> logger)
     {
         _db = db;
         _extractor = extractor;
+        _classifier = classifier;
         _options = options.Value;
         _logger = logger;
     }
@@ -286,13 +289,21 @@ public class SignalExtractionJob : ISignalExtractionJob
             .ToListAsync(ct);
         var existingClassifiedSourceIds = existingClassifications.ToHashSet();
 
+        // Stage one BrandSourceClassification per new (brand, source). Each
+        // row starts with the v1 URL-domain matcher's verdict (RuleBased).
+        // Sources whose rule-based verdict is Unknown are then re-classified
+        // by the LLM (Phase 4 v1 plan D1/D5): Owned and Competitor verdicts
+        // are kept as-is because the URL matcher has higher confidence there
+        // and an LLM call would be wasted.
+        var pendingLlmClassification =
+            new List<(BrandSourceClassification Row, DraftCitation Sample)>();
         foreach (var (key, sourceId) in sourceIdByKey)
         {
             if (existingClassifiedSourceIds.Contains(sourceId)) continue;
             // Use the classifier verdict from any draft in the group — within
             // a single scan, classification is deterministic per (brand, source).
             var sample = draftsBySourceKey.First(g => SourceKey(g.First()) == key).First();
-            _db.BrandSourceClassifications.Add(new BrandSourceClassification
+            var row = new BrandSourceClassification
             {
                 Id = Guid.NewGuid(),
                 BrandId = brandId,
@@ -305,8 +316,15 @@ public class SignalExtractionJob : ISignalExtractionJob
                     : ClassificationStatus.Active,
                 CreatedAt = now,
                 UpdatedAt = now,
-            });
+            };
+            _db.BrandSourceClassifications.Add(row);
+            if (sample.ClassifiedAs == SourceType.Unknown)
+            {
+                pendingLlmClassification.Add((row, sample));
+            }
         }
+
+        await RunLlmClassifierAsync(pendingLlmClassification, now, ct);
 
         // Finally, create Citation rows pointing at canonical Source / SourceUrl ids.
         foreach (var draft in allDrafts)
@@ -332,4 +350,50 @@ public class SignalExtractionJob : ISignalExtractionJob
     /// </summary>
     private static string SourceKey(DraftCitation d) =>
         d.NormalizedDomain ?? $"name:{d.NormalizedSourceName}";
+
+    /// <summary>
+    /// Phase 4 v1 plan D1/D4/D5. Calls the LLM classifier for each
+    /// rule-based-Unknown row and mutates the already-tracked entity in
+    /// place. Per-source try/catch — one failed classification leaves that
+    /// row at RuleBased/Unknown but doesn't stop siblings from being
+    /// classified or the rest of the scan from persisting.
+    /// </summary>
+    private async Task RunLlmClassifierAsync(
+        List<(BrandSourceClassification Row, DraftCitation Sample)> pending,
+        DateTime now,
+        CancellationToken ct)
+    {
+        foreach (var (row, sample) in pending)
+        {
+            SourceClassificationVerdict? verdict;
+            try
+            {
+                verdict = await _classifier.ClassifyAsync(
+                    new SourceClassificationRequest(
+                        SourceName: sample.SourceName,
+                        NormalizedDomain: sample.NormalizedDomain,
+                        SampleUrl: sample.Url),
+                    ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "LLM source classifier threw for {SourceName}; leaving row at RuleBased/Unknown.",
+                    sample.SourceName);
+                continue;
+            }
+
+            if (verdict is null) continue;
+
+            // EF tracks the row from the earlier Add — mutate in place so the
+            // upcoming SaveChangesAsync writes the LLM verdict.
+            row.SourceType = verdict.SourceType;
+            row.ConfidenceScore = verdict.ConfidenceScore;
+            row.ProvenanceSource = ClassificationSource.LLMClassified;
+            row.Status = verdict.SourceType == SourceType.Unknown
+                ? ClassificationStatus.Unknown
+                : ClassificationStatus.Active;
+            row.UpdatedAt = now;
+        }
+    }
 }
