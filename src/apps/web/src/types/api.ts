@@ -253,3 +253,107 @@ export interface ScanStatus {
   startedAt: string;
   completedAt: string | null;
 }
+
+// --- Scan Results (Slice (d) reporting) ----------------------------------
+//
+// Mirrors AIVisibility.Application.Queries.Scans.ScanResultsDto. Returned by
+// GET /api/scans/{scanRunId}/results. Nullable rate fields are null when the
+// aggregator skipped emission (e.g. AverageBrandRank with no ranked signals,
+// BrandShareOfVoice with denominator zero) — keep them nullable on the
+// frontend so the UI can distinguish missing data from a real zero.
+
+export interface ScanResultsDto {
+  scanRunId: string;
+  summary: ScanSummaryDto;
+  coreMetrics: CoreMetricsDto;
+  breakdowns: BreakdownsDto;
+}
+
+export interface ScanSummaryDto {
+  trackerId: string;
+  trackerName: string;
+  brandId: string;
+  brandName: string;
+  startedAt: string;
+  completedAt: string | null;
+  scanStatus: string; // ScanRunStatus.ToString()
+  analysisStatus: string; // AnalysisJobStatus.ToString()
+  analysisError: string | null;
+  scanCheckCount: number;
+  completedCount: number;
+  failedCount: number;
+  platforms: ScanResultsPlatformDto[];
+}
+
+export interface ScanResultsPlatformDto {
+  platformId: string;
+  code: string;
+  name: string;
+}
+
+export interface CoreMetricsDto {
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  averageBrandRank: number | null;
+  competitorMentionCount: number;
+  productMentionCount: number;
+  citationCount: number;
+  ownedCitationCount: number;
+  competitorCitationCount: number;
+  thirdPartyCitationCount: number;
+  unknownCitationCount: number;
+  // Keyed by sentiment value ("Positive" | "Neutral" | "Negative" | "Mixed" | "Unknown").
+  // Only observed values appear — absent keys mean zero signals at that value.
+  brandSentimentDistribution: Record<string, number>;
+  topCitedSources: TopCitedSourceDto[];
+}
+
+export interface TopCitedSourceDto {
+  rank: number;
+  sourceName: string;
+  citationCount: number;
+}
+
+export interface BreakdownsDto {
+  byPlatform: PlatformBreakdownDto[];
+  byLens: LensBreakdownDto[];
+  byTopic: TopicBreakdownDto[];
+  byCompetitor: CompetitorBreakdownDto[];
+}
+
+export interface PlatformBreakdownDto {
+  platformId: string;
+  platformName: string;
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  citationCount: number;
+  brandSentimentDistribution: Record<string, number>;
+}
+
+export interface LensBreakdownDto {
+  lensId: string;
+  lensName: string;
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  citationCount: number;
+  brandSentimentDistribution: Record<string, number>;
+}
+
+export interface TopicBreakdownDto {
+  topicId: string;
+  topicName: string;
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  citationCount: number;
+}
+
+export interface CompetitorBreakdownDto {
+  competitorId: string;
+  competitorName: string;
+  mentionCount: number;
+  recommendationCount: number;
+}

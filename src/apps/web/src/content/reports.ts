@@ -1,0 +1,57 @@
+export const REPORTS_COPY = {
+  scanResults: {
+    title: "Scan Results",
+    subtitle: "{brandName} — {trackerName}",
+    sections: {
+      summary: "Summary",
+      coreMetrics: "Core Metrics",
+      sentimentDistribution: "Brand Sentiment Distribution",
+      topCitedSources: "Top Cited Sources",
+      byPlatform: "By Platform",
+      byLens: "By Visibility Lens",
+      byTopic: "By Topic",
+      byCompetitor: "By Competitor",
+    },
+    summary: {
+      scanStatus: "Scan status",
+      analysisStatus: "Analysis status",
+      startedAt: "Started",
+      completedAt: "Completed",
+      checks: "{completed} of {total} checks completed",
+      checksWithFailures: "{completed} of {total} checks ({failed} failed)",
+      platforms: "Platforms",
+    },
+    metrics: {
+      brandMentionRate: "Brand mention rate",
+      brandRecommendationRate: "Recommendation rate",
+      brandShareOfVoice: "Share of voice",
+      averageBrandRank: "Average brand rank",
+      competitorMentionCount: "Competitor mentions",
+      productMentionCount: "Product mentions",
+      citationCount: "Citations",
+      ownedCitationCount: "Owned",
+      competitorCitationCount: "Competitor",
+      thirdPartyCitationCount: "Third-party",
+      unknownCitationCount: "Unknown",
+      noData: "No data",
+    },
+    breakdowns: {
+      name: "Name",
+      mentionRate: "Mention rate",
+      recommendationRate: "Rec. rate",
+      shareOfVoice: "SoV",
+      citations: "Citations",
+      mentionCount: "Mentions",
+      recommendationCount: "Recommended",
+      noRows: "No data for this dimension yet.",
+    },
+    empty: {
+      notFound:
+        "Scan results not found. The scan may not exist or analysis may not have started yet.",
+    },
+    error: {
+      title: "Couldn't load scan results",
+      description: "Something went wrong fetching the scan results.",
+    },
+  },
+} as const;

@@ -21,4 +21,9 @@ describe("scansApi", () => {
     scansApi.latest("t1");
     expect(client.get).toHaveBeenCalledWith("/api/trackers/t1/scans/latest");
   });
+
+  it("results gets the scan results", () => {
+    scansApi.results("s1");
+    expect(client.get).toHaveBeenCalledWith("/api/scans/s1/results");
+  });
 });

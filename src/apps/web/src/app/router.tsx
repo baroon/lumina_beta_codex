@@ -4,6 +4,7 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { BrandsListPage } from "@/routes/brands/list";
 import { NewBrandPage } from "@/routes/brands/new";
 import { DiscoveryPage } from "@/routes/brands/discovery";
+import { ScanResultsPage } from "@/routes/scans/results";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -36,7 +37,18 @@ const discoveryRoute = createRoute({
   component: DiscoveryPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, newBrandRoute, discoveryRoute]);
+const scanResultsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/scans/$scanRunId/results",
+  component: ScanResultsPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  newBrandRoute,
+  discoveryRoute,
+  scanResultsRoute,
+]);
 
 export const router = createRouter({ routeTree });
 
