@@ -248,6 +248,47 @@ public class SignalExtractorTests
     }
 
     [Fact]
+    public async Task BrandNotMentioned_CoercesStrengthAndSentiment_ToUnknown_RegardlessOfLlmEmittedValue()
+    {
+        // D13 invariant ("absence is not negative"): when brand_mentioned=false,
+        // BrandSentiment + BrandRecommendationStrength must be Unknown, BrandRank
+        // null, BrandRecommended false — regardless of what the LLM emits in the
+        // envelope. This is defense-in-depth against prompt non-compliance: real
+        // gpt-4o-mini output observed in verify-e2e (2026-05-27) emitted
+        // recommendation_strength=NotRecommended on 49% of unmentioned-brand
+        // answers, which would poison aggregation downstream as false-negative
+        // recommendation signal.
+        const string json = """
+            {
+              "answer_signal": {
+                "brand_mentioned": false,
+                "brand_recommended": true,
+                "brand_rank": 3,
+                "brand_sentiment": "Negative",
+                "brand_recommendation_strength": "NotRecommended",
+                "top_recommended_entity": "Other Brand",
+                "answer_has_ranking": true,
+                "answer_has_comparison": false,
+                "answer_has_citations": false,
+                "confidence_score": 0.7
+              },
+              "mentions": [],
+              "citations": []
+            }
+            """;
+        var (sut, _) = Build(json);
+
+        var result = await sut.ExtractAsync(Answer(), Context(), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.Signal.BrandMentioned.Should().BeFalse();
+        result.Signal.BrandSentiment.Should().Be(Sentiment.Unknown);
+        result.Signal.BrandRecommendationStrength.Should().Be(RecommendationStrength.Unknown);
+        result.Signal.BrandRank.Should().BeNull();
+        result.Signal.BrandRecommended.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ToleratesMarkdownFencedJson()
     {
         // LLMs sometimes wrap JSON in ```json ... ```. ParseEnvelope must trim to

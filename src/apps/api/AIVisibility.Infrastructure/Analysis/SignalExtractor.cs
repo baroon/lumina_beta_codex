@@ -69,13 +69,21 @@ public class SignalExtractor
         }
 
         Rules:
-        - Absence is not negative. If the brand is not mentioned, set brand_sentiment=Unknown.
+        - Absence is NOT negative. When brand_mentioned=false, ALL of the following MUST hold:
+            brand_recommended = false
+            brand_rank = null
+            brand_sentiment = "Unknown"
+            brand_recommendation_strength = "Unknown"
+            top_recommended_entity = null (unless the answer explicitly names another top entity)
+          Do NOT emit "Negative" or "NotRecommended" just because the brand isn't mentioned —
+          those values mean the brand was actively discussed in a negative or against-it way.
         - Mention only what is in the answer. Do not infer entities not present.
         - "Brand" entity_type is for the tracked brand only.
         - "Competitor" and "Product" entity_types should use the names exactly as the answer
           phrases them (even if they don't appear in the tracked list — the caller resolves them).
         - Recommendation strength scale: Strong (top pick / unreserved), Moderate (with caveats),
-          Weak (mentioned as an option), NotRecommended (recommended against), Unknown (cannot tell).
+          Weak (mentioned as an option), NotRecommended (the answer recommends against the entity),
+          Unknown (entity not discussed, or strength cannot be inferred).
         - If the answer has no citations or sources, return citations: [].
         """;
 
@@ -177,16 +185,31 @@ public class SignalExtractor
     {
         var s = root.GetProperty("answer_signal");
         var now = DateTime.UtcNow;
+        var brandMentioned = s.GetProperty("brand_mentioned").GetBoolean();
+
+        // D13 absence invariant. The prompt instructs the LLM to emit Unknown
+        // values when the brand isn't mentioned, but verify-e2e observed
+        // gpt-4o-mini emitting NotRecommended/Negative on ~49% of unmentioned-
+        // brand answers. Coerce here so downstream aggregation can't read those
+        // as real negative-recommendation signal.
+        var brandSentiment = brandMentioned
+            ? ParseEnum<Sentiment>(s, "brand_sentiment", Sentiment.Unknown)
+            : Sentiment.Unknown;
+        var brandStrength = brandMentioned
+            ? ParseEnum<RecommendationStrength>(s, "brand_recommendation_strength", RecommendationStrength.Unknown)
+            : RecommendationStrength.Unknown;
+        var brandRank = brandMentioned ? TryGetNullableInt(s, "brand_rank") : null;
+        var brandRecommended = brandMentioned && (TryGetBoolean(s, "brand_recommended") ?? false);
+
         return new AnswerSignal
         {
             Id = Guid.NewGuid(),
             AIAnswerId = aiAnswerId,
-            BrandMentioned = s.GetProperty("brand_mentioned").GetBoolean(),
-            BrandRecommended = s.GetProperty("brand_recommended").GetBoolean(),
-            BrandRank = TryGetNullableInt(s, "brand_rank"),
-            BrandSentiment = ParseEnum<Sentiment>(s, "brand_sentiment", Sentiment.Unknown),
-            BrandRecommendationStrength = ParseEnum<RecommendationStrength>(
-                s, "brand_recommendation_strength", RecommendationStrength.Unknown),
+            BrandMentioned = brandMentioned,
+            BrandRecommended = brandRecommended,
+            BrandRank = brandRank,
+            BrandSentiment = brandSentiment,
+            BrandRecommendationStrength = brandStrength,
             TopRecommendedEntity = TryGetNullableString(s, "top_recommended_entity"),
             AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
             AnswerHasComparison = s.GetProperty("answer_has_comparison").GetBoolean(),
