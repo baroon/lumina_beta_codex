@@ -191,7 +191,8 @@ public class MetricAggregator
         {
             yield return MetricRowWithMetadata(scanRunId, scope, scopeId,
                 MetricNames.BrandSentimentDistribution, grp.Count(),
-                $"{{\"value\":\"{grp.Key}\"}}", now);
+                System.Text.Json.JsonSerializer.Serialize(new { value = grp.Key.ToString() }),
+                now);
         }
     }
 
@@ -213,9 +214,14 @@ public class MetricAggregator
         var rank = 1;
         foreach (var entry in ranked)
         {
+            // JsonSerializer handles all escaping (quotes, backslashes, control
+            // chars, unicode). Hand-rolled interpolation broke against real LLM
+            // source names like "American Society of Landscape Architects
+            // (ASLA)" — Postgres jsonb rejected the row and the whole
+            // aggregation rolled back. Don't roll your own JSON.
             yield return MetricRowWithMetadata(scanRunId, scope, scopeId,
                 MetricNames.TopCitedSource, entry.Count,
-                $"{{\"source_name\":{System.Text.Json.JsonEncodedText.Encode(entry.Source)},\"rank\":{rank}}}",
+                System.Text.Json.JsonSerializer.Serialize(new { source_name = entry.Source, rank }),
                 now);
             rank++;
         }

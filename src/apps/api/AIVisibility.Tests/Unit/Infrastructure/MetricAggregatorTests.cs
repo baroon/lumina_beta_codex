@@ -657,6 +657,50 @@ public class MetricAggregatorTests
     }
 
     [Fact]
+    public async Task TopCitedSource_MetadataJson_IsValidJson_EvenForSourceNamesWithSpecialChars()
+    {
+        // verify-e2e on 2026-05-27 caught the production bug here: the
+        // aggregator built metadata_json with string interpolation that did
+        // not quote the source name. Real LLM source names contain spaces,
+        // parens, and other characters that need JSON escaping ("American
+        // Society of Landscape Architects (ASLA)"). The in-memory EF
+        // provider does not validate jsonb, so the unit tests passed; Postgres
+        // jsonb rejected the row and the whole aggregation transaction
+        // rolled back.
+        //
+        // This test exercises the same shape that broke prod: source names
+        // with mixed-case + parens + spaces. The assertion is that the
+        // emitted metadata_json parses as valid JSON.
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
+                Citations: Array.Empty<SourceClassification>())
+            {
+                NamedCitations = new[]
+                {
+                    (SourceClassification.ThirdParty, "American Society of Landscape Architects (ASLA)"),
+                    (SourceClassification.ThirdParty, "Source with \"quotes\" inside"),
+                    (SourceClassification.ThirdParty, "Source\\with\\backslashes"),
+                },
+            });
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+        var topCited = rows.Where(r =>
+            r.Scope == ScanMetricScope.Overall && r.MetricName == MetricNames.TopCitedSource).ToList();
+
+        topCited.Should().HaveCount(3);
+        foreach (var row in topCited)
+        {
+            row.MetadataJson.Should().NotBeNull();
+            // Must parse cleanly — same validation Postgres jsonb performs.
+            var act = () => System.Text.Json.JsonDocument.Parse(row.MetadataJson!);
+            act.Should().NotThrow($"metadata_json must be valid JSON, got: {row.MetadataJson}");
+        }
+    }
+
+    [Fact]
     public async Task TopCitedSource_CappedAtFive_WhenManyDistinctSources()
     {
         using var ctx = NewContext();
