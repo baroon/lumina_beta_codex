@@ -981,6 +981,33 @@
           "notes": "Phase 4 Slice 2 side drawer drill-down from a SourcesTable row. Lists prompt + AI answer snippet + platform + lens + URL per citation. Lighter-weight precursor to the full Prompt Evidence view from ADR-004 which awaits Findings."
         },
         {
+          "name": "ScanTopicsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanTopicsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage", "TopicsTable"],
+          "notes": "Phase 4 Slice 3 Topic view list at /scans/{id}/topics. Pivots Topic-scope ScanMetric rows into per-topic table; row click navigates to topic detail route."
+        },
+        {
+          "name": "TopicsTable",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/TopicsTable.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge"],
+          "notes": "Phase 4 Slice 3 table of topics for a scan. Per-row metric pivot (mention rate, recommendation rate, share of voice, avg rank, citations, owned share, dominant sentiment badge). Renders em-dash for null rates so missing-data is distinguishable from a real zero."
+        },
+        {
+          "name": "ScanTopicDetailScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanTopicDetailScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Phase 4 Slice 3 Topic detail at /scans/{id}/topics/{topicId}. Three sections: topic metrics card (8 metric tiles + sentiment badges), per-platform breakdown table (runtime Topic×Platform sub-aggregation from backend), top cited sources within the topic."
+        },
+        {
           "name": "CoreMetricsRow",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/CoreMetricsRow.tsx",

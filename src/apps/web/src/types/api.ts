@@ -454,3 +454,67 @@ export interface UpdateSourceClassificationResult {
   confidenceScore: number;
   updatedAt: string;
 }
+
+// --- Topic view (Phase 4 Slice 3) ----------------------------------------
+//
+// Mirrors AIVisibility.Application.Queries.Topics.*. List endpoint pivots
+// pre-computed Topic-scope ScanMetric rows; detail endpoint adds a runtime
+// Topic×Platform sub-aggregation + top cited sources within the topic.
+
+export interface ScanTopicsDto {
+  scanRunId: string;
+  topics: TopicListItemDto[];
+}
+
+export interface TopicListItemDto {
+  topicId: string;
+  topicName: string;
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  averageBrandRank: number | null;
+  citationCount: number;
+  /** Owned citations / total citations within this topic, [0..1]. Null when CitationCount=0. */
+  ownedCitationShare: number | null;
+  /** Most-observed sentiment value (mode of BrandSentimentDistribution). Null when topic has no signals. */
+  dominantSentiment: string | null;
+}
+
+export interface ScanTopicDetailDto {
+  scanRunId: string;
+  topicId: string;
+  topicName: string;
+  metrics: TopicMetricsDto;
+  byPlatform: TopicPlatformBreakdownDto[];
+  topCitedSources: TopicTopCitedSourceDto[];
+}
+
+export interface TopicMetricsDto {
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  averageBrandRank: number | null;
+  citationCount: number;
+  ownedCitationCount: number;
+  competitorCitationCount: number;
+  thirdPartyCitationCount: number;
+  unknownCitationCount: number;
+  brandSentimentDistribution: Record<string, number>;
+}
+
+export interface TopicPlatformBreakdownDto {
+  platformId: string;
+  platformCode: string;
+  platformName: string;
+  answerCount: number;
+  brandMentionRate: number | null;
+  brandRecommendationRate: number | null;
+  brandShareOfVoice: number | null;
+  citationCount: number;
+}
+
+export interface TopicTopCitedSourceDto {
+  sourceId: string;
+  sourceName: string;
+  citationCount: number;
+}

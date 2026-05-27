@@ -1,0 +1,112 @@
+using System.Text.Json;
+using AIVisibility.Application;
+using AIVisibility.Application.Interfaces;
+using AIVisibility.Domain.Entities;
+using AIVisibility.Domain.Enums;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace AIVisibility.Application.Queries.Topics;
+
+public class GetScanTopicsQueryHandler : IRequestHandler<GetScanTopicsQuery, ScanTopicsDto?>
+{
+    private readonly IAppDbContext _db;
+
+    public GetScanTopicsQueryHandler(IAppDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<ScanTopicsDto?> Handle(GetScanTopicsQuery request, CancellationToken cancellationToken)
+    {
+        var scanExists = await _db.ScanRuns.AsNoTracking()
+            .AnyAsync(s => s.Id == request.ScanRunId, cancellationToken);
+        if (!scanExists) return null;
+
+        // Topic-scope metric rows produced by MetricAggregator. ScopeId is the
+        // Topic.Id — group by it so each topic gets its full metric set.
+        var topicMetrics = await _db.ScanMetrics.AsNoTracking()
+            .Where(m => m.ScanRunId == request.ScanRunId && m.Scope == ScanMetricScope.Topic)
+            .ToListAsync(cancellationToken);
+
+        if (topicMetrics.Count == 0)
+        {
+            return new ScanTopicsDto(request.ScanRunId, Array.Empty<TopicListItemDto>());
+        }
+
+        var topicIds = topicMetrics
+            .Where(m => m.ScopeId.HasValue)
+            .Select(m => m.ScopeId!.Value)
+            .Distinct()
+            .ToList();
+
+        var topicNames = await _db.Topics.AsNoTracking()
+            .Where(t => topicIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+
+        var rows = topicMetrics
+            .Where(m => m.ScopeId.HasValue)
+            .GroupBy(m => m.ScopeId!.Value)
+            .Select(g => BuildRow(g.Key, g.ToList(), topicNames))
+            .Where(r => r is not null)
+            .Select(r => r!)
+            // Default sort: citation count desc as a meaningful "where are
+            // sources showing up" ranking, then topic name for ties.
+            .OrderByDescending(r => r.CitationCount)
+            .ThenBy(r => r.TopicName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new ScanTopicsDto(request.ScanRunId, rows);
+    }
+
+    private static TopicListItemDto? BuildRow(Guid topicId, List<ScanMetric> rows, IReadOnlyDictionary<Guid, string> topicNames)
+    {
+        if (!topicNames.TryGetValue(topicId, out var topicName))
+        {
+            // Topic was deleted after metrics were computed — skip rather than
+            // surface an "Unknown" topic the user can't act on.
+            return null;
+        }
+
+        double? Single(string name) => rows.FirstOrDefault(r => r.MetricName == name)?.MetricValue;
+        int IntOrZero(string name) => (int)(Single(name) ?? 0);
+
+        var citationCount = IntOrZero(MetricNames.CitationCount);
+        var ownedCount = IntOrZero(MetricNames.OwnedCitationCount);
+        double? ownedShare = citationCount > 0 ? (double)ownedCount / citationCount : null;
+
+        // Sentiment distribution is multiple metric rows of the same name,
+        // each row's metadata_json carrying the sentiment value. The mode is
+        // the row with the highest metric_value.
+        var sentimentMode = rows
+            .Where(r => r.MetricName == MetricNames.BrandSentimentDistribution && r.MetadataJson != null)
+            .OrderByDescending(r => r.MetricValue)
+            .Select(r => ReadSentimentValue(r.MetadataJson!))
+            .FirstOrDefault(s => s is not null);
+
+        return new TopicListItemDto(
+            TopicId: topicId,
+            TopicName: topicName,
+            BrandMentionRate: Single(MetricNames.BrandMentionRate),
+            BrandRecommendationRate: Single(MetricNames.BrandRecommendationRate),
+            BrandShareOfVoice: Single(MetricNames.BrandShareOfVoice),
+            AverageBrandRank: Single(MetricNames.AverageBrandRank),
+            CitationCount: citationCount,
+            OwnedCitationShare: ownedShare,
+            DominantSentiment: sentimentMode);
+    }
+
+    private static string? ReadSentimentValue(string metadataJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(metadataJson);
+            return doc.RootElement.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String
+                ? v.GetString() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+}
