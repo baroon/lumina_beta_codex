@@ -1,3 +1,5 @@
+using Hangfire;
+
 namespace AIVisibility.Application.Interfaces;
 
 /// <summary>
@@ -9,5 +11,13 @@ namespace AIVisibility.Application.Interfaces;
 /// </summary>
 public interface ISignalExtractionJob
 {
+    /// <remarks>
+    /// <see cref="AutomaticRetryAttribute"/> is on the interface method
+    /// because ScanExecutor enqueues via the interface type
+    /// (<c>_jobs.Enqueue&lt;ISignalExtractionJob&gt;(...)</c>) — Hangfire
+    /// reads filter attributes from the serialized job target. Per Phase 3
+    /// plan D3: 3 retries on extract because LLM calls flake.
+    /// </remarks>
+    [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 60, 240, 960 })]
     Task ExtractAsync(Guid analysisJobId, CancellationToken cancellationToken);
 }

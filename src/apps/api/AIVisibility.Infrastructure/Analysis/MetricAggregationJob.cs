@@ -32,7 +32,9 @@ public class MetricAggregationJob : IMetricAggregationJob
         _logger = logger;
     }
 
-    [AutomaticRetry(Attempts = 1)]
+    // [AutomaticRetry] lives on the interface (IMetricAggregationJob) because
+    // ScanExecutor chains via interface type and Hangfire reads filter
+    // attributes from the serialized job target. See IMetricAggregationJob.
     public async Task AggregateAsync(Guid analysisJobId, CancellationToken cancellationToken)
     {
         var job = await _db.AnalysisJobs.FirstOrDefaultAsync(j => j.Id == analysisJobId, cancellationToken)

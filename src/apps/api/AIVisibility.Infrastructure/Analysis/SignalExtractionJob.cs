@@ -35,7 +35,9 @@ public class SignalExtractionJob : ISignalExtractionJob
         _logger = logger;
     }
 
-    [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 60, 240, 960 })]
+    // [AutomaticRetry] lives on the interface (ISignalExtractionJob) because
+    // ScanExecutor enqueues via interface type and Hangfire reads filter
+    // attributes from the serialized job target. See ISignalExtractionJob.
     public async Task ExtractAsync(Guid analysisJobId, CancellationToken cancellationToken)
     {
         var job = await _db.AnalysisJobs.FirstOrDefaultAsync(j => j.Id == analysisJobId, cancellationToken)

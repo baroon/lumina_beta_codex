@@ -1,3 +1,5 @@
+using Hangfire;
+
 namespace AIVisibility.Application.Interfaces;
 
 /// <summary>
@@ -6,10 +8,18 @@ namespace AIVisibility.Application.Interfaces;
 /// Hangfire continuation after <see cref="ISignalExtractionJob"/>; only
 /// runs if the extract job succeeded.
 ///
-/// Slice 1 ships the skeleton: status/timestamp transitions only, no real
-/// aggregation. Slice 4 fills in the metric computation.
+/// Slice (c) fills in the metric computation; Slice 1 shipped the skeleton.
 /// </summary>
 public interface IMetricAggregationJob
 {
+    /// <remarks>
+    /// <see cref="AutomaticRetryAttribute"/> is on the interface method
+    /// because ScanExecutor schedules the continuation via the interface type
+    /// (<c>_jobs.ContinueJobWith&lt;IMetricAggregationJob&gt;(...)</c>) —
+    /// Hangfire reads filter attributes from the serialized job target. Per
+    /// Phase 3 plan D3: 1 retry on aggregate — it's deterministic SQL/math,
+    /// so if it fails twice the issue is code or data, not transient.
+    /// </remarks>
+    [AutomaticRetry(Attempts = 1)]
     Task AggregateAsync(Guid analysisJobId, CancellationToken cancellationToken);
 }
