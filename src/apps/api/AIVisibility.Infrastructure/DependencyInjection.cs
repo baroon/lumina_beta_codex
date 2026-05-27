@@ -86,6 +86,7 @@ public static class DependencyInjection
         // LLM extraction inside SignalExtractionJob; aggregation is still skeleton (Slice 4).
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
         services.AddScoped<SignalExtractor>();
+        services.AddScoped<MetricAggregator>();
         services.AddScoped<ISignalExtractionJob, SignalExtractionJob>();
         services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();
 

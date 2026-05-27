@@ -40,6 +40,7 @@ public interface IAppDbContext
     DbSet<Mention> Mentions { get; }
     DbSet<MentionCandidate> MentionCandidates { get; }
     DbSet<Citation> Citations { get; }
+    DbSet<ScanMetric> ScanMetrics { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using AIVisibility.Application;
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
@@ -185,8 +186,9 @@ public class AnalysisPipelineTests
         var options = Options.Create(new AnalysisOptions { ExtractionConcurrency = concurrency });
         var extract = new SignalExtractionJob(
             ctx, extractor, options, new Mock<ILogger<SignalExtractionJob>>().Object);
+        var aggregator = new MetricAggregator(ctx, new Mock<ILogger<MetricAggregator>>().Object);
         var aggregate = new MetricAggregationJob(
-            ctx, new Mock<ILogger<MetricAggregationJob>>().Object);
+            ctx, aggregator, new Mock<ILogger<MetricAggregationJob>>().Object);
         return (extract, aggregate);
     }
 
@@ -361,6 +363,53 @@ public class AnalysisPipelineTests
         citations.Single(c => c.NormalizedDomain == "en.wikipedia.org")
             .Classification.Should().Be(SourceClassification.ThirdParty);
         citations.Should().AllSatisfy(c => c.CitationType.Should().Be(CitationType.ExplicitUrl));
+
+        // -- ScanMetric (Slice (c)) --
+        var metrics = await ctx.ScanMetrics.AsNoTracking().ToListAsync();
+        // The fixture exercises 1 platform + 1 lens + 0 topics (the seed doesn't
+        // create PromptTopic rows). Acme is the only competitor mentioned.
+        // Per non-competitor scope: 9 metrics — BrandMentionRate, Brand-
+        // RecommendationRate, AverageBrandRank (1 signal had rank=1),
+        // CompetitorMentionCount, ProductMentionCount, CitationCount,
+        // OwnedCitationCount, CompetitorCitationCount, ThirdPartyCitationCount.
+        // Competitor scope: 2 metrics (MentionCount + RecommendationCount).
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(9);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(9);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(9);
+        metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(2);
+        metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
+        metrics.Should().HaveCount(29);
+
+        // BrandMentionRate: 2/4 signals (answers 0+2 have brand mentions
+        // via the extracted Mention rows — Slice 2's BrandMentioned signal
+        // is what the metric reads; answer 0 has BrandMentioned=true,
+        // answer 1 was coerced false, answer 2 false, answer 3 false).
+        var overallBrandRate = metrics.Single(m =>
+            m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.BrandMentionRate);
+        overallBrandRate.MetricValue.Should().BeApproximately(0.25, 1e-9); // 1/4
+
+        // CitationCount Overall = 3 (all from answer 0).
+        metrics.Single(m =>
+            m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.CitationCount)
+            .MetricValue.Should().Be(3);
+
+        // AverageBrandRank = 1 (only answer 0 contributed rank=1; absence-coerced answer 1
+        // had its rank=4 nulled by the D13 guard).
+        metrics.Single(m =>
+            m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.AverageBrandRank)
+            .MetricValue.Should().BeApproximately(1.0, 1e-9);
+
+        // Competitor scope: Acme mentioned once, not recommended.
+        var acmeMentionCount = metrics.Single(m =>
+            m.Scope == ScanMetricScope.Competitor &&
+            m.ScopeId == fx.AcmeCompetitor.Id &&
+            m.MetricName == MetricNames.MentionCount);
+        acmeMentionCount.MetricValue.Should().Be(1);
+        metrics.Single(m =>
+            m.Scope == ScanMetricScope.Competitor &&
+            m.ScopeId == fx.AcmeCompetitor.Id &&
+            m.MetricName == MetricNames.RecommendationCount)
+            .MetricValue.Should().Be(0);
     }
 
     [Fact]

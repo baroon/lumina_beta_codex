@@ -43,6 +43,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Mention> Mentions => Set<Mention>();
     public DbSet<MentionCandidate> MentionCandidates => Set<MentionCandidate>();
     public DbSet<Citation> Citations => Set<Citation>();
+    public DbSet<ScanMetric> ScanMetrics => Set<ScanMetric>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

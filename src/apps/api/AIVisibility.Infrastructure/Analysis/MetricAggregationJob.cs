@@ -7,23 +7,28 @@ using Microsoft.Extensions.Logging;
 namespace AIVisibility.Infrastructure.Analysis;
 
 /// <summary>
-/// Skeleton implementation (Slice 1). Sets AggregateStartedAt on entry,
-/// AggregateCompletedAt + Status=Completed on exit. Does no actual
-/// aggregation yet — Slice 4 adds the ScanMetric computation inside.
+/// Reads Slice 2's extracted evidence (AnswerSignal + Mention + Citation rows)
+/// for the scan and persists a batch of <see cref="Domain.Entities.ScanMetric"/>
+/// rows across five scopes — Overall, Platform, Lens, Topic, Competitor — via
+/// <see cref="MetricAggregator"/> (Phase 3 plan §4 step 3, D15). On exit
+/// flips <see cref="Domain.Enums.AnalysisJobStatus.Completed"/>.
 ///
-/// Retry policy per D3: 1 attempt (aggregate is deterministic SQL; if it
-/// fails twice, the issue is code/data, not transient). Same Slice 2+
-/// note as SignalExtractionJob: skipping try/catch for Status=Failed here
-/// because the skeleton can't realistically throw.
+/// Retry policy per D3: 1 attempt. Aggregation is deterministic SQL/in-memory
+/// math; if it fails twice the issue is code/data not transient.
 /// </summary>
 public class MetricAggregationJob : IMetricAggregationJob
 {
     private readonly IAppDbContext _db;
+    private readonly MetricAggregator _aggregator;
     private readonly ILogger<MetricAggregationJob> _logger;
 
-    public MetricAggregationJob(IAppDbContext db, ILogger<MetricAggregationJob> logger)
+    public MetricAggregationJob(
+        IAppDbContext db,
+        MetricAggregator aggregator,
+        ILogger<MetricAggregationJob> logger)
     {
         _db = db;
+        _aggregator = aggregator;
         _logger = logger;
     }
 
@@ -36,13 +41,31 @@ public class MetricAggregationJob : IMetricAggregationJob
         job.AggregateStartedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
-        // TODO Slice 4: compute ScanMetric rows across Overall / Platform / Topic / Lens / Competitor / SourceType scopes.
-        _logger.LogInformation(
-            "MetricAggregationJob skeleton ran for AnalysisJob {AnalysisJobId} (no real aggregation yet — see Slice 4).",
-            analysisJobId);
+        try
+        {
+            var rows = await _aggregator.ComputeAsync(job.ScanRunId, cancellationToken);
+            foreach (var row in rows)
+            {
+                _db.ScanMetrics.Add(row);
+            }
+            await _db.SaveChangesAsync(cancellationToken);
 
-        job.AggregateCompletedAt = DateTime.UtcNow;
-        job.Status = AnalysisJobStatus.Completed;
-        await _db.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "MetricAggregator wrote {Count} ScanMetric rows for AnalysisJob {AnalysisJobId} (scan {ScanRunId}).",
+                rows.Count, analysisJobId, job.ScanRunId);
+
+            job.AggregateCompletedAt = DateTime.UtcNow;
+            job.Status = AnalysisJobStatus.Completed;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "MetricAggregationJob threw for AnalysisJob {AnalysisJobId}", analysisJobId);
+            job.Status = AnalysisJobStatus.Failed;
+            job.ErrorMessage = $"{ex.GetType().Name}: {ex.Message}";
+            await _db.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
     }
 }
