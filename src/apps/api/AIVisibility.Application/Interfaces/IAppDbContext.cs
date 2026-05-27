@@ -41,6 +41,10 @@ public interface IAppDbContext
     DbSet<MentionCandidate> MentionCandidates { get; }
     DbSet<Citation> Citations { get; }
     DbSet<ScanMetric> ScanMetrics { get; }
+    DbSet<Source> Sources { get; }
+    DbSet<SourceUrl> SourceUrls { get; }
+    DbSet<BrandSourceClassification> BrandSourceClassifications { get; }
+    DbSet<SourceTypeReference> SourceTypes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

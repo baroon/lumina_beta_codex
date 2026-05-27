@@ -26,6 +26,11 @@ namespace AIVisibility.Tests.Integration;
 /// <see cref="MetricAggregationJob"/> against a single in-memory DbContext —
 /// the same wiring the production DI graph produces, minus Hangfire's runtime
 /// (which we don't test — that's a third-party concern).
+///
+/// Phase 4 Slice 0: the persistence path now produces the full Source /
+/// SourceUrl / BrandSourceClassification chain. The pipeline test asserts on
+/// the joined view of (citation → source → classification) instead of inline
+/// citation columns.
 /// </summary>
 public class AnalysisPipelineTests
 {
@@ -201,7 +206,8 @@ public class AnalysisPipelineTests
         // Five varied LLM envelopes — one per answer — exercising the full
         // spread of pipeline behaviors we care about:
         //   #0 happy path: tracked Brand mention + tracked Competitor (Acme)
-        //                  + Owned/Competitor/ThirdParty citation triplet.
+        //                  + Owned/Competitor/Unknown citation triplet (v1
+        //                  classifier — Wikipedia is Unknown, not ThirdParty).
         //   #1 D13 absence coercion: brand_mentioned=false but LLM emits
         //                  NotRecommended/Negative — must be coerced to Unknown.
         //   #2 tracked Product mention path.
@@ -332,10 +338,14 @@ public class AnalysisPipelineTests
         absenceSignal.BrandRecommended.Should().BeFalse();
 
         // -- Source counts on answer #0's signal match its classified citations.
+        //    Phase 4 Slice 0: v1 classifier returns Owned/Competitor/Unknown only,
+        //    so the Wikipedia citation lands in Unknown (the aggregator buckets
+        //    that back to UnknownCitationCount). ThirdPartySourceCount on the
+        //    signal is always 0 in v1.
         var citedSignal = signals.Single(s => s.AIAnswerId == fx.Answers[0].Id);
         citedSignal.OwnedSourceCount.Should().Be(1);
         citedSignal.CompetitorSourceCount.Should().Be(1);
-        citedSignal.ThirdPartySourceCount.Should().Be(1);
+        citedSignal.ThirdPartySourceCount.Should().Be(0);
 
         // -- Mention: tracked entities resolve to mentions, with correct EntityId. --
         var mentions = await ctx.Mentions.AsNoTracking().ToListAsync();
@@ -353,15 +363,23 @@ public class AnalysisPipelineTests
         candidates[0].ClaimedName.Should().Be("Gamma");
         candidates[0].NormalizedName.Should().Be("gamma");
 
-        // -- Citation classification by domain. --
-        var citations = await ctx.Citations.AsNoTracking().ToListAsync();
+        // -- Citation classification through the normalized join. --
+        var citations = await ctx.Citations.AsNoTracking()
+            .Include(c => c.Source)
+            .ToListAsync();
         citations.Should().HaveCount(3);
-        citations.Single(c => c.NormalizedDomain == "blog.lumina.io")
-            .Classification.Should().Be(SourceClassification.Owned);
-        citations.Single(c => c.NormalizedDomain == "acme.com")
-            .Classification.Should().Be(SourceClassification.Competitor);
-        citations.Single(c => c.NormalizedDomain == "en.wikipedia.org")
-            .Classification.Should().Be(SourceClassification.ThirdParty);
+        var classifications = await ctx.BrandSourceClassifications.AsNoTracking()
+            .Where(c => c.BrandId == fx.Brand.Id)
+            .ToDictionaryAsync(c => c.SourceId, c => c.SourceType);
+
+        ClassificationFor(citations, classifications, "blog.lumina.io")
+            .Should().Be(SourceType.Owned);
+        ClassificationFor(citations, classifications, "acme.com")
+            .Should().Be(SourceType.Competitor);
+        // Phase 4 Slice 0 — Wikipedia URL is Unknown (v1 classifier returns
+        // Unknown for "URL present but no match"), not ThirdParty.
+        ClassificationFor(citations, classifications, "en.wikipedia.org")
+            .Should().Be(SourceType.Unknown);
         citations.Should().AllSatisfy(c => c.CitationType.Should().Be(CitationType.ExplicitUrl));
 
         // -- ScanMetric (Slice (c)) --
@@ -402,10 +420,19 @@ public class AnalysisPipelineTests
         overallSum.Should().Be(metrics.Single(m =>
             m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.CitationCount).MetricValue);
 
-        // BrandMentionRate: 2/4 signals (answers 0+2 have brand mentions
-        // via the extracted Mention rows — Slice 2's BrandMentioned signal
-        // is what the metric reads; answer 0 has BrandMentioned=true,
-        // answer 1 was coerced false, answer 2 false, answer 3 false).
+        // Phase 4 Slice 0 bucketing: Owned=1, Competitor=1, ThirdParty=0,
+        // Unknown=1 (Wikipedia now lands here instead of ThirdParty).
+        metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.OwnedCitationCount)
+            .MetricValue.Should().Be(1);
+        metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.CompetitorCitationCount)
+            .MetricValue.Should().Be(1);
+        metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.ThirdPartyCitationCount)
+            .MetricValue.Should().Be(0);
+        metrics.Single(m => m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.UnknownCitationCount)
+            .MetricValue.Should().Be(1);
+
+        // BrandMentionRate: 1/4 — answer 0 has BrandMentioned=true; answer 1
+        // was coerced false by D13; answers 2 and 3 false.
         var overallBrandRate = metrics.Single(m =>
             m.Scope == ScanMetricScope.Overall && m.MetricName == MetricNames.BrandMentionRate);
         overallBrandRate.MetricValue.Should().BeApproximately(0.25, 1e-9); // 1/4
@@ -432,6 +459,20 @@ public class AnalysisPipelineTests
             m.ScopeId == fx.AcmeCompetitor.Id &&
             m.MetricName == MetricNames.RecommendationCount)
             .MetricValue.Should().Be(0);
+    }
+
+    /// <summary>
+    /// Lookup helper: find the Citation whose Source's normalized_domain matches
+    /// the expected host, then resolve that Source's BrandSourceClassification.
+    /// Mirrors the join the aggregator does internally.
+    /// </summary>
+    private static SourceType ClassificationFor(
+        List<Citation> citations,
+        IReadOnlyDictionary<Guid, SourceType> classificationBySourceId,
+        string normalizedDomain)
+    {
+        var citation = citations.Single(c => c.Source.NormalizedDomain == normalizedDomain);
+        return classificationBySourceId[citation.SourceId];
     }
 
     [Fact]

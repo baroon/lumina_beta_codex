@@ -4,34 +4,38 @@ namespace AIVisibility.Domain.Entities;
 
 /// <summary>
 /// One citation (explicit URL or mentioned source) extracted from an AIAnswer
-/// (Phase 3 plan §3, D14 — Option A inline citations). The minimum-viable
-/// shape: source name + optional URL + auto-classification by URL-domain
-/// match. Phase 4 Slice 0 (hard gate) refactors to Source / SourceUrl /
-/// BrandSourceClassification — the enum values stay the same.
+/// (ADR-003 §Citation). Phase 4 Slice 0 normalized the inline-classification
+/// shape into the full Source / SourceUrl / BrandSourceClassification model:
+/// source name + URL + classification are no longer stored on the citation
+/// row itself — they live on the normalized side and join through
+/// <see cref="SourceId"/> / <see cref="SourceUrlId"/>.
 ///
-/// Created by <c>SignalExtractor</c>. Append-only (D16). Cascade-deleted with
-/// its AIAnswer (D17).
+/// Created by <c>SignalExtractor</c>. Append-only (D16). Cascade-deleted
+/// with its AIAnswer (D17).
 /// </summary>
 public class Citation
 {
     public Guid Id { get; set; }
     public Guid AIAnswerId { get; set; }
 
-    /// <summary>Source name as reported by the LLM (e.g. "Trustpilot", "Acme blog").</summary>
-    public string SourceName { get; set; } = string.Empty;
-    /// <summary>Lowercase + canonical form of <see cref="SourceName"/> for dedup/grouping.</summary>
-    public string NormalizedSourceName { get; set; } = string.Empty;
+    /// <summary>FK to the deduped <see cref="Source"/> row.</summary>
+    public Guid SourceId { get; set; }
 
-    /// <summary>Null when the LLM reports a "mentioned source" without a URL.</summary>
-    public string? Url { get; set; }
-    /// <summary>Derived from <see cref="Url"/>; null when Url is null.</summary>
-    public string? NormalizedDomain { get; set; }
+    /// <summary>FK to a specific <see cref="SourceUrl"/>; null when the citation has no URL.</summary>
+    public Guid? SourceUrlId { get; set; }
 
-    public SourceClassification Classification { get; set; } = SourceClassification.Unknown;
     public CitationType CitationType { get; set; }
+
+    /// <summary>1-based position in the answer where the citation appeared; null when not extractable.</summary>
+    public int? CitationPosition { get; set; }
+
+    /// <summary>Optional verbatim citation text from the answer (e.g. the markdown link text).</summary>
+    public string? CitationText { get; set; }
 
     public double ConfidenceScore { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public AIAnswer AIAnswer { get; set; } = null!;
+    public Source Source { get; set; } = null!;
+    public SourceUrl? SourceUrl { get; set; }
 }

@@ -11,8 +11,15 @@ namespace AIVisibility.Tests.Unit.Infrastructure;
 /// <summary>
 /// SignalExtractor unit tests. IOpenAiService is the test seam (D8) — these
 /// tests mock it to return canned JSON envelopes and verify the parser,
-/// entity-resolution rules (D12 / D18 / D19), citation classification (D14),
-/// and the post-processed source counts on AnswerSignal (D11).
+/// entity-resolution rules (D12 / D18 / D19), v1 URL-domain citation
+/// classification (D14, Phase 4 Slice 0), and the post-processed source
+/// counts on AnswerSignal (D11).
+///
+/// Phase 4 Slice 0 change: extractor produces <see cref="DraftCitation"/>
+/// records, not <see cref="Citation"/> entities. The v1 classifier returns
+/// Owned / Competitor / Unknown only — "URL present but no match" is now
+/// Unknown (honest) instead of a fake ThirdParty label. The downstream job
+/// promotes drafts into Source / SourceUrl / BrandSourceClassification rows.
 /// </summary>
 public class SignalExtractorTests
 {
@@ -147,12 +154,16 @@ public class SignalExtractorTests
 
         result.Citations.Should().HaveCount(4);
 
-        // Source counts come from classified citations (D11).
+        // Source counts come from classified draft citations (D11). Phase 4
+        // Slice 0: the v1 URL-domain classifier returns Owned/Competitor/Unknown
+        // only — Wikipedia + Trustpilot both fall to Unknown (URL not in
+        // tracked-brand or tracked-competitor lists), so ThirdPartySourceCount
+        // is always 0 in v1. The aggregator's bucket-back-to-ThirdParty kicks
+        // in once LLM/KnownDomainList classification produces specific values
+        // (Editorial, UGC, etc.).
         result.Signal.OwnedSourceCount.Should().Be(1);        // blog.lumina.io
         result.Signal.CompetitorSourceCount.Should().Be(1);   // acme.com
-        result.Signal.ThirdPartySourceCount.Should().Be(1);   // en.wikipedia.org
-        // The Trustpilot citation has no URL — classification is Unknown,
-        // CitationType is MentionedSource. It does NOT count toward any source bucket.
+        result.Signal.ThirdPartySourceCount.Should().Be(0);   // always 0 in v1
     }
 
     [Fact]
@@ -161,8 +172,10 @@ public class SignalExtractorTests
         // Verifies the exact-or-subdomain rule of ClassifyCitation:
         //   blog.lumina.io ⊆ lumina.io        -> Owned
         //   acme.com == acme.com              -> Competitor
-        //   fake-acme.com != acme.com         -> ThirdParty (must NOT match competitor)
-        //   en.wikipedia.org                  -> ThirdParty
+        //   fake-acme.com != acme.com         -> Unknown (Phase 4 Slice 0:
+        //                                       "URL present but no match" is
+        //                                       Unknown, not fake-ThirdParty)
+        //   en.wikipedia.org                  -> Unknown
         var context = Context(
             brandName: "Lumina",
             brandUrl: "https://lumina.io",
@@ -194,13 +207,13 @@ public class SignalExtractorTests
         // NormalizedDomain stores the full host (only "www." is stripped); the
         // subdomain match happens during classification, not during normalization.
         result!.Citations.Single(c => c.NormalizedDomain == "blog.lumina.io")
-            .Classification.Should().Be(SourceClassification.Owned);
+            .ClassifiedAs.Should().Be(SourceType.Owned);
         result.Citations.Single(c => c.NormalizedDomain == "acme.com")
-            .Classification.Should().Be(SourceClassification.Competitor);
+            .ClassifiedAs.Should().Be(SourceType.Competitor);
         result.Citations.Single(c => c.NormalizedDomain == "fake-acme.com")
-            .Classification.Should().Be(SourceClassification.ThirdParty);
+            .ClassifiedAs.Should().Be(SourceType.Unknown);
         result.Citations.Single(c => c.NormalizedDomain == "en.wikipedia.org")
-            .Classification.Should().Be(SourceClassification.ThirdParty);
+            .ClassifiedAs.Should().Be(SourceType.Unknown);
     }
 
     [Fact]

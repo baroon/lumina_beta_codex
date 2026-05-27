@@ -44,6 +44,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<MentionCandidate> MentionCandidates => Set<MentionCandidate>();
     public DbSet<Citation> Citations => Set<Citation>();
     public DbSet<ScanMetric> ScanMetrics => Set<ScanMetric>();
+    public DbSet<Source> Sources => Set<Source>();
+    public DbSet<SourceUrl> SourceUrls => Set<SourceUrl>();
+    public DbSet<BrandSourceClassification> BrandSourceClassifications => Set<BrandSourceClassification>();
+    public DbSet<SourceTypeReference> SourceTypes => Set<SourceTypeReference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -14,9 +14,20 @@ namespace AIVisibility.Tests.Unit.Infrastructure;
 /// Pure aggregator unit tests. Seeds AnswerSignal + Mention + Citation rows
 /// directly so the math is exercised without going through the LLM extractor.
 /// Each scope is covered separately to keep failure messages localised.
+///
+/// Phase 4 Slice 0: classification + source name now live on the normalized
+/// Source / BrandSourceClassification rows the seeder builds alongside each
+/// citation, not on the citation row itself. The 12-value SourceType taxonomy
+/// is used in seeds; <see cref="ThirdParty"/> stands in for any of the
+/// "Editorial/UGC/Corporate/..." values that the aggregator buckets into the
+/// ThirdParty reporting count.
 /// </summary>
 public class MetricAggregatorTests
 {
+    // Stand-in SourceType for the ThirdParty reporting bucket. Aggregator
+    // buckets every SourceType except Owned/Competitor/Unknown into ThirdParty.
+    private const SourceType ThirdParty = SourceType.Editorial;
+
     private static AppDbContext NewContext() =>
         new(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
@@ -39,7 +50,7 @@ public class MetricAggregatorTests
         bool BrandRecommended,
         int? BrandRank,
         IEnumerable<(MentionEntityType Type, Guid EntityId, bool Recommended)> Mentions,
-        IEnumerable<SourceClassification> Citations)
+        IEnumerable<SourceType> Citations)
     {
         /// <summary>Optional: overrides AnswerSignal.BrandSentiment. Default Unknown.</summary>
         public Sentiment BrandSentiment { get; init; } = Sentiment.Unknown;
@@ -48,7 +59,7 @@ public class MetricAggregatorTests
         /// Optional: when set, takes precedence over <see cref="Citations"/> and lets the
         /// test give each citation a distinct source name (for top-cited-sources tests).
         /// </summary>
-        public IReadOnlyList<(SourceClassification Class, string Source)>? NamedCitations { get; init; }
+        public IReadOnlyList<(SourceType Class, string Source)>? NamedCitations { get; init; }
     }
 
     private static Guid SeedScanAndAnswers(AppDbContext ctx, params AnswerSetup[] answers)
@@ -71,6 +82,9 @@ public class MetricAggregatorTests
 
         var platformCache = new Dictionary<Guid, AIPlatform>();
         var promptCache = new Dictionary<(Guid Lens, string Topics), Prompt>();
+        // Cross-answer Source dedup for NamedCitations: same source name on
+        // multiple answers collapses to one Source row + one BrandSourceClassification.
+        var sourceByName = new Dictionary<string, Source>();
 
         foreach (var a in answers)
         {
@@ -145,34 +159,74 @@ public class MetricAggregatorTests
             // can give each citation a unique source name (top-cited-sources).
             if (a.NamedCitations is { Count: > 0 } named)
             {
-                foreach (var c in named)
+                foreach (var (cls, name) in named)
                 {
-                    ctx.Citations.Add(new Citation
-                    {
-                        Id = Guid.NewGuid(), AIAnswerId = answer.Id,
-                        SourceName = c.Source, NormalizedSourceName = c.Source.ToLowerInvariant(),
-                        Classification = c.Class, CitationType = CitationType.ExplicitUrl,
-                        CreatedAt = DateTime.UtcNow,
-                    });
+                    AddCitation(ctx, brand.Id, answer.Id, name, cls, sourceByName);
                 }
             }
             else
             {
+                // Unnamed citations: each gets a unique Source so the per-source
+                // classification is independent. The aggregator buckets by
+                // SourceType, not by source name, so distinct source names here
+                // don't change the count metrics — only TopCitedSource cares
+                // about names, and unnamed-citation tests don't assert on it.
+                var idx = 0;
                 foreach (var c in a.Citations)
                 {
-                    ctx.Citations.Add(new Citation
-                    {
-                        Id = Guid.NewGuid(), AIAnswerId = answer.Id,
-                        SourceName = "s", NormalizedSourceName = "s",
-                        Classification = c, CitationType = CitationType.ExplicitUrl,
-                        CreatedAt = DateTime.UtcNow,
-                    });
+                    var name = $"src-{answer.Id:N}-{idx++}";
+                    AddCitation(ctx, brand.Id, answer.Id, name, c, sourceByName);
                 }
             }
         }
 
         ctx.SaveChanges();
         return scan.Id;
+    }
+
+    /// <summary>
+    /// Adds one Citation row + the Source / BrandSourceClassification rows it
+    /// depends on, deduping Source rows by name across the scan.
+    /// </summary>
+    private static void AddCitation(
+        AppDbContext ctx, Guid brandId, Guid aiAnswerId, string sourceName,
+        SourceType sourceType, Dictionary<string, Source> sourceByName)
+    {
+        if (!sourceByName.TryGetValue(sourceName, out var source))
+        {
+            source = new Source
+            {
+                Id = Guid.NewGuid(),
+                SourceName = sourceName,
+                CreatedAt = DateTime.UtcNow,
+            };
+            ctx.Sources.Add(source);
+            ctx.BrandSourceClassifications.Add(new BrandSourceClassification
+            {
+                Id = Guid.NewGuid(),
+                BrandId = brandId,
+                SourceId = source.Id,
+                SourceType = sourceType,
+                ConfidenceScore = 1.0,
+                ProvenanceSource = ClassificationSource.RuleBased,
+                Status = sourceType == SourceType.Unknown
+                    ? ClassificationStatus.Unknown
+                    : ClassificationStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+            sourceByName[sourceName] = source;
+        }
+
+        ctx.Citations.Add(new Citation
+        {
+            Id = Guid.NewGuid(),
+            AIAnswerId = aiAnswerId,
+            SourceId = source.Id,
+            CitationType = CitationType.ExplicitUrl,
+            ConfidenceScore = 1.0,
+            CreatedAt = DateTime.UtcNow,
+        });
     }
 
     [Fact]
@@ -202,17 +256,17 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), platformA, lensA, Array.Empty<Guid>(),
                 BrandMentioned: true, BrandRecommended: true, BrandRank: 1,
                 Mentions: new[] { (MentionEntityType.Competitor, competitorA, true) },
-                Citations: new[] { SourceClassification.Owned, SourceClassification.Competitor }),
+                Citations: new[] { SourceType.Owned, SourceType.Competitor }),
             // Answer 1: brand mentioned, not recommended, rank=3, 1 third-party citation, 1 product mention.
             new AnswerSetup(Guid.NewGuid(), platformA, lensA, Array.Empty<Guid>(),
                 BrandMentioned: true, BrandRecommended: false, BrandRank: 3,
                 Mentions: new[] { (MentionEntityType.Product, productA, false) },
-                Citations: new[] { SourceClassification.ThirdParty }),
+                Citations: new[] { ThirdParty }),
             // Answer 2: brand absent, 1 competitor mention (other competitor).
             new AnswerSetup(Guid.NewGuid(), platformA, lensA, Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: new[] { (MentionEntityType.Competitor, competitorB, false) },
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
         var overall = rows.Where(r => r.Scope == ScanMetricScope.Overall).ToList();
@@ -260,9 +314,9 @@ public class MetricAggregatorTests
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
                 Citations: new[]
                 {
-                    SourceClassification.Unknown,
-                    SourceClassification.Unknown,
-                    SourceClassification.Owned,
+                    SourceType.Unknown,
+                    SourceType.Unknown,
+                    SourceType.Owned,
                 }));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
@@ -299,7 +353,7 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -318,11 +372,11 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), platformA, lens, Array.Empty<Guid>(),
                 BrandMentioned: true, BrandRecommended: true, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>()),
+                Citations: Array.Empty<SourceType>()),
             new AnswerSetup(Guid.NewGuid(), platformB, lens, Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -352,12 +406,12 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), platform, lens, new[] { topic1, topic2 },
                 BrandMentioned: true, BrandRecommended: true, BrandRank: null,
                 Mentions: new[] { (MentionEntityType.Competitor, competitor, false) },
-                Citations: Array.Empty<SourceClassification>()),
+                Citations: Array.Empty<SourceType>()),
             // Only topic1.
             new AnswerSetup(Guid.NewGuid(), platform, lens, new[] { topic1 },
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -385,11 +439,11 @@ public class MetricAggregatorTests
                     (MentionEntityType.Competitor, competitorA, true),
                     (MentionEntityType.Competitor, competitorB, false),
                 },
-                Citations: Array.Empty<SourceClassification>()),
+                Citations: Array.Empty<SourceType>()),
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: new[] { (MentionEntityType.Competitor, competitorA, true) },
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -425,7 +479,7 @@ public class MetricAggregatorTests
                     (MentionEntityType.Competitor, competitorA, false),
                     (MentionEntityType.Competitor, competitorA, false),
                 },
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -445,7 +499,7 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>()));
+                Citations: Array.Empty<SourceType>()));
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
 
@@ -490,7 +544,7 @@ public class MetricAggregatorTests
             BrandRecommended: false,
             BrandRank: null,
             Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-            Citations: Array.Empty<SourceClassification>())
+            Citations: Array.Empty<SourceType>())
         { BrandSentiment = sentiment };
 
     private static void ExpectSentimentCount(List<ScanMetric> distribution, string sentimentValue, int expectedCount)
@@ -513,17 +567,17 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             {
                 NamedCitations = new[]
                 {
-                    (SourceClassification.ThirdParty, "Trustpilot"),
-                    (SourceClassification.ThirdParty, "Trustpilot"),
-                    (SourceClassification.ThirdParty, "Trustpilot"),
-                    (SourceClassification.ThirdParty, "G2"),
-                    (SourceClassification.ThirdParty, "G2"),
-                    (SourceClassification.ThirdParty, "Wikipedia"),
-                    (SourceClassification.Unknown, "BlogPost"),
+                    (ThirdParty, "Trustpilot"),
+                    (ThirdParty, "Trustpilot"),
+                    (ThirdParty, "Trustpilot"),
+                    (ThirdParty, "G2"),
+                    (ThirdParty, "G2"),
+                    (ThirdParty, "Wikipedia"),
+                    (SourceType.Unknown, "BlogPost"),
                 },
             });
 
@@ -536,12 +590,13 @@ public class MetricAggregatorTests
 
         top.Should().HaveCount(4);   // four distinct sources, not 5
         top[0].MetricValue.Should().Be(3); // Trustpilot
-        // Aggregator groups by NormalizedSourceName (lowercased by the seeder
-        // to mirror what real Citation rows look like), so the JSON contains
-        // the normalized form.
-        top[0].MetadataJson.Should().Contain("trustpilot").And.Contain("\"rank\":1");
+        // Phase 4 Slice 0: aggregator groups by Source.SourceName (raw display
+        // name from the Source row), not by NormalizedSourceName — the
+        // normalization column has moved off the Citation onto Source's
+        // own normalized_domain.
+        top[0].MetadataJson.Should().Contain("Trustpilot").And.Contain("\"rank\":1");
         top[1].MetricValue.Should().Be(2); // G2
-        top[1].MetadataJson.Should().Contain("g2").And.Contain("\"rank\":2");
+        top[1].MetadataJson.Should().Contain("G2").And.Contain("\"rank\":2");
         top[2].MetricValue.Should().Be(1);
         top[3].MetricValue.Should().Be(1);
     }
@@ -569,10 +624,10 @@ public class MetricAggregatorTests
                     (MentionEntityType.Brand, brandId, true),
                     (MentionEntityType.Competitor, competitorId, false),
                 },
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             {
                 BrandSentiment = Sentiment.Positive,
-                NamedCitations = new[] { (SourceClassification.Owned, "Lumina") },
+                NamedCitations = new[] { (SourceType.Owned, "Lumina") },
             },
             // Platform B: 0 brand, 2 competitor mentions, no citations.
             new AnswerSetup(Guid.NewGuid(), platformB, lensA, Array.Empty<Guid>(),
@@ -582,7 +637,7 @@ public class MetricAggregatorTests
                     (MentionEntityType.Competitor, competitorId, false),
                     (MentionEntityType.Competitor, competitorId, false),
                 },
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             { BrandSentiment = Sentiment.Unknown });
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
@@ -644,7 +699,7 @@ public class MetricAggregatorTests
                     (MentionEntityType.Brand, brandId, true),
                     (MentionEntityType.Competitor, competitorId, false),
                 },
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             { BrandSentiment = Sentiment.Positive });
 
         var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
@@ -676,13 +731,13 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             {
                 NamedCitations = new[]
                 {
-                    (SourceClassification.ThirdParty, "American Society of Landscape Architects (ASLA)"),
-                    (SourceClassification.ThirdParty, "Source with \"quotes\" inside"),
-                    (SourceClassification.ThirdParty, "Source\\with\\backslashes"),
+                    (ThirdParty, "American Society of Landscape Architects (ASLA)"),
+                    (ThirdParty, "Source with \"quotes\" inside"),
+                    (ThirdParty, "Source\\with\\backslashes"),
                 },
             });
 
@@ -708,10 +763,10 @@ public class MetricAggregatorTests
             new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<Guid>(),
                 BrandMentioned: false, BrandRecommended: false, BrandRank: null,
                 Mentions: Array.Empty<(MentionEntityType, Guid, bool)>(),
-                Citations: Array.Empty<SourceClassification>())
+                Citations: Array.Empty<SourceType>())
             {
                 NamedCitations = Enumerable.Range(1, 8)
-                    .Select(i => (SourceClassification.ThirdParty, $"Source{i:D2}"))
+                    .Select(i => (ThirdParty, $"Source{i:D2}"))
                     .ToList(),
             });
 

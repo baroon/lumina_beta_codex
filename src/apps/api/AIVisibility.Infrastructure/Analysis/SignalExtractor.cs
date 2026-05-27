@@ -167,10 +167,10 @@ public class SignalExtractor
 
         try
         {
-            var citations = BuildCitations(root, answer.Id, context).ToList();
+            var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
             var (mentions, candidates) = BuildMentions(root, answer.Id, context);
-            var signal = BuildSignal(root, answer.Id, citations);
-            return new SignalExtractionResult(signal, mentions, candidates, citations);
+            var signal = BuildSignal(root, answer.Id, drafts);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts);
         }
         catch (Exception ex)
         {
@@ -226,7 +226,7 @@ public class SignalExtractor
         return doc.RootElement.Clone();
     }
 
-    private AnswerSignal BuildSignal(JsonElement root, Guid aiAnswerId, IReadOnlyList<Citation> citations)
+    private AnswerSignal BuildSignal(JsonElement root, Guid aiAnswerId, IReadOnlyList<DraftCitation> citations)
     {
         var s = root.GetProperty("answer_signal");
         var now = DateTime.UtcNow;
@@ -259,9 +259,16 @@ public class SignalExtractor
             AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
             AnswerHasComparison = s.GetProperty("answer_has_comparison").GetBoolean(),
             AnswerHasCitations = s.GetProperty("answer_has_citations").GetBoolean(),
-            OwnedSourceCount = citations.Count(c => c.Classification == SourceClassification.Owned),
-            CompetitorSourceCount = citations.Count(c => c.Classification == SourceClassification.Competitor),
-            ThirdPartySourceCount = citations.Count(c => c.Classification == SourceClassification.ThirdParty),
+            // Phase 4 Slice 0: v1 URL-domain classifier produces Owned /
+            // Competitor / Unknown only — "ThirdParty" was a v1 catch-all that
+            // doesn't exist in the 12-value SourceType taxonomy. "URL present
+            // but no match" → Unknown (per ADR-003), so ThirdPartySourceCount
+            // is always 0 here. The aggregator buckets the more specific
+            // SourceType values back into a ThirdParty reporting bucket once
+            // LLM/KnownDomainList classification lands.
+            OwnedSourceCount = citations.Count(c => c.ClassifiedAs == SourceType.Owned),
+            CompetitorSourceCount = citations.Count(c => c.ClassifiedAs == SourceType.Competitor),
+            ThirdPartySourceCount = 0,
             ConfidenceScore = TryGetDouble(s, "confidence_score") ?? 0.5,
             CreatedAt = now,
         };
@@ -330,7 +337,7 @@ public class SignalExtractor
         return (mentions, candidates);
     }
 
-    private static IEnumerable<Citation> BuildCitations(
+    private static IEnumerable<DraftCitation> BuildDraftCitations(
         JsonElement root, Guid aiAnswerId, SignalExtractionContext context)
     {
         if (!root.TryGetProperty("citations", out var arr) || arr.ValueKind != JsonValueKind.Array)
@@ -345,7 +352,6 @@ public class SignalExtractor
             .Select(d => d!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var now = DateTime.UtcNow;
         foreach (var c in arr.EnumerateArray())
         {
             var sourceName = TryGetNullableString(c, "source_name");
@@ -355,42 +361,54 @@ public class SignalExtractor
             }
             var url = TryGetNullableString(c, "url");
             var hasUrl = !string.IsNullOrWhiteSpace(url);
-            var domain = hasUrl ? NormalizeDomain(url) : null;
+            var normalizedDomain = hasUrl ? NormalizeDomain(url) : null;
+            var normalizedUrl = hasUrl ? NormalizeUrl(url!) : null;
 
-            var classification = ClassifyCitation(domain, brandDomain, competitorDomains, hasUrl);
+            var classified = ClassifyCitation(normalizedDomain, brandDomain, competitorDomains);
 
-            yield return new Citation
-            {
-                Id = Guid.NewGuid(),
-                AIAnswerId = aiAnswerId,
-                SourceName = Truncate(sourceName, 500),
-                NormalizedSourceName = Normalize(sourceName),
-                Url = hasUrl ? Truncate(url!, 2048) : null,
-                NormalizedDomain = domain,
-                Classification = classification,
-                CitationType = hasUrl ? CitationType.ExplicitUrl : CitationType.MentionedSource,
-                ConfidenceScore = TryGetDouble(c, "confidence_score") ?? 0.5,
-                CreatedAt = now,
-            };
+            yield return new DraftCitation(
+                AIAnswerId: aiAnswerId,
+                SourceName: Truncate(sourceName, 500),
+                NormalizedSourceName: Normalize(sourceName),
+                Url: hasUrl ? Truncate(url!, 2048) : null,
+                NormalizedDomain: normalizedDomain,
+                NormalizedUrl: normalizedUrl,
+                CitationType: hasUrl ? CitationType.ExplicitUrl : CitationType.MentionedSource,
+                ClassifiedAs: classified,
+                ConfidenceScore: TryGetDouble(c, "confidence_score") ?? 0.5);
         }
     }
 
-    private static SourceClassification ClassifyCitation(
-        string? domain, string? brandDomain, HashSet<string> competitorDomains, bool hasUrl)
+    /// <summary>
+    /// v1 URL-domain classifier. Returns Owned / Competitor / Unknown only —
+    /// more specific values (Corporate, UGC, Editorial, ReviewSite, etc.)
+    /// need LLM-based or KnownDomainList classification that isn't in v1.
+    /// "URL present but no match" → Unknown (honest "we don't know" rather
+    /// than a fake-ThirdParty label).
+    /// </summary>
+    private static SourceType ClassifyCitation(
+        string? domain, string? brandDomain, HashSet<string> competitorDomains)
     {
-        if (!hasUrl || string.IsNullOrEmpty(domain))
-        {
-            return SourceClassification.Unknown;
-        }
+        if (string.IsNullOrEmpty(domain)) return SourceType.Unknown;
         if (!string.IsNullOrEmpty(brandDomain) && DomainMatches(domain, brandDomain))
-        {
-            return SourceClassification.Owned;
-        }
+            return SourceType.Owned;
         if (competitorDomains.Any(cd => DomainMatches(domain, cd)))
-        {
-            return SourceClassification.Competitor;
-        }
-        return SourceClassification.ThirdParty;
+            return SourceType.Competitor;
+        return SourceType.Unknown;
+    }
+
+    /// <summary>
+    /// Canonical full-URL form for <see cref="SourceUrl"/> dedup: lowercase
+    /// host, strip "www.", keep path + query, drop trailing slash.
+    /// </summary>
+    private static string NormalizeUrl(string url)
+    {
+        var s = url.Trim();
+        if (!s.Contains("://", StringComparison.Ordinal)) s = "https://" + s;
+        if (!Uri.TryCreate(s, UriKind.Absolute, out var uri)) return url.ToLowerInvariant();
+        var host = uri.Host.ToLowerInvariant();
+        if (host.StartsWith("www.", StringComparison.Ordinal)) host = host[4..];
+        return $"{uri.Scheme}://{host}{uri.AbsolutePath}{uri.Query}".TrimEnd('/');
     }
 
     private static bool DomainMatches(string a, string b)

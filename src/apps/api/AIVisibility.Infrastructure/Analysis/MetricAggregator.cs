@@ -48,25 +48,32 @@ public class MetricAggregator
             .Where(c => answerIds.Contains(c.AIAnswerId))
             .ToListAsync(cancellationToken);
 
+        // Phase 4 Slice 0: citation classification + source display name moved
+        // off the citation row onto Source + BrandSourceClassification. Load
+        // them once for the scan's brand and pass enriched lookups into the
+        // scope builders so they don't have to do the joins inline.
+        var brandId = await ResolveBrandIdAsync(scanRunId, cancellationToken);
+        var citationLookup = await BuildCitationLookupAsync(citations, brandId, cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
         // Overall scope — whole scan, scope_id MUST be null (D15 CHECK).
         rows.AddRange(BuildScopeMetrics(scanRunId, ScanMetricScope.Overall, null,
-            contexts, mentions, citations, now));
+            contexts, mentions, citations, citationLookup, now));
 
         // Platform scope — one group per platform that produced an answer.
         foreach (var grp in contexts.GroupBy(c => c.PlatformId))
         {
             EmitGrouped(rows, scanRunId, ScanMetricScope.Platform, grp.Key,
-                grp.ToList(), mentions, citations, now);
+                grp.ToList(), mentions, citations, citationLookup, now);
         }
 
         // Lens scope — one group per lens that the scan touched.
         foreach (var grp in contexts.GroupBy(c => c.LensId))
         {
             EmitGrouped(rows, scanRunId, ScanMetricScope.Lens, grp.Key,
-                grp.ToList(), mentions, citations, now);
+                grp.ToList(), mentions, citations, citationLookup, now);
         }
 
         // Topic scope — one row per (topic, answer) link. An answer can belong
@@ -78,7 +85,7 @@ public class MetricAggregator
         foreach (var grp in topicGroups)
         {
             EmitGrouped(rows, scanRunId, ScanMetricScope.Topic, grp.Key,
-                grp.Select(x => x.Context).ToList(), mentions, citations, now);
+                grp.Select(x => x.Context).ToList(), mentions, citations, citationLookup, now);
         }
 
         // Competitor scope — per-tracked-competitor MentionCount + RecommendationCount.
@@ -101,19 +108,21 @@ public class MetricAggregator
         Guid scanRunId, ScanMetricScope scope, Guid scopeId,
         List<AnswerContext> grouped,
         List<Mention> allMentions, List<Citation> allCitations,
+        IReadOnlyDictionary<Guid, CitationView> citationLookup,
         DateTime now)
     {
         var ids = grouped.Select(c => c.AIAnswerId).ToHashSet();
         var groupedMentions = allMentions.Where(m => ids.Contains(m.AIAnswerId)).ToList();
         var groupedCitations = allCitations.Where(c => ids.Contains(c.AIAnswerId)).ToList();
         sink.AddRange(BuildScopeMetrics(scanRunId, scope, scopeId, grouped,
-            groupedMentions, groupedCitations, now));
+            groupedMentions, groupedCitations, citationLookup, now));
     }
 
     private static IEnumerable<ScanMetric> BuildScopeMetrics(
         Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
         List<AnswerContext> contexts,
         List<Mention> mentions, List<Citation> citations,
+        IReadOnlyDictionary<Guid, CitationView> citationLookup,
         DateTime now)
     {
         if (contexts.Count == 0) yield break;
@@ -143,26 +152,42 @@ public class MetricAggregator
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.ProductMentionCount,
             mentions.Count(m => m.EntityType == MentionEntityType.Product), now);
 
+        // Phase 4 Slice 0: citation classification lookup via
+        // BrandSourceClassification. Bucket the 12-value SourceType taxonomy
+        // back into the 4 reporting buckets the DTO surface still uses.
+        var ownedCount = 0;
+        var competitorCount = 0;
+        var thirdPartyCount = 0;
+        var unknownCount = 0;
+        foreach (var c in citations)
+        {
+            var st = citationLookup.TryGetValue(c.Id, out var v) ? v.SourceType : SourceType.Unknown;
+            switch (st)
+            {
+                case SourceType.Owned: ownedCount++; break;
+                case SourceType.Competitor: competitorCount++; break;
+                case SourceType.Unknown: unknownCount++; break;
+                default: thirdPartyCount++; break;   // Corporate/UGC/Editorial/etc. → ThirdParty bucket
+            }
+        }
+
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.CitationCount,
             citations.Count, now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.OwnedCitationCount,
-            citations.Count(c => c.Classification == SourceClassification.Owned), now);
+            ownedCount, now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.CompetitorCitationCount,
-            citations.Count(c => c.Classification == SourceClassification.Competitor), now);
+            competitorCount, now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.ThirdPartyCitationCount,
-            citations.Count(c => c.Classification == SourceClassification.ThirdParty), now);
+            thirdPartyCount, now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.UnknownCitationCount,
-            citations.Count(c => c.Classification == SourceClassification.Unknown), now);
+            unknownCount, now);
 
         // Slice-(c)-followup aggregates emit at every non-Competitor scope.
-        // Competitor scope semantics ("metrics ABOUT a specific competitor")
-        // don't fit the brand-centric or scan-centric shape of SoV / brand-
-        // sentiment / top-cited.
         if (scope != ScanMetricScope.Competitor)
         {
             foreach (var row in BuildShareOfVoice(scanRunId, scope, scopeId, mentions, now)) yield return row;
             foreach (var row in BuildSentimentDistribution(scanRunId, scope, scopeId, contexts, now)) yield return row;
-            foreach (var row in BuildTopCitedSources(scanRunId, scope, scopeId, citations, now)) yield return row;
+            foreach (var row in BuildTopCitedSources(scanRunId, scope, scopeId, citations, citationLookup, now)) yield return row;
         }
     }
 
@@ -198,13 +223,17 @@ public class MetricAggregator
 
     private static IEnumerable<ScanMetric> BuildTopCitedSources(
         Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
-        List<Citation> citations, DateTime now)
+        List<Citation> citations,
+        IReadOnlyDictionary<Guid, CitationView> citationLookup,
+        DateTime now)
     {
-        // Top-K most cited (K=5) by NormalizedSourceName. Ties broken by name
-        // alphabetically — deterministic for tests and reporting consistency.
+        // Top-K most cited (K=5). Phase 4 Slice 0: source display name comes
+        // from the normalized Source row (via the citationLookup), not from a
+        // dropped column on the citation. Ties broken by name alphabetically.
         const int TopK = 5;
         var ranked = citations
-            .GroupBy(c => c.NormalizedSourceName)
+            .Select(c => citationLookup.TryGetValue(c.Id, out var v) ? v.SourceName : "unknown")
+            .GroupBy(name => name)
             .Select(g => new { Source = g.Key, Count = g.Count() })
             .OrderByDescending(x => x.Count)
             .ThenBy(x => x.Source, StringComparer.Ordinal)
@@ -315,5 +344,48 @@ public class MetricAggregator
             contexts.Add(new AnswerContext(a.Id, pr.AIPlatformId, lensId, topicIds, signal));
         }
         return contexts;
+    }
+
+    private async Task<Guid> ResolveBrandIdAsync(Guid scanRunId, CancellationToken ct)
+    {
+        // One small lookup — scan → tracker → brand_id. Used to scope the
+        // brand_source_classifications query.
+        var brandId = await _db.ScanRuns.AsNoTracking()
+            .Where(s => s.Id == scanRunId)
+            .Join(_db.TrackerConfigurations.AsNoTracking(),
+                s => s.TrackerConfigurationId, t => t.Id, (_, t) => t.BrandId)
+            .FirstOrDefaultAsync(ct);
+        return brandId;
+    }
+
+    /// <summary>
+    /// Per-citation joined view of (source name, SourceType) for the scan's
+    /// citations, scoped to the scan's brand. Phase 4 Slice 0 replaces the
+    /// inline citation.classification / citation.normalized_source_name
+    /// columns with this lookup.
+    /// </summary>
+    private sealed record CitationView(string SourceName, SourceType SourceType);
+
+    private async Task<IReadOnlyDictionary<Guid, CitationView>> BuildCitationLookupAsync(
+        IReadOnlyList<Citation> citations, Guid brandId, CancellationToken ct)
+    {
+        if (citations.Count == 0) return new Dictionary<Guid, CitationView>();
+
+        var sourceIds = citations.Select(c => c.SourceId).Distinct().ToList();
+        var sources = await _db.Sources.AsNoTracking()
+            .Where(s => sourceIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.SourceName, ct);
+        var classifications = await _db.BrandSourceClassifications.AsNoTracking()
+            .Where(c => c.BrandId == brandId && sourceIds.Contains(c.SourceId))
+            .ToDictionaryAsync(c => c.SourceId, c => c.SourceType, ct);
+
+        var lookup = new Dictionary<Guid, CitationView>(citations.Count);
+        foreach (var c in citations)
+        {
+            var name = sources.TryGetValue(c.SourceId, out var n) ? n : "unknown";
+            var type = classifications.TryGetValue(c.SourceId, out var st) ? st : SourceType.Unknown;
+            lookup[c.Id] = new CitationView(name, type);
+        }
+        return lookup;
     }
 }
