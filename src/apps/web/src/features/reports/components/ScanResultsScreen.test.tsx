@@ -4,6 +4,26 @@ import { ApiError } from "@/api/apiClient";
 import type { ScanResultsDto } from "@/types/api";
 import { ScanResultsScreen } from "./ScanResultsScreen";
 
+// Stub TanStack Link as a plain anchor — Phase 4 Slice 2 added a "View
+// sources" link to the screen header which would otherwise need a full
+// router context. Matches the pattern used elsewhere (BrandList.test).
+vi.mock("@tanstack/react-router", async () => {
+  const actual =
+    await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
+  return {
+    ...actual,
+    Link: ({
+      to,
+      children,
+      ...rest
+    }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
+      <a href={to} {...rest}>
+        {children}
+      </a>
+    ),
+  };
+});
+
 type HookReturn = {
   data?: ScanResultsDto;
   isLoading: boolean;

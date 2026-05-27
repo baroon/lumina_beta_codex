@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+import { Database } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
@@ -55,6 +57,15 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
           .replace("{brandName}", data.summary.brandName)
           .replace("{trackerName}", data.summary.trackerName)}
       />
+
+      <Link
+        to="/scans/$scanRunId/sources"
+        params={{ scanRunId }}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+      >
+        <Database className="h-4 w-4" />
+        {REPORTS_COPY.sources.viewSources}
+      </Link>
 
       <SummarySection summary={data.summary} />
       <CoreMetricsSection metrics={data.coreMetrics} />

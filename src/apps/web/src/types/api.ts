@@ -374,3 +374,83 @@ export interface ScanListItemDto {
   completedCount: number;
   failedCount: number;
 }
+
+// --- Source/Citation view (Phase 4 Slice 2) ------------------------------
+//
+// Mirrors AIVisibility.Application.Queries.Sources.ScanSourcesDto and the
+// SourceTypes reference table. Codes (SourceType, Status, ProvenanceSource)
+// are stringified backend enums — UI display names come from the source-types
+// reference cache, not from the enum value itself.
+
+export interface ScanSourcesDto {
+  scanRunId: string;
+  brandId: string;
+  sources: SourceListItemDto[];
+}
+
+export interface SourceListItemDto {
+  sourceId: string;
+  sourceName: string;
+  domain: string | null;
+  normalizedDomain: string | null;
+  /** SourceType enum code. Matches source_types.code. */
+  sourceType: string;
+  /** ClassificationStatus enum code (Suggested / Active / UserCorrected / Unknown). */
+  status: string;
+  /** ClassificationSource enum code — drives the provenance icon. */
+  provenanceSource: string;
+  confidenceScore: number;
+  citationCount: number;
+  platforms: SourcePlatformDto[];
+}
+
+export interface SourcePlatformDto {
+  platformId: string;
+  code: string;
+  name: string;
+}
+
+export interface ScanSourceCitationsDto {
+  scanRunId: string;
+  sourceId: string;
+  sourceName: string;
+  domain: string | null;
+  citations: SourceCitationDto[];
+}
+
+export interface SourceCitationDto {
+  citationId: string;
+  aiAnswerId: string;
+  citationType: string;
+  url: string | null;
+  answerSnippet: string;
+  promptText: string;
+  platformCode: string;
+  platformName: string;
+  lensName: string | null;
+  citedAt: string;
+}
+
+export interface SourceTypeReferenceDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  displayOrder: number;
+}
+
+export interface UpdateClassificationRequest {
+  /** SourceType enum code (e.g. "Editorial"). */
+  sourceType: string;
+}
+
+export interface UpdateSourceClassificationResult {
+  classificationId: string;
+  brandId: string;
+  sourceId: string;
+  sourceType: string;
+  status: string;
+  provenanceSource: string;
+  confidenceScore: number;
+  updatedAt: string;
+}

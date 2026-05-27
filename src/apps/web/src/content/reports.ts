@@ -69,4 +69,39 @@ export const REPORTS_COPY = {
     empty: "No scans yet.",
     analysisPending: "—",
   },
+  sources: {
+    title: "Sources",
+    subtitle: "Every source cited in this scan, with classification and citation count.",
+    backToResults: "Back to scan results",
+    viewSources: "View sources",
+    table: {
+      headers: {
+        source: "Source",
+        type: "Type",
+        provenance: "Classified by",
+        citations: "Citations",
+        platforms: "Platforms",
+        action: "Open",
+      },
+      empty: "No sources were cited in this scan.",
+    },
+    provenance: {
+      rule: "Rule-based",
+      llm: "LLM",
+      user: "You",
+      tooltip: "Confidence: {confidence}",
+    },
+    drawer: {
+      title: "Source citations",
+      close: "Close",
+      prompt: "Prompt",
+      answerSnippet: "Answer snippet",
+      openUrl: "Open URL",
+      empty: "This source has no citations in this scan.",
+      error: "Couldn't load citations.",
+    },
+    empty: {
+      notFound: "Scan not found or analysis hasn't completed yet.",
+    },
+  },
 } as const;

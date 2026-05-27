@@ -284,6 +284,15 @@
           "notes": "Page title, breadcrumbs, and optional actions."
         },
         {
+          "name": "SourceTypeDropdown",
+          "category": "Molecules",
+          "path": "src/components/molecules/SourceTypeDropdown.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Select", "Tooltip"],
+          "notes": "Phase 4 Slice 2 editable SourceType picker. Wraps Select with the 12-value taxonomy from source_types reference table; tooltips surface the ADR-003 definition for each value. Accepts source types as a prop so the caller controls where the data comes from (hook-driven in the Source/Citation view)."
+        },
+        {
           "name": "LoadingPage",
           "category": "Molecules",
           "path": "src/components/molecules/LoadingPage.tsx",
@@ -936,6 +945,40 @@
           "variants": [],
           "dependencies": ["Card", "Badge", "PageHeader", "LoadingPage", "ErrorPage"],
           "notes": "Temporary cross-tracker scan index at /scans. Plain table; each row links to /scans/{id}/results. Consumes GET /api/scans (capped at 100 rows). Replace with a real Tracker Dashboard navigation once that lands."
+        },
+        {
+          "name": "ScanSourcesScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanSourcesScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "Card",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "SourcesTable",
+            "SourceCitationsDrawer"
+          ],
+          "notes": "Phase 4 Slice 2 Source/Citation view at /scans/{id}/sources. Composes the SourcesTable (editable type dropdown + provenance icon) with the SourceCitationsDrawer drill-down. Wires user-correction mutation via useUpdateSourceClassification."
+        },
+        {
+          "name": "SourcesTable",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/SourcesTable.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "Tooltip", "SourceTypeDropdown"],
+          "notes": "Phase 4 Slice 2 table of sources cited in a scan. One row per source: name + domain, editable type dropdown, provenance indicator (RuleBased / LLM / You), citation count, platform badges, click-to-open drawer."
+        },
+        {
+          "name": "SourceCitationsDrawer",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/SourceCitationsDrawer.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "ScrollArea", "Skeleton"],
+          "notes": "Phase 4 Slice 2 side drawer drill-down from a SourcesTable row. Lists prompt + AI answer snippet + platform + lens + URL per citation. Lighter-weight precursor to the full Prompt Evidence view from ADR-004 which awaits Findings."
         },
         {
           "name": "CoreMetricsRow",
