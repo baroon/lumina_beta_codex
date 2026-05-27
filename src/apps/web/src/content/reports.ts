@@ -54,4 +54,19 @@ export const REPORTS_COPY = {
       description: "Something went wrong fetching the scan results.",
     },
   },
+  scanList: {
+    title: "All Scans",
+    subtitle:
+      "Temporary index of recent scans across all trackers. Click a row to open its results.",
+    columns: {
+      startedAt: "Started",
+      brand: "Brand",
+      tracker: "Tracker",
+      scanStatus: "Scan",
+      analysisStatus: "Analysis",
+      progress: "Checks",
+    },
+    empty: "No scans yet.",
+    analysisPending: "—",
+  },
 } as const;

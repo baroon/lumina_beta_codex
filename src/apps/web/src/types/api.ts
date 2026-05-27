@@ -357,3 +357,20 @@ export interface CompetitorBreakdownDto {
   mentionCount: number;
   recommendationCount: number;
 }
+
+// --- All Scans list (temporary navigation utility) -----------------------
+
+export interface ScanListItemDto {
+  scanRunId: string;
+  trackerId: string;
+  trackerName: string;
+  brandId: string;
+  brandName: string;
+  startedAt: string;
+  completedAt: string | null;
+  scanStatus: string;
+  analysisStatus: string | null; // null when the AnalysisJob row has not been created yet
+  scanCheckCount: number;
+  completedCount: number;
+  failedCount: number;
+}

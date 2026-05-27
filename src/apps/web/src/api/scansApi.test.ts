@@ -26,4 +26,9 @@ describe("scansApi", () => {
     scansApi.results("s1");
     expect(client.get).toHaveBeenCalledWith("/api/scans/s1/results");
   });
+
+  it("list gets the cross-tracker scan list", () => {
+    scansApi.list();
+    expect(client.get).toHaveBeenCalledWith("/api/scans");
+  });
 });

@@ -921,6 +921,15 @@
           "notes": "Slice (d) reporting MVP. Composes the full Scan Results page from GET /api/scans/{id}/results — Summary + CoreMetrics + Sentiment distribution + Top cited sources + per-Platform/Lens/Topic/Competitor breakdowns inline as plain HTML/Tailwind. Atom/molecule extraction (MetricCard, SentimentDistribution chart, breakdown tables) lands as follow-ups."
         },
         {
+          "name": "ScanListScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanListScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "Badge", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Temporary cross-tracker scan index at /scans. Plain table; each row links to /scans/{id}/results. Consumes GET /api/scans (capped at 100 rows). Replace with a real Tracker Dashboard navigation once that lands."
+        },
+        {
           "name": "CoreMetricsRow",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/CoreMetricsRow.tsx",
