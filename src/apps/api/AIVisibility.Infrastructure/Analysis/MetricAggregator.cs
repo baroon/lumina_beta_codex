@@ -154,20 +154,21 @@ public class MetricAggregator
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.UnknownCitationCount,
             citations.Count(c => c.Classification == SourceClassification.Unknown), now);
 
-        // Slice-(c)-followup aggregates: only at Overall scope for now. Adding
-        // them at other scopes is a per-scope decision (e.g. per-platform SoV
-        // could double-count answers mapped to multiple platforms; needs design
-        // before shipping) — punt to a later focused slice.
-        if (scope == ScanMetricScope.Overall)
+        // Slice-(c)-followup aggregates emit at every non-Competitor scope.
+        // Competitor scope semantics ("metrics ABOUT a specific competitor")
+        // don't fit the brand-centric or scan-centric shape of SoV / brand-
+        // sentiment / top-cited.
+        if (scope != ScanMetricScope.Competitor)
         {
-            foreach (var row in BuildShareOfVoice(scanRunId, mentions, now)) yield return row;
-            foreach (var row in BuildSentimentDistribution(scanRunId, contexts, now)) yield return row;
-            foreach (var row in BuildTopCitedSources(scanRunId, citations, now)) yield return row;
+            foreach (var row in BuildShareOfVoice(scanRunId, scope, scopeId, mentions, now)) yield return row;
+            foreach (var row in BuildSentimentDistribution(scanRunId, scope, scopeId, contexts, now)) yield return row;
+            foreach (var row in BuildTopCitedSources(scanRunId, scope, scopeId, citations, now)) yield return row;
         }
     }
 
     private static IEnumerable<ScanMetric> BuildShareOfVoice(
-        Guid scanRunId, List<Mention> mentions, DateTime now)
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<Mention> mentions, DateTime now)
     {
         var brand = mentions.Count(m => m.EntityType == MentionEntityType.Brand);
         var competitor = mentions.Count(m => m.EntityType == MentionEntityType.Competitor);
@@ -175,26 +176,28 @@ public class MetricAggregator
         // Denominator-zero guard — no "voice" to share. Skip rather than emit
         // 0 or NaN; reporting consumers should treat absent-metric as "no data".
         if (denom == 0) yield break;
-        yield return MetricRow(scanRunId, ScanMetricScope.Overall, null,
+        yield return MetricRow(scanRunId, scope, scopeId,
             MetricNames.BrandShareOfVoice, (double)brand / denom, now);
     }
 
     private static IEnumerable<ScanMetric> BuildSentimentDistribution(
-        Guid scanRunId, List<AnswerContext> contexts, DateTime now)
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<AnswerContext> contexts, DateTime now)
     {
         // Group by observed sentiment value and emit one row per group. Unobserved
         // sentiment values produce no row (the distribution matches reality, not
         // the enum surface).
         foreach (var grp in contexts.GroupBy(c => c.Signal.BrandSentiment))
         {
-            yield return MetricRowWithMetadata(scanRunId, ScanMetricScope.Overall, null,
+            yield return MetricRowWithMetadata(scanRunId, scope, scopeId,
                 MetricNames.BrandSentimentDistribution, grp.Count(),
                 $"{{\"value\":\"{grp.Key}\"}}", now);
         }
     }
 
     private static IEnumerable<ScanMetric> BuildTopCitedSources(
-        Guid scanRunId, List<Citation> citations, DateTime now)
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<Citation> citations, DateTime now)
     {
         // Top-K most cited (K=5) by NormalizedSourceName. Ties broken by name
         // alphabetically — deterministic for tests and reporting consistency.
@@ -210,7 +213,7 @@ public class MetricAggregator
         var rank = 1;
         foreach (var entry in ranked)
         {
-            yield return MetricRowWithMetadata(scanRunId, ScanMetricScope.Overall, null,
+            yield return MetricRowWithMetadata(scanRunId, scope, scopeId,
                 MetricNames.TopCitedSource, entry.Count,
                 $"{{\"source_name\":{System.Text.Json.JsonEncodedText.Encode(entry.Source)},\"rank\":{rank}}}",
                 now);

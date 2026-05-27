@@ -375,20 +375,22 @@ public class AnalysisPipelineTests
         // OwnedCitationCount, CompetitorCitationCount, ThirdPartyCitationCount,
         // UnknownCitationCount.
         //
-        // Overall scope only also emits the Slice-(c)-followup aggregates:
+        // Slice-(c)-followup aggregates (Overall + Platform + Lens + Topic):
         //   +1 BrandShareOfVoice (1 brand mention vs 1 competitor mention = 0.5)
         //   +2 BrandSentimentDistribution (Positive ×1, Unknown ×3 — D13
         //      coerced answer #1's Negative to Unknown)
         //   +3 TopCitedSource (3 distinct sources on answer #0)
-        // = 16 at Overall.
+        // = +6 per non-Competitor scope that has answers; the fixture has 1
+        // Platform group + 1 Lens group + 0 Topic groups so 16 each at
+        // Overall, Platform, and Lens.
         //
         // Competitor scope: 2 metrics (MentionCount + RecommendationCount).
         metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(16);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(10);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(10);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(16);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(16);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(2);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(38);
+        metrics.Should().HaveCount(50);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

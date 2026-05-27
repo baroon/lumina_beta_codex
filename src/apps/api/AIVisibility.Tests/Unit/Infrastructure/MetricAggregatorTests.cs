@@ -547,6 +547,116 @@ public class MetricAggregatorTests
     }
 
     [Fact]
+    public async Task ShareOfVoice_SentimentDistribution_TopCitedSource_AllEmitAtPlatformAndLensScopes()
+    {
+        // Coverage extension: the 3 Slice-(c)-followup aggregates now emit at
+        // every non-Competitor scope (Overall, Platform, Lens, Topic). Per-
+        // competitor variants don't fit the semantics (SoV/sentiment/top-cited
+        // are scan-centric or brand-centric, not entity-centric).
+        var platformA = Guid.NewGuid();
+        var platformB = Guid.NewGuid();
+        var lensA = Guid.NewGuid();
+        var brandId = Guid.NewGuid();
+        var competitorId = Guid.NewGuid();
+
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            // Platform A: 1 brand mention + 1 competitor mention + 1 citation.
+            new AnswerSetup(Guid.NewGuid(), platformA, lensA, Array.Empty<Guid>(),
+                BrandMentioned: true, BrandRecommended: true, BrandRank: null,
+                Mentions: new[]
+                {
+                    (MentionEntityType.Brand, brandId, true),
+                    (MentionEntityType.Competitor, competitorId, false),
+                },
+                Citations: Array.Empty<SourceClassification>())
+            {
+                BrandSentiment = Sentiment.Positive,
+                NamedCitations = new[] { (SourceClassification.Owned, "Lumina") },
+            },
+            // Platform B: 0 brand, 2 competitor mentions, no citations.
+            new AnswerSetup(Guid.NewGuid(), platformB, lensA, Array.Empty<Guid>(),
+                BrandMentioned: false, BrandRecommended: false, BrandRank: null,
+                Mentions: new[]
+                {
+                    (MentionEntityType.Competitor, competitorId, false),
+                    (MentionEntityType.Competitor, competitorId, false),
+                },
+                Citations: Array.Empty<SourceClassification>())
+            { BrandSentiment = Sentiment.Unknown });
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+
+        // Platform A: 1 brand / (1 + 1 competitor) = 0.5.
+        rows.Single(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformA && r.MetricName == MetricNames.BrandShareOfVoice)
+            .MetricValue.Should().BeApproximately(0.5, 1e-9);
+        // Platform B: 0 brand / (0 + 2) = 0.
+        rows.Single(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformB && r.MetricName == MetricNames.BrandShareOfVoice)
+            .MetricValue.Should().Be(0.0);
+
+        // Sentiment distribution: Platform A has Positive ×1, Platform B has Unknown ×1.
+        rows.Single(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformA
+                && r.MetricName == MetricNames.BrandSentimentDistribution
+                && r.MetadataJson != null && r.MetadataJson.Contains("Positive"))
+            .MetricValue.Should().Be(1);
+        rows.Single(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformB
+                && r.MetricName == MetricNames.BrandSentimentDistribution
+                && r.MetadataJson != null && r.MetadataJson.Contains("Unknown"))
+            .MetricValue.Should().Be(1);
+
+        // TopCitedSource at Platform A: just "Lumina". Platform B: no citations.
+        rows.Where(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformA && r.MetricName == MetricNames.TopCitedSource)
+            .Should().ContainSingle();
+        rows.Where(r => r.Scope == ScanMetricScope.Platform && r.ScopeId == platformB && r.MetricName == MetricNames.TopCitedSource)
+            .Should().BeEmpty();
+
+        // Lens A sees both answers: 1 brand mention vs (1 + 2 = 3) competitor
+        // mentions → SoV = 1/4.
+        rows.Single(r => r.Scope == ScanMetricScope.Lens && r.ScopeId == lensA && r.MetricName == MetricNames.BrandShareOfVoice)
+            .MetricValue.Should().BeApproximately(0.25, 1e-9);
+        // Lens A sentiment: 1 Positive + 1 Unknown = 2 rows.
+        rows.Where(r => r.Scope == ScanMetricScope.Lens && r.ScopeId == lensA && r.MetricName == MetricNames.BrandSentimentDistribution)
+            .Should().HaveCount(2);
+
+        // Competitor scope still emits only the existing 2 metrics — the new
+        // 3 don't fit per-competitor semantics, so don't bleed in.
+        rows.Where(r => r.Scope == ScanMetricScope.Competitor && r.ScopeId == competitorId)
+            .Select(r => r.MetricName)
+            .Should().BeEquivalentTo(new[] { MetricNames.MentionCount, MetricNames.RecommendationCount });
+    }
+
+    [Fact]
+    public async Task ShareOfVoice_EmitsAtTopicScope_WhenAnswerMapsToTopic()
+    {
+        // Topic scope test: an answer mapped to a topic should produce per-topic
+        // SoV / Sentiment / TopCited rows just like Platform/Lens. Topic is the
+        // scope reporting cares most about for "what topics are we missing on?"
+        var topicId = Guid.NewGuid();
+        var brandId = Guid.NewGuid();
+        var competitorId = Guid.NewGuid();
+
+        using var ctx = NewContext();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new[] { topicId },
+                BrandMentioned: true, BrandRecommended: true, BrandRank: null,
+                Mentions: new[]
+                {
+                    (MentionEntityType.Brand, brandId, true),
+                    (MentionEntityType.Competitor, competitorId, false),
+                },
+                Citations: Array.Empty<SourceClassification>())
+            { BrandSentiment = Sentiment.Positive });
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+
+        rows.Single(r => r.Scope == ScanMetricScope.Topic && r.ScopeId == topicId && r.MetricName == MetricNames.BrandShareOfVoice)
+            .MetricValue.Should().BeApproximately(0.5, 1e-9);
+        rows.Single(r => r.Scope == ScanMetricScope.Topic && r.ScopeId == topicId && r.MetricName == MetricNames.BrandSentimentDistribution
+                && r.MetadataJson != null && r.MetadataJson.Contains("Positive"))
+            .MetricValue.Should().Be(1);
+    }
+
+    [Fact]
     public async Task TopCitedSource_CappedAtFive_WhenManyDistinctSources()
     {
         using var ctx = NewContext();
