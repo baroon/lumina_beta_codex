@@ -485,10 +485,10 @@
           "name": "BarChartWrapper",
           "category": "Charts",
           "path": "src/components/charts/BarChartWrapper.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/bar"],
-          "notes": "Nivo bar chart wrapper with Lumina theming applied."
+          "dependencies": ["@nivo/bar", "chartTheme"],
+          "notes": "Nivo ResponsiveBar wrapper with Lumina theming. Single-series; takes a prepared {label, value}[] array. Supports horizontal (default) + vertical layout, optional maxValue (pin to [0,1] for rates), and a formatValue callback. Returns null on empty data."
         },
         {
           "name": "PieChartWrapper",
@@ -521,10 +521,10 @@
           "name": "SentimentDonut",
           "category": "Charts",
           "path": "src/components/charts/SentimentDonut.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/pie"],
-          "notes": "Sentiment distribution donut chart for positive/neutral/negative breakdown."
+          "dependencies": ["@nivo/pie", "chartTheme"],
+          "notes": "Sentiment distribution donut. Takes a sentiment-value→count dict. Color map is fixed to the semantic palette (success/warning/error/neutral) so charts read consistently across scans. Unobserved sentiment values are filtered out; renders nothing when the whole distribution is empty."
         }
       ]
     },
@@ -917,8 +917,16 @@
           "path": "src/features/reports/components/ScanResultsScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "Badge", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Slice (d) reporting MVP. Composes the full Scan Results page from GET /api/scans/{id}/results — Summary + CoreMetrics + Sentiment distribution + Top cited sources + per-Platform/Lens/Topic/Competitor breakdowns inline as plain HTML/Tailwind. Atom/molecule extraction (MetricCard, SentimentDistribution chart, breakdown tables) lands as follow-ups."
+          "dependencies": [
+            "Card",
+            "Badge",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "SentimentDonut",
+            "BarChartWrapper"
+          ],
+          "notes": "Slice (d) reporting page. Composes the full Scan Results view from GET /api/scans/{id}/results — Summary + CoreMetrics + SentimentDonut + top cited sources bar + per-Platform/Lens/Topic/Competitor bar charts. Charts go through the shared /components/charts/ wrappers per ARCH-003 (no direct nivo imports here)."
         },
         {
           "name": "ScanListScreen",

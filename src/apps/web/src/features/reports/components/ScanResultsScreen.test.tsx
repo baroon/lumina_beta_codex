@@ -18,6 +18,30 @@ vi.mock("../hooks/useScanResults", () => ({
   useScanResults: () => hookState,
 }));
 
+// Stub the chart wrappers so we can assert on the data they receive without
+// pulling in real nivo SVG rendering (slow + jsdom-flaky). Each stub emits
+// the labels as plain text — same approach the wrappers' own tests use.
+vi.mock("@/components/charts/SentimentDonut", () => ({
+  SentimentDonut: ({ data }: { data: Record<string, number> }) => (
+    <div data-testid="sentiment-donut">
+      {Object.entries(data).map(([k, v]) => (
+        <span key={k}>
+          {k}: {v}
+        </span>
+      ))}
+    </div>
+  ),
+}));
+vi.mock("@/components/charts/BarChartWrapper", () => ({
+  BarChartWrapper: ({ data }: { data: Array<{ label: string; value: number }> }) => (
+    <div data-testid="bar-chart">
+      {data.map((d) => (
+        <span key={d.label}>{d.label}</span>
+      ))}
+    </div>
+  ),
+}));
+
 function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
   return {
     scanRunId: "s1",
@@ -144,18 +168,27 @@ describe("ScanResultsScreen", () => {
 
     expect(screen.getByRole("heading", { name: "Scan Results" })).toBeInTheDocument();
     expect(screen.getByText(/Nostri.*Nostri Tracker/)).toBeInTheDocument();
-    // "33%" / "67%" appear in both the Overall tiles AND the Platform breakdown
-    // row; both renderings are intentional.
-    expect(screen.getAllByText("33%").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("67%").length).toBeGreaterThan(0);
+    // Core metric tiles render the rates.
+    expect(screen.getByText("33%")).toBeInTheDocument();
+    expect(screen.getByText("67%")).toBeInTheDocument();
+    // Top-cited-sources bar chart receives the sources as bar labels.
     expect(screen.getByText("Trustpilot")).toBeInTheDocument();
-    // ChatGPT appears as a platform chip AND as a row label in the platform
-    // breakdown table; both renderings are intentional.
+    // ChatGPT appears as a platform chip in the summary AND as the per-platform
+    // bar chart label.
     expect(screen.getAllByText("ChatGPT").length).toBeGreaterThan(0);
+    // Each per-scope breakdown gets a bar chart with the scope's items as labels.
     expect(screen.getByText("Competitor Comparison")).toBeInTheDocument();
+    expect(screen.getByText("Sustainable Design")).toBeInTheDocument();
     expect(screen.getByText("Acme")).toBeInTheDocument();
-    // Tracked-but-unmentioned competitor still rendered.
+    // Tracked-but-unmentioned competitor is included with mentionCount=0
+    // (BackdownChartCard renders the bar with the empty value).
     expect(screen.getByText("Beta")).toBeInTheDocument();
+    // Sentiment donut received the distribution dict.
+    expect(screen.getByTestId("sentiment-donut")).toHaveTextContent("Positive: 6");
+    expect(screen.getByTestId("sentiment-donut")).toHaveTextContent("Neutral: 4");
+    // 4 breakdown bar charts (Platform/Lens/Topic/Competitor) + 1 TopCitedSources
+    // bar chart = 5 BarChartWrapper renders.
+    expect(screen.getAllByTestId("bar-chart").length).toBe(5);
   });
 
   it("renders 'No data' for nullable rates that come back null", () => {
