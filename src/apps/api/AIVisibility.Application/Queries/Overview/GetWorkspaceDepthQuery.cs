@@ -8,12 +8,14 @@ namespace AIVisibility.Application.Queries.Overview;
 /// with topics grouped by name across brands), and the last N AIAnswers
 /// across the workspace (interleaved newest-first).
 /// </summary>
-public record GetWorkspaceDepthQuery(int Days) : IRequest<WorkspaceDepthDto>;
+public record GetWorkspaceDepthQuery(DateTime? From, DateTime? To) : IRequest<WorkspaceDepthDto>;
 
 public sealed record WorkspaceDepthDto(
     Guid WorkspaceId,
-    int Days,
-    DateTime WindowStart,
+    /// <summary>Effective window lower bound. Null when the caller asked for "all time".</summary>
+    DateTime? From,
+    /// <summary>Effective window upper bound (resolves to UTC now when unspecified).</summary>
+    DateTime To,
     IReadOnlyList<PlatformMentionDto> MentionsByPlatform,
     IReadOnlyList<SentimentSliceDto> SentimentDistribution,
     /// <summary>

@@ -9,8 +9,6 @@ namespace AIVisibility.Application.Queries.Overview;
 public class GetWorkspaceCompetitiveQueryHandler
     : IRequestHandler<GetWorkspaceCompetitiveQuery, WorkspaceCompetitiveDto>
 {
-    private const int DefaultDays = 30;
-    private const int MaxDays = 365;
     private const int TopDomainLimit = 10;
 
     private readonly IAppDbContext _db;
@@ -25,8 +23,7 @@ public class GetWorkspaceCompetitiveQueryHandler
     public async Task<WorkspaceCompetitiveDto> Handle(
         GetWorkspaceCompetitiveQuery request, CancellationToken cancellationToken)
     {
-        var days = request.Days <= 0 ? DefaultDays : Math.Min(request.Days, MaxDays);
-        var windowStart = DateTime.UtcNow.AddDays(-days);
+        var (windowFrom, windowTo) = WindowResolver.Resolve(request.From, request.To);
         var workspaceId = _workspace.WorkspaceId;
 
         // Resolve workspace scope: tracked brands + trackers + per-brand
@@ -48,7 +45,7 @@ public class GetWorkspaceCompetitiveQueryHandler
 
         if (trackerIds.Count == 0)
         {
-            return Empty(workspaceId, days, windowStart);
+            return Empty(workspaceId, windowFrom, windowTo);
         }
 
         // Answers in window across all trackers — joined with AnswerSignal so
@@ -59,13 +56,15 @@ public class GetWorkspaceCompetitiveQueryHandler
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
             join s in _db.ScanRuns.AsNoTracking() on pr.ScanRunId equals s.Id
             join sig in _db.AnswerSignals.AsNoTracking() on a.Id equals sig.AIAnswerId
-            where trackerIds.Contains(s.TrackerConfigurationId) && s.StartedAt >= windowStart
+            where trackerIds.Contains(s.TrackerConfigurationId)
+                && (windowFrom == null || s.StartedAt >= windowFrom)
+                && s.StartedAt <= windowTo
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
         if (answerRows.Count == 0)
         {
-            return Empty(workspaceId, days, windowStart);
+            return Empty(workspaceId, windowFrom, windowTo);
         }
 
         var allAnswerIds = answerRows.Select(a => a.AnswerId).ToHashSet();
@@ -106,8 +105,8 @@ public class GetWorkspaceCompetitiveQueryHandler
 
         return new WorkspaceCompetitiveDto(
             WorkspaceId: workspaceId,
-            Days: days,
-            WindowStart: windowStart,
+            From: windowFrom,
+            To: windowTo,
             TopDomains: topDomains,
             DomainTypes: domainTypes,
             MentionDistribution: mentionDistribution,
@@ -115,8 +114,8 @@ public class GetWorkspaceCompetitiveQueryHandler
             RecommendationRates: recommendationRates);
     }
 
-    private static WorkspaceCompetitiveDto Empty(Guid workspaceId, int days, DateTime windowStart) =>
-        new(workspaceId, days, windowStart,
+    private static WorkspaceCompetitiveDto Empty(Guid workspaceId, DateTime? windowFrom, DateTime windowTo) =>
+        new(workspaceId, windowFrom, windowTo,
             Array.Empty<DomainRowDto>(),
             Array.Empty<DomainTypeShareDto>(),
             Array.Empty<EntityMentionDto>(),

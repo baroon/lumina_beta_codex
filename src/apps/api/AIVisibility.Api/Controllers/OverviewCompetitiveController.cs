@@ -24,11 +24,12 @@ public class OverviewCompetitiveController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(WorkspaceCompetitiveDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(
-        [FromQuery] int days = 30,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceCompetitiveQuery(days), cancellationToken);
+            new GetWorkspaceCompetitiveQuery(from, to), cancellationToken);
         return Ok(result);
     }
 }

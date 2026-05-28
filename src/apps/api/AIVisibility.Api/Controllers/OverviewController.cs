@@ -25,11 +25,12 @@ public class OverviewController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(WorkspaceOverviewDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(
-        [FromQuery] int days = 30,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceOverviewQuery(days), cancellationToken);
+            new GetWorkspaceOverviewQuery(from, to), cancellationToken);
         return Ok(result);
     }
 }

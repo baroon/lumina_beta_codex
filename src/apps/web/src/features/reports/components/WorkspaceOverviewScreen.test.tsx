@@ -145,8 +145,8 @@ const indeedId = "comp-indeed";
 
 const fixture: WorkspaceOverviewDto = {
   workspaceId: "00000000-0000-0000-0000-000000000000",
-  days: 30,
-  windowStart: "2026-04-28T00:00:00Z",
+  from: "2026-04-28T00:00:00Z",
+  to: "2026-05-28T00:00:00Z",
   scanCount: 4,
   trackedBrands: [
     { brandId: acmeId, name: "Acme" },
@@ -425,8 +425,8 @@ describe("WorkspaceOverviewScreen", () => {
     competitiveState = {
       data: {
         workspaceId: "00000000-0000-0000-0000-000000000000",
-        days: 30,
-        windowStart: "2026-04-28T00:00:00Z",
+        from: "2026-04-28T00:00:00Z",
+        to: "2026-05-28T00:00:00Z",
         topDomains: [
           {
             sourceId: "src-1",
@@ -548,8 +548,8 @@ describe("WorkspaceOverviewScreen", () => {
     depthState = {
       data: {
         workspaceId: "00000000-0000-0000-0000-000000000000",
-        days: 30,
-        windowStart: "2026-04-28T00:00:00Z",
+        from: "2026-04-28T00:00:00Z",
+        to: "2026-05-28T00:00:00Z",
         mentionsByPlatform: [
           {
             platformId: "p1",

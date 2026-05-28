@@ -24,11 +24,12 @@ public class OverviewDepthController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(WorkspaceDepthDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(
-        [FromQuery] int days = 30,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceDepthQuery(days), cancellationToken);
+            new GetWorkspaceDepthQuery(from, to), cancellationToken);
         return Ok(result);
     }
 }

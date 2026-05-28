@@ -8,9 +8,6 @@ namespace AIVisibility.Application.Queries.Overview;
 public class GetWorkspaceOverviewQueryHandler
     : IRequestHandler<GetWorkspaceOverviewQuery, WorkspaceOverviewDto>
 {
-    private const int DefaultDays = 30;
-    private const int MaxDays = 365;
-
     private static readonly HashSet<string> CategoricalMetrics = new(StringComparer.Ordinal)
     {
         TrendMetrics.OverallSentiment,
@@ -28,8 +25,7 @@ public class GetWorkspaceOverviewQueryHandler
     public async Task<WorkspaceOverviewDto> Handle(
         GetWorkspaceOverviewQuery request, CancellationToken cancellationToken)
     {
-        var days = request.Days <= 0 ? DefaultDays : Math.Min(request.Days, MaxDays);
-        var windowStart = DateTime.UtcNow.AddDays(-days);
+        var (windowFrom, windowTo) = WindowResolver.Resolve(request.From, request.To);
         var workspaceId = _workspace.WorkspaceId;
 
         // Tracked brands in the workspace.
@@ -42,7 +38,7 @@ public class GetWorkspaceOverviewQueryHandler
 
         if (trackedBrands.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart);
+            return EmptyDto(workspaceId, windowFrom, windowTo);
         }
 
         // Every tracker for those brands.
@@ -52,7 +48,7 @@ public class GetWorkspaceOverviewQueryHandler
             .ToListAsync(cancellationToken);
         if (trackerIds.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart, trackedBrands.Select(b => new TrackedBrandDto(b.Id, b.Name)).ToList());
+            return EmptyDto(workspaceId, windowFrom, windowTo, trackedBrands.Select(b => new TrackedBrandDto(b.Id, b.Name)).ToList());
         }
 
         // Distinct competitors across all tracker-competitor links, de-duped by Competitor.Id.
@@ -70,7 +66,9 @@ public class GetWorkspaceOverviewQueryHandler
 
         // Scan ids in window across the workspace.
         var scanIds = await _db.ScanRuns.AsNoTracking()
-            .Where(s => trackerIds.Contains(s.TrackerConfigurationId) && s.StartedAt >= windowStart)
+            .Where(s => trackerIds.Contains(s.TrackerConfigurationId)
+                && (windowFrom == null || s.StartedAt >= windowFrom)
+                && s.StartedAt <= windowTo)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
@@ -78,7 +76,8 @@ public class GetWorkspaceOverviewQueryHandler
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
             .Where(p => trackerIds.Contains(p.TrackerConfigurationId)
-                && p.CapturedAt >= windowStart)
+                && (windowFrom == null || p.CapturedAt >= windowFrom)
+                && p.CapturedAt <= windowTo)
             .OrderBy(p => p.CapturedAt)
             .ToListAsync(cancellationToken);
 
@@ -88,8 +87,8 @@ public class GetWorkspaceOverviewQueryHandler
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
-            Days: days,
-            WindowStart: windowStart,
+            From: windowFrom,
+            To: windowTo,
             TrackedBrands: trackedBrands.Select(b => new TrackedBrandDto(b.Id, b.Name)).ToList(),
             Competitors: competitorRows,
             ScanCount: scanIds.Count,
@@ -99,10 +98,10 @@ public class GetWorkspaceOverviewQueryHandler
     }
 
     private static WorkspaceOverviewDto EmptyDto(
-        Guid workspaceId, int days, DateTime windowStart,
+        Guid workspaceId, DateTime? windowFrom, DateTime windowTo,
         IReadOnlyList<TrackedBrandDto>? trackedBrands = null)
         => new(
-            workspaceId, days, windowStart,
+            workspaceId, windowFrom, windowTo,
             trackedBrands ?? Array.Empty<TrackedBrandDto>(),
             Array.Empty<WorkspaceCompetitorDto>(),
             0,

@@ -12,13 +12,15 @@ namespace AIVisibility.Application.Queries.Overview;
 /// gap math only makes sense within a shared scan set, so each tracked
 /// brand gets its own gap section vs its own tracked competitors.
 /// </summary>
-public record GetWorkspaceCompetitiveQuery(int Days)
+public record GetWorkspaceCompetitiveQuery(DateTime? From, DateTime? To)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(
     Guid WorkspaceId,
-    int Days,
-    DateTime WindowStart,
+    /// <summary>Effective window lower bound. Null when the caller asked for "all time".</summary>
+    DateTime? From,
+    /// <summary>Effective window upper bound (resolves to UTC now when unspecified).</summary>
+    DateTime To,
     /// <summary>Top citation domains across the workspace, ranked by citation count desc.</summary>
     IReadOnlyList<DomainRowDto> TopDomains,
     /// <summary>Domain type breakdown (12-bucket SourceType) over the workspace's top domains.</summary>

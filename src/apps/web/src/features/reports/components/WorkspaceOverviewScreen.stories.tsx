@@ -10,8 +10,8 @@ const glassdoorId = "44444444-4444-4444-4444-444444444444";
 
 const overviewFixture: WorkspaceOverviewDto = {
   workspaceId: "00000000-0000-0000-0000-000000000000",
-  days: 30,
-  windowStart: "2026-04-28T00:00:00Z",
+  from: "2026-04-28T00:00:00Z",
+  to: "2026-05-28T00:00:00Z",
   scanCount: 6,
   trackedBrands: [
     { brandId: acmeId, name: "Acme" },
@@ -126,8 +126,8 @@ const overviewFixture: WorkspaceOverviewDto = {
 
 const competitiveFixture: WorkspaceCompetitiveDto = {
   workspaceId: overviewFixture.workspaceId,
-  days: 30,
-  windowStart: overviewFixture.windowStart,
+  from: overviewFixture.from,
+  to: overviewFixture.to,
   topDomains: [
     {
       sourceId: "src-trustpilot",
@@ -268,8 +268,8 @@ const competitiveFixture: WorkspaceCompetitiveDto = {
 
 const depthFixture: WorkspaceDepthDto = {
   workspaceId: overviewFixture.workspaceId,
-  days: 30,
-  windowStart: overviewFixture.windowStart,
+  from: overviewFixture.from,
+  to: overviewFixture.to,
   mentionsByPlatform: [
     {
       platformId: "p-openai",

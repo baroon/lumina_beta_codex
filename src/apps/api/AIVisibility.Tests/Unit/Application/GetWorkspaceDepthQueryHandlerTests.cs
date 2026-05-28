@@ -122,7 +122,7 @@ public class GetWorkspaceDepthQueryHandlerTests
     {
         using var ctx = NewContext();
         var sut = NewHandler(ctx);
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
         result.Should().NotBeNull();
         result.MentionsByPlatform.Should().BeEmpty();
         result.RecentChats.Should().BeEmpty();
@@ -135,7 +135,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // OpenAI: 2 answers (Acme + Beta), 2 brand mentions → rate 1.0.
         // Gemini: 1 answer (Acme), 1 brand mention → rate 1.0.
@@ -160,7 +160,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // 3 brand mentions: Positive x2, Negative x1.
         var positive = result.SentimentDistribution.Single(s => s.Sentiment == "Positive");
@@ -177,7 +177,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // Acme + Beta both have a topic NAMED "Architecture" but with
         // different Ids — the workspace heatmap groups by name, so there
@@ -215,7 +215,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         ctx.SaveChanges();
 
         var sut = NewHandler(ctx);
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         var openAICell = result.TopicHeatmap.Cells.Single(c => c.Row == "Architecture" && c.Column == "ChatGPT");
         openAICell.CitationCount.Should().Be(5);
@@ -240,7 +240,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         var seed = Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // 3 answers total — all fit in the cap of 10.
         result.RecentChats.Should().HaveCount(3);

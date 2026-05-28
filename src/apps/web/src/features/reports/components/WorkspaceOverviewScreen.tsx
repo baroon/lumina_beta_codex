@@ -9,6 +9,11 @@ import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/Don
 import { HeatmapWrapper, type HeatmapData } from "@/components/charts/HeatmapWrapper";
 import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
 import { RadarChartWrapper, type RadarChartDatum } from "@/components/charts/RadarChartWrapper";
+import {
+  DateRangePicker,
+  defaultDateRangeSelection,
+  type DateRangeSelection,
+} from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -114,12 +119,12 @@ const METRIC_OPTIONS: MetricOption[] = [
  * trend chart + Top Entities table.
  */
 export function WorkspaceOverviewScreen() {
-  const [days, setDays] = useState(30);
+  const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const { data, isLoading, isError, error, refetch } = useWorkspaceOverview(days);
+  const { data, isLoading, isError, error, refetch } = useWorkspaceOverview(range);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -165,14 +170,11 @@ export function WorkspaceOverviewScreen() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={copy.title}
-        description={copy.subtitle.replace("{days}", String(data.days))}
-      />
+      <PageHeader title={copy.title} description={copy.subtitle} />
 
       <ComparisonControlsRow
-        days={days}
-        onDaysChange={setDays}
+        range={range}
+        onRangeChange={setRange}
         trackedBrands={trackedBrandsEntities}
         competitors={competitorEntities}
         selectedKeys={selectedKeys}
@@ -199,10 +201,10 @@ export function WorkspaceOverviewScreen() {
 
           {/* Slice B competitive sections — fetched separately so an
               aggregation failure in one doesn't blank the whole page. */}
-          <CompetitiveSections days={days} selectedKeys={selectedKeys} />
+          <CompetitiveSections range={range} selectedKeys={selectedKeys} />
 
           {/* Slice C depth sections + recent chats. Same pattern. */}
-          <DepthSections days={days} />
+          <DepthSections range={range} />
         </>
       )}
     </div>
@@ -214,13 +216,13 @@ export function WorkspaceOverviewScreen() {
 // ---------------------------------------------------------------------------
 
 function CompetitiveSections({
-  days,
+  range,
   selectedKeys,
 }: {
-  days: number;
+  range: DateRangeSelection;
   selectedKeys: readonly string[];
 }) {
-  const { data, isLoading, isError } = useWorkspaceCompetitive(days);
+  const { data, isLoading, isError } = useWorkspaceCompetitive(range);
   if (isLoading || isError || !data) return null;
 
   return (
@@ -566,12 +568,12 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Comparison controls row — days + brand selector + metric switcher
+// Comparison controls row — brand selector + date-range picker
 // ---------------------------------------------------------------------------
 
 interface ComparisonControlsRowProps {
-  days: number;
-  onDaysChange: (days: number) => void;
+  range: DateRangeSelection;
+  onRangeChange: (next: DateRangeSelection) => void;
   trackedBrands: readonly BrandSelectorEntity[];
   competitors: readonly BrandSelectorEntity[];
   selectedKeys: readonly string[];
@@ -579,8 +581,8 @@ interface ComparisonControlsRowProps {
 }
 
 function ComparisonControlsRow({
-  days,
-  onDaysChange,
+  range,
+  onRangeChange,
   trackedBrands,
   competitors,
   selectedKeys,
@@ -588,41 +590,13 @@ function ComparisonControlsRow({
 }: ComparisonControlsRowProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-      <DaysButtonGroup days={days} onChange={onDaysChange} />
       <BrandSelector
         trackedBrands={trackedBrands}
         competitors={competitors}
         selectedKeys={selectedKeys}
         onChange={onSelectedKeysChange}
       />
-    </div>
-  );
-}
-
-function DaysButtonGroup({ days, onChange }: { days: number; onChange: (days: number) => void }) {
-  const options = [7, 30, 90];
-  return (
-    <div
-      className="inline-flex rounded-md border border-neutral-300 bg-white p-0.5"
-      role="group"
-      aria-label="Window"
-    >
-      {options.map((d) => (
-        <button
-          key={d}
-          type="button"
-          onClick={() => onChange(d)}
-          aria-pressed={days === d}
-          className={cn(
-            "rounded px-3 py-1 text-xs font-medium transition",
-            days === d
-              ? "bg-primary-100 text-primary-700"
-              : "text-neutral-600 hover:bg-neutral-100",
-          )}
-        >
-          {d}d
-        </button>
-      ))}
+      <DateRangePicker value={range} onChange={onRangeChange} />
     </div>
   );
 }
@@ -1059,8 +1033,8 @@ function entityColor(isBrand: boolean, index: number): string {
 // Slice C depth sections — fetched from /api/overview/depth
 // ---------------------------------------------------------------------------
 
-function DepthSections({ days }: { days: number }) {
-  const { data, isLoading, isError } = useWorkspaceDepth(days);
+function DepthSections({ range }: { range: DateRangeSelection }) {
+  const { data, isLoading, isError } = useWorkspaceDepth(range);
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
 
   if (isLoading || isError || !data) return null;

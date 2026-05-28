@@ -8,8 +8,6 @@ namespace AIVisibility.Application.Queries.Overview;
 public class GetWorkspaceDepthQueryHandler
     : IRequestHandler<GetWorkspaceDepthQuery, WorkspaceDepthDto>
 {
-    private const int DefaultDays = 30;
-    private const int MaxDays = 365;
     private const int RecentChatLimit = 10;
     private const int AnswerSnippetMaxLength = 200;
     private const int TopicHeatmapLimit = 12;
@@ -26,8 +24,7 @@ public class GetWorkspaceDepthQueryHandler
     public async Task<WorkspaceDepthDto> Handle(
         GetWorkspaceDepthQuery request, CancellationToken cancellationToken)
     {
-        var days = request.Days <= 0 ? DefaultDays : Math.Min(request.Days, MaxDays);
-        var windowStart = DateTime.UtcNow.AddDays(-days);
+        var (windowFrom, windowTo) = WindowResolver.Resolve(request.From, request.To);
         var workspaceId = _workspace.WorkspaceId;
 
         // Workspace scope: tracked brands + trackers.
@@ -40,7 +37,7 @@ public class GetWorkspaceDepthQueryHandler
 
         if (trackedBrandIds.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart);
+            return EmptyDto(workspaceId, windowFrom, windowTo);
         }
 
         var trackers = await _db.TrackerConfigurations.AsNoTracking()
@@ -49,7 +46,7 @@ public class GetWorkspaceDepthQueryHandler
             .ToListAsync(cancellationToken);
         if (trackers.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart);
+            return EmptyDto(workspaceId, windowFrom, windowTo);
         }
         var trackerIds = trackers.Select(t => t.Id).ToList();
         var trackerById = trackers.ToDictionary(t => t.Id, t => t);
@@ -57,13 +54,14 @@ public class GetWorkspaceDepthQueryHandler
         // Scans across all trackers in window.
         var scans = await _db.ScanRuns.AsNoTracking()
             .Where(s => trackerIds.Contains(s.TrackerConfigurationId)
-                && s.StartedAt >= windowStart)
+                && (windowFrom == null || s.StartedAt >= windowFrom)
+                && s.StartedAt <= windowTo)
             .OrderBy(s => s.StartedAt)
             .Select(s => new ScanRow(s.Id, s.StartedAt, s.TrackerConfigurationId))
             .ToListAsync(cancellationToken);
         if (scans.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart);
+            return EmptyDto(workspaceId, windowFrom, windowTo);
         }
 
         // Runs/answers across the workspace — one pass.
@@ -94,7 +92,7 @@ public class GetWorkspaceDepthQueryHandler
         ).ToListAsync(cancellationToken);
         if (runs.Count == 0)
         {
-            return EmptyDto(workspaceId, days, windowStart);
+            return EmptyDto(workspaceId, windowFrom, windowTo);
         }
 
         var answerIdSet = runs.Select(r => r.AnswerId).ToHashSet();
@@ -143,16 +141,16 @@ public class GetWorkspaceDepthQueryHandler
 
         return new WorkspaceDepthDto(
             WorkspaceId: workspaceId,
-            Days: days,
-            WindowStart: windowStart,
+            From: windowFrom,
+            To: windowTo,
             MentionsByPlatform: mentionsByPlatform,
             SentimentDistribution: sentimentDistribution,
             TopicHeatmap: topicHeatmap,
             RecentChats: recentChats);
     }
 
-    private static WorkspaceDepthDto EmptyDto(Guid workspaceId, int days, DateTime windowStart) =>
-        new(workspaceId, days, windowStart,
+    private static WorkspaceDepthDto EmptyDto(Guid workspaceId, DateTime? windowFrom, DateTime windowTo) =>
+        new(workspaceId, windowFrom, windowTo,
             Array.Empty<PlatformMentionDto>(),
             Array.Empty<SentimentSliceDto>(),
             new TopicHeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<TopicHeatmapCellDto>()),

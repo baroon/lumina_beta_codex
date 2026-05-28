@@ -7,15 +7,18 @@ namespace AIVisibility.Application.Queries.Overview;
 /// hero counts, per-entity trend series, and the Top Brands table across
 /// every TrackerConfiguration owned by the current workspace's Brands.
 ///
-/// Window-scoped to the last N days (default 30; capped at 365). Always
-/// returns a non-null payload — an empty workspace produces zeros.
+/// Window is a half-open <c>[From, To]</c> range. <c>From=null</c> means
+/// "all time" (no lower bound); <c>To=null</c> resolves to UTC now.
+/// Always returns a non-null payload — an empty workspace produces zeros.
 /// </summary>
-public record GetWorkspaceOverviewQuery(int Days) : IRequest<WorkspaceOverviewDto>;
+public record GetWorkspaceOverviewQuery(DateTime? From, DateTime? To) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,
-    int Days,
-    DateTime WindowStart,
+    /// <summary>Effective window lower bound. Null when the caller asked for "all time".</summary>
+    DateTime? From,
+    /// <summary>Effective window upper bound (resolves to UTC now when unspecified).</summary>
+    DateTime To,
     /// <summary>Tracked brand snapshot — id + name for each Brand in the workspace.</summary>
     IReadOnlyList<TrackedBrandDto> TrackedBrands,
     /// <summary>Distinct competitors across every tracker in the workspace, de-duplicated by Competitor.Id.</summary>

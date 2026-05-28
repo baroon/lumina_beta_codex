@@ -143,7 +143,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         using var ctx = NewContext();
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         result.Should().NotBeNull();
         result.TopDomains.Should().BeEmpty();
@@ -158,7 +158,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // Trustpilot: 3 (Acme) + 1 (Beta) = 4; Wikipedia: 1. Both surface.
         result.TopDomains.Should().HaveCount(2);
@@ -176,7 +176,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // Tracked brands first, alphabetical: Acme then Beta. Then competitors.
         result.MentionDistribution[0].Name.Should().Be("Acme");
@@ -202,7 +202,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // Two tracked brand groups.
         result.CompetitiveGaps.Should().HaveCount(2);
@@ -239,7 +239,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(30), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
 
         // Acme: 4 mentions, 2 rec → 0.5.
         var acme = result.RecommendationRates.Single(r => r.Name == "Acme");

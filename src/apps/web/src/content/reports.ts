@@ -173,7 +173,7 @@ export const REPORTS_COPY = {
   },
   overview: {
     title: "Workspace Overview",
-    subtitle: "Last {days} days across all your tracked brands.",
+    subtitle: "Across all your tracked brands.",
     error: {
       title: "Couldn't load the overview",
       description: "Something went wrong fetching the workspace overview.",

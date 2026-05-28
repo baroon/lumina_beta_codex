@@ -696,8 +696,10 @@ export interface HeatmapCellDto {
 
 export interface WorkspaceOverviewDto {
   workspaceId: string;
-  days: number;
-  windowStart: string;
+  /** Effective window lower bound (ISO). Null when caller asked for "All time". */
+  from: string | null;
+  /** Effective window upper bound (ISO). Resolves to UTC now when caller omitted. */
+  to: string;
   trackedBrands: TrackedBrandDto[];
   competitors: WorkspaceCompetitorDto[];
   scanCount: number;
@@ -753,8 +755,10 @@ export interface WorkspaceTopEntityRowDto {
 
 export interface WorkspaceCompetitiveDto {
   workspaceId: string;
-  days: number;
-  windowStart: string;
+  /** Effective window lower bound (ISO). Null when caller asked for "All time". */
+  from: string | null;
+  /** Effective window upper bound (ISO). Resolves to UTC now when caller omitted. */
+  to: string;
   topDomains: DomainRowDto[];
   domainTypes: DomainTypeShareDto[];
   mentionDistribution: EntityMentionDto[];
@@ -775,8 +779,10 @@ export interface BrandCompetitiveGapGroupDto {
 
 export interface WorkspaceDepthDto {
   workspaceId: string;
-  days: number;
-  windowStart: string;
+  /** Effective window lower bound (ISO). Null when caller asked for "All time". */
+  from: string | null;
+  /** Effective window upper bound (ISO). Resolves to UTC now when caller omitted. */
+  to: string;
   mentionsByPlatform: PlatformMentionDto[];
   sentimentDistribution: SentimentSliceDto[];
   topicHeatmap: TopicHeatmapDto;
