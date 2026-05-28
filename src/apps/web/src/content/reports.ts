@@ -246,8 +246,13 @@ export const REPORTS_COPY = {
     },
     topicCoverage: {
       title: "Topic coverage",
-      subtitle: "Answers tagged with each topic, per platform",
+      subtitle: "Per-topic coverage by platform — toggle to see answers or citations",
       noData: "No topic data in this window.",
+      metricLabels: {
+        aria: "Topic metric",
+        answers: "Answers",
+        citations: "Citations",
+      },
     },
     recentChats: {
       title: "Recent chats",

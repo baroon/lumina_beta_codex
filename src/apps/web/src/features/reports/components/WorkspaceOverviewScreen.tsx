@@ -27,6 +27,7 @@ import type {
   EntityRateDto,
   EntityTrendSeriesDto,
   HeatmapDto,
+  TopicHeatmapDto,
   PlatformMentionDto,
   SentimentSliceDto,
   WorkspaceHeroDto,
@@ -1101,30 +1102,84 @@ function ActivityHeatmapCard({ heatmap }: { heatmap: HeatmapDto }) {
   );
 }
 
-function TopicHeatmapCard({ heatmap }: { heatmap: HeatmapDto }) {
+type TopicMetric = "answers" | "citations";
+
+function TopicHeatmapCard({ heatmap }: { heatmap: TopicHeatmapDto }) {
   const copy = REPORTS_COPY.overview.topicCoverage;
+  const [metric, setMetric] = useState<TopicMetric>("answers");
+
   const data: HeatmapData = useMemo(
     () => ({
       rows: [...heatmap.rows],
       cols: [...heatmap.columns],
-      cells: heatmap.cells.map((c) => ({ row: c.row, col: c.column, value: c.value })),
+      cells: heatmap.cells.map((c) => ({
+        row: c.row,
+        col: c.column,
+        value: metric === "answers" ? c.answerCount : c.citationCount,
+      })),
     }),
-    [heatmap],
+    [heatmap, metric],
   );
+
+  const empty = data.rows.length === 0 || data.cols.length === 0;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <p className="text-sm text-neutral-500">{copy.subtitle}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>{copy.title}</CardTitle>
+            <p className="text-sm text-neutral-500">{copy.subtitle}</p>
+          </div>
+          {!empty && <TopicMetricToggle metric={metric} onChange={setMetric} />}
+        </div>
       </CardHeader>
       <CardContent>
-        {data.rows.length === 0 || data.cols.length === 0 ? (
+        {empty ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
           <HeatmapWrapper data={data} />
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function TopicMetricToggle({
+  metric,
+  onChange,
+}: {
+  metric: TopicMetric;
+  onChange: (next: TopicMetric) => void;
+}) {
+  const copy = REPORTS_COPY.overview.topicCoverage;
+  const options: Array<{ value: TopicMetric; label: string }> = [
+    { value: "answers", label: copy.metricLabels.answers },
+    { value: "citations", label: copy.metricLabels.citations },
+  ];
+  return (
+    <div
+      className="inline-flex shrink-0 rounded-md border border-neutral-300 bg-white p-0.5"
+      role="group"
+      aria-label={copy.metricLabels.aria}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          aria-pressed={metric === opt.value}
+          className={cn(
+            "rounded px-3 py-1 text-xs font-medium transition",
+            metric === opt.value
+              ? "bg-primary-100 text-primary-700"
+              : "text-neutral-600 hover:bg-neutral-100",
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

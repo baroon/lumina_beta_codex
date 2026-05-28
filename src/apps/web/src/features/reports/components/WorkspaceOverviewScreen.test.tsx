@@ -561,7 +561,7 @@ describe("WorkspaceOverviewScreen", () => {
         topicHeatmap: {
           rows: ["Architecture"],
           columns: ["ChatGPT"],
-          cells: [{ row: "Architecture", column: "ChatGPT", value: 4 }],
+          cells: [{ row: "Architecture", column: "ChatGPT", answerCount: 4, citationCount: 7 }],
         },
         recentChats: [
           {
@@ -594,7 +594,9 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText(/mentions by platform/i)).toBeInTheDocument();
     expect(screen.getByText(/brand sentiment distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/activity heatmap/i)).toBeInTheDocument();
-    expect(screen.getByText(/topic coverage/i)).toBeInTheDocument();
+    // Card title is exactly "Topic coverage". The new subtitle now
+    // includes the phrase "per-topic coverage" too — match the title.
+    expect(screen.getByText(/^topic coverage$/i)).toBeInTheDocument();
     expect(screen.getByText(/recent chats/i)).toBeInTheDocument();
 
     // Recent-chat card carries brand chip ("Acme") + opens drawer.
@@ -609,6 +611,23 @@ describe("WorkspaceOverviewScreen", () => {
     // Close drawer.
     await userEvent.click(within(dialog).getByRole("button", { name: /close/i }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Topic heatmap toggle. Default is Answers (cell value = 4); flipping
+    // to Citations should re-render the heatmap with citationCount (7).
+    // The HeatmapWrapper stub renders each cell as "<row>-<col>=<value>"
+    // so the value is queryable as text directly.
+    const toggleGroup = screen.getByRole("group", { name: /topic metric/i });
+    expect(
+      screen.getByText((_t, el) => el?.textContent === "Architecture-ChatGPT=4"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(toggleGroup).getByRole("button", { name: "Citations" }));
+    expect(
+      screen.queryByText((_t, el) => el?.textContent === "Architecture-ChatGPT=4"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText((_t, el) => el?.textContent === "Architecture-ChatGPT=7"),
+    ).toBeInTheDocument();
 
     depthState = { data: undefined, isLoading: false, isError: false };
   });

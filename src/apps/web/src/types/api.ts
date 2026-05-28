@@ -780,8 +780,26 @@ export interface WorkspaceDepthDto {
   mentionsByPlatform: PlatformMentionDto[];
   sentimentDistribution: SentimentSliceDto[];
   activityHeatmap: HeatmapDto;
-  topicHeatmap: HeatmapDto;
+  topicHeatmap: TopicHeatmapDto;
   recentChats: WorkspaceRecentChatDto[];
+}
+
+/**
+ * Topic Coverage heatmap shape. Each cell carries both answer count and
+ * citation count so the FE can toggle which metric to render without a
+ * refetch. Row ranking is by AnswerCount desc on the backend.
+ */
+export interface TopicHeatmapDto {
+  rows: string[];
+  columns: string[];
+  cells: TopicHeatmapCellDto[];
+}
+
+export interface TopicHeatmapCellDto {
+  row: string;
+  column: string;
+  answerCount: number;
+  citationCount: number;
 }
 
 /**
