@@ -343,6 +343,28 @@ describe("WorkspaceOverviewScreen", () => {
     ]);
   });
 
+  it("Hero tile drill-down sets the trend metric and is accessible by aria-label", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    const switcher = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(switcher.value).toBe("mention");
+
+    // Start from a non-default metric so the click is observable.
+    await userEvent.selectOptions(switcher, "rec");
+    expect(switcher.value).toBe("rec");
+
+    // Citations tile maps to "owned" (Owned citation share).
+    await userEvent.click(screen.getByRole("button", { name: /view trend by citations/i }));
+    expect(switcher.value).toBe("owned");
+
+    // Brand mention rate tile maps back to "mention".
+    await userEvent.click(
+      screen.getByRole("button", { name: /view trend by brand mention rate/i }),
+    );
+    expect(switcher.value).toBe("mention");
+  });
+
   it("Average brand rank renders with reversed Y-axis (1 at top)", async () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);

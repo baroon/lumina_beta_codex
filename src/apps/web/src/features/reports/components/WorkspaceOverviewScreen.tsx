@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Globe, Minus, X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -119,8 +119,21 @@ export function WorkspaceOverviewScreen() {
   const [metricKey, setMetricKey] = useState(METRIC_OPTIONS[0].value);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [allSelectedInit, setAllSelectedInit] = useState(false);
+  const trendChartRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, isError, error, refetch } = useWorkspaceOverview(days);
   const copy = REPORTS_COPY.overview;
+
+  /**
+   * Hero-tile drill-down. Clicking a hero tile sets the trend metric to
+   * the closest analogue and scrolls the trend chart into view (when
+   * the host supports it — jsdom doesn't).
+   */
+  function handleHeroDrillDown(metric: string) {
+    setMetricKey(metric);
+    if (typeof trendChartRef.current?.scrollIntoView === "function") {
+      trendChartRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   // Default selection — all entities when data first lands.
   useEffect(() => {
@@ -181,8 +194,10 @@ export function WorkspaceOverviewScreen() {
         </Card>
       ) : (
         <>
-          <HeroRow hero={data.hero} />
-          <TrendChartCard data={data} metricKey={metricKey} selectedKeys={selectedKeys} />
+          <HeroRow hero={data.hero} onDrillDown={handleHeroDrillDown} />
+          <div ref={trendChartRef} className="scroll-mt-4">
+            <TrendChartCard data={data} metricKey={metricKey} selectedKeys={selectedKeys} />
+          </div>
           <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
 
           {/* Slice B competitive sections — fetched separately so an
@@ -644,28 +659,72 @@ function DaysButtonGroup({ days, onChange }: { days: number; onChange: (days: nu
 // Hero tiles
 // ---------------------------------------------------------------------------
 
-function HeroRow({ hero }: { hero: WorkspaceHeroDto }) {
+function HeroRow({
+  hero,
+  onDrillDown,
+}: {
+  hero: WorkspaceHeroDto;
+  onDrillDown: (metric: string) => void;
+}) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <HeroTile label="Queries" value={hero.queries.toLocaleString()} />
-      <HeroTile label="Mentions" value={hero.mentions.toLocaleString()} />
-      <HeroTile label="Citations" value={hero.citations.toLocaleString()} />
+      <HeroTile
+        label="Queries"
+        value={hero.queries.toLocaleString()}
+        onClick={() => onDrillDown("mention")}
+      />
+      <HeroTile
+        label="Mentions"
+        value={hero.mentions.toLocaleString()}
+        onClick={() => onDrillDown("mention")}
+      />
+      <HeroTile
+        label="Citations"
+        value={hero.citations.toLocaleString()}
+        onClick={() => onDrillDown("owned")}
+      />
       <HeroTile
         label="Brand mention rate"
         value={hero.brandMentionRate == null ? "—" : `${Math.round(hero.brandMentionRate * 100)}%`}
+        onClick={() => onDrillDown("mention")}
       />
     </div>
   );
 }
 
-function HeroTile({ label, value }: { label: string; value: string }) {
+function HeroTile({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  if (!onClick) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
+          <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
+        </CardContent>
+      </Card>
+    );
+  }
   return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
-      </CardContent>
-    </Card>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`View trend by ${label}`}
+      className={cn(
+        "rounded-lg border border-neutral-200 bg-white p-4 text-left shadow-sm transition",
+        "hover:border-primary-300 hover:bg-primary-50/30",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400",
+      )}
+    >
+      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
+    </button>
   );
 }
 
