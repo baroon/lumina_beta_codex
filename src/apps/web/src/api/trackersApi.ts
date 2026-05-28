@@ -2,6 +2,7 @@ import { apiClient } from "./apiClient";
 import type {
   CreateTrackerRequest,
   CreateTrackerResponse,
+  TrackerListItemDto,
   TrackerSetupPreview,
   TrackerTrendDto,
 } from "@/types/api";
@@ -15,4 +16,6 @@ export const trackersApi = {
 
   trend: (trackerId: string, days = 30) =>
     apiClient.get<TrackerTrendDto>(`/api/trackers/${trackerId}/trend?days=${days}`),
+
+  list: () => apiClient.get<TrackerListItemDto[]>("/api/trackers"),
 };

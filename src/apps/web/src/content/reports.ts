@@ -70,6 +70,20 @@ export const REPORTS_COPY = {
       noTrendData: "No trend data in the selected window yet.",
     },
   },
+  trackerList: {
+    title: "Trackers",
+    subtitle: "Every configured visibility tracker. Click a row to open its dashboard.",
+    columns: {
+      name: "Tracker",
+      brand: "Brand",
+      status: "Status",
+      scans: "Scans",
+      latestScan: "Latest scan",
+      created: "Created",
+    },
+    empty: "No trackers configured yet.",
+    never: "—",
+  },
   scanList: {
     title: "All Scans",
     subtitle:

@@ -593,3 +593,18 @@ export interface TrendPointDto {
   /** Categorical value (e.g. sentiment mode); null for numeric metrics. */
   category: string | null;
 }
+
+// --- Tracker list (Phase 4 Slice 7) --------------------------------------
+
+export interface TrackerListItemDto {
+  trackerId: string;
+  name: string;
+  brandId: string;
+  brandName: string;
+  /** TrackerStatus enum code (Draft / Active / Paused / Archived). */
+  status: string;
+  createdAt: string;
+  scanCount: number;
+  /** CompletedAt of the most recent Completed scan; null when no scan has completed yet. */
+  latestScanCompletedAt: string | null;
+}
