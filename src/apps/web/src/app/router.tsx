@@ -9,6 +9,8 @@ import { ScanResultsPage } from "@/routes/scans/results";
 import { ScanSourcesPage } from "@/routes/scans/sources";
 import { ScanTopicsPage } from "@/routes/scans/topics";
 import { ScanTopicDetailPage } from "@/routes/scans/topic-detail";
+import { ScanCompetitorsPage } from "@/routes/scans/competitors";
+import { ScanCompetitorDetailPage } from "@/routes/scans/competitor-detail";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -71,6 +73,18 @@ const scanTopicDetailRoute = createRoute({
   component: ScanTopicDetailPage,
 });
 
+const scanCompetitorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/scans/$scanRunId/competitors",
+  component: ScanCompetitorsPage,
+});
+
+const scanCompetitorDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/scans/$scanRunId/competitors/$competitorId",
+  component: ScanCompetitorDetailPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   newBrandRoute,
@@ -80,6 +94,8 @@ const routeTree = rootRoute.addChildren([
   scanSourcesRoute,
   scanTopicsRoute,
   scanTopicDetailRoute,
+  scanCompetitorsRoute,
+  scanCompetitorDetailRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -518,3 +518,49 @@ export interface TopicTopCitedSourceDto {
   sourceName: string;
   citationCount: number;
 }
+
+// --- Competitor view (Phase 4 Slice 4) -----------------------------------
+//
+// Mirrors AIVisibility.Application.Queries.Competitors.*. List endpoint
+// pivots pre-computed Competitor-scope ScanMetric rows; detail endpoint
+// adds the set of sources cited on answers that mentioned the competitor.
+
+export interface ScanCompetitorsDto {
+  scanRunId: string;
+  competitors: CompetitorListItemDto[];
+}
+
+export interface CompetitorListItemDto {
+  competitorId: string;
+  name: string;
+  domain: string | null;
+  mentionCount: number;
+  recommendationCount: number;
+  /** MentionCount / total scan answer count, [0..1]. Null when the scan has no successful answers. */
+  mentionRate: number | null;
+  /** RecommendationCount / MentionCount when MentionCount > 0; null otherwise. */
+  recommendationRate: number | null;
+}
+
+export interface ScanCompetitorDetailDto {
+  scanRunId: string;
+  competitorId: string;
+  name: string;
+  domain: string | null;
+  metrics: CompetitorMetricsDto;
+  sourcesMentioningCompetitor: CompetitorMentionSourceDto[];
+}
+
+export interface CompetitorMetricsDto {
+  mentionCount: number;
+  recommendationCount: number;
+  mentionRate: number | null;
+  recommendationRate: number | null;
+}
+
+export interface CompetitorMentionSourceDto {
+  sourceId: string;
+  sourceName: string;
+  normalizedDomain: string | null;
+  citationCount: number;
+}

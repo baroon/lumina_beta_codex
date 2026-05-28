@@ -69,6 +69,39 @@ export const REPORTS_COPY = {
     empty: "No scans yet.",
     analysisPending: "—",
   },
+  competitors: {
+    title: "Competitors",
+    subtitle: "How often each tracked competitor was mentioned and recommended in this scan.",
+    backToResults: "Back to scan results",
+    viewCompetitors: "View competitors",
+    table: {
+      headers: {
+        competitor: "Competitor",
+        mentions: "Mentions",
+        mentionRate: "Mention rate",
+        recommendations: "Recommendations",
+        recommendationRate: "Rec. rate",
+      },
+      empty: "No competitor metrics available for this scan.",
+      noData: "—",
+    },
+    detail: {
+      backToCompetitors: "Back to competitors",
+      sections: {
+        metrics: "Competitor metrics",
+        sources: "Sources cited alongside this competitor",
+      },
+      noSources: "No sources were cited on answers that mentioned this competitor.",
+      tableHeaders: {
+        source: "Source",
+        domain: "Domain",
+        citations: "Citations",
+      },
+    },
+    empty: {
+      notFound: "Competitor data not found for this scan.",
+    },
+  },
   topics: {
     title: "Topics",
     subtitle: "Per-topic visibility metrics for this scan.",

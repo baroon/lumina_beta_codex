@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Database, Tags } from "lucide-react";
+import { Database, Tags, Users } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
@@ -74,6 +74,14 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
         >
           <Tags className="h-4 w-4" />
           {REPORTS_COPY.topics.viewTopics}
+        </Link>
+        <Link
+          to="/scans/$scanRunId/competitors"
+          params={{ scanRunId }}
+          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+        >
+          <Users className="h-4 w-4" />
+          {REPORTS_COPY.competitors.viewCompetitors}
         </Link>
       </div>
 

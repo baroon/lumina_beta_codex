@@ -1008,6 +1008,33 @@
           "notes": "Phase 4 Slice 3 Topic detail at /scans/{id}/topics/{topicId}. Three sections: topic metrics card (8 metric tiles + sentiment badges), per-platform breakdown table (runtime Topic×Platform sub-aggregation from backend), top cited sources within the topic."
         },
         {
+          "name": "ScanCompetitorsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanCompetitorsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage", "CompetitorsTable"],
+          "notes": "Phase 4 Slice 4 Competitor view list at /scans/{id}/competitors. Pivots Competitor-scope ScanMetric rows into per-competitor table; row click drills into detail."
+        },
+        {
+          "name": "CompetitorsTable",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CompetitorsTable.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Phase 4 Slice 4 table of tracked competitors for a scan. Columns: name + domain, mention count, mention rate, recommendation count, recommendation rate. Em-dash for null rates so missing-denominator is visually distinct from a real zero."
+        },
+        {
+          "name": "ScanCompetitorDetailScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanCompetitorDetailScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Phase 4 Slice 4 Competitor detail at /scans/{id}/competitors/{competitorId}. Metric tile section (mentions, rec rate) plus a table of sources cited on answers that mentioned this competitor (citations joined with answers carrying the competitor mention)."
+        },
+        {
           "name": "CoreMetricsRow",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/CoreMetricsRow.tsx",
