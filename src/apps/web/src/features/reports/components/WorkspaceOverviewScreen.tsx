@@ -7,11 +7,7 @@ import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChar
 import { sentimentColors } from "@/components/charts/chartTheme";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
 import { HeatmapWrapper, type HeatmapData } from "@/components/charts/HeatmapWrapper";
-import {
-  LineChartWrapper,
-  type LineChartPoint,
-  type LineChartSeries,
-} from "@/components/charts/LineChartWrapper";
+import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
 import { RadarChartWrapper, type RadarChartDatum } from "@/components/charts/RadarChartWrapper";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
@@ -55,11 +51,11 @@ const ENTITY_PALETTE = [
 // only metrics (SoV / OwnedCitationShare / AverageBrandRank / Sentiment)
 // have no competitorMetric — only the tracked brands render lines.
 //
-// `format` drives Y-axis ticks + tooltip rendering:
-//  - "pct" — 0..1 scale, % labels
-//  - "rank" — minValue=1, reverseY (1 at top), integer labels
-//  - "sentiment" — categorical mapped to [-1, +1] in seriesToPoints; Y
-//                  ticks read Positive / Neutral / Negative
+// `format` drives chart shape selection + Y-axis configuration:
+//  - "pct" — line chart, 0..1 scale, % labels
+//  - "rank" — line chart, minValue=1, reverseY (1 at top), integer labels
+//  - "sentiment" — colored-markers timeline (line chart is replaced
+//                  entirely because sentiment is categorical)
 type MetricFormat = "pct" | "rank" | "sentiment";
 interface MetricOption {
   value: string;
@@ -110,15 +106,6 @@ const METRIC_OPTIONS: MetricOption[] = [
     format: "sentiment",
   },
 ];
-
-/** Maps the OverallSentiment category to a numeric value in [-1, +1]. */
-const SENTIMENT_VALUE: Record<string, number | null> = {
-  Positive: 1,
-  Neutral: 0,
-  Mixed: 0,
-  Negative: -1,
-  Unknown: null,
-};
 
 /**
  * Phase 4 v3 Slice A — Workspace Overview screen at `/overview`. Aggregates
@@ -695,24 +682,16 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
   const metric = METRIC_OPTIONS.find((m) => m.value === metricKey) ?? METRIC_OPTIONS[0];
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
 
-  const series: LineChartSeries[] = useMemo(() => {
-    const filtered = data.series.filter((s) => {
+  // Filter once and apply to the right renderer below.
+  const filteredSeries = useMemo(() => {
+    return data.series.filter((s) => {
       const k = `${s.entityType}:${s.entityId}`;
       if (!selectedSet.has(k)) return false;
       if (s.entityType === "Brand") return s.metricName === metric.brandMetric;
-      // Brand-only metric (no competitor analogue) → drop competitor series.
       if (!metric.competitorMetric) return false;
       return s.metricName === metric.competitorMetric;
     });
-    return filtered.map((s, i) => ({
-      id: s.entityId,
-      name: s.entityName,
-      color: entityColor(s.entityType === "Brand", i),
-      data: seriesToPoints(s, metric.format),
-    }));
   }, [data.series, metric, selectedSet]);
-
-  const axis = axisConfigForFormat(metric.format);
 
   return (
     <Card>
@@ -720,28 +699,51 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
         <CardTitle>Visibility over time</CardTitle>
       </CardHeader>
       <CardContent>
-        {series.length === 0 ? (
-          <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
-        ) : (
-          <LineChartWrapper
-            series={series}
-            formatValue={axis.formatValue}
-            maxValue={axis.maxValue}
-            minValue={axis.minValue}
-            reverseY={axis.reverseY}
-          />
-        )}
+        {
+          filteredSeries.length === 0 ? (
+            <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
+          ) : metric.format === "sentiment" ? (
+            <SentimentTimeline series={filteredSeries} />
+          ) : (
+            <NumericTrendChart series={filteredSeries} format={metric.format} />
+          ) /* sentiment branch above narrows; NumericTrendChart sees only pct|rank */
+        }
       </CardContent>
     </Card>
   );
 }
 
+function NumericTrendChart({
+  series,
+  format,
+}: {
+  series: readonly EntityTrendSeriesDto[];
+  format: Exclude<MetricFormat, "sentiment">;
+}) {
+  const axis = axisConfigForFormat(format);
+  const chartSeries: LineChartSeries[] = series.map((s, i) => ({
+    id: s.entityId,
+    name: s.entityName,
+    color: entityColor(s.entityType === "Brand", i),
+    data: s.points.map((p) => ({ x: p.capturedAt, y: p.value ?? null })),
+  }));
+  return (
+    <LineChartWrapper
+      series={chartSeries}
+      formatValue={axis.formatValue}
+      maxValue={axis.maxValue}
+      minValue={axis.minValue}
+      reverseY={axis.reverseY}
+    />
+  );
+}
+
 /**
  * Returns the Y-axis configuration (range + label format + reversed?)
- * for each metric format. Sentiment maps the [-1, +1] numeric range back
- * to category names on the axis.
+ * for numeric metric formats. Sentiment is excluded — it renders via
+ * SentimentTimeline instead of LineChartWrapper.
  */
-function axisConfigForFormat(format: MetricFormat): {
+function axisConfigForFormat(format: "pct" | "rank"): {
   formatValue: (v: number) => string;
   maxValue?: number;
   minValue?: number;
@@ -757,23 +759,81 @@ function axisConfigForFormat(format: MetricFormat): {
         minValue: 1,
         reverseY: true,
       };
-    case "sentiment":
-      return {
-        formatValue: (v) => (v > 0.5 ? "Positive" : v < -0.5 ? "Negative" : "Neutral"),
-        maxValue: 1,
-        minValue: -1,
-      };
   }
 }
 
-function seriesToPoints(s: EntityTrendSeriesDto, format: MetricFormat): LineChartPoint[] {
-  return s.points.map((p) => {
-    if (format === "sentiment") {
-      const value = p.category != null ? (SENTIMENT_VALUE[p.category] ?? null) : null;
-      return { x: p.capturedAt, y: value };
-    }
-    return { x: p.capturedAt, y: p.value ?? null };
-  });
+// ---------------------------------------------------------------------------
+// Sentiment timeline — categorical visualization for the OverallSentiment
+// trend. One row per entity, colored markers for each scan's mode.
+// ---------------------------------------------------------------------------
+
+function SentimentTimeline({ series }: { series: readonly EntityTrendSeriesDto[] }) {
+  if (series.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {series.map((s) => (
+        <SentimentRow key={s.entityId} series={s} />
+      ))}
+      <SentimentLegend />
+    </div>
+  );
+}
+
+function SentimentRow({ series }: { series: EntityTrendSeriesDto }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="w-28 shrink-0 truncate text-xs font-medium text-neutral-700"
+        title={series.entityName}
+      >
+        {series.entityName}
+      </div>
+      <div className="flex flex-1 items-center gap-2 overflow-x-auto py-1">
+        {series.points.map((p) => {
+          const category = p.category ?? "Unknown";
+          const color = sentimentColors[category] ?? sentimentColors.Unknown;
+          return (
+            <div
+              key={p.scanRunId}
+              className="flex flex-col items-center gap-1"
+              title={`${formatShortDate(p.capturedAt)} — ${category}`}
+            >
+              <span
+                className="h-4 w-4 rounded-full ring-1 ring-inset ring-neutral-900/10"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-[10px] text-neutral-500">{formatShortDate(p.capturedAt)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SentimentLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-2 text-xs text-neutral-600">
+      {(["Positive", "Neutral", "Mixed", "Negative", "Unknown"] as const).map((label) => (
+        <span key={label} className="inline-flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: sentimentColors[label] ?? sentimentColors.Unknown }}
+            aria-hidden="true"
+          />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function formatShortDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return iso;
+  }
 }
 
 // ---------------------------------------------------------------------------

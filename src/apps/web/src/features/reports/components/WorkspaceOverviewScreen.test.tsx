@@ -352,19 +352,23 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
   });
 
-  it("Sentiment maps Positive/Neutral/Negative to a -1..+1 numeric series", async () => {
+  it("Sentiment renders a colored-markers timeline instead of the line chart", async () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
     await userEvent.selectOptions(screen.getByRole("combobox"), "sentiment");
 
-    const chart = screen.getByTestId("line-chart");
-    expect(chart).toHaveAttribute("data-min", "-1");
-    expect(chart).toHaveAttribute("data-max", "1");
+    // Line chart is replaced — no line-chart testid in the sentiment view.
+    expect(screen.queryByTestId("line-chart")).not.toBeInTheDocument();
 
-    const acmeSeries = screen.getByTestId(`series-${acmeId}`);
-    // Positive=1, Negative=-1 in the fixture's OverallSentiment series.
-    expect(acmeSeries.textContent).toContain("1,-1");
+    // The timeline carries one row per series with the entity name on the
+    // left + the legend at the bottom listing every sentiment category.
+    expect(screen.getByText("Acme", { selector: "div" })).toBeInTheDocument();
+    expect(screen.getByText("Positive", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Negative", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Neutral", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Mixed", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("Unknown", { selector: "span" })).toBeInTheDocument();
   });
 
   it("Share of voice + Owned citation share are brand-only (no competitor lines)", async () => {
