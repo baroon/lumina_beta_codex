@@ -497,7 +497,7 @@
     },
     {
       "name": "Charts",
-      "description": "Chart wrapper components built on top of Nivo for consistent data visualization styling and theming.",
+      "description": "Chart wrapper components built on Recharts (the same engine Tremor uses) for consistent data visualization styling.",
       "components": [
         {
           "name": "BarChartWrapper",
@@ -505,17 +505,8 @@
           "path": "src/components/charts/BarChartWrapper.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/bar", "chartTheme"],
-          "notes": "Nivo ResponsiveBar wrapper with Lumina theming. Single-series; takes a prepared {label, value}[] array. Supports horizontal (default) + vertical layout, optional maxValue (pin to [0,1] for rates), and a formatValue callback. Returns null on empty data."
-        },
-        {
-          "name": "PieChartWrapper",
-          "category": "Charts",
-          "path": "src/components/charts/PieChartWrapper.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["@nivo/pie"],
-          "notes": "Nivo pie chart wrapper with Lumina theming applied."
+          "dependencies": ["recharts", "chartTheme"],
+          "notes": "Recharts BarChart wrapper. Single-series; takes a prepared {label, value, color?}[] array. Supports horizontal (default) + vertical layout, optional maxValue (pin to [0, 1] for rates), and a formatValue callback. Returns null on empty data."
         },
         {
           "name": "LineChartWrapper",
@@ -523,8 +514,8 @@
           "path": "src/components/charts/LineChartWrapper.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/line"],
-          "notes": "Nivo line chart wrapper with Lumina theming. Supports single-series (legacy `data` prop) and multi-series (`series` prop) modes. Multi-series renders a legend below the chart with a 6-color fallback palette; series can override colors per entry."
+          "dependencies": ["recharts", "chartTheme"],
+          "notes": "Recharts LineChart wrapper. Single-series (data prop) and multi-series (series prop) modes. Multi-series renders a legend below the chart with a 6-color fallback palette. Supports reverseY for rank-shaped series so rank 1 sits at the top."
         },
         {
           "name": "RadarChartWrapper",
@@ -532,8 +523,8 @@
           "path": "src/components/charts/RadarChartWrapper.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/radar"],
-          "notes": "Nivo radar chart wrapper with Lumina theming. Takes {axis, value}[]; renders null when fewer than 3 axes (radar requires >=3). Used in Slice B mention-distribution radar."
+          "dependencies": ["recharts", "chartTheme"],
+          "notes": "Recharts RadarChart wrapper. Takes {axis, value}[]; renders null when fewer than 3 axes (radar requires >=3). Used in the mention-distribution radar."
         },
         {
           "name": "DonutChartWrapper",
@@ -541,8 +532,8 @@
           "path": "src/components/charts/DonutChartWrapper.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/pie"],
-          "notes": "Generic Nivo pie/donut chart wrapper with Lumina theming. Takes {id, label, value, color}[] — caller owns the palette so it can be reused across SoV (entity colors) and Domain types (source-type colors). Renders null on empty data."
+          "dependencies": ["recharts"],
+          "notes": "Recharts Pie wrapper styled as a thin donut. Takes {id, label, value, color}[] — caller owns the palette so the same entity reads as the same color across renders. Renders an inline legend with per-slice percent shares (caller can disable via showLegend=false)."
         },
         {
           "name": "HeatmapWrapper",
@@ -551,16 +542,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["design-tokens"],
-          "notes": "Custom CSS-grid heatmap (no nivo). Rows × cols matrix with intensity-mapped cells anchored to the primary token; sparse cell payload, empty cells fall back to neutral-100. Used by Slice C for the Activity (platform × scan) and Topic Coverage (topic × platform) heatmaps."
-        },
-        {
-          "name": "StackedBarWrapper",
-          "category": "Charts",
-          "path": "src/components/charts/StackedBarWrapper.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["@nivo/bar"],
-          "notes": "Nivo stacked bar chart wrapper with Lumina theming applied."
+          "notes": "Custom CSS-grid heatmap (no chart library). Rows x cols matrix with intensity-mapped cells anchored to the primary token; sparse cell payload, empty cells fall back to neutral-100. Used by the topic coverage heatmap."
         },
         {
           "name": "SentimentDonut",
@@ -568,8 +550,8 @@
           "path": "src/components/charts/SentimentDonut.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["@nivo/pie", "chartTheme"],
-          "notes": "Sentiment distribution donut. Takes a sentiment-value→count dict. Color map is fixed to the semantic palette (success/warning/error/neutral) so charts read consistently across scans. Unobserved sentiment values are filtered out; renders nothing when the whole distribution is empty."
+          "dependencies": ["DonutChartWrapper", "chartTheme"],
+          "notes": "Sentiment distribution donut. Composes DonutChartWrapper with the fixed sentiment-value color map (success/warning/error/neutral) so charts read consistently across scans. The pure slice-shape transform (sentimentSlices) is exported for unit testing."
         }
       ]
     },
@@ -971,7 +953,7 @@
             "SentimentDonut",
             "BarChartWrapper"
           ],
-          "notes": "Slice (d) reporting page. Composes the full Scan Results view from GET /api/scans/{id}/results — Summary + CoreMetrics + SentimentDonut + top cited sources bar + per-Platform/Lens/Topic/Competitor bar charts. Charts go through the shared /components/charts/ wrappers per ARCH-003 (no direct nivo imports here)."
+          "notes": "Slice (d) reporting page. Composes the full Scan Results view from GET /api/scans/{id}/results — Summary + CoreMetrics + SentimentDonut + top cited sources bar + per-Platform/Lens/Topic/Competitor bar charts. Charts go through the shared /components/charts/ wrappers per ARCH-003 (no direct recharts imports here)."
         },
         {
           "name": "ScanListScreen",
