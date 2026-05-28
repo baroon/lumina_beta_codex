@@ -1090,7 +1090,7 @@
           "name": "TrackerDashboardV2Screen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/TrackerDashboardV2Screen.tsx",
-          "status": "implemented",
+          "status": "deprecated",
           "variants": [],
           "dependencies": [
             "Badge",
@@ -1100,7 +1100,29 @@
             "ErrorPage",
             "LineChartWrapper"
           ],
-          "notes": "Phase 4 v2 Slice A. Replaces TrackerDashboardScreen at /trackers/{id}/dashboard. Filter bar (7d/30d/90d) + 4 hero tiles (Queries, Mentions, Citations, Brand Mention Rate) + multi-line Visibility Over Time chart (one series per tracked brand + competitor) with metric switcher + Top Brands table with delta indicators. Slices B (sources/SoV/radar) and C (platform/topic depth) layer in further sections in follow-up commits."
+          "notes": "Phase 4 v2 dashboard (deprecated by v3). The /trackers/{id}/dashboard route redirects to /overview; this component is kept in-tree as the evolution trail. Remove once /trackers/{id}/dashboard route can also be removed (after one full release cycle so in-flight bookmarks aren't broken)."
+        },
+        {
+          "name": "WorkspaceOverviewScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/WorkspaceOverviewScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "Badge",
+            "Button",
+            "Card",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "BrandSelector",
+            "LineChartWrapper",
+            "BarChartWrapper",
+            "DonutChartWrapper",
+            "RadarChartWrapper",
+            "HeatmapWrapper"
+          ],
+          "notes": "Phase 4 v3 default landing surface at /overview. Workspace-scoped: aggregates the last N days of scans across every Brand and TrackerConfiguration. Hero + multi-line trend + Top Entities (Slice A) + competitive sections (Slice B: SoV, gap groups per tracked brand, rec rate, brand-vs-competitor, mention distribution radar, top domains, domain types) + depth sections (Slice C: mentions-by-platform, sentiment, activity heatmap (90d capped), topic coverage, recent chats + drawer). Brand selector multi-select filters every comparison chart; share charts recompute denominators."
         },
         {
           "name": "TrackerListScreen",

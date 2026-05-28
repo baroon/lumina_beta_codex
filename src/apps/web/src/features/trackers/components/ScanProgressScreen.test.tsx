@@ -9,6 +9,20 @@ vi.mock("../hooks/useScans", () => ({
   useLatestScan: () => scanState,
 }));
 
+// The success-state CTA renders a tanstack-router <Link/>; mock it to a
+// plain anchor so the tests don't need a real RouterProvider.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    to,
+    children,
+    ...rest
+  }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 function status(overrides: Partial<ScanStatus>): ScanStatus {
   return {
     scanRunId: "s1",
@@ -34,11 +48,13 @@ describe("ScanProgressScreen", () => {
     expect(screen.getByText(/1 of 4 scan checks complete/i)).toBeInTheDocument();
   });
 
-  it("shows the completed state with the answer count", () => {
+  it("shows the completed state with the answer count + Open overview CTA", () => {
     scanState = { data: status({ status: "Completed", completedCount: 4 }) };
     render(<ScanProgressScreen trackerId="t1" />);
     expect(screen.getByText("First scan complete")).toBeInTheDocument();
     expect(screen.getByText(/4 answers collected/i)).toBeInTheDocument();
+    const overviewLink = screen.getByRole("link", { name: /open overview/i });
+    expect(overviewLink).toHaveAttribute("href", "/overview");
   });
 
   it("notes failures when some checks could not be reached", () => {

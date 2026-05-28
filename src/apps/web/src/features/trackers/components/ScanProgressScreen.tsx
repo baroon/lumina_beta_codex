@@ -1,5 +1,7 @@
-import { Check, RefreshCw } from "lucide-react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
+import { Check, PieChart, RefreshCw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/atoms/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/atoms/card";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { useLatestScan } from "../hooks/useScans";
 
@@ -36,6 +38,14 @@ export function ScanProgressScreen({ trackerId }: ScanProgressScreenProps) {
                   )}
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link to="/overview" className="inline-flex items-center gap-2">
+                <PieChart className="h-4 w-4" aria-hidden="true" />
+                {TRACKERS_COPY.scan.openOverview}
+              </Link>
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );

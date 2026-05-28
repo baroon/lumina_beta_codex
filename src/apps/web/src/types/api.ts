@@ -890,3 +890,42 @@ export interface BrandCompetitiveGapGroupDto {
   trackedBrandName: string;
   gaps: CompetitiveGapDto[];
 }
+
+// -----------------------------------------------------------------
+// Phase 4 v3 Slice C — workspace depth + recent chats
+// -----------------------------------------------------------------
+
+export interface WorkspaceDepthDto {
+  workspaceId: string;
+  days: number;
+  windowStart: string;
+  mentionsByPlatform: PlatformMentionDto[];
+  sentimentDistribution: SentimentSliceDto[];
+  activityHeatmap: HeatmapDto;
+  topicHeatmap: HeatmapDto;
+  recentChats: WorkspaceRecentChatDto[];
+}
+
+/**
+ * Workspace recent-chat row — adds tracker + brand identity to the v2
+ * RecentChatDto shape so the multi-tracker UI can label each card.
+ */
+export interface WorkspaceRecentChatDto {
+  answerId: string;
+  promptRunId: string;
+  promptText: string;
+  platformId: string;
+  platformCode: string;
+  platformName: string;
+  lensCode: string;
+  lensName: string;
+  answerSnippet: string;
+  capturedAt: string;
+  mentionCount: number;
+  citationCount: number;
+  brandSentiment: string | null;
+  trackerId: string;
+  trackerName: string;
+  brandId: string;
+  brandName: string;
+}

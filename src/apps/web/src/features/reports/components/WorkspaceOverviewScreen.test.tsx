@@ -33,6 +33,45 @@ vi.mock("../hooks/useWorkspaceCompetitive", () => ({
   useWorkspaceCompetitive: () => competitiveState,
 }));
 
+// Slice C depth sections fetched separately. Default: no data.
+let depthState: {
+  data?: import("@/types/api").WorkspaceDepthDto;
+  isLoading: boolean;
+  isError: boolean;
+} = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+};
+
+vi.mock("../hooks/useWorkspaceDepth", () => ({
+  useWorkspaceDepth: () => depthState,
+}));
+
+// Stub HeatmapWrapper so we can assert on the data shape without
+// rendering the actual grid.
+vi.mock("@/components/charts/HeatmapWrapper", () => ({
+  HeatmapWrapper: ({
+    data,
+  }: {
+    data: {
+      rows: string[];
+      cols: string[];
+      cells: Array<{ row: string; col: string; value: number }>;
+    };
+  }) => (
+    <div data-testid="heatmap">
+      <span data-testid="heatmap-rows">{data.rows.join(",")}</span>
+      <span data-testid="heatmap-cols">{data.cols.join(",")}</span>
+      {data.cells.map((c) => (
+        <span key={`${c.row}__${c.col}`}>
+          {c.row}-{c.col}={c.value}
+        </span>
+      ))}
+    </div>
+  ),
+}));
+
 // Stub Slice B chart wrappers so we can assert on the data shape without
 // rendering real SVG.
 vi.mock("@/components/charts/DonutChartWrapper", () => ({
@@ -363,5 +402,86 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText("Trustpilot")).toBeInTheDocument();
 
     competitiveState = { data: undefined, isLoading: false, isError: false };
+  });
+
+  it("renders Slice C depth sections + recent-chat drawer with multi-tracker context", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    depthState = {
+      data: {
+        workspaceId: "00000000-0000-0000-0000-000000000000",
+        days: 30,
+        windowStart: "2026-04-28T00:00:00Z",
+        mentionsByPlatform: [
+          {
+            platformId: "p1",
+            platformCode: "openai",
+            platformName: "ChatGPT",
+            answerCount: 4,
+            brandMentionCount: 3,
+            brandMentionRate: 0.75,
+          },
+        ],
+        sentimentDistribution: [
+          { sentiment: "Positive", count: 2, share: 0.66 },
+          { sentiment: "Negative", count: 1, share: 0.33 },
+        ],
+        activityHeatmap: {
+          rows: ["ChatGPT"],
+          columns: ["May 1", "May 8"],
+          cells: [{ row: "ChatGPT", column: "May 1", value: 2 }],
+        },
+        topicHeatmap: {
+          rows: ["Architecture"],
+          columns: ["ChatGPT"],
+          cells: [{ row: "Architecture", column: "ChatGPT", value: 4 }],
+        },
+        recentChats: [
+          {
+            answerId: "a1",
+            promptRunId: "r1",
+            promptText: "Best architecture firms?",
+            platformId: "p1",
+            platformCode: "openai",
+            platformName: "ChatGPT",
+            lensCode: "x",
+            lensName: "Category Discovery",
+            answerSnippet: "Acme leads the field…",
+            capturedAt: "2026-05-27T08:00:00Z",
+            mentionCount: 3,
+            citationCount: 5,
+            brandSentiment: "Positive",
+            trackerId: "t1",
+            trackerName: "Acme Tracker",
+            brandId: acmeId,
+            brandName: "Acme",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<WorkspaceOverviewScreen />);
+
+    // Section titles render.
+    expect(screen.getByText(/mentions by platform/i)).toBeInTheDocument();
+    expect(screen.getByText(/brand sentiment distribution/i)).toBeInTheDocument();
+    expect(screen.getByText(/activity heatmap/i)).toBeInTheDocument();
+    expect(screen.getByText(/topic coverage/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent chats/i)).toBeInTheDocument();
+
+    // Recent-chat card carries brand chip ("Acme") + opens drawer.
+    expect(screen.getByText("Best architecture firms?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /best architecture firms/i }));
+    const dialog = screen.getByRole("dialog");
+    // Drawer surfaces brand + tracker labels.
+    expect(within(dialog).getByText(/best architecture firms/i)).toBeInTheDocument();
+    expect(within(dialog).getByText("Acme Tracker")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Acme").length).toBeGreaterThan(0);
+
+    // Close drawer.
+    await userEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    depthState = { data: undefined, isLoading: false, isError: false };
   });
 });

@@ -1,7 +1,11 @@
-import { useParams } from "@tanstack/react-router";
-import { TrackerDashboardV2Screen } from "@/features/reports/components/TrackerDashboardV2Screen";
+import { Navigate } from "@tanstack/react-router";
 
+/**
+ * Deprecated route — the per-tracker dashboard at /trackers/{id}/dashboard
+ * was the v2 surface. Phase 4 v3 retires it in favour of the workspace
+ * Overview at `/overview`. The route is kept as a redirect so any
+ * in-flight bookmarks or external links still land on a useful screen.
+ */
 export function TrackerDashboardPage() {
-  const { trackerId } = useParams({ from: "/trackers/$trackerId/dashboard" });
-  return <TrackerDashboardV2Screen trackerId={trackerId} />;
+  return <Navigate to="/overview" replace />;
 }

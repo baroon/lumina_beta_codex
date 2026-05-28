@@ -89,5 +89,6 @@ export const TRACKERS_COPY = {
     completeTitle: "First scan complete",
     completeDescription: "{completed} answers collected across your platforms.",
     completeWithFailures: "{completed} answers collected · {failed} couldn’t be reached.",
+    openOverview: "Open overview",
   },
 } as const;
