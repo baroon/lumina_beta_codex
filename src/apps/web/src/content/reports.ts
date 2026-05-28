@@ -135,6 +135,41 @@ export const REPORTS_COPY = {
       title: "Domain types",
       noData: "No citation data in this window.",
     },
+    platforms: {
+      title: "Mentions by platform",
+      axisLabel: "Brand mention rate",
+      noData: "No platform data in this window.",
+    },
+    sentiment: {
+      title: "Brand sentiment distribution",
+      noData: "No brand mentions in this window.",
+    },
+    activity: {
+      title: "Activity heatmap",
+      subtitle: "Brand mentions per scan, per platform",
+      noData: "No scans in this window.",
+    },
+    topicCoverage: {
+      title: "Topic coverage",
+      subtitle: "Answers tagged with each topic, per platform",
+      noData: "No topic data in this window.",
+    },
+    recentChats: {
+      title: "Recent chats",
+      empty: "No answers in this window.",
+      mentionsLabel: "mentions",
+      citationsLabel: "citations",
+      noSentiment: "—",
+      drawer: {
+        title: "Answer detail",
+        close: "Close",
+        prompt: "Prompt",
+        answer: "Answer",
+        platform: "Platform",
+        lens: "Visibility lens",
+        captured: "Captured",
+      },
+    },
   },
   trackerList: {
     title: "Trackers",

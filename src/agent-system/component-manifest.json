@@ -536,6 +536,15 @@
           "notes": "Generic Nivo pie/donut chart wrapper with Lumina theming. Takes {id, label, value, color}[] — caller owns the palette so it can be reused across SoV (entity colors) and Domain types (source-type colors). Renders null on empty data."
         },
         {
+          "name": "HeatmapWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/HeatmapWrapper.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["design-tokens"],
+          "notes": "Custom CSS-grid heatmap (no nivo). Rows × cols matrix with intensity-mapped cells anchored to the primary token; sparse cell payload, empty cells fall back to neutral-100. Used by Slice C for the Activity (platform × scan) and Topic Coverage (topic × platform) heatmaps."
+        },
+        {
           "name": "StackedBarWrapper",
           "category": "Charts",
           "path": "src/components/charts/StackedBarWrapper.tsx",

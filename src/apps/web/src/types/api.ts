@@ -744,3 +744,72 @@ export interface EntityRateDto {
   /** Recommendation mentions / total mentions, [0..1]. Null when mentionCount=0. */
   recommendationRate: number | null;
 }
+
+// -----------------------------------------------------------------
+// Tracker dashboard v2 — Slice C depth read model
+// -----------------------------------------------------------------
+// Per-platform brand metrics / sentiment distribution / activity heatmap
+// (platform × scan-day) / topic heatmap (topic × platform) / last N
+// AIAnswers projection. Separate endpoint from the Slice A and Slice B
+// payloads so each section stays scoped.
+
+export interface TrackerDepthDto {
+  trackerId: string;
+  brandId: string;
+  brandName: string;
+  days: number;
+  windowStart: string;
+  mentionsByPlatform: PlatformMentionDto[];
+  sentimentDistribution: SentimentSliceDto[];
+  activityHeatmap: HeatmapDto;
+  topicHeatmap: HeatmapDto;
+  recentChats: RecentChatDto[];
+}
+
+export interface PlatformMentionDto {
+  platformId: string;
+  platformCode: string;
+  platformName: string;
+  answerCount: number;
+  brandMentionCount: number;
+  /** brandMentionCount / answerCount, [0..1]. Null when no answers. */
+  brandMentionRate: number | null;
+}
+
+export interface SentimentSliceDto {
+  /** "Positive" | "Neutral" | "Negative" | "Mixed" | "Unknown". */
+  sentiment: string;
+  count: number;
+  /** 0..1 share of brand mentions in window. */
+  share: number;
+}
+
+export interface HeatmapDto {
+  rows: string[];
+  columns: string[];
+  cells: HeatmapCellDto[];
+}
+
+export interface HeatmapCellDto {
+  row: string;
+  column: string;
+  value: number;
+}
+
+export interface RecentChatDto {
+  answerId: string;
+  promptRunId: string;
+  promptText: string;
+  platformId: string;
+  platformCode: string;
+  platformName: string;
+  lensCode: string;
+  lensName: string;
+  /** First 200 chars of the answer (no markdown stripping for v2). */
+  answerSnippet: string;
+  capturedAt: string;
+  mentionCount: number;
+  citationCount: number;
+  /** Brand sentiment enum name; null when no AnswerSignal exists. */
+  brandSentiment: string | null;
+}

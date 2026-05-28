@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
@@ -34,6 +34,46 @@ let competitiveState: {
 
 vi.mock("../hooks/useTrackerCompetitive", () => ({
   useTrackerCompetitive: () => competitiveState,
+}));
+
+// Slice C depth sections fetched separately. Default: no data. Slice C
+// tests below set depthState to drive the sections + drawer.
+let depthState: {
+  data?: import("@/types/api").TrackerDepthDto;
+  isLoading: boolean;
+  isError: boolean;
+} = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+};
+
+vi.mock("../hooks/useTrackerDepth", () => ({
+  useTrackerDepth: () => depthState,
+}));
+
+// Stub HeatmapWrapper so we can assert on the data shape without rendering
+// the actual grid (kept simple — jsdom + style maps get noisy).
+vi.mock("@/components/charts/HeatmapWrapper", () => ({
+  HeatmapWrapper: ({
+    data,
+  }: {
+    data: {
+      rows: string[];
+      cols: string[];
+      cells: Array<{ row: string; col: string; value: number }>;
+    };
+  }) => (
+    <div data-testid="heatmap">
+      <span data-testid="heatmap-rows">{data.rows.join(",")}</span>
+      <span data-testid="heatmap-cols">{data.cols.join(",")}</span>
+      {data.cells.map((c) => (
+        <span key={`${c.row}__${c.col}`}>
+          {c.row}-{c.col}={c.value}
+        </span>
+      ))}
+    </div>
+  ),
 }));
 
 // Stub the chart wrappers used by Slice B so we can assert on their data
@@ -349,5 +389,105 @@ describe("TrackerDashboardV2Screen", () => {
 
     // Reset for downstream tests.
     competitiveState = { data: undefined, isLoading: false, isError: false };
+  });
+
+  it("renders Slice C depth sections + recent-chat drawer when depth data is loaded", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    depthState = {
+      data: {
+        trackerId,
+        brandId,
+        brandName: "Nostri",
+        days: 30,
+        windowStart: "2026-04-28T00:00:00Z",
+        mentionsByPlatform: [
+          {
+            platformId: "p1",
+            platformCode: "openai",
+            platformName: "ChatGPT",
+            answerCount: 4,
+            brandMentionCount: 3,
+            brandMentionRate: 0.75,
+          },
+          {
+            platformId: "p2",
+            platformCode: "gemini",
+            platformName: "Gemini",
+            answerCount: 4,
+            brandMentionCount: 1,
+            brandMentionRate: 0.25,
+          },
+        ],
+        sentimentDistribution: [
+          { sentiment: "Positive", count: 3, share: 0.75 },
+          { sentiment: "Negative", count: 1, share: 0.25 },
+        ],
+        activityHeatmap: {
+          rows: ["ChatGPT", "Gemini"],
+          columns: ["May 1", "May 8"],
+          cells: [
+            { row: "ChatGPT", column: "May 1", value: 2 },
+            { row: "ChatGPT", column: "May 8", value: 1 },
+            { row: "Gemini", column: "May 1", value: 0 },
+            { row: "Gemini", column: "May 8", value: 1 },
+          ],
+        },
+        topicHeatmap: {
+          rows: ["Architecture", "Interior Design"],
+          columns: ["ChatGPT", "Gemini"],
+          cells: [
+            { row: "Architecture", column: "ChatGPT", value: 2 },
+            { row: "Interior Design", column: "Gemini", value: 4 },
+          ],
+        },
+        recentChats: [
+          {
+            answerId: "a1",
+            promptRunId: "r1",
+            promptText: "Best architecture firms for healthcare?",
+            platformId: "p1",
+            platformCode: "openai",
+            platformName: "ChatGPT",
+            lensCode: "category-discovery",
+            lensName: "Category Discovery",
+            answerSnippet: "Nostri ranks among the top firms for healthcare architecture in NYC…",
+            capturedAt: "2026-05-27T08:00:00Z",
+            mentionCount: 3,
+            citationCount: 5,
+            brandSentiment: "Positive",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerDashboardV2Screen trackerId={trackerId} />);
+
+    // Section titles.
+    expect(screen.getByText(/mentions by platform/i)).toBeInTheDocument();
+    expect(screen.getByText(/brand sentiment distribution/i)).toBeInTheDocument();
+    expect(screen.getByText(/activity heatmap/i)).toBeInTheDocument();
+    expect(screen.getByText(/topic coverage/i)).toBeInTheDocument();
+    expect(screen.getByText(/recent chats/i)).toBeInTheDocument();
+
+    // Recent chat card visible.
+    expect(screen.getByText("Best architecture firms for healthcare?")).toBeInTheDocument();
+
+    // Heatmaps fed the right row/col labels (2 heatmaps rendered).
+    const heatmaps = screen.getAllByTestId("heatmap");
+    expect(heatmaps).toHaveLength(2);
+
+    // Drawer opens on click and renders prompt + answer.
+    await userEvent.click(screen.getByRole("button", { name: /best architecture firms/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText(/best architecture firms/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/nostri ranks among/i)).toBeInTheDocument();
+
+    // Drawer closes on X.
+    await userEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    depthState = { data: undefined, isLoading: false, isError: false };
   });
 });

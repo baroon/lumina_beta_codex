@@ -4,6 +4,7 @@ import type {
   CreateTrackerResponse,
   TrackerCompetitiveDto,
   TrackerDashboardDto,
+  TrackerDepthDto,
   TrackerListItemDto,
   TrackerSetupPreview,
   TrackerTrendDto,
@@ -37,6 +38,15 @@ export const trackersApi = {
     apiClient.get<TrackerCompetitiveDto>(
       `/api/trackers/${trackerId}/dashboard/competitive?days=${days}`,
     ),
+
+  /**
+   * Phase 4 v2 Slice C depth read model — per-platform brand metrics +
+   * sentiment distribution + activity heatmap + topic heatmap + recent
+   * chats. Separate fetch from {@link dashboard} and {@link competitive}
+   * so each payload stays scoped.
+   */
+  depth: (trackerId: string, days = 30) =>
+    apiClient.get<TrackerDepthDto>(`/api/trackers/${trackerId}/dashboard/depth?days=${days}`),
 
   list: () => apiClient.get<TrackerListItemDto[]>("/api/trackers"),
 };
