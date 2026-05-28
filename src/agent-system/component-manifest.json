@@ -512,10 +512,28 @@
           "name": "LineChartWrapper",
           "category": "Charts",
           "path": "src/components/charts/LineChartWrapper.tsx",
-          "status": "planned",
+          "status": "implemented",
           "variants": [],
           "dependencies": ["@nivo/line"],
-          "notes": "Nivo line chart wrapper with Lumina theming applied."
+          "notes": "Nivo line chart wrapper with Lumina theming. Supports single-series (legacy `data` prop) and multi-series (`series` prop) modes. Multi-series renders a legend below the chart with a 6-color fallback palette; series can override colors per entry."
+        },
+        {
+          "name": "RadarChartWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/RadarChartWrapper.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["@nivo/radar"],
+          "notes": "Nivo radar chart wrapper with Lumina theming. Takes {axis, value}[]; renders null when fewer than 3 axes (radar requires >=3). Used in Slice B mention-distribution radar."
+        },
+        {
+          "name": "DonutChartWrapper",
+          "category": "Charts",
+          "path": "src/components/charts/DonutChartWrapper.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["@nivo/pie"],
+          "notes": "Generic Nivo pie/donut chart wrapper with Lumina theming. Takes {id, label, value, color}[] — caller owns the palette so it can be reused across SoV (entity colors) and Domain types (source-type colors). Renders null on empty data."
         },
         {
           "name": "StackedBarWrapper",

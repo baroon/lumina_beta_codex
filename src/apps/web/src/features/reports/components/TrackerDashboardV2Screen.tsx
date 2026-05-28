@@ -2,19 +2,31 @@ import { useMemo, useState } from "react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
+import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
+import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
 import {
   LineChartWrapper,
   type LineChartPoint,
   type LineChartSeries,
 } from "@/components/charts/LineChartWrapper";
+import { RadarChartWrapper, type RadarChartDatum } from "@/components/charts/RadarChartWrapper";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
+import { useTrackerCompetitive } from "@/features/reports/hooks/useTrackerCompetitive";
 import { useTrackerDashboard } from "@/features/reports/hooks/useTrackerDashboard";
 import { cn } from "@/lib/utils";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
-import type { TopBrandRowDto, TrackerDashboardDto } from "@/types/api";
+import { ArrowDown, ArrowUp, Globe, Minus } from "lucide-react";
+import type {
+  CompetitiveGapDto,
+  DomainRowDto,
+  DomainTypeShareDto,
+  EntityMentionDto,
+  EntityRateDto,
+  TopBrandRowDto,
+  TrackerDashboardDto,
+} from "@/types/api";
 
 interface TrackerDashboardV2ScreenProps {
   trackerId: string;
@@ -104,8 +116,485 @@ export function TrackerDashboardV2Screen({ trackerId }: TrackerDashboardV2Screen
       <HeroRow hero={data.hero} />
       <TrendChartCard data={data} metricKey={metricKey} onMetricKeyChange={setMetricKey} />
       <TopBrandsCard rows={data.topBrands} />
+
+      {/* Phase 4 v2 Slice B: competitive intelligence sections fetched
+          separately so an aggregation failure in one doesn't blank the
+          whole dashboard. */}
+      <CompetitiveSections trackerId={trackerId} days={days} brandId={data.brandId} />
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Slice B sections — fetched from /dashboard/competitive
+// ---------------------------------------------------------------------------
+
+interface CompetitiveSectionsProps {
+  trackerId: string;
+  days: number;
+  brandId: string;
+}
+
+function CompetitiveSections({ trackerId, days, brandId }: CompetitiveSectionsProps) {
+  const { data, isLoading, isError } = useTrackerCompetitive(trackerId, days);
+
+  if (isLoading || isError || !data) return null;
+
+  return (
+    <>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ShareOfVoiceCard mentions={data.mentionDistribution} brandId={brandId} />
+        <CompetitiveGapCard gaps={data.competitiveGaps} />
+      </div>
+      <RecommendationRateCard rates={data.recommendationRates} brandId={brandId} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BrandVsCompetitorCard mentions={data.mentionDistribution} brandId={brandId} />
+        <MentionDistributionCard mentions={data.mentionDistribution} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TopCitationDomainsCard rows={data.topDomains} />
+        <DomainTypesCard rows={data.domainTypes} />
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share of Voice donut
+// ---------------------------------------------------------------------------
+
+function ShareOfVoiceCard({
+  mentions,
+  brandId,
+}: {
+  mentions: readonly EntityMentionDto[];
+  brandId: string;
+}) {
+  const copy = REPORTS_COPY.dashboard.sov;
+  const total = mentions.reduce((sum, m) => sum + m.mentionCount, 0);
+
+  if (total === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const slices: DonutChartDatum[] = mentions
+    .filter((m) => m.mentionCount > 0)
+    .map((m, i) => ({
+      id: `${m.entityType}:${m.entityId}`,
+      label: m.name,
+      value: m.mentionCount,
+      color: entityColor(m.entityId === brandId, i),
+    }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DonutChartWrapper
+          data={slices}
+          formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
+          height={260}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Brand vs Competitor mentions bar
+// ---------------------------------------------------------------------------
+
+function BrandVsCompetitorCard({
+  mentions,
+  brandId,
+}: {
+  mentions: readonly EntityMentionDto[];
+  brandId: string;
+}) {
+  const copy = REPORTS_COPY.dashboard.mentions;
+  const filtered = mentions.filter((m) => m.mentionCount > 0);
+
+  if (filtered.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.brandVsCompetitor}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const data: BarChartDatum[] = filtered.map((m) => ({
+    label: m.name,
+    value: m.mentionCount,
+  }));
+
+  // Pick brand color when the tracked brand has rows; bar wrapper takes a
+  // single color so we set it based on whether brand is the leader.
+  const brandMentions = mentions.find((m) => m.entityId === brandId);
+  const color =
+    brandMentions && brandMentions.mentionCount > 0 ? entityColor(true, 0) : entityColor(false, 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.brandVsCompetitor}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BarChartWrapper
+          data={data}
+          layout="horizontal"
+          valueAxisLabel={copy.axisLabel}
+          color={color}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mention distribution radar
+// ---------------------------------------------------------------------------
+
+function MentionDistributionCard({ mentions }: { mentions: readonly EntityMentionDto[] }) {
+  const copy = REPORTS_COPY.dashboard.mentions;
+  const data: RadarChartDatum[] = mentions
+    .filter((m) => m.mentionCount > 0)
+    .map((m) => ({ axis: m.name, value: m.mentionCount }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.distribution}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length < 3 ? (
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        ) : (
+          <RadarChartWrapper data={data} formatValue={(v) => String(Math.round(v))} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Competitive Gap Analysis
+// ---------------------------------------------------------------------------
+
+function CompetitiveGapCard({ gaps }: { gaps: readonly CompetitiveGapDto[] }) {
+  const copy = REPORTS_COPY.dashboard.competitiveGap;
+
+  if (gaps.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Build a bar chart with one row per competitor, value = mentions gap.
+  // Recommendations gap could be a second bar chart, but the headline is
+  // mentions — keep the visual simple for v2. Recommendations gap surfaces
+  // in the table form via RecommendationRateCard below.
+  const data: BarChartDatum[] = gaps.map((g) => ({
+    label: g.competitorName,
+    value: g.mentionsGap,
+  }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BarChartWrapper
+          data={data}
+          layout="horizontal"
+          valueAxisLabel={copy.mentionsAxis}
+          formatValue={(v) => `${v > 0 ? "+" : ""}${v}`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation rate by entity
+// ---------------------------------------------------------------------------
+
+function RecommendationRateCard({
+  rates,
+  brandId,
+}: {
+  rates: readonly EntityRateDto[];
+  brandId: string;
+}) {
+  const copy = REPORTS_COPY.dashboard.recommendationRate;
+  const filtered = rates.filter((r) => r.recommendationRate != null);
+
+  if (filtered.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const data: BarChartDatum[] = filtered.map((r) => ({
+    label: `${r.name}${r.entityId === brandId ? " (You)" : ""}`,
+    value: r.recommendationRate ?? 0,
+  }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BarChartWrapper
+          data={data}
+          layout="horizontal"
+          valueAxisLabel={copy.axisLabel}
+          maxValue={1}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Top Citation Domains table
+// ---------------------------------------------------------------------------
+
+function TopCitationDomainsCard({ rows }: { rows: readonly DomainRowDto[] }) {
+  const copy = REPORTS_COPY.dashboard.topDomains;
+
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  {copy.columns.source}
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  {copy.columns.type}
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">
+                  {copy.columns.citations}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {rows.map((row) => (
+                <tr key={row.sourceId}>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-neutral-900">{row.sourceName}</div>
+                    {row.normalizedDomain && (
+                      <div className="mt-0.5 flex items-center gap-1 text-xs text-neutral-500">
+                        <Globe className="h-3 w-3" aria-hidden="true" />
+                        <span>{row.normalizedDomain}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <SourceTypeChip sourceType={row.sourceType} />
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-neutral-900">
+                    {row.citationCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Color-coded chip per the 12-bucket SourceType taxonomy (Phase 4 v2
+ * D11). Uses design tokens via badge variants.
+ */
+function SourceTypeChip({ sourceType }: { sourceType: string }) {
+  const variant: "default" | "secondary" | "outline" | "destructive" | "success" | "warning" =
+    sourceType === "Owned"
+      ? "success"
+      : sourceType === "Competitor"
+        ? "destructive"
+        : sourceType === "Corporate"
+          ? "warning"
+          : sourceType === "Editorial"
+            ? "default"
+            : sourceType === "ReviewSite"
+              ? "default"
+              : sourceType === "Social"
+                ? "default"
+                : sourceType === "UGC"
+                  ? "secondary"
+                  : sourceType === "Institutional"
+                    ? "outline"
+                    : sourceType === "Reference"
+                      ? "outline"
+                      : sourceType === "Marketplace"
+                        ? "secondary"
+                        : "outline";
+  return (
+    <Badge variant={variant} className="text-xs">
+      {sourceType}
+    </Badge>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Domain Types stacked bar
+// ---------------------------------------------------------------------------
+
+function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
+  const copy = REPORTS_COPY.dashboard.domainTypes;
+
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DomainTypeStackedBar rows={rows} />
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Horizontal stacked bar — one segment per SourceType with percentage of
+ * total. Stable color per type uses the same chip-color mapping as the
+ * table for visual consistency.
+ */
+function DomainTypeStackedBar({ rows }: { rows: readonly DomainTypeShareDto[] }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex h-4 w-full overflow-hidden rounded-md border border-neutral-200">
+        {rows.map((row) => (
+          <div
+            key={row.sourceType}
+            style={{ width: `${row.share * 100}%`, background: sourceTypeColor(row.sourceType) }}
+            title={`${row.sourceType}: ${row.citationCount} (${Math.round(row.share * 100)}%)`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700">
+        {rows.map((row) => (
+          <span key={row.sourceType} className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2 w-2 rounded-sm"
+              style={{ background: sourceTypeColor(row.sourceType) }}
+            />
+            <span>{row.sourceType}</span>
+            <span className="tabular-nums text-neutral-500">{Math.round(row.share * 100)}%</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Hex-color mapping per the 12-bucket SourceType taxonomy. Aligns with
+ * SourceTypeChip variants but emitted as raw hex for the stacked bar
+ * (which is plain divs, not a Badge component).
+ */
+function sourceTypeColor(sourceType: string): string {
+  switch (sourceType) {
+    case "Owned":
+      return "#10b981"; // emerald — semantic success
+    case "Competitor":
+      return "#ef4444"; // red — semantic error
+    case "Corporate":
+      return "#f59e0b"; // amber — semantic warning
+    case "Editorial":
+      return "#6366f1"; // primary
+    case "ReviewSite":
+      return "#8b5cf6"; // violet
+    case "Social":
+      return "#06b6d4"; // cyan
+    case "UGC":
+      return "#a3e635"; // lime
+    case "Institutional":
+      return "#737373"; // neutral-500
+    case "Reference":
+      return "#a3a3a3"; // neutral-400
+    case "Marketplace":
+      return "#ec4899"; // pink
+    case "Other":
+      return "#525252"; // neutral-600
+    case "Unknown":
+    default:
+      return "#d4d4d4"; // neutral-300
+  }
+}
+
+function entityColor(isTrackedBrand: boolean, index: number): string {
+  if (isTrackedBrand) return ENTITY_PALETTE[0];
+  // Skip index 0 (reserved for brand). Wrap competitors through index 1..5.
+  return ENTITY_PALETTE[1 + (index % (ENTITY_PALETTE.length - 1))];
 }
 
 // ---------------------------------------------------------------------------

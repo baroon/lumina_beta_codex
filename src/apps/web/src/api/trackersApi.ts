@@ -2,6 +2,7 @@ import { apiClient } from "./apiClient";
 import type {
   CreateTrackerRequest,
   CreateTrackerResponse,
+  TrackerCompetitiveDto,
   TrackerDashboardDto,
   TrackerListItemDto,
   TrackerSetupPreview,
@@ -25,6 +26,17 @@ export const trackersApi = {
    */
   dashboard: (trackerId: string, days = 30) =>
     apiClient.get<TrackerDashboardDto>(`/api/trackers/${trackerId}/dashboard?days=${days}`),
+
+  /**
+   * Phase 4 v2 Slice B competitive intelligence read model — sources +
+   * domains + SoV + mention distribution + gap analysis + recommendation
+   * rate. Separate fetch from {@link dashboard} so each payload stays
+   * scoped.
+   */
+  competitive: (trackerId: string, days = 30) =>
+    apiClient.get<TrackerCompetitiveDto>(
+      `/api/trackers/${trackerId}/dashboard/competitive?days=${days}`,
+    ),
 
   list: () => apiClient.get<TrackerListItemDto[]>("/api/trackers"),
 };

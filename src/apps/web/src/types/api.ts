@@ -674,3 +674,73 @@ export interface TopBrandRowDto {
   /** Latest sentiment mode for the brand; null for competitors. */
   sentiment: string | null;
 }
+
+// --- Tracker dashboard v2 — Slice B competitive ----------------------------
+//
+// Sources / domains / SoV / mention distribution / gap analysis /
+// recommendation rate. Separate endpoint from the Slice A dashboard so
+// neither payload becomes a god-object.
+
+export interface TrackerCompetitiveDto {
+  trackerId: string;
+  brandId: string;
+  brandName: string;
+  days: number;
+  windowStart: string;
+  topDomains: DomainRowDto[];
+  domainTypes: DomainTypeShareDto[];
+  mentionDistribution: EntityMentionDto[];
+  competitiveGaps: CompetitiveGapDto[];
+  recommendationRates: EntityRateDto[];
+}
+
+export interface DomainRowDto {
+  sourceId: string;
+  sourceName: string;
+  normalizedDomain: string | null;
+  /** 12-bucket SourceType enum code. */
+  sourceType: string;
+  citationCount: number;
+  /** 0..1 share of total citations in window. */
+  citationRate: number;
+}
+
+export interface DomainTypeShareDto {
+  sourceType: string;
+  citationCount: number;
+  /** 0..1 share of total citations across visible types. */
+  share: number;
+}
+
+export interface EntityMentionDto {
+  /** "Brand" or "Competitor". */
+  entityType: string;
+  entityId: string;
+  name: string;
+  isTrackedBrand: boolean;
+  mentionCount: number;
+  /** 0..1 share of total brand+competitor mentions in window. */
+  share: number;
+}
+
+export interface CompetitiveGapDto {
+  competitorId: string;
+  competitorName: string;
+  brandMentions: number;
+  competitorMentions: number;
+  /** Positive means brand is ahead. */
+  mentionsGap: number;
+  brandRecommendations: number;
+  competitorRecommendations: number;
+  recommendationsGap: number;
+}
+
+export interface EntityRateDto {
+  entityType: string;
+  entityId: string;
+  name: string;
+  isTrackedBrand: boolean;
+  mentionCount: number;
+  /** Recommendation mentions / total mentions, [0..1]. Null when mentionCount=0. */
+  recommendationRate: number | null;
+}
