@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
-import { TrackerDashboardScreen } from "@/features/reports/components/TrackerDashboardScreen";
+import { TrackerDashboardV2Screen } from "@/features/reports/components/TrackerDashboardV2Screen";
 
 export function TrackerDashboardPage() {
   const { trackerId } = useParams({ from: "/trackers/$trackerId/dashboard" });
-  return <TrackerDashboardScreen trackerId={trackerId} />;
+  return <TrackerDashboardV2Screen trackerId={trackerId} />;
 }

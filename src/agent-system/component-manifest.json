@@ -1038,6 +1038,22 @@
           "name": "TrackerDashboardScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/TrackerDashboardScreen.tsx",
+          "status": "deprecated",
+          "variants": [],
+          "dependencies": [
+            "Badge",
+            "Card",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "LineChartWrapper"
+          ],
+          "notes": "Phase 4 Slice 6 dashboard (deprecated). Replaced wholesale by TrackerDashboardV2Screen at the same /trackers/{id}/dashboard route — see Phase 4 v2 plan D24. Kept in the tree as an evolution trail; route no longer references it. Remove after Phase 4 v2 ships Slices B and C."
+        },
+        {
+          "name": "TrackerDashboardV2Screen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/TrackerDashboardV2Screen.tsx",
           "status": "implemented",
           "variants": [],
           "dependencies": [
@@ -1048,7 +1064,7 @@
             "ErrorPage",
             "LineChartWrapper"
           ],
-          "notes": "Phase 4 Slice 6 Visibility Tracker dashboard at /trackers/{id}/dashboard. Grid of trend cards (one per dashboard metric) over a rolling 30-day window. Numeric metrics render as line charts; the categorical OverallSentiment series renders as a colored-dot strip + legend. ADR-004 dashboard sections beyond Trend over time are deferred to a follow-up."
+          "notes": "Phase 4 v2 Slice A. Replaces TrackerDashboardScreen at /trackers/{id}/dashboard. Filter bar (7d/30d/90d) + 4 hero tiles (Queries, Mentions, Citations, Brand Mention Rate) + multi-line Visibility Over Time chart (one series per tracked brand + competitor) with metric switcher + Top Brands table with delta indicators. Slices B (sources/SoV/radar) and C (platform/topic depth) layer in further sections in follow-up commits."
         },
         {
           "name": "TrackerListScreen",

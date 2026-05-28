@@ -65,8 +65,39 @@ export const REPORTS_COPY = {
   dashboard: {
     title: "Visibility Tracker Dashboard",
     subtitle: "Trend over the past {days} days.",
+    hero: {
+      queries: "Queries",
+      mentions: "Mentions",
+      citations: "Citations",
+      brandMentionRate: "Brand mention rate",
+      noData: "—",
+    },
+    trend: {
+      title: "Visibility over time",
+      metricLabel: "Metric:",
+      noData: "No trend data in the selected window yet.",
+    },
+    topBrands: {
+      title: "Top brands",
+      columns: {
+        brand: "Brand",
+        visibility: "Visibility",
+        shareOfVoice: "SOV",
+        sentiment: "Sentiment",
+      },
+      youChip: "You",
+      noData: "—",
+      empty: "No brands or competitors with data in this window.",
+    },
+    filter: {
+      ariaLabel: "Window",
+      day7: "7d",
+      day30: "30d",
+      day90: "90d",
+    },
     empty: {
       notFound: "Tracker not found.",
+      noScans: "No scans have run for this tracker yet.",
       noTrendData: "No trend data in the selected window yet.",
     },
   },

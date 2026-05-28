@@ -608,3 +608,69 @@ export interface TrackerListItemDto {
   /** CompletedAt of the most recent Completed scan; null when no scan has completed yet. */
   latestScanCompletedAt: string | null;
 }
+
+// --- Tracker dashboard v2 (Phase 4 v2 Slice A) ---------------------------
+//
+// Consolidated dashboard read model: hero counts + per-entity trend series
+// + top brands table with Δ vs previous scan. One round trip per dashboard
+// page load.
+
+export interface TrackerDashboardDto {
+  trackerId: string;
+  trackerName: string;
+  brandId: string;
+  brandName: string;
+  days: number;
+  windowStart: string;
+  /** How many scans landed in the window. */
+  scanCount: number;
+  hero: DashboardHeroDto;
+  /** One series per (entity × metric). */
+  series: EntityTrendSeriesDto[];
+  /** Brand + tracked competitors ranked by visibility, tracked brand always first. */
+  topBrands: TopBrandRowDto[];
+}
+
+export interface DashboardHeroDto {
+  queries: number;
+  mentions: number;
+  citations: number;
+  /** Tracked brand's mention rate across all scans in window, [0..1]. Null when no signals in window. */
+  brandMentionRate: number | null;
+}
+
+export interface EntityTrendSeriesDto {
+  /** "Brand" or "Competitor". */
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  metricName: string;
+  /** "Numeric" or "Categorical". */
+  seriesKind: string;
+  points: EntityTrendPointDto[];
+}
+
+export interface EntityTrendPointDto {
+  scanRunId: string;
+  capturedAt: string;
+  /** Numeric metric value. Null for categorical and aggregator-skipped. */
+  value: number | null;
+  /** Categorical metric value (e.g. sentiment mode). Null for numeric. */
+  category: string | null;
+}
+
+export interface TopBrandRowDto {
+  entityType: string;
+  entityId: string;
+  name: string;
+  isTrackedBrand: boolean;
+  /** Visibility = mention rate for the most-recent scan in window. */
+  visibility: number | null;
+  /** Δ vs second-most-recent scan. Null when fewer than 2 scans. */
+  visibilityDelta: number | null;
+  /** Share of voice for the most-recent scan. Brand-only; null for competitors. */
+  shareOfVoice: number | null;
+  shareOfVoiceDelta: number | null;
+  /** Latest sentiment mode for the brand; null for competitors. */
+  sentiment: string | null;
+}
