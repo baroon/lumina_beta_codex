@@ -109,17 +109,30 @@ vi.mock("@/components/charts/BarChartWrapper", () => ({
 }));
 
 // Stub the chart wrapper — same pattern as the v2 dashboard test. Lets us
-// assert on series shape without rendering real SVG.
+// assert on series shape without rendering real SVG. We also capture the
+// reverseY flag + the first/last y-values so the test can verify the
+// metric-format axis wiring.
 vi.mock("@/components/charts/LineChartWrapper", () => ({
   LineChartWrapper: ({
     series,
+    reverseY,
+    minValue,
+    maxValue,
   }: {
     series?: Array<{ id: string; name: string; data: Array<{ x: string; y: number | null }> }>;
+    reverseY?: boolean;
+    minValue?: number;
+    maxValue?: number;
   }) => (
-    <div data-testid="line-chart">
+    <div
+      data-testid="line-chart"
+      data-reverse-y={reverseY ? "true" : "false"}
+      data-min={minValue ?? ""}
+      data-max={maxValue ?? ""}
+    >
       {series?.map((s) => (
         <span key={s.id} data-testid={`series-${s.id}`}>
-          {s.name}
+          {s.name}={s.data.map((p) => p.y ?? "null").join(",")}
         </span>
       ))}
     </div>
@@ -173,6 +186,47 @@ const fixture: WorkspaceOverviewDto = {
       points: [
         { scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 0.1, category: null },
         { scanRunId: "s2", capturedAt: "2026-05-21T00:00:00Z", value: 0.2, category: null },
+      ],
+    },
+    // Brand-only metrics — exercise SoV / OwnedCitationShare / AvgRank /
+    // Sentiment switcher options. Only Acme carries them in this fixture
+    // so the test can assert that competitor lines drop when those
+    // metrics are selected.
+    {
+      entityType: "Brand",
+      entityId: acmeId,
+      entityName: "Acme",
+      metricName: "BrandShareOfVoice",
+      seriesKind: "Numeric",
+      points: [
+        { scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 0.42, category: null },
+      ],
+    },
+    {
+      entityType: "Brand",
+      entityId: acmeId,
+      entityName: "Acme",
+      metricName: "OwnedCitationShare",
+      seriesKind: "Numeric",
+      points: [{ scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 0.6, category: null }],
+    },
+    {
+      entityType: "Brand",
+      entityId: acmeId,
+      entityName: "Acme",
+      metricName: "AverageBrandRank",
+      seriesKind: "Numeric",
+      points: [{ scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 2.4, category: null }],
+    },
+    {
+      entityType: "Brand",
+      entityId: acmeId,
+      entityName: "Acme",
+      metricName: "OverallSentiment",
+      seriesKind: "Categorical",
+      points: [
+        { scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: null, category: "Positive" },
+        { scanRunId: "s2", capturedAt: "2026-05-21T00:00:00Z", value: null, category: "Negative" },
       ],
     },
   ],
@@ -264,6 +318,66 @@ describe("WorkspaceOverviewScreen", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
     expect(screen.getByRole("button", { name: /brand selector/i })).toHaveTextContent("All brands");
+  });
+
+  it("metric switcher exposes all six metrics", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+    const switcher = screen.getByRole("combobox") as HTMLSelectElement;
+    const labels = Array.from(switcher.options).map((o) => o.textContent);
+    expect(labels).toEqual([
+      "Mention rate",
+      "Recommendation rate",
+      "Share of voice",
+      "Owned citation share",
+      "Average brand rank",
+      "Sentiment",
+    ]);
+  });
+
+  it("Average brand rank renders with reversed Y-axis (1 at top)", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    await userEvent.selectOptions(screen.getByRole("combobox"), "rank");
+
+    const chart = screen.getByTestId("line-chart");
+    expect(chart).toHaveAttribute("data-reverse-y", "true");
+    expect(chart).toHaveAttribute("data-min", "1");
+    // Only Acme has a rank series in the fixture; Beta's BrandMentionRate
+    // line drops out when the rank metric is selected.
+    expect(screen.getByTestId(`series-${acmeId}`)).toHaveTextContent("2.4");
+    expect(screen.queryByTestId(`series-${betaId}`)).not.toBeInTheDocument();
+    // Competitors don't have brand-only metrics; Indeed drops out too.
+    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
+  });
+
+  it("Sentiment maps Positive/Neutral/Negative to a -1..+1 numeric series", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    await userEvent.selectOptions(screen.getByRole("combobox"), "sentiment");
+
+    const chart = screen.getByTestId("line-chart");
+    expect(chart).toHaveAttribute("data-min", "-1");
+    expect(chart).toHaveAttribute("data-max", "1");
+
+    const acmeSeries = screen.getByTestId(`series-${acmeId}`);
+    // Positive=1, Negative=-1 in the fixture's OverallSentiment series.
+    expect(acmeSeries.textContent).toContain("1,-1");
+  });
+
+  it("Share of voice + Owned citation share are brand-only (no competitor lines)", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    await userEvent.selectOptions(screen.getByRole("combobox"), "sov");
+    expect(screen.getByTestId(`series-${acmeId}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByRole("combobox"), "owned");
+    expect(screen.getByTestId(`series-${acmeId}`)).toBeInTheDocument();
+    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
   });
 
   it("deselecting an entity drops its series + table row", async () => {
@@ -385,8 +499,10 @@ describe("WorkspaceOverviewScreen", () => {
     };
     render(<WorkspaceOverviewScreen />);
 
-    // Section titles.
-    expect(screen.getByText(/share of voice/i)).toBeInTheDocument();
+    // Section titles. "Share of voice" now also appears in the metric
+    // switcher dropdown, so we look for the card-shaped occurrence
+    // specifically (the donut card uses a CardTitle with that text).
+    expect(screen.getAllByText(/share of voice/i).length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/competitive gap/i)).toBeInTheDocument();
     expect(screen.getByText(/recommendation rate by entity/i)).toBeInTheDocument();
     expect(screen.getByText(/brand vs competitor/i)).toBeInTheDocument();

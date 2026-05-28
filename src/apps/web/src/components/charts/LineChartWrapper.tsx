@@ -49,6 +49,12 @@ interface LineChartWrapperProps {
   minValue?: number;
   /** Optional axis label on the Y axis. */
   valueAxisLabel?: string;
+  /**
+   * When true, flips the Y axis so the smaller value sits at the top.
+   * Useful for rank-shaped series (rank 1 is the best result; viewers
+   * expect "up = better").
+   */
+  reverseY?: boolean;
 }
 
 /**
@@ -73,6 +79,7 @@ export function LineChartWrapper({
   maxValue,
   minValue = 0,
   valueAxisLabel,
+  reverseY = false,
 }: LineChartWrapperProps) {
   // Normalize to nivo's series shape. Single-series mode wraps the bare
   // point array; multi-series mode keeps the caller's array as-is.
@@ -106,6 +113,7 @@ export function LineChartWrapper({
           min: minValue,
           max: maxValue ?? "auto",
           stacked: false,
+          reverse: reverseY,
         }}
         colors={colors}
         lineWidth={2}

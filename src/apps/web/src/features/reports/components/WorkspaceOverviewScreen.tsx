@@ -50,26 +50,75 @@ const ENTITY_PALETTE = [
   "#a855f7",
 ];
 
-// Metric switcher options — same shape as the v2 dashboard.
-const METRIC_OPTIONS: Array<{
+// Metric switcher options. Each entry names the trend metric on the
+// brand side and (when applicable) the per-competitor analogue. Brand-
+// only metrics (SoV / OwnedCitationShare / AverageBrandRank / Sentiment)
+// have no competitorMetric — only the tracked brands render lines.
+//
+// `format` drives Y-axis ticks + tooltip rendering:
+//  - "pct" — 0..1 scale, % labels
+//  - "rank" — minValue=1, reverseY (1 at top), integer labels
+//  - "sentiment" — categorical mapped to [-1, +1] in seriesToPoints; Y
+//                  ticks read Positive / Neutral / Negative
+type MetricFormat = "pct" | "rank" | "sentiment";
+interface MetricOption {
   value: string;
   label: string;
   brandMetric: string;
-  competitorMetric: string;
-}> = [
+  /** Optional — omitted for brand-only metrics. */
+  competitorMetric?: string;
+  format: MetricFormat;
+}
+
+const METRIC_OPTIONS: MetricOption[] = [
   {
     value: "mention",
     label: "Mention rate",
     brandMetric: "BrandMentionRate",
     competitorMetric: "MentionRate",
+    format: "pct",
   },
   {
     value: "rec",
     label: "Recommendation rate",
     brandMetric: "BrandRecommendationRate",
     competitorMetric: "RecommendationRate",
+    format: "pct",
+  },
+  {
+    value: "sov",
+    label: "Share of voice",
+    brandMetric: "BrandShareOfVoice",
+    format: "pct",
+  },
+  {
+    value: "owned",
+    label: "Owned citation share",
+    brandMetric: "OwnedCitationShare",
+    format: "pct",
+  },
+  {
+    value: "rank",
+    label: "Average brand rank",
+    brandMetric: "AverageBrandRank",
+    format: "rank",
+  },
+  {
+    value: "sentiment",
+    label: "Sentiment",
+    brandMetric: "OverallSentiment",
+    format: "sentiment",
   },
 ];
+
+/** Maps the OverallSentiment category to a numeric value in [-1, +1]. */
+const SENTIMENT_VALUE: Record<string, number | null> = {
+  Positive: 1,
+  Neutral: 0,
+  Mixed: 0,
+  Negative: -1,
+  Unknown: null,
+};
 
 /**
  * Phase 4 v3 Slice A — Workspace Overview screen at `/overview`. Aggregates
@@ -651,15 +700,19 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
       const k = `${s.entityType}:${s.entityId}`;
       if (!selectedSet.has(k)) return false;
       if (s.entityType === "Brand") return s.metricName === metric.brandMetric;
+      // Brand-only metric (no competitor analogue) → drop competitor series.
+      if (!metric.competitorMetric) return false;
       return s.metricName === metric.competitorMetric;
     });
     return filtered.map((s, i) => ({
       id: s.entityId,
       name: s.entityName,
       color: entityColor(s.entityType === "Brand", i),
-      data: seriesToPoints(s),
+      data: seriesToPoints(s, metric.format),
     }));
   }, [data.series, metric, selectedSet]);
+
+  const axis = axisConfigForFormat(metric.format);
 
   return (
     <Card>
@@ -672,8 +725,10 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
         ) : (
           <LineChartWrapper
             series={series}
-            formatValue={(v: number) => `${Math.round(v * 100)}%`}
-            maxValue={1}
+            formatValue={axis.formatValue}
+            maxValue={axis.maxValue}
+            minValue={axis.minValue}
+            reverseY={axis.reverseY}
           />
         )}
       </CardContent>
@@ -681,8 +736,44 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
   );
 }
 
-function seriesToPoints(s: EntityTrendSeriesDto): LineChartPoint[] {
-  return s.points.map((p) => ({ x: p.capturedAt, y: p.value ?? null }));
+/**
+ * Returns the Y-axis configuration (range + label format + reversed?)
+ * for each metric format. Sentiment maps the [-1, +1] numeric range back
+ * to category names on the axis.
+ */
+function axisConfigForFormat(format: MetricFormat): {
+  formatValue: (v: number) => string;
+  maxValue?: number;
+  minValue?: number;
+  reverseY?: boolean;
+} {
+  switch (format) {
+    case "pct":
+      return { formatValue: (v) => `${Math.round(v * 100)}%`, maxValue: 1, minValue: 0 };
+    case "rank":
+      // Rank 1 = best; flip the axis so "up = better" reads naturally.
+      return {
+        formatValue: (v) => v.toFixed(1),
+        minValue: 1,
+        reverseY: true,
+      };
+    case "sentiment":
+      return {
+        formatValue: (v) => (v > 0.5 ? "Positive" : v < -0.5 ? "Negative" : "Neutral"),
+        maxValue: 1,
+        minValue: -1,
+      };
+  }
+}
+
+function seriesToPoints(s: EntityTrendSeriesDto, format: MetricFormat): LineChartPoint[] {
+  return s.points.map((p) => {
+    if (format === "sentiment") {
+      const value = p.category != null ? (SENTIMENT_VALUE[p.category] ?? null) : null;
+      return { x: p.capturedAt, y: value };
+    }
+    return { x: p.capturedAt, y: p.value ?? null };
+  });
 }
 
 // ---------------------------------------------------------------------------
