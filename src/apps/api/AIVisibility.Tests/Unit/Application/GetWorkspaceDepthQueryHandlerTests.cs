@@ -171,27 +171,6 @@ public class GetWorkspaceDepthQueryHandlerTests
     }
 
     [Fact]
-    public async Task ActivityHeatmap_RowsArePlatforms_ColsAreScanDays_CellsAreBrandMentions()
-    {
-        using var ctx = NewContext();
-        Build(ctx);
-        var sut = NewHandler(ctx);
-
-        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
-
-        result.ActivityHeatmap.Rows.Should().Equal("ChatGPT", "Gemini");
-        // 2 scans → 2 columns.
-        result.ActivityHeatmap.Columns.Should().HaveCount(2);
-
-        // OpenAI cell for Acme's scan = 1 (Acme answer mentions brand). Other
-        // cells follow same pattern.
-        result.ActivityHeatmap.Cells.Should().Contain(c =>
-            c.Row == "ChatGPT" && c.Value > 0);
-        result.ActivityHeatmap.Cells.Should().Contain(c =>
-            c.Row == "Gemini" && c.Value > 0);
-    }
-
-    [Fact]
     public async Task TopicHeatmap_GroupsByTopicName_AcrossBrands()
     {
         using var ctx = NewContext();
@@ -255,7 +234,7 @@ public class GetWorkspaceDepthQueryHandlerTests
     };
 
     [Fact]
-    public async Task RecentChats_NewestFirstAcrossTrackers_WithTrackerAndBrandContext()
+    public async Task RecentChats_NewestFirstAcrossWorkspace_WithBrandContext()
     {
         using var ctx = NewContext();
         var seed = Build(ctx);
@@ -266,14 +245,10 @@ public class GetWorkspaceDepthQueryHandlerTests
         // 3 answers total — all fit in the cap of 10.
         result.RecentChats.Should().HaveCount(3);
 
-        // Each card carries tracker + brand identity.
-        var firstAcme = result.RecentChats.First(c => c.BrandName == "Acme");
-        firstAcme.TrackerName.Should().Be("Acme Tracker");
-        firstAcme.BrandId.Should().Be(seed.AcmeId);
-        firstAcme.TrackerId.Should().Be(seed.AcmeTrackerId);
-
-        var beta = result.RecentChats.Single(c => c.BrandName == "Beta");
-        beta.TrackerName.Should().Be("Beta Tracker");
+        // Each card carries the owning brand name (tracker identity is
+        // intentionally not surfaced — see WorkspaceRecentChatDto).
+        result.RecentChats.Where(c => c.BrandName == "Acme").Should().HaveCount(2);
+        result.RecentChats.Where(c => c.BrandName == "Beta").Should().HaveCount(1);
 
         // Ordered descending by CapturedAt.
         result.RecentChats

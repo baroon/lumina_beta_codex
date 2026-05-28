@@ -239,11 +239,6 @@ export const REPORTS_COPY = {
       title: "Brand sentiment distribution",
       noData: "No brand mentions in this window.",
     },
-    activity: {
-      title: "Activity heatmap",
-      subtitle: "Brand mentions per scan, per platform (capped at 90 days)",
-      noData: "No scans in this window.",
-    },
     topicCoverage: {
       title: "Topic coverage",
       subtitle: "Per-topic coverage by platform — toggle to see answers or citations",
@@ -266,7 +261,6 @@ export const REPORTS_COPY = {
         answer: "Answer",
         platform: "Platform",
         lens: "Visibility lens",
-        tracker: "Tracker",
         brand: "Brand",
         captured: "Captured",
       },

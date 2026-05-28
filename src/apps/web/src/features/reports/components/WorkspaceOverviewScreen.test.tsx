@@ -295,7 +295,7 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText(/tracked brands yet/i)).toBeInTheDocument();
   });
 
-  it("renders hero + trend + top entities with multiple tracked brands", () => {
+  it("renders hero + 6 trend cards + top entities with multiple tracked brands", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
@@ -305,9 +305,19 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText("15")).toBeInTheDocument();
     expect(screen.getByText("45%")).toBeInTheDocument();
 
-    // Trend chart series for both tracked brands.
-    expect(screen.getByTestId(`series-${acmeId}`)).toHaveTextContent("Acme");
-    expect(screen.getByTestId(`series-${betaId}`)).toHaveTextContent("Beta");
+    // All six metric cards render (no dropdown anymore).
+    expect(screen.getByTestId("trend-card-mention")).toBeInTheDocument();
+    expect(screen.getByTestId("trend-card-rec")).toBeInTheDocument();
+    expect(screen.getByTestId("trend-card-sov")).toBeInTheDocument();
+    expect(screen.getByTestId("trend-card-owned")).toBeInTheDocument();
+    expect(screen.getByTestId("trend-card-rank")).toBeInTheDocument();
+    expect(screen.getByTestId("trend-card-sentiment")).toBeInTheDocument();
+
+    // Mention rate card carries both tracked brand series + the competitor.
+    const mentionCard = screen.getByTestId("trend-card-mention");
+    expect(within(mentionCard).getByTestId(`series-${acmeId}`)).toHaveTextContent("Acme");
+    expect(within(mentionCard).getByTestId(`series-${betaId}`)).toHaveTextContent("Beta");
+    expect(within(mentionCard).getByTestId(`series-${indeedId}`)).toHaveTextContent("Indeed");
 
     // Both tracked brands carry the "You" chip in the Top Entities table.
     expect(screen.getAllByText(/^You$/)).toHaveLength(2);
@@ -328,93 +338,73 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByRole("button", { name: /brand selector/i })).toHaveTextContent("All brands");
   });
 
-  it("metric switcher exposes all six metrics", () => {
+  it("Hero tile drill-down scrolls to the matching trend card via aria-label", async () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
-    render(<WorkspaceOverviewScreen />);
-    const switcher = screen.getByRole("combobox") as HTMLSelectElement;
-    const labels = Array.from(switcher.options).map((o) => o.textContent);
-    expect(labels).toEqual([
-      "Mention rate",
-      "Recommendation rate",
-      "Share of voice",
-      "Owned citation share",
-      "Average brand rank",
-      "Sentiment",
-    ]);
+    // jsdom doesn't implement scrollIntoView — stub on prototype so the
+    // assertion can verify it was called rather than crashing.
+    const scrollSpy = vi.fn();
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollSpy,
+    });
+    try {
+      render(<WorkspaceOverviewScreen />);
+
+      const citationsTile = screen.getByRole("button", { name: /view trend by citations/i });
+      await userEvent.click(citationsTile);
+      expect(scrollSpy).toHaveBeenCalled();
+
+      const brandRateTile = screen.getByRole("button", {
+        name: /view trend by brand mention rate/i,
+      });
+      await userEvent.click(brandRateTile);
+      expect(scrollSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      // @ts-expect-error — restore by deleting the override
+      delete window.HTMLElement.prototype.scrollIntoView;
+    }
   });
 
-  it("Hero tile drill-down sets the trend metric and is accessible by aria-label", async () => {
+  it("Average brand rank card renders with reversed Y-axis (1 at top)", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    const switcher = screen.getByRole("combobox") as HTMLSelectElement;
-    expect(switcher.value).toBe("mention");
-
-    // Start from a non-default metric so the click is observable.
-    await userEvent.selectOptions(switcher, "rec");
-    expect(switcher.value).toBe("rec");
-
-    // Citations tile maps to "owned" (Owned citation share).
-    await userEvent.click(screen.getByRole("button", { name: /view trend by citations/i }));
-    expect(switcher.value).toBe("owned");
-
-    // Brand mention rate tile maps back to "mention".
-    await userEvent.click(
-      screen.getByRole("button", { name: /view trend by brand mention rate/i }),
-    );
-    expect(switcher.value).toBe("mention");
-  });
-
-  it("Average brand rank renders with reversed Y-axis (1 at top)", async () => {
-    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
-    render(<WorkspaceOverviewScreen />);
-
-    await userEvent.selectOptions(screen.getByRole("combobox"), "rank");
-
-    const chart = screen.getByTestId("line-chart");
+    const rankCard = screen.getByTestId("trend-card-rank");
+    const chart = within(rankCard).getByTestId("line-chart");
     expect(chart).toHaveAttribute("data-reverse-y", "true");
     expect(chart).toHaveAttribute("data-min", "1");
-    // Only Acme has a rank series in the fixture; Beta's BrandMentionRate
-    // line drops out when the rank metric is selected.
-    expect(screen.getByTestId(`series-${acmeId}`)).toHaveTextContent("2.4");
-    expect(screen.queryByTestId(`series-${betaId}`)).not.toBeInTheDocument();
-    // Competitors don't have brand-only metrics; Indeed drops out too.
-    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
+    // Only Acme has a rank series.
+    expect(within(rankCard).getByTestId(`series-${acmeId}`)).toHaveTextContent("2.4");
+    expect(within(rankCard).queryByTestId(`series-${betaId}`)).not.toBeInTheDocument();
+    expect(within(rankCard).queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
   });
 
-  it("Sentiment renders a colored-markers timeline instead of the line chart", async () => {
+  it("Sentiment card renders a colored-markers timeline (no line chart)", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    await userEvent.selectOptions(screen.getByRole("combobox"), "sentiment");
-
-    // Line chart is replaced — no line-chart testid in the sentiment view.
-    expect(screen.queryByTestId("line-chart")).not.toBeInTheDocument();
-
-    // The timeline carries one row per series with the entity name on the
-    // left + the legend at the bottom listing every sentiment category.
-    expect(screen.getByText("Acme", { selector: "div" })).toBeInTheDocument();
-    expect(screen.getByText("Positive", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("Negative", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("Neutral", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("Mixed", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByText("Unknown", { selector: "span" })).toBeInTheDocument();
+    const sentimentCard = screen.getByTestId("trend-card-sentiment");
+    expect(within(sentimentCard).queryByTestId("line-chart")).not.toBeInTheDocument();
+    // Timeline legend names every sentiment category.
+    for (const label of ["Positive", "Neutral", "Mixed", "Negative", "Unknown"]) {
+      expect(within(sentimentCard).getByText(label)).toBeInTheDocument();
+    }
   });
 
-  it("Share of voice + Owned citation share are brand-only (no competitor lines)", async () => {
+  it("Share of voice + Owned citation share cards are brand-only (no competitor lines)", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    await userEvent.selectOptions(screen.getByRole("combobox"), "sov");
-    expect(screen.getByTestId(`series-${acmeId}`)).toBeInTheDocument();
-    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
+    const sovCard = screen.getByTestId("trend-card-sov");
+    expect(within(sovCard).getByTestId(`series-${acmeId}`)).toBeInTheDocument();
+    expect(within(sovCard).queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByRole("combobox"), "owned");
-    expect(screen.getByTestId(`series-${acmeId}`)).toBeInTheDocument();
-    expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
+    const ownedCard = screen.getByTestId("trend-card-owned");
+    expect(within(ownedCard).getByTestId(`series-${acmeId}`)).toBeInTheDocument();
+    expect(within(ownedCard).queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
   });
 
-  it("deselecting an entity drops its series + table row", async () => {
+  it("deselecting an entity drops its series from every trend card + table row", async () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
@@ -422,11 +412,10 @@ describe("WorkspaceOverviewScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Indeed" }));
 
-    // Series for Indeed is dropped from the chart.
+    // Indeed series is dropped from every trend card it appeared in
+    // (the Mention rate card was the only one with a competitor line).
     expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
     // Indeed's row in Top Entities is also gone — Acme + Beta remain.
-    // (The selector still lists "Indeed" inside the open dropdown panel; we
-    // look specifically for it in the table by checking the visible row text.)
     const table = screen.getByRole("table");
     expect(within(table).queryByText("Indeed")).not.toBeInTheDocument();
   });
@@ -575,11 +564,6 @@ describe("WorkspaceOverviewScreen", () => {
           { sentiment: "Positive", count: 2, share: 0.66 },
           { sentiment: "Negative", count: 1, share: 0.33 },
         ],
-        activityHeatmap: {
-          rows: ["ChatGPT"],
-          columns: ["May 1", "May 8"],
-          cells: [{ row: "ChatGPT", column: "May 1", value: 2 }],
-        },
         topicHeatmap: {
           rows: ["Architecture"],
           columns: ["ChatGPT"],
@@ -600,9 +584,6 @@ describe("WorkspaceOverviewScreen", () => {
             mentionCount: 3,
             citationCount: 5,
             brandSentiment: "Positive",
-            trackerId: "t1",
-            trackerName: "Acme Tracker",
-            brandId: acmeId,
             brandName: "Acme",
           },
         ],
@@ -615,7 +596,8 @@ describe("WorkspaceOverviewScreen", () => {
     // Section titles render.
     expect(screen.getByText(/mentions by platform/i)).toBeInTheDocument();
     expect(screen.getByText(/brand sentiment distribution/i)).toBeInTheDocument();
-    expect(screen.getByText(/activity heatmap/i)).toBeInTheDocument();
+    // Activity heatmap is intentionally removed from /overview.
+    expect(screen.queryByText(/activity heatmap/i)).not.toBeInTheDocument();
     // Card title is exactly "Topic coverage". The new subtitle now
     // includes the phrase "per-topic coverage" too — match the title.
     expect(screen.getByText(/^topic coverage$/i)).toBeInTheDocument();
@@ -627,7 +609,8 @@ describe("WorkspaceOverviewScreen", () => {
     const dialog = screen.getByRole("dialog");
     // Drawer surfaces brand + tracker labels.
     expect(within(dialog).getByText(/best architecture firms/i)).toBeInTheDocument();
-    expect(within(dialog).getByText("Acme Tracker")).toBeInTheDocument();
+    // Drawer no longer surfaces a tracker name — brand chip is enough.
+    expect(within(dialog).queryByText("Acme Tracker")).not.toBeInTheDocument();
     expect(within(dialog).getAllByText("Acme").length).toBeGreaterThan(0);
 
     // Close drawer.

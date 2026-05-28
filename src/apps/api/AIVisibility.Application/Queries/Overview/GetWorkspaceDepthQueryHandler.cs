@@ -10,7 +10,6 @@ public class GetWorkspaceDepthQueryHandler
 {
     private const int DefaultDays = 30;
     private const int MaxDays = 365;
-    private const int ActivityHeatmapMaxDays = 90;
     private const int RecentChatLimit = 10;
     private const int AnswerSnippetMaxLength = 200;
     private const int TopicHeatmapLimit = 12;
@@ -137,7 +136,6 @@ public class GetWorkspaceDepthQueryHandler
 
         var mentionsByPlatform = BuildMentionsByPlatform(runs, brandMentions);
         var sentimentDistribution = BuildSentimentDistribution(brandMentions);
-        var activityHeatmap = BuildActivityHeatmap(runs, scans, brandMentions, windowStart);
         var topicHeatmap = BuildTopicHeatmap(runs, promptTopics, citationCountByAnswer);
         var recentChats = BuildRecentChats(
             runs, mentionCountByAnswer, citationCountByAnswer, brandSentimentByAnswer,
@@ -149,7 +147,6 @@ public class GetWorkspaceDepthQueryHandler
             WindowStart: windowStart,
             MentionsByPlatform: mentionsByPlatform,
             SentimentDistribution: sentimentDistribution,
-            ActivityHeatmap: activityHeatmap,
             TopicHeatmap: topicHeatmap,
             RecentChats: recentChats);
     }
@@ -158,7 +155,6 @@ public class GetWorkspaceDepthQueryHandler
         new(workspaceId, days, windowStart,
             Array.Empty<PlatformMentionDto>(),
             Array.Empty<SentimentSliceDto>(),
-            new HeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<HeatmapCellDto>()),
             new TopicHeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<TopicHeatmapCellDto>()),
             Array.Empty<WorkspaceRecentChatDto>());
 
@@ -231,75 +227,6 @@ public class GetWorkspaceDepthQueryHandler
         "Unknown" => 4,
         _ => 99,
     };
-
-    // -----------------------------------------------------------------
-    // Activity heatmap — platform rows × scan-day cols across workspace
-    // Hard-capped at 90 days regardless of `days` per v3 plan §D32.
-    // -----------------------------------------------------------------
-
-    private static HeatmapDto BuildActivityHeatmap(
-        IReadOnlyList<RunRow> runs,
-        IReadOnlyList<ScanRow> scans,
-        IReadOnlyList<BrandMentionRow> brandMentions,
-        DateTime windowStart)
-    {
-        var heatmapWindowStart = DateTime.UtcNow.AddDays(-ActivityHeatmapMaxDays);
-        if (heatmapWindowStart < windowStart) heatmapWindowStart = windowStart;
-
-        var visibleScans = scans
-            .Where(s => s.StartedAt >= heatmapWindowStart)
-            .OrderBy(s => s.StartedAt)
-            .ToList();
-        if (visibleScans.Count == 0)
-        {
-            return new HeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<HeatmapCellDto>());
-        }
-
-        var visibleScanIds = visibleScans.Select(s => s.Id).ToHashSet();
-        var visibleRuns = runs.Where(r => visibleScanIds.Contains(r.ScanRunId)).ToList();
-        var mentionAnswerIds = brandMentions.Select(m => m.AIAnswerId).ToHashSet();
-
-        // Column labels by scan-day — multiple scans on the same day are
-        // suffixed (#1, #2…) so each scan still gets its own column.
-        var rawLabels = visibleScans
-            .Select((s, i) => new { s.Id, s.StartedAt, Label = s.StartedAt.ToString("MMM d"), Index = i })
-            .ToList();
-        var labelByScanId = rawLabels
-            .GroupBy(s => s.Label)
-            .SelectMany(g => g.Count() == 1
-                ? g.Select(s => (s.Id, Label: s.Label))
-                : g.Select((s, n) => (s.Id, Label: $"{s.Label} #{n + 1}")))
-            .ToDictionary(t => t.Id, t => t.Label);
-
-        var platforms = visibleRuns
-            .GroupBy(r => new { r.PlatformId, r.PlatformName, r.PlatformDisplayOrder })
-            .OrderBy(g => g.Key.PlatformDisplayOrder)
-            .ThenBy(g => g.Key.PlatformName, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.Key.PlatformName)
-            .ToList();
-        var columns = visibleScans
-            .Select(s => labelByScanId[s.Id])
-            .ToList();
-
-        var cells = new List<HeatmapCellDto>();
-        foreach (var platformGroup in visibleRuns.GroupBy(r => new { r.PlatformId, r.PlatformName }))
-        {
-            foreach (var scanGroup in platformGroup.GroupBy(r => r.ScanRunId))
-            {
-                if (!labelByScanId.TryGetValue(scanGroup.Key, out var col)) continue;
-                int count = scanGroup
-                    .Select(r => r.AnswerId)
-                    .Distinct()
-                    .Count(id => mentionAnswerIds.Contains(id));
-                cells.Add(new HeatmapCellDto(
-                    Row: platformGroup.Key.PlatformName,
-                    Column: col,
-                    Value: count));
-            }
-        }
-
-        return new HeatmapDto(platforms, columns, cells);
-    }
 
     // -----------------------------------------------------------------
     // Topic heatmap — topics × platforms, grouped by topic NAME across brands
@@ -401,9 +328,6 @@ public class GetWorkspaceDepthQueryHandler
                     CitationCount: citationCountByAnswer.TryGetValue(r.AnswerId, out var cc) ? cc : 0,
                     BrandSentiment: brandSentimentByAnswer.TryGetValue(r.AnswerId, out var sent)
                         ? sent.ToString() : null,
-                    TrackerId: tracker.Id,
-                    TrackerName: tracker.Name,
-                    BrandId: tracker.BrandId,
                     BrandName: brandName);
             })
             .ToList();

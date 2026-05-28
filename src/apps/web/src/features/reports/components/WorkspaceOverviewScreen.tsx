@@ -26,7 +26,6 @@ import type {
   EntityMentionDto,
   EntityRateDto,
   EntityTrendSeriesDto,
-  HeatmapDto,
   TopicHeatmapDto,
   PlatformMentionDto,
   SentimentSliceDto,
@@ -116,22 +115,18 @@ const METRIC_OPTIONS: MetricOption[] = [
  */
 export function WorkspaceOverviewScreen() {
   const [days, setDays] = useState(30);
-  const [metricKey, setMetricKey] = useState(METRIC_OPTIONS[0].value);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [allSelectedInit, setAllSelectedInit] = useState(false);
-  const trendChartRef = useRef<HTMLDivElement>(null);
+  // Per-metric refs let hero tiles scroll to the matching trend card.
+  const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { data, isLoading, isError, error, refetch } = useWorkspaceOverview(days);
   const copy = REPORTS_COPY.overview;
 
-  /**
-   * Hero-tile drill-down. Clicking a hero tile sets the trend metric to
-   * the closest analogue and scrolls the trend chart into view (when
-   * the host supports it — jsdom doesn't).
-   */
+  /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
   function handleHeroDrillDown(metric: string) {
-    setMetricKey(metric);
-    if (typeof trendChartRef.current?.scrollIntoView === "function") {
-      trendChartRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = chartRefs.current[metric];
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
@@ -178,8 +173,6 @@ export function WorkspaceOverviewScreen() {
       <ComparisonControlsRow
         days={days}
         onDaysChange={setDays}
-        metricKey={metricKey}
-        onMetricKeyChange={setMetricKey}
         trackedBrands={trackedBrandsEntities}
         competitors={competitorEntities}
         selectedKeys={selectedKeys}
@@ -195,9 +188,13 @@ export function WorkspaceOverviewScreen() {
       ) : (
         <>
           <HeroRow hero={data.hero} onDrillDown={handleHeroDrillDown} />
-          <div ref={trendChartRef} className="scroll-mt-4">
-            <TrendChartCard data={data} metricKey={metricKey} selectedKeys={selectedKeys} />
-          </div>
+          <TrendChartsGrid
+            data={data}
+            selectedKeys={selectedKeys}
+            registerRef={(metric, el) => {
+              chartRefs.current[metric] = el;
+            }}
+          />
           <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
 
           {/* Slice B competitive sections — fetched separately so an
@@ -237,10 +234,8 @@ function CompetitiveSections({
         <MentionDistributionCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
       </div>
       <CompetitiveGapGroupsCard groups={data.competitiveGaps} selectedKeys={selectedKeys} />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <TopCitationDomainsCard rows={data.topDomains} />
-        <DomainTypesCard rows={data.domainTypes} />
-      </div>
+      <TopCitationDomainsCard rows={data.topDomains} />
+      <DomainTypesCard rows={data.domainTypes} />
     </>
   );
 }
@@ -581,8 +576,6 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 interface ComparisonControlsRowProps {
   days: number;
   onDaysChange: (days: number) => void;
-  metricKey: string;
-  onMetricKeyChange: (key: string) => void;
   trackedBrands: readonly BrandSelectorEntity[];
   competitors: readonly BrandSelectorEntity[];
   selectedKeys: readonly string[];
@@ -592,8 +585,6 @@ interface ComparisonControlsRowProps {
 function ComparisonControlsRow({
   days,
   onDaysChange,
-  metricKey,
-  onMetricKeyChange,
   trackedBrands,
   competitors,
   selectedKeys,
@@ -608,21 +599,6 @@ function ComparisonControlsRow({
         selectedKeys={selectedKeys}
         onChange={onSelectedKeysChange}
       />
-      <div className="ml-auto flex items-center gap-2 text-xs text-neutral-500">
-        <label htmlFor="metric-switcher">Metric:</label>
-        <select
-          id="metric-switcher"
-          value={metricKey}
-          onChange={(e) => onMetricKeyChange(e.target.value)}
-          className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm text-neutral-700 shadow-sm"
-        >
-          {METRIC_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
     </div>
   );
 }
@@ -729,20 +705,44 @@ function HeroTile({
 }
 
 // ---------------------------------------------------------------------------
-// Trend chart card
+// Trend charts grid — one card per metric (no dropdown). 2-col on lg+.
 // ---------------------------------------------------------------------------
 
-interface TrendChartCardProps {
+interface TrendChartsGridProps {
   data: WorkspaceOverviewDto;
-  metricKey: string;
   selectedKeys: readonly string[];
+  /** Registers per-metric DOM refs so the hero-tile drill-down can scroll. */
+  registerRef: (metricValue: string, el: HTMLDivElement | null) => void;
 }
 
-function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) {
-  const metric = METRIC_OPTIONS.find((m) => m.value === metricKey) ?? METRIC_OPTIONS[0];
+function TrendChartsGrid({ data, selectedKeys, registerRef }: TrendChartsGridProps) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {METRIC_OPTIONS.map((metric) => (
+        <div
+          key={metric.value}
+          ref={(el) => registerRef(metric.value, el)}
+          className="scroll-mt-4"
+          data-testid={`trend-card-${metric.value}`}
+        >
+          <TrendCard data={data} metric={metric} selectedKeys={selectedKeys} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TrendCard({
+  data,
+  metric,
+  selectedKeys,
+}: {
+  data: WorkspaceOverviewDto;
+  metric: MetricOption;
+  selectedKeys: readonly string[];
+}) {
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
 
-  // Filter once and apply to the right renderer below.
   const filteredSeries = useMemo(() => {
     return data.series.filter((s) => {
       const k = `${s.entityType}:${s.entityId}`;
@@ -756,18 +756,16 @@ function TrendChartCard({ data, metricKey, selectedKeys }: TrendChartCardProps) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Visibility over time</CardTitle>
+        <CardTitle>{metric.label}</CardTitle>
       </CardHeader>
       <CardContent>
-        {
-          filteredSeries.length === 0 ? (
-            <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
-          ) : metric.format === "sentiment" ? (
-            <SentimentTimeline series={filteredSeries} />
-          ) : (
-            <NumericTrendChart series={filteredSeries} format={metric.format} />
-          ) /* sentiment branch above narrows; NumericTrendChart sees only pct|rank */
-        }
+        {filteredSeries.length === 0 ? (
+          <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
+        ) : metric.format === "sentiment" ? (
+          <SentimentTimeline series={filteredSeries} />
+        ) : (
+          <NumericTrendChart series={filteredSeries} format={metric.format} />
+        )}
       </CardContent>
     </Card>
   );
@@ -1076,7 +1074,6 @@ function DepthSections({ days }: { days: number }) {
         <MentionsByPlatformCard rows={data.mentionsByPlatform} />
         <SentimentDistributionCard slices={data.sentimentDistribution} />
       </div>
-      <ActivityHeatmapCard heatmap={data.activityHeatmap} />
       <TopicHeatmapCard heatmap={data.topicHeatmap} />
       <RecentChatsCard chats={data.recentChats} onSelect={setSelectedChat} />
       <RecentChatDrawer chat={selectedChat} onClose={() => setSelectedChat(null)} />
@@ -1128,33 +1125,6 @@ function SentimentDistributionCard({ slices }: { slices: readonly SentimentSlice
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
           <DonutChartWrapper data={data} />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActivityHeatmapCard({ heatmap }: { heatmap: HeatmapDto }) {
-  const copy = REPORTS_COPY.overview.activity;
-  const data: HeatmapData = useMemo(
-    () => ({
-      rows: [...heatmap.rows],
-      cols: [...heatmap.columns],
-      cells: heatmap.cells.map((c) => ({ row: c.row, col: c.column, value: c.value })),
-    }),
-    [heatmap],
-  );
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-        <p className="text-sm text-neutral-500">{copy.subtitle}</p>
-      </CardHeader>
-      <CardContent>
-        {data.rows.length === 0 || data.cols.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <HeatmapWrapper data={data} />
         )}
       </CardContent>
     </Card>
@@ -1336,7 +1306,6 @@ function RecentChatDrawer({
           </div>
           <div className="flex flex-wrap gap-3">
             <DetailField label={copy.brand} value={chat.brandName} />
-            <DetailField label={copy.tracker} value={chat.trackerName} />
             <DetailField label={copy.platform} value={chat.platformName} />
             <DetailField label={copy.lens} value={chat.lensName} />
             <DetailField label={copy.captured} value={formatAbsoluteTime(chat.capturedAt)} />

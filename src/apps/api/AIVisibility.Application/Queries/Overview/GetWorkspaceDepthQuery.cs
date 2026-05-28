@@ -3,13 +3,10 @@ using MediatR;
 namespace AIVisibility.Application.Queries.Overview;
 
 /// <summary>
-/// Phase 4 v3 Slice C — workspace-scoped depth read model. Returns
-/// per-platform brand metrics, brand sentiment distribution, activity
-/// heatmap (platform × scan-day cells, hard-capped at 90 days per v3
-/// plan §D32), topic coverage heatmap (top-12 topics × platforms with
-/// topics grouped by name across brands per §D17), and the last N
-/// AIAnswers across the workspace (interleaved newest-first, with
-/// tracker + brand context per §D18).
+/// Workspace-scoped depth read model — per-platform brand metrics,
+/// sentiment distribution, topic-coverage heatmap (topics × platforms
+/// with topics grouped by name across brands), and the last N AIAnswers
+/// across the workspace (interleaved newest-first).
 /// </summary>
 public record GetWorkspaceDepthQuery(int Days) : IRequest<WorkspaceDepthDto>;
 
@@ -19,7 +16,6 @@ public sealed record WorkspaceDepthDto(
     DateTime WindowStart,
     IReadOnlyList<PlatformMentionDto> MentionsByPlatform,
     IReadOnlyList<SentimentSliceDto> SentimentDistribution,
-    HeatmapDto ActivityHeatmap,
     /// <summary>
     /// Topic × platform heatmap. Each cell carries both answer count
     /// and citation count so the FE can toggle which metric to render
@@ -45,9 +41,11 @@ public sealed record TopicHeatmapCellDto(
     int CitationCount);
 
 /// <summary>
-/// Workspace-scoped recent-chat row. Adds tracker + brand identity to
-/// the per-tracker shape so the multi-tracker UI can label each card
-/// with which surface produced it.
+/// Workspace-scoped recent-chat row. Brand name is carried for the
+/// in-list chip so the multi-tracker UI can label each card with the
+/// owning brand. Tracker identity is intentionally omitted — surfacing
+/// a tracker name (or id) below brand + platform + lens added clutter
+/// without insight.
 /// </summary>
 public sealed record WorkspaceRecentChatDto(
     Guid AnswerId,
@@ -63,7 +61,4 @@ public sealed record WorkspaceRecentChatDto(
     int MentionCount,
     int CitationCount,
     string? BrandSentiment,
-    Guid TrackerId,
-    string TrackerName,
-    Guid BrandId,
     string BrandName);

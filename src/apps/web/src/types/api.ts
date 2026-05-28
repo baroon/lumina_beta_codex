@@ -779,7 +779,6 @@ export interface WorkspaceDepthDto {
   windowStart: string;
   mentionsByPlatform: PlatformMentionDto[];
   sentimentDistribution: SentimentSliceDto[];
-  activityHeatmap: HeatmapDto;
   topicHeatmap: TopicHeatmapDto;
   recentChats: WorkspaceRecentChatDto[];
 }
@@ -803,8 +802,9 @@ export interface TopicHeatmapCellDto {
 }
 
 /**
- * Workspace recent-chat row — adds tracker + brand identity to the v2
- * RecentChatDto shape so the multi-tracker UI can label each card.
+ * Workspace recent-chat row. Brand name is carried for the in-list chip
+ * so the multi-tracker UI can label each card with the owning brand.
+ * Tracker identity is intentionally omitted.
  */
 export interface WorkspaceRecentChatDto {
   answerId: string;
@@ -820,8 +820,5 @@ export interface WorkspaceRecentChatDto {
   mentionCount: number;
   citationCount: number;
   brandSentiment: string | null;
-  trackerId: string;
-  trackerName: string;
-  brandId: string;
   brandName: string;
 }
