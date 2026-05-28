@@ -10,6 +10,7 @@ using AIVisibility.Infrastructure.Providers.Gemini;
 using AIVisibility.Infrastructure.Providers.OpenAi;
 using AIVisibility.Infrastructure.Providers.OpenAiCompatible;
 using AIVisibility.Infrastructure.Storage;
+using AIVisibility.Infrastructure.Workspace;
 using Azure.Storage.Blobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,11 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+        // Workspace context — Phase 4 v3 boundary. Default impl returns
+        // Guid.Empty (single implicit workspace); a real implementation drops
+        // in when auth + multi-tenancy land. See IWorkspaceContext.
+        services.AddScoped<IWorkspaceContext, DefaultWorkspaceContext>();
 
         // Azure Blob Storage
         var storageConnectionString = configuration.GetSection("AzureStorage:ConnectionString").Value

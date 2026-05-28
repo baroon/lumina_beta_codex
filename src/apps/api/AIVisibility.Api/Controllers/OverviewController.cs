@@ -1,0 +1,35 @@
+using AIVisibility.Application.Queries.Overview;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AIVisibility.Api.Controllers;
+
+/// <summary>
+/// Phase 4 v3 Slice A — workspace-scoped overview endpoint. Returns the
+/// hero counts + per-entity trend series + Top Entities table aggregated
+/// across every TrackerConfiguration owned by the current workspace's
+/// Brands. Slices B (competitive) and C (depth) layer in further
+/// sections on sibling endpoints.
+/// </summary>
+[ApiController]
+[Route("api/overview")]
+public class OverviewController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public OverviewController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(WorkspaceOverviewDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Get(
+        [FromQuery] int days = 30,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new GetWorkspaceOverviewQuery(days), cancellationToken);
+        return Ok(result);
+    }
+}
