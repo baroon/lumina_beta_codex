@@ -19,4 +19,12 @@ describe("Sidebar", () => {
     const link = await screen.findByRole("link", { name: new RegExp(APP_COPY.nav.trackers, "i") });
     expect(link).toHaveAttribute("href", "/trackers");
   });
+
+  it("renders 'Brands' nav link pointing at the index route", async () => {
+    renderWithRouter(<Sidebar />);
+    const link = await screen.findByRole("link", {
+      name: new RegExp(`^${APP_COPY.nav.brands}$`, "i"),
+    });
+    expect(link).toHaveAttribute("href", "/");
+  });
 });
