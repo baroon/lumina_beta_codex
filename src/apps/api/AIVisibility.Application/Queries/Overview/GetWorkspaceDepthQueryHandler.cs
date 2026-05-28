@@ -138,7 +138,7 @@ public class GetWorkspaceDepthQueryHandler
         var mentionsByPlatform = BuildMentionsByPlatform(runs, brandMentions);
         var sentimentDistribution = BuildSentimentDistribution(brandMentions);
         var activityHeatmap = BuildActivityHeatmap(runs, scans, brandMentions, windowStart);
-        var topicHeatmap = BuildTopicHeatmap(runs, promptTopics);
+        var topicHeatmap = BuildTopicHeatmap(runs, promptTopics, citationCountByAnswer);
         var recentChats = BuildRecentChats(
             runs, mentionCountByAnswer, citationCountByAnswer, brandSentimentByAnswer,
             trackerById, brandNameById);
@@ -159,7 +159,7 @@ public class GetWorkspaceDepthQueryHandler
             Array.Empty<PlatformMentionDto>(),
             Array.Empty<SentimentSliceDto>(),
             new HeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<HeatmapCellDto>()),
-            new HeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<HeatmapCellDto>()),
+            new TopicHeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<TopicHeatmapCellDto>()),
             Array.Empty<WorkspaceRecentChatDto>());
 
     // -----------------------------------------------------------------
@@ -305,32 +305,42 @@ public class GetWorkspaceDepthQueryHandler
     // Topic heatmap — topics × platforms, grouped by topic NAME across brands
     // -----------------------------------------------------------------
 
-    private static HeatmapDto BuildTopicHeatmap(
-        IReadOnlyList<RunRow> runs, IReadOnlyList<PromptTopicRow> promptTopics)
+    private static TopicHeatmapDto BuildTopicHeatmap(
+        IReadOnlyList<RunRow> runs,
+        IReadOnlyList<PromptTopicRow> promptTopics,
+        IReadOnlyDictionary<Guid, int> citationCountByAnswer)
     {
         var topicsByPrompt = promptTopics
             .GroupBy(pt => pt.PromptId)
             .ToDictionary(g => g.Key, g => g.Select(pt => pt.TopicName).Distinct().ToList());
 
-        var counts = new Dictionary<(string Topic, string Platform), int>();
+        // Walk every run and tally both answer count + citation count per
+        // (topic, platform) cell. A single run carries one answer and its
+        // total citations; both numbers accrue to every topic the prompt
+        // was tagged with.
+        var counts = new Dictionary<(string Topic, string Platform), (int Answers, int Citations)>();
         foreach (var run in runs)
         {
             if (!topicsByPrompt.TryGetValue(run.PromptId, out var topics)) continue;
+            var citations = citationCountByAnswer.TryGetValue(run.AnswerId, out var cc) ? cc : 0;
             foreach (var topicName in topics)
             {
                 var key = (topicName, run.PlatformName);
                 counts.TryGetValue(key, out var cur);
-                counts[key] = cur + 1;
+                counts[key] = (cur.Answers + 1, cur.Citations + citations);
             }
         }
         if (counts.Count == 0)
         {
-            return new HeatmapDto(Array.Empty<string>(), Array.Empty<string>(), Array.Empty<HeatmapCellDto>());
+            return new TopicHeatmapDto(
+                Array.Empty<string>(), Array.Empty<string>(), Array.Empty<TopicHeatmapCellDto>());
         }
 
+        // Topic ranking stays on AnswerCount so the row set doesn't shuffle
+        // when the FE toggles metric.
         var topicTotals = counts
             .GroupBy(kvp => kvp.Key.Topic)
-            .Select(g => new { Topic = g.Key, Total = g.Sum(kvp => kvp.Value) })
+            .Select(g => new { Topic = g.Key, Total = g.Sum(kvp => kvp.Value.Answers) })
             .OrderByDescending(t => t.Total)
             .ThenBy(t => t.Topic, StringComparer.OrdinalIgnoreCase)
             .Take(TopicHeatmapLimit)
@@ -347,10 +357,14 @@ public class GetWorkspaceDepthQueryHandler
 
         var cells = counts
             .Where(kvp => topicRowSet.Contains(kvp.Key.Topic))
-            .Select(kvp => new HeatmapCellDto(kvp.Key.Topic, kvp.Key.Platform, kvp.Value))
+            .Select(kvp => new TopicHeatmapCellDto(
+                Row: kvp.Key.Topic,
+                Column: kvp.Key.Platform,
+                AnswerCount: kvp.Value.Answers,
+                CitationCount: kvp.Value.Citations))
             .ToList();
 
-        return new HeatmapDto(topicRows, platformCols, cells);
+        return new TopicHeatmapDto(topicRows, platformCols, cells);
     }
 
     // -----------------------------------------------------------------

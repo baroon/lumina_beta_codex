@@ -20,8 +20,29 @@ public sealed record WorkspaceDepthDto(
     IReadOnlyList<PlatformMentionDto> MentionsByPlatform,
     IReadOnlyList<SentimentSliceDto> SentimentDistribution,
     HeatmapDto ActivityHeatmap,
-    HeatmapDto TopicHeatmap,
+    /// <summary>
+    /// Topic × platform heatmap. Each cell carries both answer count
+    /// and citation count so the FE can toggle which metric to render
+    /// without a refetch. Row ranking is by total AnswerCount desc
+    /// (capped at 12 topics).
+    /// </summary>
+    TopicHeatmapDto TopicHeatmap,
     IReadOnlyList<WorkspaceRecentChatDto> RecentChats);
+
+public sealed record TopicHeatmapDto(
+    IReadOnlyList<string> Rows,
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<TopicHeatmapCellDto> Cells);
+
+public sealed record TopicHeatmapCellDto(
+    /// <summary>Topic name.</summary>
+    string Row,
+    /// <summary>Platform name.</summary>
+    string Column,
+    /// <summary>Number of answers whose prompt was tagged with this topic on this platform.</summary>
+    int AnswerCount,
+    /// <summary>Total citation count across those answers.</summary>
+    int CitationCount);
 
 /// <summary>
 /// Workspace-scoped recent-chat row. Adds tracker + brand identity to

@@ -207,10 +207,52 @@ public class GetWorkspaceDepthQueryHandlerTests
         // OpenAI cell: Acme's openai run (1 answer) + Beta's openai run (1) = 2.
         // Gemini cell: Acme's gemini run (1) = 1.
         var openAICell = result.TopicHeatmap.Cells.Single(c => c.Row == "Architecture" && c.Column == "ChatGPT");
-        openAICell.Value.Should().Be(2);
+        openAICell.AnswerCount.Should().Be(2);
         var geminiCell = result.TopicHeatmap.Cells.Single(c => c.Row == "Architecture" && c.Column == "Gemini");
-        geminiCell.Value.Should().Be(1);
+        geminiCell.AnswerCount.Should().Be(1);
+        // Fixture seeds no Citations; citation count is 0 on every cell.
+        result.TopicHeatmap.Cells.Should().OnlyContain(c => c.CitationCount == 0);
     }
+
+    [Fact]
+    public async Task TopicHeatmap_CitationCount_SumsAcrossAnswersInTheCell()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+        // Add 3 citations to Acme's OpenAI answer + 1 to Acme's Gemini
+        // answer + 2 to Beta's OpenAI answer. Architecture × ChatGPT
+        // citation total = 3 (Acme) + 2 (Beta) = 5; × Gemini = 1.
+        var source = new Source
+        {
+            Id = Guid.NewGuid(), SourceName = "X", Domain = "x.com",
+            NormalizedDomain = "x.com", CreatedAt = DateTime.UtcNow,
+        };
+        ctx.Sources.Add(source);
+        for (var i = 0; i < 3; i++)
+            ctx.Citations.Add(NewCitation(seed.AcmeAnswerOpenAIId, source.Id));
+        ctx.Citations.Add(NewCitation(seed.AcmeAnswerGeminiId, source.Id));
+        for (var i = 0; i < 2; i++)
+            ctx.Citations.Add(NewCitation(seed.BetaAnswerOpenAIId, source.Id));
+        ctx.SaveChanges();
+
+        var sut = NewHandler(ctx);
+        var result = await sut.Handle(new GetWorkspaceDepthQuery(30), CancellationToken.None);
+
+        var openAICell = result.TopicHeatmap.Cells.Single(c => c.Row == "Architecture" && c.Column == "ChatGPT");
+        openAICell.CitationCount.Should().Be(5);
+        var geminiCell = result.TopicHeatmap.Cells.Single(c => c.Row == "Architecture" && c.Column == "Gemini");
+        geminiCell.CitationCount.Should().Be(1);
+
+        // Answer counts stay where they were — toggle should not reshuffle rows.
+        openAICell.AnswerCount.Should().Be(2);
+        geminiCell.AnswerCount.Should().Be(1);
+    }
+
+    private static Citation NewCitation(Guid answerId, Guid sourceId) => new()
+    {
+        Id = Guid.NewGuid(), AIAnswerId = answerId, SourceId = sourceId,
+        CitationType = CitationType.ExplicitUrl, CreatedAt = DateTime.UtcNow,
+    };
 
     [Fact]
     public async Task RecentChats_NewestFirstAcrossTrackers_WithTrackerAndBrandContext()
