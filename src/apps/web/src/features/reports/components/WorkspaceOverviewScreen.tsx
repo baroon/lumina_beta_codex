@@ -1,20 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Globe, Minus } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
+import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
+import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
 import {
   LineChartWrapper,
   type LineChartPoint,
   type LineChartSeries,
 } from "@/components/charts/LineChartWrapper";
+import { RadarChartWrapper, type RadarChartDatum } from "@/components/charts/RadarChartWrapper";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { BrandSelector, type BrandSelectorEntity } from "@/components/molecules/BrandSelector";
 import { REPORTS_COPY } from "@/content/reports";
+import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { cn } from "@/lib/utils";
 import type {
+  BrandCompetitiveGapGroupDto,
+  CompetitiveGapDto,
+  DomainRowDto,
+  DomainTypeShareDto,
+  EntityMentionDto,
+  EntityRateDto,
   EntityTrendSeriesDto,
   WorkspaceHeroDto,
   WorkspaceOverviewDto,
@@ -129,9 +139,375 @@ export function WorkspaceOverviewScreen() {
           <HeroRow hero={data.hero} />
           <TrendChartCard data={data} metricKey={metricKey} selectedKeys={selectedKeys} />
           <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
+
+          {/* Slice B competitive sections — fetched separately so an
+              aggregation failure in one doesn't blank the whole page. */}
+          <CompetitiveSections days={days} selectedKeys={selectedKeys} />
         </>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Slice B sections — fetched from /api/overview/competitive
+// ---------------------------------------------------------------------------
+
+function CompetitiveSections({
+  days,
+  selectedKeys,
+}: {
+  days: number;
+  selectedKeys: readonly string[];
+}) {
+  const { data, isLoading, isError } = useWorkspaceCompetitive(days);
+  if (isLoading || isError || !data) return null;
+
+  return (
+    <>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ShareOfVoiceCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
+        <RecommendationRateCard rates={data.recommendationRates} selectedKeys={selectedKeys} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BrandVsCompetitorCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
+        <MentionDistributionCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
+      </div>
+      <CompetitiveGapGroupsCard groups={data.competitiveGaps} selectedKeys={selectedKeys} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TopCitationDomainsCard rows={data.topDomains} />
+        <DomainTypesCard rows={data.domainTypes} />
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share of Voice donut — recomputes denominator from selected entities
+// ---------------------------------------------------------------------------
+
+function ShareOfVoiceCard({
+  mentions,
+  selectedKeys,
+}: {
+  mentions: readonly EntityMentionDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.sov;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+
+  const filtered = mentions
+    .filter((m) => selectedSet.has(`${m.entityType}:${m.entityId}`))
+    .filter((m) => m.mentionCount > 0);
+  const total = filtered.reduce((sum, m) => sum + m.mentionCount, 0);
+
+  if (total === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const slices: DonutChartDatum[] = filtered.map((m, i) => ({
+    id: `${m.entityType}:${m.entityId}`,
+    label: m.name,
+    value: m.mentionCount,
+    color: entityColor(m.isTrackedBrand, i),
+  }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DonutChartWrapper
+          data={slices}
+          formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
+          height={260}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation rate by entity bar — filtered, counts not shares
+// ---------------------------------------------------------------------------
+
+function RecommendationRateCard({
+  rates,
+  selectedKeys,
+}: {
+  rates: readonly EntityRateDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.recommendationRate;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+
+  const data: BarChartDatum[] = rates
+    .filter((r) => selectedSet.has(`${r.entityType}:${r.entityId}`))
+    .filter((r) => r.recommendationRate != null)
+    .map((r) => ({ label: r.name, value: r.recommendationRate ?? 0 }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        ) : (
+          <BarChartWrapper
+            data={data}
+            maxValue={1}
+            valueAxisLabel={copy.axisLabel}
+            formatValue={(v) => `${Math.round(v * 100)}%`}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Brand vs Competitor mentions bar — filtered, raw counts
+// ---------------------------------------------------------------------------
+
+function BrandVsCompetitorCard({
+  mentions,
+  selectedKeys,
+}: {
+  mentions: readonly EntityMentionDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.mentions;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+
+  const data: BarChartDatum[] = mentions
+    .filter((m) => selectedSet.has(`${m.entityType}:${m.entityId}`))
+    .filter((m) => m.mentionCount > 0)
+    .map((m) => ({ label: m.name, value: m.mentionCount }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.brandVsCompetitor}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        ) : (
+          <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mention distribution radar — filtered
+// ---------------------------------------------------------------------------
+
+function MentionDistributionCard({
+  mentions,
+  selectedKeys,
+}: {
+  mentions: readonly EntityMentionDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.mentions;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+
+  const data: RadarChartDatum[] = mentions
+    .filter((m) => selectedSet.has(`${m.entityType}:${m.entityId}`))
+    .filter((m) => m.mentionCount > 0)
+    .map((m) => ({ axis: m.name, value: m.mentionCount }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.distribution}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        ) : (
+          <RadarChartWrapper data={data} />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Competitive gap groups (one section per tracked brand)
+// ---------------------------------------------------------------------------
+
+function CompetitiveGapGroupsCard({
+  groups,
+  selectedKeys,
+}: {
+  groups: readonly BrandCompetitiveGapGroupDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.competitiveGap;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+
+  // Filter each group's competitor list to those selected; drop groups
+  // whose tracked brand is itself deselected.
+  const visibleGroups = groups
+    .filter((g) => selectedSet.has(`Brand:${g.trackedBrandId}`))
+    .map((g) => ({
+      ...g,
+      gaps: g.gaps.filter((gap) => selectedSet.has(`Competitor:${gap.competitorId}`)),
+    }))
+    .filter((g) => g.gaps.length > 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {visibleGroups.length === 0 ? (
+          <p className="text-sm text-neutral-500">{copy.noGroups}</p>
+        ) : (
+          <div className="space-y-6">
+            {visibleGroups.map((g) => (
+              <GapBlock key={g.trackedBrandId} group={g} />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GapBlock({ group }: { group: { trackedBrandName: string; gaps: CompetitiveGapDto[] } }) {
+  const copy = REPORTS_COPY.overview.competitiveGap;
+  const data: BarChartDatum[] = group.gaps.map((g) => ({
+    label: g.competitorName,
+    value: g.mentionsGap,
+  }));
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-medium text-neutral-700">
+        {copy.perBrandLabel.replace("{brandName}", group.trackedBrandName)}
+      </h3>
+      <BarChartWrapper data={data} valueAxisLabel="Mentions gap" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Top citation domains table — workspace-wide; not filtered by selector
+// ---------------------------------------------------------------------------
+
+function TopCitationDomainsCard({ rows }: { rows: readonly DomainRowDto[] }) {
+  const copy = REPORTS_COPY.overview.topDomains;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th scope="col" className="px-3 py-2 text-left font-medium">
+                    {copy.columns.source}
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-left font-medium">
+                    {copy.columns.domain}
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-left font-medium">
+                    {copy.columns.type}
+                  </th>
+                  <th scope="col" className="px-3 py-2 text-right font-medium">
+                    {copy.columns.citations}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {rows.map((r) => (
+                  <tr key={r.sourceId} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2 font-medium text-neutral-900">{r.sourceName}</td>
+                    <td className="px-3 py-2 text-neutral-600">
+                      <span className="inline-flex items-center gap-1">
+                        <Globe className="h-3 w-3 text-neutral-400" aria-hidden="true" />
+                        {r.normalizedDomain ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {r.sourceType}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.citationCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Domain types donut — workspace-wide; not filtered by selector
+// ---------------------------------------------------------------------------
+
+function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
+  const copy = REPORTS_COPY.overview.domainTypes;
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{copy.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-neutral-500">{copy.noData}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const slices: DonutChartDatum[] = rows.map((r, i) => ({
+    id: r.sourceType,
+    label: r.sourceType,
+    value: r.citationCount,
+    color: ENTITY_PALETTE[i % ENTITY_PALETTE.length],
+  }));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <DonutChartWrapper
+          data={slices}
+          formatValue={(v) =>
+            `${v} (${Math.round((v / rows.reduce((s, r) => s + r.citationCount, 0)) * 100)}%)`
+          }
+          height={260}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

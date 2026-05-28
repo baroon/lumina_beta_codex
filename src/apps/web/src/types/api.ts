@@ -864,3 +864,29 @@ export interface WorkspaceTopEntityRowDto {
   shareOfVoiceDelta: number | null;
   sentiment: string | null;
 }
+
+// -----------------------------------------------------------------
+// Phase 4 v3 Slice B — workspace competitive intelligence
+// -----------------------------------------------------------------
+// Top domains / domain types / mention distribution / per-tracked-brand
+// competitive gap groups / recommendation rates. Reuses the v2 nested
+// DTO shapes (DomainRowDto, DomainTypeShareDto, EntityMentionDto,
+// CompetitiveGapDto, EntityRateDto) so chart components carry over.
+
+export interface WorkspaceCompetitiveDto {
+  workspaceId: string;
+  days: number;
+  windowStart: string;
+  topDomains: DomainRowDto[];
+  domainTypes: DomainTypeShareDto[];
+  mentionDistribution: EntityMentionDto[];
+  /** One gap group per tracked brand (multi-brand workspace shape). */
+  competitiveGaps: BrandCompetitiveGapGroupDto[];
+  recommendationRates: EntityRateDto[];
+}
+
+export interface BrandCompetitiveGapGroupDto {
+  trackedBrandId: string;
+  trackedBrandName: string;
+  gaps: CompetitiveGapDto[];
+}

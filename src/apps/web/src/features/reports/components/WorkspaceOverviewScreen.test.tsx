@@ -18,6 +18,57 @@ vi.mock("../hooks/useWorkspaceOverview", () => ({
   useWorkspaceOverview: () => hookState,
 }));
 
+// Slice B competitive sections fetched separately. Default: no data.
+let competitiveState: {
+  data?: import("@/types/api").WorkspaceCompetitiveDto;
+  isLoading: boolean;
+  isError: boolean;
+} = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+};
+
+vi.mock("../hooks/useWorkspaceCompetitive", () => ({
+  useWorkspaceCompetitive: () => competitiveState,
+}));
+
+// Stub Slice B chart wrappers so we can assert on the data shape without
+// rendering real SVG.
+vi.mock("@/components/charts/DonutChartWrapper", () => ({
+  DonutChartWrapper: ({ data }: { data: Array<{ id: string; label: string; value: number }> }) => (
+    <div data-testid="donut-chart">
+      {data.map((d) => (
+        <span key={d.id}>
+          {d.label}={d.value}
+        </span>
+      ))}
+    </div>
+  ),
+}));
+vi.mock("@/components/charts/RadarChartWrapper", () => ({
+  RadarChartWrapper: ({ data }: { data: Array<{ axis: string; value: number }> }) => (
+    <div data-testid="radar-chart">
+      {data.map((d) => (
+        <span key={d.axis}>
+          {d.axis}={d.value}
+        </span>
+      ))}
+    </div>
+  ),
+}));
+vi.mock("@/components/charts/BarChartWrapper", () => ({
+  BarChartWrapper: ({ data }: { data: Array<{ label: string; value: number }> }) => (
+    <div data-testid="bar-chart">
+      {data.map((d, i) => (
+        <span key={i}>
+          {d.label}={d.value}
+        </span>
+      ))}
+    </div>
+  ),
+}));
+
 // Stub the chart wrapper — same pattern as the v2 dashboard test. Lets us
 // assert on series shape without rendering real SVG.
 vi.mock("@/components/charts/LineChartWrapper", () => ({
@@ -191,5 +242,126 @@ describe("WorkspaceOverviewScreen", () => {
     // look specifically for it in the table by checking the visible row text.)
     const table = screen.getByRole("table");
     expect(within(table).queryByText("Indeed")).not.toBeInTheDocument();
+  });
+
+  it("renders Slice B competitive sections when competitive data loaded", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    competitiveState = {
+      data: {
+        workspaceId: "00000000-0000-0000-0000-000000000000",
+        days: 30,
+        windowStart: "2026-04-28T00:00:00Z",
+        topDomains: [
+          {
+            sourceId: "src-1",
+            sourceName: "Trustpilot",
+            normalizedDomain: "trustpilot.com",
+            sourceType: "Editorial",
+            citationCount: 4,
+            citationRate: 0.8,
+          },
+        ],
+        domainTypes: [{ sourceType: "Editorial", citationCount: 4, share: 1 }],
+        mentionDistribution: [
+          {
+            entityType: "Brand",
+            entityId: acmeId,
+            name: "Acme",
+            isTrackedBrand: true,
+            mentionCount: 4,
+            share: 0.4,
+          },
+          {
+            entityType: "Brand",
+            entityId: betaId,
+            name: "Beta",
+            isTrackedBrand: true,
+            mentionCount: 3,
+            share: 0.3,
+          },
+          {
+            entityType: "Competitor",
+            entityId: indeedId,
+            name: "Indeed",
+            isTrackedBrand: false,
+            mentionCount: 3,
+            share: 0.3,
+          },
+        ],
+        competitiveGaps: [
+          {
+            trackedBrandId: acmeId,
+            trackedBrandName: "Acme",
+            gaps: [
+              {
+                competitorId: indeedId,
+                competitorName: "Indeed",
+                brandMentions: 4,
+                competitorMentions: 2,
+                mentionsGap: 2,
+                brandRecommendations: 2,
+                competitorRecommendations: 1,
+                recommendationsGap: 1,
+              },
+            ],
+          },
+          {
+            trackedBrandId: betaId,
+            trackedBrandName: "Beta",
+            gaps: [
+              {
+                competitorId: indeedId,
+                competitorName: "Indeed",
+                brandMentions: 3,
+                competitorMentions: 5,
+                mentionsGap: -2,
+                brandRecommendations: 1,
+                competitorRecommendations: 2,
+                recommendationsGap: -1,
+              },
+            ],
+          },
+        ],
+        recommendationRates: [
+          {
+            entityType: "Brand",
+            entityId: acmeId,
+            name: "Acme",
+            isTrackedBrand: true,
+            mentionCount: 4,
+            recommendationRate: 0.5,
+          },
+          {
+            entityType: "Competitor",
+            entityId: indeedId,
+            name: "Indeed",
+            isTrackedBrand: false,
+            mentionCount: 3,
+            recommendationRate: 0.33,
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<WorkspaceOverviewScreen />);
+
+    // Section titles.
+    expect(screen.getByText(/share of voice/i)).toBeInTheDocument();
+    expect(screen.getByText(/competitive gap/i)).toBeInTheDocument();
+    expect(screen.getByText(/recommendation rate by entity/i)).toBeInTheDocument();
+    expect(screen.getByText(/brand vs competitor/i)).toBeInTheDocument();
+    expect(screen.getByText(/mention distribution/i)).toBeInTheDocument();
+    expect(screen.getByText(/top citation domains/i)).toBeInTheDocument();
+    expect(screen.getByText(/domain types/i)).toBeInTheDocument();
+
+    // Multi-brand gap groups — one header per tracked brand.
+    expect(screen.getByText(/Gaps for Acme/i)).toBeInTheDocument();
+    expect(screen.getByText(/Gaps for Beta/i)).toBeInTheDocument();
+
+    // Top domains table row.
+    expect(screen.getByText("Trustpilot")).toBeInTheDocument();
+
+    competitiveState = { data: undefined, isLoading: false, isError: false };
   });
 });

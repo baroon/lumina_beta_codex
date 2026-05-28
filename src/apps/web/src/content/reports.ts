@@ -195,6 +195,41 @@ export const REPORTS_COPY = {
       noData: "—",
       empty: "No brands or competitors with data in this window.",
     },
+    sov: {
+      title: "Share of voice",
+      noData: "No brand or competitor mentions in this window.",
+    },
+    mentions: {
+      brandVsCompetitor: "Brand vs competitor mentions",
+      distribution: "Mention distribution",
+      axisLabel: "Mentions",
+      noData: "No mention data in this window.",
+    },
+    competitiveGap: {
+      title: "Competitive gap",
+      perBrandLabel: "Gaps for {brandName}",
+      noData: "No tracked competitors mentioned in this window.",
+      noGroups: "No tracked-brand gap data in this window.",
+    },
+    recommendationRate: {
+      title: "Recommendation rate by entity",
+      axisLabel: "Rec. rate",
+      noData: "No mentions in this window.",
+    },
+    topDomains: {
+      title: "Top citation domains",
+      columns: {
+        source: "Source",
+        domain: "Domain",
+        type: "Type",
+        citations: "Citations",
+      },
+      noData: "No citations in this window.",
+    },
+    domainTypes: {
+      title: "Domain types",
+      noData: "No citation data in this window.",
+    },
   },
   trackerList: {
     title: "Trackers",
