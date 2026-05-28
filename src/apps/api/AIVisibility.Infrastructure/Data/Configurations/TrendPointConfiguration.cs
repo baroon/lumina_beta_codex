@@ -1,4 +1,5 @@
 using AIVisibility.Domain.Entities;
+using AIVisibility.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,6 +15,20 @@ public class TrendPointConfiguration : IEntityTypeConfiguration<TrendPoint>
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(t => t.ScanRunId).HasColumnName("scan_run_id");
+
+        // Polymorphic entity discriminator (Phase 4 v2 D1). NOT NULL on both
+        // columns — see memory `data-integrity-no-compat-shims`. Stored as
+        // string for consistency with the codebase's other enum-as-varchar
+        // pattern (SourceType, ClassificationStatus, etc.).
+        builder.Property(t => t.EntityType)
+            .HasColumnName("entity_type")
+            .HasMaxLength(50)
+            .HasConversion<string>()
+            .IsRequired();
+        builder.Property(t => t.EntityId)
+            .HasColumnName("entity_id")
+            .IsRequired();
+
         builder.Property(t => t.MetricName).HasColumnName("metric_name").HasMaxLength(100).IsRequired();
         builder.Property(t => t.NumericValue).HasColumnName("numeric_value");
         builder.Property(t => t.CategoricalValue).HasColumnName("categorical_value").HasMaxLength(100);
@@ -22,8 +37,9 @@ public class TrendPointConfiguration : IEntityTypeConfiguration<TrendPoint>
 
         // Window-scan query — by tracker, sorted by captured_at.
         builder.HasIndex(t => new { t.TrackerConfigurationId, t.CapturedAt });
-        // Defense against duplicate writes if aggregation re-runs on the same
-        // scan (shouldn't happen with the current pipeline, but cheap insurance).
-        builder.HasIndex(t => new { t.TrackerConfigurationId, t.ScanRunId, t.MetricName }).IsUnique();
+        // Uniqueness now includes entity — a scan writes one row per
+        // (entity × metric) so the dashboard chart can render one series per
+        // tracked brand/competitor.
+        builder.HasIndex(t => new { t.TrackerConfigurationId, t.ScanRunId, t.EntityType, t.EntityId, t.MetricName }).IsUnique();
     }
 }

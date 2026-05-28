@@ -1,5 +1,6 @@
 using AIVisibility.Application;
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,8 +34,15 @@ public class GetTrackerTrendQueryHandler : IRequestHandler<GetTrackerTrendQuery,
         var days = request.Days <= 0 ? DefaultDays : Math.Min(request.Days, MaxDays);
         var windowStart = DateTime.UtcNow.AddDays(-days);
 
+        // Phase 4 v2 transition: TrendPoint now stores per-entity rows; this
+        // v1 endpoint maintains its brand-only contract by filtering to
+        // EntityType=Brand. The dashboard v2 endpoint (GetTrackerDashboardQuery)
+        // is the new home for multi-entity series; this endpoint is deprecated
+        // and will be removed when the v2 frontend lands.
         var points = await _db.TrendPoints.AsNoTracking()
-            .Where(p => p.TrackerConfigurationId == request.TrackerId && p.CapturedAt >= windowStart)
+            .Where(p => p.TrackerConfigurationId == request.TrackerId
+                && p.CapturedAt >= windowStart
+                && p.EntityType == TrendEntityType.Brand)
             .OrderBy(p => p.CapturedAt)
             .ToListAsync(cancellationToken);
 
