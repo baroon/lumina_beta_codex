@@ -241,6 +241,7 @@ const fixture: WorkspaceOverviewDto = {
       shareOfVoice: 0.6,
       shareOfVoiceDelta: null,
       sentiment: "Positive",
+      sentimentDelta: 2,
     },
     {
       entityType: "Brand",
@@ -252,6 +253,7 @@ const fixture: WorkspaceOverviewDto = {
       shareOfVoice: 0.25,
       shareOfVoiceDelta: null,
       sentiment: "Neutral",
+      sentimentDelta: null,
     },
     {
       entityType: "Competitor",
@@ -263,6 +265,7 @@ const fixture: WorkspaceOverviewDto = {
       shareOfVoice: null,
       shareOfVoiceDelta: null,
       sentiment: null,
+      sentimentDelta: null,
     },
   ],
 };
@@ -309,8 +312,13 @@ describe("WorkspaceOverviewScreen", () => {
     // Both tracked brands carry the "You" chip in the Top Entities table.
     expect(screen.getAllByText(/^You$/)).toHaveLength(2);
 
-    // Indeed appears as a competitor row in the Top Entities table.
     const table = screen.getByRole("table");
+
+    // Acme's sentiment moved Negative → Positive in the fixture → +2pts
+    // chip rendered next to the Positive badge.
+    expect(within(table).getByText("+2pts")).toBeInTheDocument();
+
+    // Indeed appears as a competitor row in the Top Entities table.
     expect(within(table).getByText("Indeed")).toBeInTheDocument();
   });
 

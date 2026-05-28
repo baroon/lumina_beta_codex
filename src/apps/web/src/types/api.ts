@@ -734,6 +734,13 @@ export interface WorkspaceTopEntityRowDto {
   shareOfVoice: number | null;
   shareOfVoiceDelta: number | null;
   sentiment: string | null;
+  /**
+   * Numeric Δ vs the previous scan, derived from the categorical
+   * OverallSentiment mode (Positive=+1, Neutral=0, Mixed=0,
+   * Negative=−1). Range [-2, +2]. Null when fewer than two scans
+   * have sentiment data or either side is Unknown.
+   */
+  sentimentDelta: number | null;
 }
 
 // -----------------------------------------------------------------

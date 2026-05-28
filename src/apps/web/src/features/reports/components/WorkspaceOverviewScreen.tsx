@@ -893,9 +893,14 @@ function TopEntitiesCard({
                     <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
                     <td className="px-4 py-2 text-left">
                       {row.sentiment ? (
-                        <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
-                          {row.sentiment}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
+                            {row.sentiment}
+                          </Badge>
+                          {row.sentimentDelta != null && (
+                            <SentimentDeltaChip delta={row.sentimentDelta} />
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-neutral-400">{copy.noData}</span>
                       )}
@@ -941,6 +946,35 @@ function DeltaChip({ delta }: { delta: number }) {
       <Icon className="h-3 w-3" aria-hidden="true" />
       {sign}
       {pctPoints}pp
+    </span>
+  );
+}
+
+/**
+ * Sentiment Δ chip. Values are points on the [-2, +2] sentiment-score
+ * axis (Positive=+1, Neutral/Mixed=0, Negative=−1). Renders as an arrow
+ * + a short label ("+1pt") with success/error color coding.
+ */
+function SentimentDeltaChip({ delta }: { delta: number }) {
+  const rounded = Math.round(delta);
+  const sign = rounded > 0 ? "+" : "";
+  const Icon = rounded > 0 ? ArrowUp : rounded < 0 ? ArrowDown : Minus;
+  const color =
+    rounded > 0
+      ? "text-semantic-success-700"
+      : rounded < 0
+        ? "text-semantic-error-700"
+        : "text-neutral-500";
+  const noun = Math.abs(rounded) === 1 ? "pt" : "pts";
+  return (
+    <span
+      className={cn("inline-flex items-center gap-0.5 text-xs tabular-nums", color)}
+      title="Sentiment score change vs the previous scan"
+    >
+      <Icon className="h-3 w-3" aria-hidden="true" />
+      {sign}
+      {rounded}
+      {noun}
     </span>
   );
 }
