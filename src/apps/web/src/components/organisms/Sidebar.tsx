@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Briefcase, LayoutDashboard, Plus } from "lucide-react";
+import { Activity, Briefcase, LayoutDashboard, Plus } from "lucide-react";
 import { APP_COPY } from "@/content/app";
 
 export function Sidebar() {
@@ -25,6 +25,14 @@ export function Sidebar() {
         >
           <LayoutDashboard className="h-4 w-4" />
           {APP_COPY.nav.trackers}
+        </Link>
+        <Link
+          to="/scans"
+          activeProps={{ className: "bg-neutral-100 text-neutral-900" }}
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100"
+        >
+          <Activity className="h-4 w-4" />
+          {APP_COPY.nav.scans}
         </Link>
         <Link
           to="/brands/new"

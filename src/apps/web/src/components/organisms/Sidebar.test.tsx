@@ -27,4 +27,10 @@ describe("Sidebar", () => {
     });
     expect(link).toHaveAttribute("href", "/");
   });
+
+  it("renders 'Scans' nav link pointing at /scans", async () => {
+    renderWithRouter(<Sidebar />);
+    const link = await screen.findByRole("link", { name: new RegExp(APP_COPY.nav.scans, "i") });
+    expect(link).toHaveAttribute("href", "/scans");
+  });
 });

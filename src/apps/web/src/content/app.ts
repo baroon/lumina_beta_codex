@@ -4,6 +4,7 @@ export const APP_COPY = {
     addBrand: "Add Brand",
     brands: "Brands",
     trackers: "Trackers",
+    scans: "Scans",
   },
   stepper: {
     progressLabel: "Wizard progress",
