@@ -789,6 +789,7 @@ function NumericTrendChart({
     <LineChartWrapper
       series={chartSeries}
       formatValue={axis.formatValue}
+      formatX={formatShortDate}
       maxValue={axis.maxValue}
       minValue={axis.minValue}
       reverseY={axis.reverseY}
