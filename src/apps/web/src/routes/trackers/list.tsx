@@ -1,4 +1,4 @@
-import { TrackerListScreen } from "@/features/reports/components/TrackerListScreen";
+import { TrackerListScreen } from "@/features/trackers/components/TrackerListScreen";
 
 export function TrackerListPage() {
   return <TrackerListScreen />;

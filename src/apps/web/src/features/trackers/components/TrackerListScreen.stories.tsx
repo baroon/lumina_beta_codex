@@ -27,7 +27,7 @@ const fixture: TrackerListItemDto[] = [
 ];
 
 const meta: Meta<typeof TrackerListScreen> = {
-  title: "Features/Reports/TrackerListScreen",
+  title: "Features/Trackers/TrackerListScreen",
   component: TrackerListScreen,
   tags: ["autodocs"],
   decorators: [

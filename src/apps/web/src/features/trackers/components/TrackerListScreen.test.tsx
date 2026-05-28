@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ApiError } from "@/api/apiClient";
 import type { TrackerListItemDto } from "@/types/api";
 import { TrackerListScreen } from "./TrackerListScreen";
 
@@ -16,6 +18,19 @@ let hookState: HookReturn;
 vi.mock("../hooks/useAllTrackers", () => ({
   useAllTrackers: () => hookState,
 }));
+
+// Per-row Run-now mutation: capture mutate calls + drive success/error
+// from the test. Each test resets these.
+const runScanMutate = vi.fn();
+let runScanIsPending = false;
+vi.mock("../hooks/useScans", () => ({
+  useRunScan: () => ({ mutate: runScanMutate, isPending: runScanIsPending }),
+}));
+
+beforeEach(() => {
+  runScanMutate.mockReset();
+  runScanIsPending = false;
+});
 
 const fixture: TrackerListItemDto[] = [
   {
@@ -78,5 +93,40 @@ describe("TrackerListScreen", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<TrackerListScreen />);
     expect(screen.queryByRole("link", { name: "Nostri Tracker" })).not.toBeInTheDocument();
+  });
+
+  it("renders a Run now button on Active rows and triggers the mutation on click", async () => {
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    hookState = { isLoading: false, isError: false, data: fixture, refetch };
+    render(<TrackerListScreen />);
+
+    // Two Run-now buttons would exist only if both rows were runnable; the
+    // Draft tracker shows a placeholder dash instead.
+    const buttons = screen.getAllByRole("button", { name: /run now/i });
+    expect(buttons).toHaveLength(1);
+
+    runScanMutate.mockImplementation((_v, opts) =>
+      opts.onSuccess({ scanRunId: "s1", scanCheckCount: 4 }),
+    );
+
+    await userEvent.click(buttons[0]);
+    expect(runScanMutate).toHaveBeenCalledOnce();
+    expect(refetch).toHaveBeenCalledOnce();
+    expect(screen.getByText("Scan started.")).toBeInTheDocument();
+  });
+
+  it("surfaces the cooldown message when the API rejects with 409", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<TrackerListScreen />);
+
+    const body = JSON.stringify({
+      status: 409,
+      title: "Business rule violation",
+      detail: "On-demand trackers can only be run once every 24 hours.",
+    });
+    runScanMutate.mockImplementation((_v, opts) => opts.onError(new ApiError(409, body)));
+
+    await userEvent.click(screen.getByRole("button", { name: /run now/i }));
+    expect(screen.getByText(/once every 24 hours/i)).toBeInTheDocument();
   });
 });

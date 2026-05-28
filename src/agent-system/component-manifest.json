@@ -1094,12 +1094,12 @@
         },
         {
           "name": "TrackerListScreen",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/TrackerListScreen.tsx",
+          "category": "Feature — Trackers",
+          "path": "src/features/trackers/components/TrackerListScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Badge", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Phase 4 Slice 7 basic trackers index at /trackers. Cross-brand list with per-tracker scan count + latest scan timestamp. Row click navigates to the tracker's dashboard."
+          "dependencies": ["Badge", "Button", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Trackers index at /trackers. Cross-brand list with per-tracker scan count + latest scan timestamp. Each Active/Paused row has a Run now button that triggers a manual scan via useRunScan and surfaces 409 Conflict (24h cooldown) inline. Phase 4 v3 retired the per-tracker dashboard — rows do not navigate anywhere; analytics live on /overview."
         },
         {
           "name": "CoreMetricsRow",

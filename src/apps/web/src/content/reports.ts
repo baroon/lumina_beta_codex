@@ -274,7 +274,7 @@ export const REPORTS_COPY = {
   },
   trackerList: {
     title: "Trackers",
-    subtitle: "Every configured visibility tracker. Click a row to open its dashboard.",
+    subtitle: "Every configured visibility tracker. Analytics live on the Overview page.",
     columns: {
       name: "Tracker",
       brand: "Brand",
@@ -282,9 +282,17 @@ export const REPORTS_COPY = {
       scans: "Scans",
       latestScan: "Latest scan",
       created: "Created",
+      actions: "",
     },
     empty: "No trackers configured yet.",
     never: "—",
+    runNow: {
+      button: "Run now",
+      running: "Starting…",
+      started: "Scan started.",
+      failed: "Couldn't start the scan.",
+      notRunnable: "—",
+    },
   },
   scanList: {
     title: "All Scans",
