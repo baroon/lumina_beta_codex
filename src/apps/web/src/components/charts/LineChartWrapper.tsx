@@ -81,13 +81,16 @@ export function LineChartWrapper({
   valueAxisLabel,
   reverseY = false,
 }: LineChartWrapperProps) {
-  // Normalize to nivo's series shape. Single-series mode wraps the bare
-  // point array; multi-series mode keeps the caller's array as-is.
+  // Normalize to nivo's series shape. Nivo reads `id` for both the legend
+  // label and the tooltip header — pass the display `name` as the id so
+  // viewers see e.g. "Nostri" instead of the entity GUID. The caller's
+  // stable `id` is irrelevant to nivo at this point; it was only used by
+  // upstream React to key the prop array.
   const nivoSeries =
     series && series.length > 0
-      ? series.map((s) => ({ id: s.id, name: s.name, data: s.data }))
+      ? series.map((s) => ({ id: s.name, data: s.data }))
       : data && data.length > 0
-        ? [{ id: "value", name: "value", data }]
+        ? [{ id: "value", data }]
         : [];
 
   if (nivoSeries.length === 0) return null;
