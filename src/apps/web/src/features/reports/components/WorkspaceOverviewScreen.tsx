@@ -225,14 +225,10 @@ function CompetitiveSections({
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ShareOfVoiceCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-        <RecommendationRateCard rates={data.recommendationRates} selectedKeys={selectedKeys} />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <BrandVsCompetitorCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-        <MentionDistributionCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-      </div>
+      <ShareOfVoiceCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
+      <RecommendationRateCard rates={data.recommendationRates} selectedKeys={selectedKeys} />
+      <BrandVsCompetitorCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
+      <MentionDistributionCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
       <CompetitiveGapGroupsCard groups={data.competitiveGaps} selectedKeys={selectedKeys} />
       <TopCitationDomainsCard rows={data.topDomains} />
       <DomainTypesCard rows={data.domainTypes} />
@@ -717,7 +713,7 @@ interface TrendChartsGridProps {
 
 function TrendChartsGrid({ data, selectedKeys, registerRef }: TrendChartsGridProps) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4">
       {METRIC_OPTIONS.map((metric) => (
         <div
           key={metric.value}
@@ -1071,10 +1067,8 @@ function DepthSections({ days }: { days: number }) {
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MentionsByPlatformCard rows={data.mentionsByPlatform} />
-        <SentimentDistributionCard slices={data.sentimentDistribution} />
-      </div>
+      <MentionsByPlatformCard rows={data.mentionsByPlatform} />
+      <SentimentDistributionCard slices={data.sentimentDistribution} />
       <TopicHeatmapCard heatmap={data.topicHeatmap} />
       <RecentChatsCard chats={data.recentChats} onSelect={setSelectedChat} />
       <RecentChatDrawer chat={selectedChat} onClose={() => setSelectedChat(null)} />
