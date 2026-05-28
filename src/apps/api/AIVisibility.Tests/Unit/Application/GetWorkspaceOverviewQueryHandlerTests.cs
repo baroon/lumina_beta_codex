@@ -92,7 +92,9 @@ public class GetWorkspaceOverviewQueryHandlerTests
             [acmeTracker.Id] = new(),
             [betaTracker.Id] = new(),
         };
-        void SeedScanWithAnswer(TrackerConfiguration tracker, DateTime startedAt, Brand brand, bool mentionsBrand)
+        void SeedScanWithAnswer(
+            TrackerConfiguration tracker, DateTime startedAt, Brand brand,
+            bool mentionsBrand, string sentimentCategory = "Positive")
         {
             var prompt = new Prompt
             {
@@ -137,13 +139,16 @@ public class GetWorkspaceOverviewQueryHandlerTests
             var brandMentionRate = mentionsBrand ? 1.0 : 0.0;
             ctx.TrendPoints.Add(NewTrendPoint(tracker.Id, scan.Id, TrendEntityType.Brand, brand.Id, MetricNames.BrandMentionRate, brandMentionRate, startedAt));
             ctx.TrendPoints.Add(NewTrendPoint(tracker.Id, scan.Id, TrendEntityType.Brand, brand.Id, MetricNames.BrandShareOfVoice, 0.5, startedAt));
-            ctx.TrendPoints.Add(NewTrendPoint(tracker.Id, scan.Id, TrendEntityType.Brand, brand.Id, TrendMetrics.OverallSentiment, null, startedAt, "Positive"));
+            ctx.TrendPoints.Add(NewTrendPoint(tracker.Id, scan.Id, TrendEntityType.Brand, brand.Id, TrendMetrics.OverallSentiment, null, startedAt, sentimentCategory));
         }
 
-        SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme, mentionsBrand: true);
-        SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme, mentionsBrand: true);
-        SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta, mentionsBrand: false);
-        SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta, mentionsBrand: true);
+        // Acme: sentiment goes Negative -> Positive (Δ = +2).
+        // Beta: sentiment goes Neutral -> Positive (Δ = +1).
+        // Gives downstream tests something to assert against.
+        SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme, mentionsBrand: true, sentimentCategory: "Negative");
+        SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme, mentionsBrand: true, sentimentCategory: "Positive");
+        SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta, mentionsBrand: false, sentimentCategory: "Neutral");
+        SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta, mentionsBrand: true, sentimentCategory: "Positive");
 
         // Competitor trend points only on Acme's tracker for the shared competitor.
         var acmeScans = scansByTracker[acmeTracker.Id].OrderBy(s => s.StartedAt).ToList();
@@ -272,6 +277,46 @@ public class GetWorkspaceOverviewQueryHandlerTests
         indeed.IsTrackedBrand.Should().BeFalse();
         indeed.Visibility.Should().Be(0.20);
         indeed.VisibilityDelta.Should().BeApproximately(0.10, 1e-9);
+    }
+
+    [Fact]
+    public async Task TopEntities_SentimentDelta_FromCategoricalScoreEncoding()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(30), CancellationToken.None);
+
+        // Acme: Negative (-1) -> Positive (+1) → delta = +2.
+        var acme = result.TopEntities.Single(r => r.Name == "Acme");
+        acme.Sentiment.Should().Be("Positive");
+        acme.SentimentDelta.Should().Be(2.0);
+
+        // Beta: Neutral (0) -> Positive (+1) → delta = +1.
+        var beta = result.TopEntities.Single(r => r.Name == "Beta");
+        beta.Sentiment.Should().Be("Positive");
+        beta.SentimentDelta.Should().Be(1.0);
+
+        // Indeed (competitor) has no sentiment tracked.
+        var indeed = result.TopEntities.Single(r => r.Name == "Indeed");
+        indeed.Sentiment.Should().BeNull();
+        indeed.SentimentDelta.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TopEntities_SentimentDelta_IsNull_WhenOnlyOneScanInWindow()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Days=5 leaves only the most-recent scan per tracker in window.
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(5), CancellationToken.None);
+
+        var acme = result.TopEntities.Single(r => r.Name == "Acme");
+        acme.Sentiment.Should().Be("Positive");
+        acme.SentimentDelta.Should().BeNull();
     }
 
     [Fact]

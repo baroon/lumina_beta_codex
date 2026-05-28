@@ -61,4 +61,12 @@ public sealed record WorkspaceTopEntityRowDto(
     double? ShareOfVoice,
     double? ShareOfVoiceDelta,
     /// <summary>Sentiment for the most-recent scan (brand-only categorical mode).</summary>
-    string? Sentiment);
+    string? Sentiment,
+    /// <summary>
+    /// Sentiment delta vs the second-most-recent scan, encoded as the
+    /// difference of numeric sentiment scores
+    /// (Positive=+1, Neutral=0, Mixed=0, Negative=-1, Unknown=null).
+    /// Range [-2, +2]. Null when fewer than 2 scans have sentiment data
+    /// or when either side is Unknown.
+    /// </summary>
+    double? SentimentDelta);

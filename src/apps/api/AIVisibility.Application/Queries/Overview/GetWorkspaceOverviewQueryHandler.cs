@@ -217,7 +217,9 @@ public class GetWorkspaceOverviewQueryHandler
             var (sov, sovDelta) = sovMetric is null
                 ? (null, null)
                 : LatestAndDelta(entityGroup, sovMetric);
-            var sentiment = isBrand ? LatestCategorical(entityGroup, TrendMetrics.OverallSentiment) : null;
+            var (sentiment, sentimentDelta) = isBrand
+                ? LatestCategoricalAndDelta(entityGroup, TrendMetrics.OverallSentiment)
+                : (null, null);
 
             rows.Add(new WorkspaceTopEntityRowDto(
                 EntityType: entityType.ToString(),
@@ -228,7 +230,8 @@ public class GetWorkspaceOverviewQueryHandler
                 VisibilityDelta: visibilityDelta,
                 ShareOfVoice: sov,
                 ShareOfVoiceDelta: sovDelta,
-                Sentiment: sentiment));
+                Sentiment: sentiment,
+                SentimentDelta: sentimentDelta));
         }
 
         // Tracked brands first (alpha); then everyone else by Visibility desc.
@@ -254,13 +257,38 @@ public class GetWorkspaceOverviewQueryHandler
         return previous is null ? (latest, null) : (latest, latest - previous);
     }
 
-    private static string? LatestCategorical(
-        IEnumerable<Domain.Entities.TrendPoint> entityRows, string metricName) =>
-        entityRows
+    /// <summary>
+    /// Returns (latestCategoryString, delta) where delta = latestScore
+    /// minus previousScore. Score encoding: Positive=+1, Neutral=0,
+    /// Mixed=0, Negative=-1. Unknown / unmapped categories score as
+    /// null and propagate a null delta. Delta is also null when fewer
+    /// than 2 points exist.
+    /// </summary>
+    private static (string? Latest, double? Delta) LatestCategoricalAndDelta(
+        IEnumerable<Domain.Entities.TrendPoint> entityRows, string metricName)
+    {
+        var ordered = entityRows
             .Where(p => p.MetricName == metricName)
             .OrderByDescending(p => p.CapturedAt)
             .Select(p => p.CategoricalValue)
-            .FirstOrDefault();
+            .ToList();
+        if (ordered.Count == 0) return (null, null);
+        var latestCategory = ordered[0];
+        if (ordered.Count < 2) return (latestCategory, null);
+        var latestScore = SentimentScore(latestCategory);
+        var previousScore = SentimentScore(ordered[1]);
+        if (latestScore is null || previousScore is null) return (latestCategory, null);
+        return (latestCategory, latestScore.Value - previousScore.Value);
+    }
+
+    private static double? SentimentScore(string? category) => category switch
+    {
+        "Positive" => 1.0,
+        "Neutral" => 0.0,
+        "Mixed" => 0.0,
+        "Negative" => -1.0,
+        _ => null, // "Unknown" or anything we don't recognise
+    };
 
     private async Task<IReadOnlyDictionary<(TrendEntityType, Guid), string>> ResolveEntityNamesAsync(
         IReadOnlyList<Domain.Entities.TrendPoint> points, CancellationToken ct)
