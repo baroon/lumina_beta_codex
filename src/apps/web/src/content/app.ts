@@ -2,6 +2,7 @@ export const APP_COPY = {
   name: "Lumina",
   nav: {
     addBrand: "Add Brand",
+    trackers: "Trackers",
   },
   stepper: {
     progressLabel: "Wizard progress",

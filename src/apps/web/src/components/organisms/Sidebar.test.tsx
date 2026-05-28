@@ -13,4 +13,10 @@ describe("Sidebar", () => {
     renderWithRouter(<Sidebar />);
     expect(await screen.findByText(APP_COPY.nav.addBrand)).toBeInTheDocument();
   });
+
+  it("renders 'Trackers' nav link pointing at /trackers", async () => {
+    renderWithRouter(<Sidebar />);
+    const link = await screen.findByRole("link", { name: new RegExp(APP_COPY.nav.trackers, "i") });
+    expect(link).toHaveAttribute("href", "/trackers");
+  });
 });
