@@ -813,3 +813,54 @@ export interface RecentChatDto {
   /** Brand sentiment enum name; null when no AnswerSignal exists. */
   brandSentiment: string | null;
 }
+
+// -----------------------------------------------------------------
+// Phase 4 v3 — Workspace Overview read model
+// -----------------------------------------------------------------
+// Cross-tracker, cross-brand rollup powering /overview. Hero counts +
+// per-entity trend series (reuses v2's EntityTrendSeriesDto) + Top
+// Entities table aggregated across every TrackerConfiguration in the
+// workspace. Slices B (competitive) and C (depth) layer in further
+// sections on sibling endpoints.
+
+export interface WorkspaceOverviewDto {
+  workspaceId: string;
+  days: number;
+  windowStart: string;
+  trackedBrands: TrackedBrandDto[];
+  competitors: WorkspaceCompetitorDto[];
+  scanCount: number;
+  hero: WorkspaceHeroDto;
+  series: EntityTrendSeriesDto[];
+  topEntities: WorkspaceTopEntityRowDto[];
+}
+
+export interface TrackedBrandDto {
+  brandId: string;
+  name: string;
+}
+
+export interface WorkspaceCompetitorDto {
+  competitorId: string;
+  name: string;
+}
+
+export interface WorkspaceHeroDto {
+  queries: number;
+  mentions: number;
+  citations: number;
+  /** [0..1]; null when no answers landed. */
+  brandMentionRate: number | null;
+}
+
+export interface WorkspaceTopEntityRowDto {
+  entityType: string;
+  entityId: string;
+  name: string;
+  isTrackedBrand: boolean;
+  visibility: number | null;
+  visibilityDelta: number | null;
+  shareOfVoice: number | null;
+  shareOfVoiceDelta: number | null;
+  sentiment: string | null;
+}

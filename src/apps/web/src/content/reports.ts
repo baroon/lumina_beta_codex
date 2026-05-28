@@ -171,6 +171,31 @@ export const REPORTS_COPY = {
       },
     },
   },
+  overview: {
+    title: "Workspace Overview",
+    subtitle: "Last {days} days across all your tracked brands.",
+    error: {
+      title: "Couldn't load the overview",
+      description: "Something went wrong fetching the workspace overview.",
+    },
+    empty: {
+      noBrands: "You don't have any tracked brands yet. Add one to get started.",
+      noScans: "No scans have run yet for any of your brands.",
+      noTrendData: "No trend data in the selected window yet.",
+    },
+    topEntities: {
+      title: "Top brands",
+      columns: {
+        entity: "Brand",
+        visibility: "Visibility",
+        shareOfVoice: "SOV",
+        sentiment: "Sentiment",
+      },
+      youChip: "You",
+      noData: "—",
+      empty: "No brands or competitors with data in this window.",
+    },
+  },
   trackerList: {
     title: "Trackers",
     subtitle: "Every configured visibility tracker. Click a row to open its dashboard.",

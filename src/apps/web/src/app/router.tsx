@@ -13,6 +13,7 @@ import { ScanCompetitorsPage } from "@/routes/scans/competitors";
 import { ScanCompetitorDetailPage } from "@/routes/scans/competitor-detail";
 import { TrackerDashboardPage } from "@/routes/trackers/dashboard";
 import { TrackerListPage } from "@/routes/trackers/list";
+import { OverviewPage } from "@/routes/overview";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -99,6 +100,12 @@ const trackerListRoute = createRoute({
   component: TrackerListPage,
 });
 
+const overviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/overview",
+  component: OverviewPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   newBrandRoute,
@@ -112,6 +119,7 @@ const routeTree = rootRoute.addChildren([
   scanCompetitorDetailRoute,
   trackerDashboardRoute,
   trackerListRoute,
+  overviewRoute,
 ]);
 
 export const router = createRouter({ routeTree });

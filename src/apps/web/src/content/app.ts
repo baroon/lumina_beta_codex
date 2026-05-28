@@ -3,6 +3,7 @@ export const APP_COPY = {
   nav: {
     addBrand: "Add Brand",
     brands: "Brands",
+    overview: "Overview",
     trackers: "Trackers",
     scans: "Scans",
   },

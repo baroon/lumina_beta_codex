@@ -284,6 +284,15 @@
           "notes": "Page title, breadcrumbs, and optional actions."
         },
         {
+          "name": "BrandSelector",
+          "category": "Molecules",
+          "path": "src/components/molecules/BrandSelector.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "Checkbox", "Input"],
+          "notes": "Phase 4 v3 multi-select dropdown for the Workspace Overview. Two sections (Tracked brand[s] / All brands) each with a master checkbox + per-entity rows, client-side substring search, click-outside dismiss. Controlled — caller owns the selectedKeys (formatted as `<entityType>:<id>`)."
+        },
+        {
           "name": "SourceTypeDropdown",
           "category": "Molecules",
           "path": "src/components/molecules/SourceTypeDropdown.tsx",
