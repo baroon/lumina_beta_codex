@@ -1035,6 +1035,22 @@
           "notes": "Phase 4 Slice 4 Competitor detail at /scans/{id}/competitors/{competitorId}. Metric tile section (mentions, rec rate) plus a table of sources cited on answers that mentioned this competitor (citations joined with answers carrying the competitor mention)."
         },
         {
+          "name": "TrackerDashboardScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/TrackerDashboardScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "Badge",
+            "Card",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "LineChartWrapper"
+          ],
+          "notes": "Phase 4 Slice 6 Visibility Tracker dashboard at /trackers/{id}/dashboard. Grid of trend cards (one per dashboard metric) over a rolling 30-day window. Numeric metrics render as line charts; the categorical OverallSentiment series renders as a colored-dot strip + legend. ADR-004 dashboard sections beyond Trend over time are deferred to a follow-up."
+        },
+        {
           "name": "CoreMetricsRow",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/CoreMetricsRow.tsx",

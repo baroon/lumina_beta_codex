@@ -564,3 +564,32 @@ export interface CompetitorMentionSourceDto {
   normalizedDomain: string | null;
   citationCount: number;
 }
+
+// --- Tracker trend / dashboard (Phase 4 Slice 6) -------------------------
+//
+// Mirrors AIVisibility.Application.Queries.Trackers.TrackerTrendDto. One
+// series per dashboard metric; numeric series have Value, categorical series
+// have Category. The frontend selects chart shape based on SeriesKind.
+
+export interface TrackerTrendDto {
+  trackerId: string;
+  days: number;
+  windowStart: string;
+  series: TrendSeriesDto[];
+}
+
+export interface TrendSeriesDto {
+  metricName: string;
+  /** "Numeric" or "Categorical" — drives chart shape selection. */
+  seriesKind: string;
+  points: TrendPointDto[];
+}
+
+export interface TrendPointDto {
+  scanRunId: string;
+  capturedAt: string;
+  /** Numeric value for rate/count/avg metrics; null for categorical and skipped-by-aggregator. */
+  value: number | null;
+  /** Categorical value (e.g. sentiment mode); null for numeric metrics. */
+  category: string | null;
+}

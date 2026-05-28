@@ -62,6 +62,14 @@ export const REPORTS_COPY = {
       description: "Something went wrong fetching the scan results.",
     },
   },
+  dashboard: {
+    title: "Visibility Tracker Dashboard",
+    subtitle: "Trend over the past {days} days.",
+    empty: {
+      notFound: "Tracker not found.",
+      noTrendData: "No trend data in the selected window yet.",
+    },
+  },
   scanList: {
     title: "All Scans",
     subtitle:
