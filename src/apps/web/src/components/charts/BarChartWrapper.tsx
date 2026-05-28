@@ -1,11 +1,23 @@
-import { ResponsiveBar } from "@nivo/bar";
-import { defaultBarColor, nivoTheme } from "./chartTheme";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { defaultBarColor } from "./chartTheme";
 
 export interface BarChartDatum {
-  /** Category label (y-axis for horizontal, x-axis for vertical). */
+  /** Category label (Y-axis for horizontal, X-axis for vertical). */
   label: string;
   /** Numeric value (length of the bar). */
   value: number;
+  /** Optional per-bar color override. Defaults to `color` prop. */
+  color?: string;
 }
 
 interface BarChartWrapperProps {
@@ -25,13 +37,13 @@ interface BarChartWrapperProps {
 }
 
 /**
- * Single-series bar chart wrapper. Wraps Nivo's ResponsiveBar with Lumina
- * theming. Receives a prepared array of {label, value} — caller does the
- * grouping / sorting / formatting; the wrapper is dumb (ARCH-003 rule:
- * charts must not calculate business metrics).
+ * Single-series bar chart wrapper built on Recharts, styled to match
+ * the modern dashboard aesthetic: dashed gridlines, no axis lines,
+ * pill-shaped bars with their value rendered at the bar tip.
  *
- * Renders nothing when data is empty so callers can hand off raw arrays
- * without an enclosing length check.
+ * Caller does the grouping / sorting / formatting; wrapper is dumb
+ * (ARCH-003 rule: charts must not calculate business metrics). Renders
+ * nothing when data is empty.
  */
 export function BarChartWrapper({
   data,
@@ -44,40 +56,125 @@ export function BarChartWrapper({
 }: BarChartWrapperProps) {
   if (data.length === 0) return null;
 
+  const horizontal = layout === "horizontal";
+
+  // Recharts terminology: layout="vertical" means bars run horizontally
+  // (left → right). layout="horizontal" means bars run vertically
+  // (bottom → top). Our prop names are from the user's perspective —
+  // remap once here.
+  const rechartsLayout = horizontal ? "vertical" : "horizontal";
+
+  const valueDomain: [number | string, number | string] = [0, maxValue ?? "auto"];
+  const tickFormat = formatValue ?? ((v: number) => String(v));
+
   return (
-    <div style={{ height }}>
-      <ResponsiveBar
-        data={data as unknown as readonly Record<string, string | number>[]}
-        keys={["value"]}
-        indexBy="label"
-        layout={layout}
-        margin={
-          layout === "horizontal"
-            ? { top: 8, right: 24, bottom: 36, left: 140 }
-            : { top: 8, right: 16, bottom: 60, left: 48 }
-        }
-        padding={0.28}
-        colors={() => color}
-        borderRadius={2}
-        valueFormat={(v) => (formatValue ? formatValue(Number(v)) : String(v))}
-        labelTextColor="#FFFFFF"
-        maxValue={maxValue}
-        axisBottom={
-          layout === "horizontal"
-            ? { tickSize: 4, tickPadding: 6, legend: valueAxisLabel, legendOffset: 28 }
-            : { tickSize: 4, tickPadding: 6, tickRotation: -25 }
-        }
-        axisLeft={
-          layout === "horizontal"
-            ? { tickSize: 4, tickPadding: 6 }
-            : { tickSize: 4, tickPadding: 6, legend: valueAxisLabel, legendOffset: -36 }
-        }
-        gridXValues={layout === "horizontal" ? 5 : undefined}
-        gridYValues={layout === "vertical" ? 5 : undefined}
-        enableLabel
-        animate={false}
-        theme={nivoTheme}
-      />
+    <div style={{ height }} className="w-full text-xs text-neutral-600">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={data}
+          layout={rechartsLayout}
+          margin={{ top: 8, right: horizontal ? 48 : 16, bottom: 16, left: horizontal ? 0 : 0 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            horizontal={!horizontal}
+            vertical={horizontal}
+            stroke="#e5e7eb"
+          />
+          {horizontal ? (
+            <>
+              <XAxis
+                type="number"
+                domain={valueDomain}
+                tickFormatter={tickFormat}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "#737373" }}
+                label={
+                  valueAxisLabel
+                    ? {
+                        value: valueAxisLabel,
+                        position: "insideBottom",
+                        offset: -4,
+                        style: { fontSize: 11, fill: "#737373" },
+                      }
+                    : undefined
+                }
+              />
+              <YAxis
+                type="category"
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "#525252" }}
+                width={120}
+              />
+            </>
+          ) : (
+            <>
+              <XAxis
+                type="category"
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "#525252" }}
+                angle={-25}
+                textAnchor="end"
+                interval={0}
+                height={48}
+              />
+              <YAxis
+                type="number"
+                domain={valueDomain}
+                tickFormatter={tickFormat}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 11, fill: "#737373" }}
+                width={48}
+                label={
+                  valueAxisLabel
+                    ? {
+                        value: valueAxisLabel,
+                        angle: -90,
+                        position: "insideLeft",
+                        style: { fontSize: 11, fill: "#737373", textAnchor: "middle" },
+                      }
+                    : undefined
+                }
+              />
+            </>
+          )}
+          <Tooltip
+            cursor={{ fill: "rgba(0,0,0,0.04)" }}
+            contentStyle={{
+              background: "white",
+              border: "1px solid #e5e7eb",
+              borderRadius: 6,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+              fontSize: 12,
+              padding: "8px 10px",
+            }}
+            formatter={(value) => {
+              const numeric = typeof value === "number" ? value : Number(value);
+              return [tickFormat(numeric), valueAxisLabel ?? "Value"];
+            }}
+          />
+          <Bar dataKey="value" radius={[3, 3, 3, 3]} isAnimationActive={false}>
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.color ?? color} />
+            ))}
+            <LabelList
+              dataKey="value"
+              position={horizontal ? "right" : "top"}
+              formatter={(v) => {
+                const numeric = typeof v === "number" ? v : Number(v);
+                return Number.isFinite(numeric) ? tickFormat(numeric) : "";
+              }}
+              style={{ fontSize: 11, fill: "#525252" }}
+            />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

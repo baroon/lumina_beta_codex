@@ -1,5 +1,5 @@
-import { ResponsivePie } from "@nivo/pie";
-import { nivoTheme, sentimentColors, sentimentOrder } from "./chartTheme";
+import { DonutChartWrapper, type DonutChartDatum } from "./DonutChartWrapper";
+import { sentimentColors, sentimentOrder } from "./chartTheme";
 
 interface SentimentDonutProps {
   /** Sentiment-value → count distribution. Keys: Positive | Neutral | Negative | Mixed | Unknown. */
@@ -9,18 +9,23 @@ interface SentimentDonutProps {
 }
 
 /**
- * Sentiment distribution donut. Wraps Nivo's ResponsivePie with Lumina
- * theming + a fixed sentiment-value color map (positive→green, negative→red,
- * etc.). Receives a prepared distribution dict — no business-logic
- * calculation here (ARCH-003 rule: charts receive view models).
+ * Sentiment-distribution donut. Composes DonutChartWrapper with the
+ * fixed sentiment-value color map (positive→green, negative→red, etc.).
  *
- * Unobserved sentiment values are excluded automatically (zero-count slices
- * would clutter the donut). When the entire distribution is empty the
- * wrapper renders nothing — caller decides whether to hide the section or
- * show an empty state.
+ * No business-logic calculation here — `sentimentSlices` carries the
+ * pure shape transform so it can be unit-tested without dragging in
+ * the chart renderer.
  */
 export function SentimentDonut({ data, height = 240 }: SentimentDonutProps) {
-  const slices = sentimentOrder
+  return <DonutChartWrapper data={sentimentSlices(data)} height={height} />;
+}
+
+/**
+ * Builds the slice array fed to the donut: every observed (count > 0)
+ * sentiment value, in canonical display order, with its fixed color.
+ */
+export function sentimentSlices(data: Record<string, number>): DonutChartDatum[] {
+  return sentimentOrder
     .filter((value) => (data[value] ?? 0) > 0)
     .map((value) => ({
       id: value,
@@ -28,33 +33,4 @@ export function SentimentDonut({ data, height = 240 }: SentimentDonutProps) {
       value: data[value],
       color: sentimentColors[value],
     }));
-
-  if (slices.length === 0) return null;
-
-  return (
-    <div style={{ height }}>
-      <ResponsivePie
-        data={slices}
-        colors={({ data: slice }) => slice.color as string}
-        innerRadius={0.6}
-        padAngle={1}
-        cornerRadius={2}
-        margin={{ top: 12, right: 80, bottom: 12, left: 12 }}
-        enableArcLabels={false}
-        enableArcLinkLabels={false}
-        theme={nivoTheme}
-        legends={[
-          {
-            anchor: "right",
-            direction: "column",
-            translateX: 70,
-            itemWidth: 70,
-            itemHeight: 18,
-            symbolSize: 10,
-            symbolShape: "circle",
-          },
-        ]}
-      />
-    </div>
-  );
 }

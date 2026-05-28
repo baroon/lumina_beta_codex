@@ -2,17 +2,27 @@ import { render } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { DonutChartWrapper, type DonutChartDatum } from "./DonutChartWrapper";
 
-vi.mock("@nivo/pie", () => ({
-  ResponsivePie: ({ data }: { data: DonutChartDatum[] }) => (
-    <div data-testid="donut-chart">
-      {data.map((d) => (
-        <span key={d.id}>
-          {d.label}={d.value}
-        </span>
-      ))}
-    </div>
-  ),
-}));
+vi.mock("recharts", async () => {
+  const actual = await vi.importActual<typeof import("recharts")>("recharts");
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    PieChart: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="donut-chart">{children}</div>
+    ),
+    Pie: ({ data }: { data: DonutChartDatum[] }) => (
+      <span data-testid="pie">
+        {data.map((d) => (
+          <span key={d.id}>
+            {d.label}={d.value}
+          </span>
+        ))}
+      </span>
+    ),
+    Cell: () => null,
+    Tooltip: () => null,
+  };
+});
 
 const data: DonutChartDatum[] = [
   { id: "a", label: "A", value: 60, color: "#111" },
@@ -30,5 +40,12 @@ describe("DonutChartWrapper", () => {
   it("renders nothing when data is empty", () => {
     const { queryByTestId } = render(<DonutChartWrapper data={[]} />);
     expect(queryByTestId("donut-chart")).not.toBeInTheDocument();
+  });
+
+  it("renders an inline legend with per-slice percent shares", () => {
+    const { getByText } = render(<DonutChartWrapper data={data} />);
+    // 60/(60+40) → 60%; 40/(60+40) → 40%.
+    expect(getByText("60%")).toBeInTheDocument();
+    expect(getByText("40%")).toBeInTheDocument();
   });
 });
