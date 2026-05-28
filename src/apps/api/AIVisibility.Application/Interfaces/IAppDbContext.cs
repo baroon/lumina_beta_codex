@@ -45,6 +45,7 @@ public interface IAppDbContext
     DbSet<SourceUrl> SourceUrls { get; }
     DbSet<BrandSourceClassification> BrandSourceClassifications { get; }
     DbSet<SourceTypeReference> SourceTypes { get; }
+    DbSet<TrendPoint> TrendPoints { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

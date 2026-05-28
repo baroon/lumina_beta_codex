@@ -48,6 +48,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<SourceUrl> SourceUrls => Set<SourceUrl>();
     public DbSet<BrandSourceClassification> BrandSourceClassifications => Set<BrandSourceClassification>();
     public DbSet<SourceTypeReference> SourceTypes => Set<SourceTypeReference>();
+    public DbSet<TrendPoint> TrendPoints => Set<TrendPoint>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

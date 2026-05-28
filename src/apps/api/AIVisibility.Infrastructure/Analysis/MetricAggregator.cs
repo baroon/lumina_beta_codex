@@ -29,7 +29,9 @@ public class MetricAggregator
         _logger = logger;
     }
 
-    public async Task<List<ScanMetric>> ComputeAsync(Guid scanRunId, CancellationToken cancellationToken)
+    // Virtual so MetricAggregationJob tests can substitute a stub aggregator
+    // without needing a separate interface for a single-implementation class.
+    public virtual async Task<List<ScanMetric>> ComputeAsync(Guid scanRunId, CancellationToken cancellationToken)
     {
         var contexts = await LoadAnswerContextsAsync(scanRunId, cancellationToken);
         if (contexts.Count == 0)
