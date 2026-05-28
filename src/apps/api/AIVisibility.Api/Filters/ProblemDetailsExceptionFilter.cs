@@ -1,3 +1,4 @@
+using AIVisibility.Application.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -31,6 +32,21 @@ public class ProblemDetailsExceptionFilter : IExceptionFilter
             };
 
             context.Result = new BadRequestObjectResult(problemDetails);
+            context.ExceptionHandled = true;
+            return;
+        }
+
+        // Business-rule violations (e.g. 24h cooldown) → 409 Conflict.
+        if (context.Exception is BusinessRuleException)
+        {
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Business rule violation",
+                Detail = context.Exception.Message,
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+            };
+            context.Result = new ConflictObjectResult(problemDetails);
             context.ExceptionHandled = true;
             return;
         }

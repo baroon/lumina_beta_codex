@@ -1,3 +1,4 @@
+using AIVisibility.Application.Exceptions;
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
@@ -25,12 +26,15 @@ public class RunScanCommandHandler : IRequestHandler<RunScanCommand, RunScanResu
             ?? throw new InvalidOperationException($"Tracker {request.TrackerId} not found.");
 
         // On-demand trackers may only be run manually once per 24 hours.
+        // This is a business-rule violation, not a missing resource — surfaces
+        // as 409 Conflict via BusinessRuleException + the API filter.
         if (tracker.Cadence == Cadence.OnDemand
             && request.TriggerType == ScanTriggerType.Manual
             && tracker.LastRunAt is { } last
             && DateTime.UtcNow - last < TimeSpan.FromHours(24))
         {
-            throw new InvalidOperationException("On-demand trackers can only be run once every 24 hours.");
+            throw new BusinessRuleException(
+                "On-demand trackers can only be run once every 24 hours.");
         }
 
         var activePromptIds = await _db.Prompts

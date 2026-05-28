@@ -129,7 +129,7 @@ public class RunScanCommandHandlerTests
     }
 
     [Fact]
-    public async Task Run_OnDemand_Throws_WhenRunWithin24h()
+    public async Task Run_OnDemand_Throws_BusinessRule_WhenRunWithin24h()
     {
         using var ctx = NewContext();
         var tracker = Seed(ctx, cadence: Cadence.OnDemand, lastRunAt: DateTime.UtcNow.AddHours(-2));
@@ -138,7 +138,10 @@ public class RunScanCommandHandlerTests
             new RunScanCommand(tracker.Id),
             CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        // Distinct from InvalidOperationException (which the API filter maps
+        // to 404) — cooldown is a 409 Conflict, signalled by the type.
+        await act.Should().ThrowAsync<AIVisibility.Application.Exceptions.BusinessRuleException>()
+            .WithMessage("*24 hours*");
     }
 
     [Fact]
