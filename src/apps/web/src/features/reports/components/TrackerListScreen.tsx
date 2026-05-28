@@ -1,4 +1,3 @@
-import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
@@ -8,12 +7,12 @@ import { REPORTS_COPY } from "@/content/reports";
 import { useAllTrackers } from "@/features/reports/hooks/useAllTrackers";
 
 /**
- * Flat trackers index at /trackers (Phase 4 Slice 7). Basic table — each
- * row links into the tracker's dashboard. Cross-brand list capped at
- * however many trackers exist; pagination layers on later if needed.
+ * Flat trackers index at /trackers — config view of every tracker in the
+ * workspace. Phase 4 v3 retired the per-tracker dashboard; analytics live
+ * on /overview now, so the rows here are purely informational (name +
+ * brand + status + counts). Pagination layers on later if needed.
  */
 export function TrackerListScreen() {
-  const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useAllTrackers();
   const copy = REPORTS_COPY.trackerList;
 
@@ -67,26 +66,8 @@ export function TrackerListScreen() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {data.map((t) => (
-                <tr
-                  key={t.trackerId}
-                  className="cursor-pointer hover:bg-neutral-50"
-                  onClick={() =>
-                    navigate({
-                      to: "/trackers/$trackerId/dashboard",
-                      params: { trackerId: t.trackerId },
-                    })
-                  }
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      to="/trackers/$trackerId/dashboard"
-                      params={{ trackerId: t.trackerId }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-left text-sm font-medium text-neutral-900 hover:text-primary-600"
-                    >
-                      {t.name}
-                    </Link>
-                  </td>
+                <tr key={t.trackerId}>
+                  <td className="px-4 py-3 text-sm font-medium text-neutral-900">{t.name}</td>
                   <td className="px-4 py-3 text-neutral-700">{t.brandName}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={t.status} />

@@ -565,36 +565,7 @@ export interface CompetitorMentionSourceDto {
   citationCount: number;
 }
 
-// --- Tracker trend / dashboard (Phase 4 Slice 6) -------------------------
-//
-// Mirrors AIVisibility.Application.Queries.Trackers.TrackerTrendDto. One
-// series per dashboard metric; numeric series have Value, categorical series
-// have Category. The frontend selects chart shape based on SeriesKind.
-
-export interface TrackerTrendDto {
-  trackerId: string;
-  days: number;
-  windowStart: string;
-  series: TrendSeriesDto[];
-}
-
-export interface TrendSeriesDto {
-  metricName: string;
-  /** "Numeric" or "Categorical" — drives chart shape selection. */
-  seriesKind: string;
-  points: TrendPointDto[];
-}
-
-export interface TrendPointDto {
-  scanRunId: string;
-  capturedAt: string;
-  /** Numeric value for rate/count/avg metrics; null for categorical and skipped-by-aggregator. */
-  value: number | null;
-  /** Categorical value (e.g. sentiment mode); null for numeric metrics. */
-  category: string | null;
-}
-
-// --- Tracker list (Phase 4 Slice 7) --------------------------------------
+// --- Tracker list --------------------------------------------------------
 
 export interface TrackerListItemDto {
   trackerId: string;
@@ -609,35 +580,10 @@ export interface TrackerListItemDto {
   latestScanCompletedAt: string | null;
 }
 
-// --- Tracker dashboard v2 (Phase 4 v2 Slice A) ---------------------------
+// --- Shared workspace overview row shapes --------------------------------
 //
-// Consolidated dashboard read model: hero counts + per-entity trend series
-// + top brands table with Δ vs previous scan. One round trip per dashboard
-// page load.
-
-export interface TrackerDashboardDto {
-  trackerId: string;
-  trackerName: string;
-  brandId: string;
-  brandName: string;
-  days: number;
-  windowStart: string;
-  /** How many scans landed in the window. */
-  scanCount: number;
-  hero: DashboardHeroDto;
-  /** One series per (entity × metric). */
-  series: EntityTrendSeriesDto[];
-  /** Brand + tracked competitors ranked by visibility, tracked brand always first. */
-  topBrands: TopBrandRowDto[];
-}
-
-export interface DashboardHeroDto {
-  queries: number;
-  mentions: number;
-  citations: number;
-  /** Tracked brand's mention rate across all scans in window, [0..1]. Null when no signals in window. */
-  brandMentionRate: number | null;
-}
+// These records are returned by the three /api/overview endpoints. The
+// workspace-scoped DTOs (WorkspaceOverviewDto etc.) embed them.
 
 export interface EntityTrendSeriesDto {
   /** "Brand" or "Competitor". */
@@ -657,41 +603,6 @@ export interface EntityTrendPointDto {
   value: number | null;
   /** Categorical metric value (e.g. sentiment mode). Null for numeric. */
   category: string | null;
-}
-
-export interface TopBrandRowDto {
-  entityType: string;
-  entityId: string;
-  name: string;
-  isTrackedBrand: boolean;
-  /** Visibility = mention rate for the most-recent scan in window. */
-  visibility: number | null;
-  /** Δ vs second-most-recent scan. Null when fewer than 2 scans. */
-  visibilityDelta: number | null;
-  /** Share of voice for the most-recent scan. Brand-only; null for competitors. */
-  shareOfVoice: number | null;
-  shareOfVoiceDelta: number | null;
-  /** Latest sentiment mode for the brand; null for competitors. */
-  sentiment: string | null;
-}
-
-// --- Tracker dashboard v2 — Slice B competitive ----------------------------
-//
-// Sources / domains / SoV / mention distribution / gap analysis /
-// recommendation rate. Separate endpoint from the Slice A dashboard so
-// neither payload becomes a god-object.
-
-export interface TrackerCompetitiveDto {
-  trackerId: string;
-  brandId: string;
-  brandName: string;
-  days: number;
-  windowStart: string;
-  topDomains: DomainRowDto[];
-  domainTypes: DomainTypeShareDto[];
-  mentionDistribution: EntityMentionDto[];
-  competitiveGaps: CompetitiveGapDto[];
-  recommendationRates: EntityRateDto[];
 }
 
 export interface DomainRowDto {
@@ -745,27 +656,6 @@ export interface EntityRateDto {
   recommendationRate: number | null;
 }
 
-// -----------------------------------------------------------------
-// Tracker dashboard v2 — Slice C depth read model
-// -----------------------------------------------------------------
-// Per-platform brand metrics / sentiment distribution / activity heatmap
-// (platform × scan-day) / topic heatmap (topic × platform) / last N
-// AIAnswers projection. Separate endpoint from the Slice A and Slice B
-// payloads so each section stays scoped.
-
-export interface TrackerDepthDto {
-  trackerId: string;
-  brandId: string;
-  brandName: string;
-  days: number;
-  windowStart: string;
-  mentionsByPlatform: PlatformMentionDto[];
-  sentimentDistribution: SentimentSliceDto[];
-  activityHeatmap: HeatmapDto;
-  topicHeatmap: HeatmapDto;
-  recentChats: RecentChatDto[];
-}
-
 export interface PlatformMentionDto {
   platformId: string;
   platformCode: string;
@@ -796,32 +686,13 @@ export interface HeatmapCellDto {
   value: number;
 }
 
-export interface RecentChatDto {
-  answerId: string;
-  promptRunId: string;
-  promptText: string;
-  platformId: string;
-  platformCode: string;
-  platformName: string;
-  lensCode: string;
-  lensName: string;
-  /** First 200 chars of the answer (no markdown stripping for v2). */
-  answerSnippet: string;
-  capturedAt: string;
-  mentionCount: number;
-  citationCount: number;
-  /** Brand sentiment enum name; null when no AnswerSignal exists. */
-  brandSentiment: string | null;
-}
-
 // -----------------------------------------------------------------
-// Phase 4 v3 — Workspace Overview read model
+// Workspace Overview read model
 // -----------------------------------------------------------------
 // Cross-tracker, cross-brand rollup powering /overview. Hero counts +
-// per-entity trend series (reuses v2's EntityTrendSeriesDto) + Top
-// Entities table aggregated across every TrackerConfiguration in the
-// workspace. Slices B (competitive) and C (depth) layer in further
-// sections on sibling endpoints.
+// per-entity trend series + Top Entities table aggregated across every
+// TrackerConfiguration in the workspace. The competitive + depth
+// sibling endpoints layer in further sections.
 
 export interface WorkspaceOverviewDto {
   workspaceId: string;

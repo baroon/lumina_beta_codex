@@ -12,28 +12,10 @@ type HookReturn = {
 };
 
 let hookState: HookReturn;
-const navigateMock = vi.fn();
 
 vi.mock("../hooks/useAllTrackers", () => ({
   useAllTrackers: () => hookState,
 }));
-vi.mock("@tanstack/react-router", async () => {
-  const actual =
-    await vi.importActual<typeof import("@tanstack/react-router")>("@tanstack/react-router");
-  return {
-    ...actual,
-    Link: ({
-      to,
-      children,
-      ...rest
-    }: { to: string; children: React.ReactNode } & Record<string, unknown>) => (
-      <a href={to} {...rest}>
-        {children}
-      </a>
-    ),
-    useNavigate: () => navigateMock,
-  };
-});
 
 const fixture: TrackerListItemDto[] = [
   {
@@ -92,11 +74,9 @@ describe("TrackerListScreen", () => {
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
-  it("renders the tracker-name link pointing at the dashboard", () => {
+  it("does not link rows anywhere — analytics live on /overview now", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<TrackerListScreen />);
-    // The Link stub keeps `to` as the href, with template params unresolved.
-    const link = screen.getByRole("link", { name: "Nostri Tracker" });
-    expect(link).toHaveAttribute("href", "/trackers/$trackerId/dashboard");
+    expect(screen.queryByRole("link", { name: "Nostri Tracker" })).not.toBeInTheDocument();
   });
 });

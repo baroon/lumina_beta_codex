@@ -1071,38 +1071,6 @@
           "notes": "Phase 4 Slice 4 Competitor detail at /scans/{id}/competitors/{competitorId}. Metric tile section (mentions, rec rate) plus a table of sources cited on answers that mentioned this competitor (citations joined with answers carrying the competitor mention)."
         },
         {
-          "name": "TrackerDashboardScreen",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/TrackerDashboardScreen.tsx",
-          "status": "deprecated",
-          "variants": [],
-          "dependencies": [
-            "Badge",
-            "Card",
-            "PageHeader",
-            "LoadingPage",
-            "ErrorPage",
-            "LineChartWrapper"
-          ],
-          "notes": "Phase 4 Slice 6 dashboard (deprecated). Replaced wholesale by TrackerDashboardV2Screen at the same /trackers/{id}/dashboard route — see Phase 4 v2 plan D24. Kept in the tree as an evolution trail; route no longer references it. Remove after Phase 4 v2 ships Slices B and C."
-        },
-        {
-          "name": "TrackerDashboardV2Screen",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/TrackerDashboardV2Screen.tsx",
-          "status": "deprecated",
-          "variants": [],
-          "dependencies": [
-            "Badge",
-            "Card",
-            "PageHeader",
-            "LoadingPage",
-            "ErrorPage",
-            "LineChartWrapper"
-          ],
-          "notes": "Phase 4 v2 dashboard (deprecated by v3). The /trackers/{id}/dashboard route redirects to /overview; this component is kept in-tree as the evolution trail. Remove once /trackers/{id}/dashboard route can also be removed (after one full release cycle so in-flight bookmarks aren't broken)."
-        },
-        {
           "name": "WorkspaceOverviewScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/WorkspaceOverviewScreen.tsx",
@@ -1186,15 +1154,6 @@
           "variants": [],
           "dependencies": ["DataTable"],
           "notes": "Source and citation tracking display table."
-        },
-        {
-          "name": "TrackerDashboard",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/TrackerDashboard.tsx",
-          "status": "planned",
-          "variants": [],
-          "dependencies": ["CoreMetricsRow", "BarChartWrapper", "LineChartWrapper", "Tabs"],
-          "notes": "Main tracker dashboard view with metrics, charts, and tabbed content."
         },
         {
           "name": "RecentScanRunsTable",

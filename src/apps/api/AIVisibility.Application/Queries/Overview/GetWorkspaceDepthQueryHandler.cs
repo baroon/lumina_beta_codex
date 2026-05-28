@@ -1,5 +1,4 @@
 using AIVisibility.Application.Interfaces;
-using AIVisibility.Application.Queries.Trackers;
 using AIVisibility.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,3 @@
-using AIVisibility.Application.Queries.Trackers;
 using MediatR;
 
 namespace AIVisibility.Application.Queries.Overview;
