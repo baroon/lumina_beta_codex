@@ -2,17 +2,34 @@ import { render } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { RadarChartWrapper, type RadarChartDatum } from "./RadarChartWrapper";
 
-vi.mock("@nivo/radar", () => ({
-  ResponsiveRadar: ({ data }: { data: Array<{ axis: string; value: number }> }) => (
-    <div data-testid="radar-chart">
-      {data.map((d) => (
-        <span key={d.axis}>
-          {d.axis}={d.value}
-        </span>
-      ))}
-    </div>
-  ),
-}));
+vi.mock("recharts", async () => {
+  const actual = await vi.importActual<typeof import("recharts")>("recharts");
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    RadarChart: ({
+      data,
+      children,
+    }: {
+      data: Array<{ axis: string; value: number }>;
+      children: React.ReactNode;
+    }) => (
+      <div data-testid="radar-chart">
+        {data.map((d) => (
+          <span key={d.axis}>
+            {d.axis}={d.value}
+          </span>
+        ))}
+        {children}
+      </div>
+    ),
+    Radar: () => null,
+    PolarGrid: () => null,
+    PolarAngleAxis: () => null,
+    PolarRadiusAxis: () => null,
+    Tooltip: () => null,
+  };
+});
 
 const data: RadarChartDatum[] = [
   { axis: "Nostri", value: 96 },

@@ -1,5 +1,13 @@
-import { ResponsiveRadar } from "@nivo/radar";
-import { defaultBarColor, nivoTheme } from "./chartTheme";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import { defaultBarColor } from "./chartTheme";
 
 export interface RadarChartDatum {
   /** Category label (one axis per datum). */
@@ -21,13 +29,13 @@ interface RadarChartWrapperProps {
 }
 
 /**
- * Single-series radar/spider chart wrapper. Wraps Nivo's ResponsiveRadar
- * with Lumina theming. Receives a prepared array of {axis, value} — caller
- * does the grouping / sorting / formatting; the wrapper is dumb
+ * Single-series radar / spider chart wrapper built on Recharts (Tremor
+ * does not ship a radar). Receives a prepared array of {axis, value} —
+ * caller does the grouping / sorting / formatting; the wrapper is dumb
  * (ARCH-003 rule: charts must not calculate business metrics).
  *
- * Renders nothing when data has fewer than 3 axes (nivo radar needs ≥3 to
- * draw a polygon). Callers should hide the section in that case.
+ * Renders nothing when data has fewer than 3 axes; a radar polygon
+ * needs ≥3 vertices to be meaningful.
  */
 export function RadarChartWrapper({
   data,
@@ -38,28 +46,52 @@ export function RadarChartWrapper({
 }: RadarChartWrapperProps) {
   if (data.length < 3) return null;
 
+  const fmt = formatValue ?? ((v: number) => String(v));
+
   return (
-    <div style={{ height }}>
-      <ResponsiveRadar
-        data={data as unknown as Record<string, string | number>[]}
-        keys={["value"]}
-        indexBy="axis"
-        valueFormat={(v) => (formatValue ? formatValue(v) : String(v))}
-        maxValue={maxValue}
-        margin={{ top: 32, right: 80, bottom: 32, left: 80 }}
-        gridLabelOffset={16}
-        dotSize={6}
-        dotColor={color}
-        dotBorderWidth={2}
-        dotBorderColor={{ from: "color", modifiers: [["brighter", 0.5]] }}
-        colors={[color]}
-        fillOpacity={0.18}
-        borderColor={color}
-        borderWidth={2}
-        gridShape="circular"
-        animate={false}
-        theme={nivoTheme}
-      />
+    <div style={{ height }} className="w-full text-xs text-neutral-600">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={data} margin={{ top: 16, right: 32, bottom: 16, left: 32 }}>
+          <PolarGrid stroke="#e5e7eb" />
+          <PolarAngleAxis
+            dataKey="axis"
+            tick={{ fontSize: 11, fill: "#525252" }}
+            tickLine={false}
+          />
+          <PolarRadiusAxis
+            angle={90}
+            domain={[0, maxValue ?? "auto"]}
+            tick={{ fontSize: 10, fill: "#a3a3a3" }}
+            tickFormatter={fmt}
+            axisLine={false}
+            tickCount={4}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "white",
+              border: "1px solid #e5e7eb",
+              borderRadius: 6,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+              fontSize: 12,
+              padding: "8px 10px",
+            }}
+            formatter={(value) => {
+              const numeric = typeof value === "number" ? value : Number(value);
+              return [fmt(numeric), ""];
+            }}
+            labelStyle={{ fontWeight: 600 }}
+          />
+          <Radar
+            dataKey="value"
+            stroke={color}
+            strokeWidth={2}
+            fill={color}
+            fillOpacity={0.18}
+            dot={{ r: 3, fill: color, strokeWidth: 0 }}
+            isAnimationActive={false}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
