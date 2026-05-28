@@ -88,6 +88,7 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
       <SummarySection summary={data.summary} />
       <CoreMetricsSection metrics={data.coreMetrics} />
       <SentimentDistributionSection distribution={data.coreMetrics.brandSentimentDistribution} />
+      <ShareOfVoiceSection metrics={data.coreMetrics} breakdowns={data.breakdowns} />
       <TopCitedSourcesSection sources={data.coreMetrics.topCitedSources} />
       <BreakdownsSection breakdowns={data.breakdowns} />
     </div>
@@ -170,6 +171,75 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           label={m.citationCount}
           value={metrics.citationCount}
           subValue={`${metrics.ownedCitationCount} ${m.ownedCitationCount} · ${metrics.competitorCitationCount} ${m.competitorCitationCount} · ${metrics.thirdPartyCitationCount} ${m.thirdPartyCitationCount} · ${metrics.unknownCitationCount} ${m.unknownCitationCount}`}
+        />
+        {/* Phase 4 Slice 5: OwnedCitationShare + OverallSentiment per ADR-004 §"Core
+            Scan Results metrics". FE-derived from existing CoreMetricsDto fields
+            (D21 — no new ScanMetric row) so the backend stays unchanged. */}
+        <MetricTile
+          label={m.ownedCitationShare}
+          value={formatOwnedShare(metrics.ownedCitationCount, metrics.citationCount)}
+        />
+        <MetricTile
+          label={m.overallSentiment}
+          value={dominantSentiment(metrics.brandSentimentDistribution) ?? m.noData}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ShareOfVoiceSectionProps {
+  metrics: CoreMetricsDto;
+  breakdowns: BreakdownsDto;
+}
+
+/**
+ * Share-of-Voice breakdown chart — brand + each tracked competitor's share
+ * of the total brand+competitor mention count (ADR-004 §"Breakdown charts"
+ * #3, Phase 4 Slice 5). FE-derived: the brand's share is
+ * <c>brandShareOfVoice</c> directly; each competitor's share is its mention
+ * count divided by the inferred total
+ * (competitorMentionCount / (1 - brandShareOfVoice)). Skipped when
+ * <c>brandShareOfVoice</c> is null (denominator-zero — no brand+competitor
+ * mentions in this scan).
+ */
+function ShareOfVoiceSection({ metrics, breakdowns }: ShareOfVoiceSectionProps) {
+  const copy = REPORTS_COPY.scanResults;
+  if (
+    metrics.brandShareOfVoice == null ||
+    metrics.competitorMentionCount === 0 ||
+    breakdowns.byCompetitor.length === 0
+  ) {
+    return null;
+  }
+
+  // Derive total mentions from the SoV identity:
+  //   brandSoV = brandMentions / (brandMentions + competitorMentions)
+  //   (1 - brandSoV) = competitorMentions / total
+  //   total = competitorMentions / (1 - brandSoV)
+  // We already gated on competitorMentionCount > 0 + SoV != null, and SoV=1
+  // would require competitor count to be 0 — so (1 - SoV) is safely positive.
+  const totalMentions = metrics.competitorMentionCount / (1 - metrics.brandShareOfVoice);
+
+  const data: BarChartDatum[] = [
+    { label: "Brand", value: metrics.brandShareOfVoice },
+    ...breakdowns.byCompetitor
+      .filter((c) => c.mentionCount > 0)
+      .map((c) => ({ label: c.competitorName, value: c.mentionCount / totalMentions })),
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{copy.sections.shareOfVoice}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BarChartWrapper
+          data={data}
+          layout="horizontal"
+          valueAxisLabel={copy.shareOfVoice.valueAxis}
+          maxValue={1}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
         />
       </CardContent>
     </Card>
@@ -363,6 +433,27 @@ function formatRate(value: number | null): string {
 function formatRank(value: number | null): string {
   if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
   return value.toFixed(1);
+}
+
+function formatOwnedShare(ownedCount: number, total: number): string {
+  if (total === 0) return REPORTS_COPY.scanResults.metrics.noData;
+  return `${Math.round((ownedCount / total) * 100)}%`;
+}
+
+/**
+ * Mode (most-observed value) of the sentiment distribution. Defined as the
+ * key with the highest count; ties broken by JS object iteration order
+ * (insertion order from the server, which is the order the aggregator
+ * encountered the values — deterministic enough for tie-breaking).
+ */
+function dominantSentiment(distribution: Record<string, number>): string | null {
+  const entries = Object.entries(distribution);
+  if (entries.length === 0) return null;
+  let best = entries[0];
+  for (const entry of entries) {
+    if (entry[1] > best[1]) best = entry;
+  }
+  return best[0];
 }
 
 function formatDateTime(iso: string): string {

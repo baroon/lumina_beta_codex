@@ -199,7 +199,9 @@ describe("ScanResultsScreen", () => {
     // Each per-scope breakdown gets a bar chart with the scope's items as labels.
     expect(screen.getByText("Competitor Comparison")).toBeInTheDocument();
     expect(screen.getByText("Sustainable Design")).toBeInTheDocument();
-    expect(screen.getByText("Acme")).toBeInTheDocument();
+    // Acme appears in the byCompetitor chart AND in the Share-of-Voice chart
+    // (Slice 5) — assert both occurrences exist.
+    expect(screen.getAllByText("Acme").length).toBeGreaterThanOrEqual(1);
     // Tracked-but-unmentioned competitor is included with mentionCount=0
     // (BackdownChartCard renders the bar with the empty value).
     expect(screen.getByText("Beta")).toBeInTheDocument();
@@ -207,8 +209,76 @@ describe("ScanResultsScreen", () => {
     expect(screen.getByTestId("sentiment-donut")).toHaveTextContent("Positive: 6");
     expect(screen.getByTestId("sentiment-donut")).toHaveTextContent("Neutral: 4");
     // 4 breakdown bar charts (Platform/Lens/Topic/Competitor) + 1 TopCitedSources
-    // bar chart = 5 BarChartWrapper renders.
+    // bar chart + 1 Share-of-Voice bar chart = 6 BarChartWrapper renders.
+    expect(screen.getAllByTestId("bar-chart").length).toBe(6);
+  });
+
+  it("renders OwnedCitationShare + OverallSentiment tiles (Slice 5)", () => {
+    // Phase 4 Slice 5: ADR-004 §"Core Scan Results metrics" #6 and #7 are
+    // FE-derived. ownedCitationCount=2 / citationCount=9 → 22%.
+    // Sentiment mode of {Positive: 6, Neutral: 4, Unknown: 20} → Unknown
+    // (the highest count, which is what the dominant-sentiment helper picks
+    // regardless of whether the user finds "Unknown is highest" intuitive —
+    // the aggregator preserved the bucket, so the tile shows it).
+    hookState = {
+      data: makeResults(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    render(<ScanResultsScreen scanRunId="s1" />);
+
+    expect(screen.getByText(/owned citation share/i)).toBeInTheDocument();
+    expect(screen.getByText("22%")).toBeInTheDocument(); // 2/9 rounded
+    expect(screen.getByText(/overall sentiment/i)).toBeInTheDocument();
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+  });
+
+  it("renders the Share-of-Voice chart with brand + competitor bars (Slice 5)", () => {
+    // Slice 5 chart: brandShareOfVoice=0.667 + Acme mentionCount=3 +
+    // competitorMentionCount=7 → total = 7 / (1 - 0.667) ≈ 21.
+    // Acme share = 3/21 ≈ 0.143. Brand bar + Acme bar render. Beta has
+    // mentionCount=0 → filtered out.
+    hookState = {
+      data: makeResults(),
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    render(<ScanResultsScreen scanRunId="s1" />);
+
+    // Section CardTitle renders as the "Share of Voice" heading (distinct
+    // from the same-name metric tile label).
+    expect(screen.getByRole("heading", { name: /share of voice/i })).toBeInTheDocument();
+    // The chart stub emits each datum's label as text.
+    const sovChart = screen.getAllByTestId("bar-chart");
+    const sovLabels = sovChart.map((el) => el.textContent ?? "");
+    expect(sovLabels.some((l) => l.includes("Brand"))).toBe(true);
+  });
+
+  it("hides the Share-of-Voice chart when brand SoV is null", () => {
+    // Denominator-zero case from the aggregator — section must not render.
+    const data = makeResults({
+      coreMetrics: {
+        ...makeResults().coreMetrics,
+        brandShareOfVoice: null,
+      },
+    });
+    hookState = {
+      data,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    render(<ScanResultsScreen scanRunId="s1" />);
+
+    // 4 breakdown + 1 top-cited = 5 bar charts, NOT 6 (SoV section gone).
     expect(screen.getAllByTestId("bar-chart").length).toBe(5);
+    // SoV section heading must not be present (the tile label still is).
+    expect(screen.queryByRole("heading", { name: /share of voice/i })).not.toBeInTheDocument();
   });
 
   it("renders 'No data' for nullable rates that come back null", () => {

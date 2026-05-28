@@ -7,6 +7,7 @@ export const REPORTS_COPY = {
       coreMetrics: "Core Metrics",
       sentimentDistribution: "Brand Sentiment Distribution",
       topCitedSources: "Top Cited Sources",
+      shareOfVoice: "Share of Voice",
       byPlatform: "By Platform",
       byLens: "By Visibility Lens",
       byTopic: "By Topic",
@@ -33,7 +34,14 @@ export const REPORTS_COPY = {
       competitorCitationCount: "Competitor",
       thirdPartyCitationCount: "Third-party",
       unknownCitationCount: "Unknown",
+      ownedCitationShare: "Owned citation share",
+      overallSentiment: "Overall sentiment",
       noData: "No data",
+    },
+    shareOfVoice: {
+      title: "Share of voice — brand vs competitors",
+      empty: "No brand or competitor mentions in this scan.",
+      valueAxis: "Share",
     },
     breakdowns: {
       name: "Name",
