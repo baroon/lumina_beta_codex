@@ -2,18 +2,39 @@ import { render } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { LineChartWrapper, type LineChartPoint } from "./LineChartWrapper";
 
-// nivo + jsdom flake — stub the line module same way the other chart tests do.
-vi.mock("@nivo/line", () => ({
-  ResponsiveLine: ({ data }: { data: Array<{ data: LineChartPoint[] }> }) => (
-    <div data-testid="line-chart">
-      {data[0].data.map((p, i) => (
-        <span key={i}>
-          {p.x}={p.y ?? "null"}
-        </span>
-      ))}
-    </div>
-  ),
-}));
+// Recharts ResponsiveContainer reads the parent's actual pixel size from
+// the DOM, which jsdom does not implement. Stub the LineChart from
+// recharts and dump the data + non-null points into a testid div so we
+// can assert on the prepared shape.
+vi.mock("recharts", async () => {
+  const actual = await vi.importActual<typeof import("recharts")>("recharts");
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    LineChart: ({
+      data,
+      children,
+    }: {
+      data: Array<{ x: string; value?: number | null }>;
+      children: React.ReactNode;
+    }) => (
+      <div data-testid="line-chart">
+        {data.map((row, i) => (
+          <span key={i}>
+            {row.x}={row.value === undefined ? "null" : (row.value ?? "null")}
+          </span>
+        ))}
+        {children}
+      </div>
+    ),
+    Line: () => null,
+    XAxis: () => null,
+    YAxis: () => null,
+    CartesianGrid: () => null,
+    Tooltip: () => null,
+    Legend: () => null,
+  };
+});
 
 describe("LineChartWrapper", () => {
   it("renders one point per datum", () => {

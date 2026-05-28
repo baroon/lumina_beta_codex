@@ -1,5 +1,15 @@
-import { ResponsiveLine } from "@nivo/line";
-import { defaultBarColor, nivoTheme } from "./chartTheme";
+import { useMemo } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { defaultBarColor } from "./chartTheme";
 
 export interface LineChartPoint {
   /** X-axis value (typically a timestamp ISO string). */
@@ -24,26 +34,24 @@ export interface LineChartSeries {
 
 interface LineChartWrapperProps {
   /**
-   * Single-series mode (the v1 shape). Pass an array of points; the wrapper
-   * wraps them in a one-element series internally and draws the line with
-   * <c>color</c>.
+   * Single-series mode. Pass an array of points; the wrapper wraps them
+   * in a one-element series internally and draws the line with `color`.
    */
   data?: LineChartPoint[];
   /**
-   * Multi-series mode (Phase 4 v2). Pass an array of {id, name, data}
-   * series; the wrapper draws one line per series + legend. <c>color</c>
-   * prop is ignored — each series provides its own.
+   * Multi-series mode. Pass an array of {id, name, data} series; the
+   * wrapper draws one line per series + legend.
    */
   series?: LineChartSeries[];
   /** Single-series mode only. Defaults to the primary brand color. */
   color?: string;
-  /** Format the value displayed in tooltips / Y-axis. Defaults to numeric rendering. */
+  /** Format the value displayed in tooltips / Y-axis. */
   formatValue?: (value: number) => string;
-  /** Format the X-axis tick. Defaults to passing through the raw string. */
+  /** Format the X-axis tick. Default: identity. */
   formatX?: (raw: string) => string;
-  /** Fixed height. Default 200px. Width fills the parent. */
+  /** Fixed height. Default 224px (28 * 8 = h-56). */
   height?: number;
-  /** Force the Y-axis max — useful for rate-shaped series locked to [0, 1]. */
+  /** Force the Y-axis max. */
   maxValue?: number;
   /** Force the Y-axis min. Default 0. */
   minValue?: number;
@@ -58,16 +66,13 @@ interface LineChartWrapperProps {
 }
 
 /**
- * Line chart wrapper. Wraps Nivo's ResponsiveLine with Lumina theming.
- * Two modes:
- * - Single-series: pass <c>data</c> as a point array. One line drawn in
- *   <c>color</c>. No legend.
- * - Multi-series (Phase 4 v2): pass <c>series</c> as an array of named
- *   series. One line per series in its own color, with legend.
+ * Line chart wrapper built on Recharts (the same engine Tremor uses),
+ * styled to match Tremor's modern dashboard aesthetic: dashed horizontal
+ * gridlines, monotone curves, soft point dots, minimal axis lines, and a
+ * floating rounded tooltip with the series + value.
  *
- * Callers prepare data shape; wrapper is dumb (ARCH-003 rule: charts
- * must not calculate business metrics). Null y-values render as gaps so
- * missing-data is visually distinct from a real zero.
+ * Null y values render as gaps so missing data is visually distinct from
+ * a real zero.
  */
 export function LineChartWrapper({
   data,
@@ -75,118 +80,119 @@ export function LineChartWrapper({
   color = defaultBarColor,
   formatValue,
   formatX,
-  height = 200,
+  height = 224,
   maxValue,
   minValue = 0,
   valueAxisLabel,
   reverseY = false,
 }: LineChartWrapperProps) {
-  // Normalize to nivo's series shape. Nivo reads `id` for both the legend
-  // label and the tooltip header — pass the display `name` as the id so
-  // viewers see e.g. "Nostri" instead of the entity GUID. The caller's
-  // stable `id` is irrelevant to nivo at this point; it was only used by
-  // upstream React to key the prop array.
-  const nivoSeries =
-    series && series.length > 0
-      ? series.map((s) => ({ id: s.name, data: s.data }))
-      : data && data.length > 0
-        ? [{ id: "value", data }]
-        : [];
-
-  if (nivoSeries.length === 0) return null;
-
   const isMulti = !!series && series.length > 0;
-  const colors = isMulti
-    ? series.map((s, i) => s.color ?? fallbackPalette[i % fallbackPalette.length])
-    : [color];
+
+  // Collapse all series into a single { x, "<seriesName>": value }[] —
+  // Recharts wants one row per X tick with each series as a named field.
+  const { rows, categories, colors } = useMemo(() => {
+    if (isMulti) {
+      const allXs = new Set<string>();
+      for (const s of series!) for (const p of s.data) allXs.add(p.x);
+      const sortedXs = Array.from(allXs).sort();
+
+      const cats = series!.map((s) => s.name);
+      const cols = series!.map((s, i) => s.color ?? fallbackPalette[i % fallbackPalette.length]);
+
+      const lookup = new Map<string, Record<string, number | null>>();
+      for (const s of series!) {
+        for (const p of s.data) {
+          const row = lookup.get(p.x) ?? {};
+          row[s.name] = p.y;
+          lookup.set(p.x, row);
+        }
+      }
+      const builtRows = sortedXs.map((x) => ({ x, ...(lookup.get(x) ?? {}) }));
+      return { rows: builtRows, categories: cats, colors: cols };
+    }
+    if (data && data.length > 0) {
+      return {
+        rows: data.map((p) => ({ x: p.x, value: p.y })),
+        categories: ["value"],
+        colors: [color],
+      };
+    }
+    return { rows: [], categories: [], colors: [] };
+  }, [data, series, color, isMulti]);
+
+  if (rows.length === 0) return null;
 
   return (
-    <div style={{ height }}>
-      <ResponsiveLine
-        data={nivoSeries}
-        margin={{
-          top: 16,
-          right: 24,
-          bottom: isMulti ? 64 : 40, // extra room for the legend below
-          left: 52,
-        }}
-        xScale={{ type: "point" }}
-        yScale={{
-          type: "linear",
-          min: minValue,
-          max: maxValue ?? "auto",
-          stacked: false,
-          reverse: reverseY,
-        }}
-        colors={colors}
-        lineWidth={2}
-        pointSize={isMulti ? 5 : 6}
-        pointColor={{ from: "color" }}
-        pointBorderWidth={1.5}
-        pointBorderColor={{ from: "color", modifiers: [["brighter", 0.5]] }}
-        enableArea={!isMulti}
-        areaOpacity={0.08}
-        enableGridX={false}
-        gridYValues={5}
-        axisBottom={{
-          tickSize: 4,
-          tickPadding: 8,
-          tickRotation: -25,
-          format: formatX,
-        }}
-        axisLeft={{
-          tickSize: 4,
-          tickPadding: 6,
-          tickValues: 5,
-          format: formatValue,
-          legend: valueAxisLabel,
-          legendOffset: -44,
-          legendPosition: "middle",
-        }}
-        animate={false}
-        useMesh
-        legends={
-          isMulti
-            ? [
-                {
-                  anchor: "bottom",
-                  direction: "row",
-                  translateY: 50,
-                  itemsSpacing: 8,
-                  itemDirection: "left-to-right",
-                  itemWidth: 96,
-                  itemHeight: 16,
-                  itemTextColor: "#525252",
-                  symbolShape: "circle",
-                  symbolSize: 8,
-                },
-              ]
-            : undefined
-        }
-        tooltip={({ point }) => (
-          <div
-            style={{
+    <div style={{ height }} className="w-full text-xs text-neutral-600">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={rows} margin={{ top: 12, right: 16, bottom: 8, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <XAxis
+            dataKey="x"
+            tickFormatter={formatX}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#737373" }}
+            dy={4}
+          />
+          <YAxis
+            reversed={reverseY}
+            domain={[minValue, maxValue ?? "auto"]}
+            tickFormatter={formatValue}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 11, fill: "#737373" }}
+            width={48}
+            label={
+              valueAxisLabel
+                ? {
+                    value: valueAxisLabel,
+                    angle: -90,
+                    position: "insideLeft",
+                    style: { fontSize: 11, fill: "#737373", textAnchor: "middle" },
+                  }
+                : undefined
+            }
+          />
+          <Tooltip
+            cursor={{ stroke: "#a3a3a3", strokeDasharray: "3 3" }}
+            contentStyle={{
               background: "white",
-              padding: "6px 10px",
               border: "1px solid #e5e7eb",
-              borderRadius: 4,
+              borderRadius: 6,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
               fontSize: 12,
-              boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+              padding: "8px 10px",
             }}
-          >
-            {isMulti && (
-              <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                {(point.serieId as string) ?? ""}
-              </div>
-            )}
-            <div>{formatX ? formatX(point.data.xFormatted as string) : point.data.xFormatted}</div>
-            <div style={{ fontWeight: 600 }}>
-              {formatValue ? formatValue(point.data.y as number) : point.data.yFormatted}
-            </div>
-          </div>
-        )}
-        theme={nivoTheme}
-      />
+            labelFormatter={(label) => (formatX ? formatX(label as string) : label)}
+            formatter={(value, name) => {
+              const numeric = typeof value === "number" ? value : Number(value);
+              return [formatValue ? formatValue(numeric) : numeric, name];
+            }}
+          />
+          {isMulti && (
+            <Legend
+              verticalAlign="bottom"
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+            />
+          )}
+          {categories.map((cat, i) => (
+            <Line
+              key={cat}
+              type="monotone"
+              dataKey={cat}
+              stroke={colors[i]}
+              strokeWidth={2}
+              dot={{ r: 3, fill: colors[i], strokeWidth: 0 }}
+              activeDot={{ r: 5 }}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -194,8 +200,7 @@ export function LineChartWrapper({
 /**
  * Stable fallback palette when a series doesn't provide its own color.
  * Six colors — enough for the dashboard's typical entity count (brand +
- * up to 5 tracked competitors). Beyond six, series cycle through the
- * palette.
+ * up to 5 tracked competitors). Beyond six, series cycle.
  */
 const fallbackPalette = [
   "#6366f1", // primary-500
