@@ -716,6 +716,25 @@ export interface TopicCountDto {
 }
 
 /**
+ * Per-product mention count, deduped by product name (case-insensitive).
+ * Same shape + semantics as {@link TopicCountDto}. Drives the count chip
+ * rendered next to each product row in `ProductSelector`.
+ */
+export interface ProductCountDto {
+  productName: string;
+  mentionCount: number;
+}
+
+/**
+ * Per-market mention count, deduped by market name (case-insensitive).
+ * Drives the count chip in `MarketSelector`.
+ */
+export interface MarketCountDto {
+  marketName: string;
+  mentionCount: number;
+}
+
+/**
  * Workspace discovery summary — names + counts for every dimension the
  * user captured during the brand-discovery flow. Drives the inline
  * "Tracking 5 products · 2 markets · …" strip at the top of the

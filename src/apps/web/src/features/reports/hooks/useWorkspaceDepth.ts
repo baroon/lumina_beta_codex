@@ -18,12 +18,30 @@ export function useWorkspaceDepth(
   selection: DateRangeSelection,
   lensCodes: readonly string[],
   topicNames: readonly string[],
+  productNames: readonly string[],
+  marketNames: readonly string[],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
+  const productKey = [...productNames].sort().join(",");
+  const marketKey = [...marketNames].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-depth", serializeDateRangeSelection(selection), lensKey, topicKey],
-    queryFn: () => overviewApi.depth(resolveDateRange(selection), lensCodes, topicNames),
+    queryKey: [
+      "workspace-depth",
+      serializeDateRangeSelection(selection),
+      lensKey,
+      topicKey,
+      productKey,
+      marketKey,
+    ],
+    queryFn: () =>
+      overviewApi.depth(
+        resolveDateRange(selection),
+        lensCodes,
+        topicNames,
+        productNames,
+        marketNames,
+      ),
     placeholderData: keepPreviousData,
   });
 }

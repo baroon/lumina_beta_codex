@@ -16,7 +16,9 @@ public record GetWorkspaceCompetitiveQuery(
     DateTime? From,
     DateTime? To,
     IReadOnlyList<string>? LensCodes,
-    IReadOnlyList<string>? TopicNames)
+    IReadOnlyList<string>? TopicNames,
+    IReadOnlyList<string>? ProductNames,
+    IReadOnlyList<string>? MarketNames)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(

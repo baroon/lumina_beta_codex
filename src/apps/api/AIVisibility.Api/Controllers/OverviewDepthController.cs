@@ -28,10 +28,12 @@ public class OverviewDepthController : ControllerBase
         [FromQuery] DateTime? to = null,
         [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
         [FromQuery(Name = "topicNames")] string[]? topicNames = null,
+        [FromQuery(Name = "productNames")] string[]? productNames = null,
+        [FromQuery(Name = "marketNames")] string[]? marketNames = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceDepthQuery(from, to, lensCodes, topicNames), cancellationToken);
+            new GetWorkspaceDepthQuery(from, to, lensCodes, topicNames, productNames, marketNames), cancellationToken);
         return Ok(result);
     }
 }

@@ -12,7 +12,9 @@ public record GetWorkspaceDepthQuery(
     DateTime? From,
     DateTime? To,
     IReadOnlyList<string>? LensCodes,
-    IReadOnlyList<string>? TopicNames) : IRequest<WorkspaceDepthDto>;
+    IReadOnlyList<string>? TopicNames,
+    IReadOnlyList<string>? ProductNames,
+    IReadOnlyList<string>? MarketNames) : IRequest<WorkspaceDepthDto>;
 
 public sealed record WorkspaceDepthDto(
     Guid WorkspaceId,

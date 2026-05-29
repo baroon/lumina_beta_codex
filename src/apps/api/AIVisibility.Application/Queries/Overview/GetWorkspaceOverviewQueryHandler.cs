@@ -37,6 +37,8 @@ public class GetWorkspaceOverviewQueryHandler
         // unit the FE picker operates on) to all matching Topic.Id rows
         // so duplicates across brands / discovery runs are honored.
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
+        var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
+        var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -82,7 +84,7 @@ public class GetWorkspaceOverviewQueryHandler
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, cancellationToken);
+        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, cancellationToken);
 
         // Hero counts for the immediately-preceding equivalent window so
         // the FE can render an up/down delta chip on each hero tile.
@@ -97,7 +99,7 @@ public class GetWorkspaceOverviewQueryHandler
                     && s.StartedAt < prevTo)
                 .Select(s => s.Id)
                 .ToListAsync(cancellationToken);
-            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, cancellationToken);
         }
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
@@ -167,6 +169,8 @@ public class GetWorkspaceOverviewQueryHandler
         HashSet<Guid> trackedBrandIds,
         HashSet<Guid>? lensIdFilter,
         HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0)
@@ -176,9 +180,9 @@ public class GetWorkspaceOverviewQueryHandler
 
         var scanIdSet = scanIds.ToHashSet();
 
-        // Apply the lens + topic filters at the PromptRun source so every
-        // downstream count (answers → mentions → citations) flows from
-        // the same scoped set.
+        // Apply the lens + topic + product + market filters at the
+        // PromptRun source so every downstream count (answers → mentions
+        // → citations) flows from the same scoped set.
         var promptRunsInScope = _db.PromptRuns.AsNoTracking()
             .Where(pr => scanIdSet.Contains(pr.ScanRunId));
         if (lensIdFilter is not null)
@@ -190,6 +194,16 @@ public class GetWorkspaceOverviewQueryHandler
         {
             promptRunsInScope = promptRunsInScope.Where(pr =>
                 _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)));
+        }
+        if (productIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr =>
+                _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)));
+        }
+        if (marketIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr =>
+                _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)));
         }
         var promptRunIdsInScope = promptRunsInScope.Select(pr => pr.Id);
 
@@ -389,6 +403,32 @@ public class GetWorkspaceOverviewQueryHandler
             .Where(t => names.Contains(t.Name)
                 && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
             .Select(t => t.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveProductIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Products.AsNoTracking()
+            .Where(p => names.Contains(p.Name)
+                && _db.Brands.Any(b => b.Id == p.BrandId && b.WorkspaceId == workspaceId))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveMarketIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Markets.AsNoTracking()
+            .Where(m => names.Contains(m.Name)
+                && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
+            .Select(m => m.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

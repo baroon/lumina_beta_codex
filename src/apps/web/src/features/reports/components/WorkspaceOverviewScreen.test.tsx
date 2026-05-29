@@ -29,6 +29,14 @@ vi.mock("../hooks/useTopicCounts", () => ({
   useTopicCounts: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
+vi.mock("../hooks/useProductCounts", () => ({
+  useProductCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
+vi.mock("../hooks/useMarketCounts", () => ({
+  useMarketCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
 // Discovery-summary strip is also called unconditionally. Stubbed empty
 // so the rest of the screen rendering tests aren't affected by it.
 vi.mock("../hooks/useDiscoverySummary", () => ({

@@ -25,13 +25,31 @@ export function useWorkspaceOverview(
   selection: DateRangeSelection,
   lensCodes: readonly string[],
   topicNames: readonly string[],
+  productNames: readonly string[],
+  marketNames: readonly string[],
 ) {
   // Sort + join so [A,B] and [B,A] hit the same cache entry.
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
+  const productKey = [...productNames].sort().join(",");
+  const marketKey = [...marketNames].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-overview", serializeDateRangeSelection(selection), lensKey, topicKey],
-    queryFn: () => overviewApi.overview(resolveDateRange(selection), lensCodes, topicNames),
+    queryKey: [
+      "workspace-overview",
+      serializeDateRangeSelection(selection),
+      lensKey,
+      topicKey,
+      productKey,
+      marketKey,
+    ],
+    queryFn: () =>
+      overviewApi.overview(
+        resolveDateRange(selection),
+        lensCodes,
+        topicNames,
+        productNames,
+        marketNames,
+      ),
     placeholderData: keepPreviousData,
   });
 }

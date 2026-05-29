@@ -16,12 +16,30 @@ export function useWorkspaceCompetitive(
   selection: DateRangeSelection,
   lensCodes: readonly string[],
   topicNames: readonly string[],
+  productNames: readonly string[],
+  marketNames: readonly string[],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
+  const productKey = [...productNames].sort().join(",");
+  const marketKey = [...marketNames].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-competitive", serializeDateRangeSelection(selection), lensKey, topicKey],
-    queryFn: () => overviewApi.competitive(resolveDateRange(selection), lensCodes, topicNames),
+    queryKey: [
+      "workspace-competitive",
+      serializeDateRangeSelection(selection),
+      lensKey,
+      topicKey,
+      productKey,
+      marketKey,
+    ],
+    queryFn: () =>
+      overviewApi.competitive(
+        resolveDateRange(selection),
+        lensCodes,
+        topicNames,
+        productNames,
+        marketNames,
+      ),
     placeholderData: keepPreviousData,
   });
 }

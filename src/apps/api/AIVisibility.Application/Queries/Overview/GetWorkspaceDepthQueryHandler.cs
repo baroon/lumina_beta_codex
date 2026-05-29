@@ -74,10 +74,12 @@ public class GetWorkspaceDepthQueryHandler
             request.LensCodes is null || request.LensCodes.Count == 0
                 ? null
                 : request.LensCodes.ToHashSet(StringComparer.Ordinal);
-        // Topic filter resolves names → Topic.Id set (one name may map to
-        // many ids because topics are per-brand). Applied via an EXISTS
-        // subquery on PromptTopics so per-row joins stay clean.
+        // Topic + product + market filters resolve names → Id sets (each
+        // name may map to many ids because the dimensions are per-brand).
+        // Applied via EXISTS subqueries so per-row joins stay clean.
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
+        var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
+        var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -89,6 +91,10 @@ public class GetWorkspaceDepthQueryHandler
                 && (lensCodeFilter == null || lensCodeFilter.Contains(lens.Code))
                 && (topicIdFilter == null ||
                     _db.PromptTopics.Any(pt => pt.PromptId == p.Id && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == p.Id && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == p.Id && marketIdFilter.Contains(pm.MarketId)))
             select new RunRow(
                 s.Id,
                 s.TrackerConfigurationId,
@@ -362,6 +368,32 @@ public class GetWorkspaceDepthQueryHandler
             .Where(t => names.Contains(t.Name)
                 && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
             .Select(t => t.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveProductIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Products.AsNoTracking()
+            .Where(p => names.Contains(p.Name)
+                && _db.Brands.Any(b => b.Id == p.BrandId && b.WorkspaceId == workspaceId))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveMarketIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Markets.AsNoTracking()
+            .Where(m => names.Contains(m.Name)
+                && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
+            .Select(m => m.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

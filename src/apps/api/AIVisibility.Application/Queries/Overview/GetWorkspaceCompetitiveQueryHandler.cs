@@ -48,15 +48,17 @@ public class GetWorkspaceCompetitiveQueryHandler
             return Empty(workspaceId, windowFrom, windowTo);
         }
 
-        // Resolve the lens + topic filters once so the EF predicate
-        // downstream can reuse the same sets without re-querying.
+        // Resolve the lens + topic + product + market filters once so
+        // the EF predicate downstream can reuse the same sets.
         var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
+        var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
+        var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
 
         // Answers in window across all trackers — joined with AnswerSignal so
-        // we only include answers the signal extractor produced output for
-        // (mirrors v2 + Slice C handler). Lens + topic filters narrow the
-        // answer set via EXISTS subqueries on Prompts / PromptTopics.
+        // we only include answers the signal extractor produced output for.
+        // Each filter narrows the answer set via an EXISTS subquery on the
+        // matching join table.
         var answerRows = await (
             from a in _db.AIAnswers.AsNoTracking()
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
@@ -69,6 +71,10 @@ public class GetWorkspaceCompetitiveQueryHandler
                     _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
                 && (topicIdFilter == null ||
                     _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
@@ -386,6 +392,32 @@ public class GetWorkspaceCompetitiveQueryHandler
             .Where(t => names.Contains(t.Name)
                 && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
             .Select(t => t.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveProductIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Products.AsNoTracking()
+            .Where(p => names.Contains(p.Name)
+                && _db.Brands.Any(b => b.Id == p.BrandId && b.WorkspaceId == workspaceId))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveMarketIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Markets.AsNoTracking()
+            .Where(m => names.Contains(m.Name)
+                && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
+            .Select(m => m.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }
