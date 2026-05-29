@@ -28,6 +28,12 @@ public class GetWorkspaceOverviewQueryHandler
         var (windowFrom, windowTo) = WindowResolver.Resolve(request.From, request.To);
         var workspaceId = _workspace.WorkspaceId;
 
+        // Null lens filter ⇒ "all lenses" (skip the predicate). Non-null
+        // (possibly empty) ⇒ filter PromptRuns by Prompt.LensId. An empty
+        // resolved set is the honest "no lens matched" outcome — hero
+        // counts come out as zero, which is what we want.
+        var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
+
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
             .Where(b => b.WorkspaceId == workspaceId)
@@ -72,7 +78,7 @@ public class GetWorkspaceOverviewQueryHandler
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, cancellationToken);
+        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, cancellationToken);
 
         // Hero counts for the immediately-preceding equivalent window so
         // the FE can render an up/down delta chip on each hero tile.
@@ -87,7 +93,7 @@ public class GetWorkspaceOverviewQueryHandler
                     && s.StartedAt < prevTo)
                 .Select(s => s.Id)
                 .ToListAsync(cancellationToken);
-            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, cancellationToken);
         }
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
@@ -153,7 +159,10 @@ public class GetWorkspaceOverviewQueryHandler
     // -----------------------------------------------------------------
 
     private async Task<WorkspaceHeroDto> BuildHeroAsync(
-        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        HashSet<Guid>? lensIdFilter,
+        CancellationToken ct)
     {
         if (scanIds.Count == 0)
         {
@@ -162,14 +171,22 @@ public class GetWorkspaceOverviewQueryHandler
 
         var scanIdSet = scanIds.ToHashSet();
 
-        var queries = await _db.PromptRuns.AsNoTracking()
-            .CountAsync(pr => scanIdSet.Contains(pr.ScanRunId), ct);
+        // Apply the lens filter at the PromptRun source so every
+        // downstream count (answers → mentions → citations) flows from
+        // the same scoped set.
+        var promptRunsInScope = _db.PromptRuns.AsNoTracking()
+            .Where(pr => scanIdSet.Contains(pr.ScanRunId));
+        if (lensIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr =>
+                _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)));
+        }
+        var promptRunIdsInScope = promptRunsInScope.Select(pr => pr.Id);
+
+        var queries = await promptRunsInScope.CountAsync(ct);
 
         var answerIds = await _db.AIAnswers.AsNoTracking()
-            .Where(a => _db.PromptRuns.AsNoTracking()
-                .Where(pr => scanIdSet.Contains(pr.ScanRunId))
-                .Select(pr => pr.Id)
-                .Contains(a.PromptRunId))
+            .Where(a => promptRunIdsInScope.Contains(a.PromptRunId))
             .Select(a => a.Id)
             .ToListAsync(ct);
         var answerIdSet = answerIds.ToHashSet();
@@ -327,6 +344,24 @@ public class GetWorkspaceOverviewQueryHandler
         "Negative" => -1.0,
         _ => null, // "Unknown" or anything we don't recognise
     };
+
+    /// <summary>
+    /// Look up the Lens.Id set that matches the requested codes. Null in
+    /// (or empty list in) ⇒ null out, meaning "no lens filter". Returns
+    /// a possibly-empty HashSet otherwise — the caller treats empty as
+    /// "no lens matched the codes" and ends up with zero counts, which
+    /// is the honest answer for an invalid code.
+    /// </summary>
+    private async Task<HashSet<Guid>?> ResolveLensIdSetAsync(
+        IReadOnlyList<string>? codes, CancellationToken ct)
+    {
+        if (codes is null || codes.Count == 0) return null;
+        var ids = await _db.Lenses.AsNoTracking()
+            .Where(l => codes.Contains(l.Code))
+            .Select(l => l.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
 
     private async Task<IReadOnlyDictionary<(TrendEntityType, Guid), string>> ResolveEntityNamesAsync(
         IReadOnlyList<Domain.Entities.TrendPoint> points, CancellationToken ct)

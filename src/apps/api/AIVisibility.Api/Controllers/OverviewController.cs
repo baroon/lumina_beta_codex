@@ -27,10 +27,11 @@ public class OverviewController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
+        [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceOverviewQuery(from, to), cancellationToken);
+            new GetWorkspaceOverviewQuery(from, to, lensCodes), cancellationToken);
         return Ok(result);
     }
 }

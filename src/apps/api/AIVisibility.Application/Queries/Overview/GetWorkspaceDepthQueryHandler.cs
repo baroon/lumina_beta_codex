@@ -66,6 +66,14 @@ public class GetWorkspaceDepthQueryHandler
 
         // Runs/answers across the workspace — one pass.
         var scanIds = scans.Select(s => s.Id).ToList();
+        // The runs query already joins Lens for the per-row label, so the
+        // lens filter is a single extra predicate on `lens.Code`. Null /
+        // empty input ⇒ skip the filter; otherwise we capture a HashSet
+        // locally so the EF translator emits a single IN(...) clause.
+        var lensCodeFilter =
+            request.LensCodes is null || request.LensCodes.Count == 0
+                ? null
+                : request.LensCodes.ToHashSet(StringComparer.Ordinal);
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -74,6 +82,7 @@ public class GetWorkspaceDepthQueryHandler
             join plat in _db.AIPlatforms.AsNoTracking() on pr.AIPlatformId equals plat.Id
             join lens in _db.Lenses.AsNoTracking() on p.LensId equals lens.Id
             where scanIds.Contains(pr.ScanRunId)
+                && (lensCodeFilter == null || lensCodeFilter.Contains(lens.Code))
             select new RunRow(
                 s.Id,
                 s.TrackerConfigurationId,

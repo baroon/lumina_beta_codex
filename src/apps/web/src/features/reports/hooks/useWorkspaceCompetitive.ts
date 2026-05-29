@@ -12,10 +12,14 @@ import {
  * doesn't blank the whole page. Uses `keepPreviousData` so changing the
  * date range doesn't unmount the section.
  */
-export function useWorkspaceCompetitive(selection: DateRangeSelection) {
+export function useWorkspaceCompetitive(
+  selection: DateRangeSelection,
+  lensCodes: readonly string[],
+) {
+  const lensKey = [...lensCodes].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-competitive", serializeDateRangeSelection(selection)],
-    queryFn: () => overviewApi.competitive(resolveDateRange(selection)),
+    queryKey: ["workspace-competitive", serializeDateRangeSelection(selection), lensKey],
+    queryFn: () => overviewApi.competitive(resolveDateRange(selection), lensCodes),
     placeholderData: keepPreviousData,
   });
 }

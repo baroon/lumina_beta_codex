@@ -694,6 +694,16 @@ export interface HeatmapCellDto {
 // TrackerConfiguration in the workspace. The competitive + depth
 // sibling endpoints layer in further sections.
 
+/**
+ * Per-lens mention count for the current workspace + date window.
+ * Drives the count chip rendered next to each lens row in
+ * {@link import("@/components/molecules/LensSelector").LensSelector}.
+ */
+export interface LensCountDto {
+  lensCode: string;
+  mentionCount: number;
+}
+
 export interface WorkspaceOverviewDto {
   workspaceId: string;
   /** Effective window lower bound (ISO). Null when caller asked for "All time". */

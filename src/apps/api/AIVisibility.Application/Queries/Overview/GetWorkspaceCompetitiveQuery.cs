@@ -12,7 +12,10 @@ namespace AIVisibility.Application.Queries.Overview;
 /// gap math only makes sense within a shared scan set, so each tracked
 /// brand gets its own gap section vs its own tracked competitors.
 /// </summary>
-public record GetWorkspaceCompetitiveQuery(DateTime? From, DateTime? To)
+public record GetWorkspaceCompetitiveQuery(
+    DateTime? From,
+    DateTime? To,
+    IReadOnlyList<string>? LensCodes)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(

@@ -26,10 +26,11 @@ public class OverviewDepthController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
+        [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceDepthQuery(from, to), cancellationToken);
+            new GetWorkspaceDepthQuery(from, to, lensCodes), cancellationToken);
         return Ok(result);
     }
 }

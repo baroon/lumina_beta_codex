@@ -26,10 +26,11 @@ public class OverviewCompetitiveController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
+        [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceCompetitiveQuery(from, to), cancellationToken);
+            new GetWorkspaceCompetitiveQuery(from, to, lensCodes), cancellationToken);
         return Ok(result);
     }
 }

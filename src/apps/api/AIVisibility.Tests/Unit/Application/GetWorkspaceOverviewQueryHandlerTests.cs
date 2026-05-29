@@ -182,7 +182,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         using var ctx = NewContext();
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         result.Should().NotBeNull();
         result.TrackedBrands.Should().BeEmpty();
@@ -201,7 +201,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         var seed = Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         // Two tracked brands.
         result.TrackedBrands.Select(b => b.Name).Should().Equal("Acme", "Beta");
@@ -218,7 +218,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         // 4 scans total (2 per tracker × 2 trackers) → 4 prompt-runs → 4 answers.
         // Brand mentions on 3 of them (Acme x2 + Beta latest). BrandMentionRate = 3/4.
@@ -235,7 +235,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         var seed = Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         // Both tracked brands appear in the trend series (each has a BrandMentionRate series).
         var brandSeries = result.Series.Where(s => s.MetricName == MetricNames.BrandMentionRate).ToList();
@@ -256,7 +256,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         // Tracked brands first, in alpha order. Then competitor (Indeed).
         result.TopEntities[0].Name.Should().Be("Acme");
@@ -286,7 +286,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
 
         // Acme: Negative (-1) -> Positive (+1) → delta = +2.
         var acme = result.TopEntities.Single(r => r.Name == "Acme");
@@ -312,7 +312,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         var sut = NewHandler(ctx);
 
         // Days=5 leaves only the most-recent scan per tracker in window.
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-5), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-5), null, null), CancellationToken.None);
 
         var acme = result.TopEntities.Single(r => r.Name == "Acme");
         acme.Sentiment.Should().Be("Positive");
@@ -327,7 +327,7 @@ public class GetWorkspaceOverviewQueryHandlerTests
         var sut = NewHandler(ctx);
 
         // Days=5 — only the 1d-ago scans land in window. The 14d-ago ones drop.
-        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-5), null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-5), null, null), CancellationToken.None);
 
         // 2 scans (1 per tracker, the most recent each).
         result.ScanCount.Should().Be(2);

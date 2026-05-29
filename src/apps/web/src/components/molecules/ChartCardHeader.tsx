@@ -1,4 +1,4 @@
-import { Info, type LucideIcon } from "lucide-react";
+import { ChevronDown, Info, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   Tooltip,
@@ -27,6 +27,14 @@ interface ChartCardHeaderProps {
   tooltip?: string;
   /** Optional right-aligned slot (e.g. a "View all" link or metric toggle). */
   actions?: ReactNode;
+  /**
+   * Collapsed flag. When defined alongside {@link onToggleCollapsed}, a
+   * chevron toggle button is rendered at the far right of the header —
+   * the parent wrapper hides the card body when this is `true`.
+   */
+  collapsed?: boolean;
+  /** Called when the user clicks the trailing chevron toggle. */
+  onToggleCollapsed?: () => void;
   className?: string;
 }
 
@@ -47,8 +55,11 @@ export function ChartCardHeader({
   subtitle,
   tooltip,
   actions,
+  collapsed,
+  onToggleCollapsed,
   className,
 }: ChartCardHeaderProps) {
+  const collapsible = onToggleCollapsed !== undefined;
   return (
     <div className={cn("flex items-start justify-between gap-3 p-5 pb-3", className)}>
       <div className="flex min-w-0 items-start gap-3">
@@ -83,7 +94,26 @@ export function ChartCardHeader({
           {subtitle ? <p className="mt-0.5 text-xs text-neutral-500">{subtitle}</p> : null}
         </div>
       </div>
-      {actions ? <div className="shrink-0">{actions}</div> : null}
+      {(actions || collapsible) && (
+        <div className="flex shrink-0 items-center gap-2">
+          {actions}
+          {collapsible && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+              className="rounded text-neutral-400 transition hover:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
+            >
+              <ChevronDown
+                size={16}
+                aria-hidden
+                className={cn("transition-transform", collapsed && "-rotate-90")}
+              />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

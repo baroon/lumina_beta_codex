@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
-import { ChartCardHeader } from "@/components/molecules/ChartCardHeader";
+import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { sentimentColors } from "@/components/charts/chartTheme";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
@@ -34,10 +34,12 @@ import {
   type DateRangeSelection,
 } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
+import { LensSelector } from "@/components/molecules/LensSelector";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { BrandSelector, type BrandSelectorEntity } from "@/components/molecules/BrandSelector";
 import { REPORTS_COPY } from "@/content/reports";
+import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
@@ -140,10 +142,25 @@ const METRIC_OPTIONS: MetricOption[] = [
 export function WorkspaceOverviewScreen() {
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // FE-only lens-filter state — both variants below write to this list.
+  // No data fetch honors it yet; once we settle on one variant we will
+  // wire `?lensCodes=` through the overview endpoints.
+  const [selectedLensCodes, setSelectedLensCodes] = useState<string[]>([]);
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(range);
+  const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(
+    range,
+    selectedLensCodes,
+  );
+  // Per-lens mention counts for the chip in the LensSelector. Unscoped
+  // from `selectedLensCodes` on purpose so the chip stays stable as the
+  // user toggles. Fold the array into a code→count map once.
+  const { data: lensCountsRaw } = useLensCounts(range);
+  const lensCountsByCode = useMemo<Record<string, number>>(() => {
+    if (!lensCountsRaw) return {};
+    return Object.fromEntries(lensCountsRaw.map((l) => [l.lensCode, l.mentionCount]));
+  }, [lensCountsRaw]);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -198,6 +215,9 @@ export function WorkspaceOverviewScreen() {
         competitors={competitorEntities}
         selectedKeys={selectedKeys}
         onSelectedKeysChange={setSelectedKeys}
+        selectedLensCodes={selectedLensCodes}
+        onSelectedLensCodesChange={setSelectedLensCodes}
+        lensCountsByCode={lensCountsByCode}
         isRefreshing={isFetching && !isLoading}
       />
 
@@ -235,10 +255,14 @@ export function WorkspaceOverviewScreen() {
 
           {/* Slice B competitive sections — fetched separately so an
               aggregation failure in one doesn't blank the whole page. */}
-          <CompetitiveSections range={range} selectedKeys={selectedKeys} />
+          <CompetitiveSections
+            range={range}
+            lensCodes={selectedLensCodes}
+            selectedKeys={selectedKeys}
+          />
 
           {/* Slice C depth sections + recent chats. Same pattern. */}
-          <DepthSections range={range} />
+          <DepthSections range={range} lensCodes={selectedLensCodes} />
         </div>
       )}
     </div>
@@ -251,12 +275,14 @@ export function WorkspaceOverviewScreen() {
 
 function CompetitiveSections({
   range,
+  lensCodes,
   selectedKeys,
 }: {
   range: DateRangeSelection;
+  lensCodes: readonly string[];
   selectedKeys: readonly string[];
 }) {
-  const { data, isLoading, isError } = useWorkspaceCompetitive(range);
+  const { data, isLoading, isError } = useWorkspaceCompetitive(range, lensCodes);
   if (isLoading || isError || !data) return null;
 
   return (
@@ -293,12 +319,9 @@ function ShareOfVoiceCard({
 
   if (total === 0) {
     return (
-      <Card>
-        <ChartCardHeader icon={PieChart} title={copy.title} tooltip={copy.tooltip} />
-        <CardContent className="pt-0">
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        </CardContent>
-      </Card>
+      <CollapsibleCard icon={PieChart} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
     );
   }
 
@@ -310,16 +333,13 @@ function ShareOfVoiceCard({
   }));
 
   return (
-    <Card>
-      <ChartCardHeader icon={PieChart} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        <DonutChartWrapper
-          data={slices}
-          formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
-          height={260}
-        />
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={PieChart} title={copy.title} tooltip={copy.tooltip}>
+      <DonutChartWrapper
+        data={slices}
+        formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
+        height={260}
+      />
+    </CollapsibleCard>
   );
 }
 
@@ -343,20 +363,17 @@ function RecommendationRateCard({
     .map((r) => ({ label: r.name, value: r.recommendationRate ?? 0 }));
 
   return (
-    <Card>
-      <ChartCardHeader icon={ThumbsUp} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <BarChartWrapper
-            data={data}
-            valueAxisLabel={copy.axisLabel}
-            formatValue={(v) => `${Math.round(v * 100)}%`}
-          />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={ThumbsUp} title={copy.title} tooltip={copy.tooltip}>
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <BarChartWrapper
+          data={data}
+          valueAxisLabel={copy.axisLabel}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+        />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -380,16 +397,13 @@ function BrandVsCompetitorCard({
     .map((m) => ({ label: m.name, value: m.mentionCount }));
 
   return (
-    <Card>
-      <ChartCardHeader icon={BarChart3} title={copy.brandVsCompetitor} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={BarChart3} title={copy.brandVsCompetitor} tooltip={copy.tooltip}>
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -413,16 +427,13 @@ function MentionDistributionCard({
     .map((m) => ({ axis: m.name, value: m.mentionCount }));
 
   return (
-    <Card>
-      <ChartCardHeader icon={Users} title={copy.distribution} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <RadarChartWrapper data={data} />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={Users} title={copy.distribution} tooltip={copy.tooltip}>
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <RadarChartWrapper data={data} />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -451,20 +462,17 @@ function CompetitiveGapGroupsCard({
     .filter((g) => g.gaps.length > 0);
 
   return (
-    <Card>
-      <ChartCardHeader icon={Target} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {visibleGroups.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noGroups}</p>
-        ) : (
-          <div className="space-y-6">
-            {visibleGroups.map((g) => (
-              <GapBlock key={g.trackedBrandId} group={g} />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={Target} title={copy.title} tooltip={copy.tooltip}>
+      {visibleGroups.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noGroups}</p>
+      ) : (
+        <div className="space-y-6">
+          {visibleGroups.map((g) => (
+            <GapBlock key={g.trackedBrandId} group={g} />
+          ))}
+        </div>
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -491,54 +499,51 @@ function GapBlock({ group }: { group: { trackedBrandName: string; gaps: Competit
 function TopCitationDomainsCard({ rows }: { rows: readonly DomainRowDto[] }) {
   const copy = REPORTS_COPY.overview.topDomains;
   return (
-    <Card>
-      <ChartCardHeader icon={Globe} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {rows.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th scope="col" className="px-3 py-2 text-left font-medium">
-                    {copy.columns.source}
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-left font-medium">
-                    {copy.columns.domain}
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-left font-medium">
-                    {copy.columns.type}
-                  </th>
-                  <th scope="col" className="px-3 py-2 text-right font-medium">
-                    {copy.columns.citations}
-                  </th>
+    <CollapsibleCard icon={Globe} title={copy.title} tooltip={copy.tooltip}>
+      {rows.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  {copy.columns.source}
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  {copy.columns.domain}
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  {copy.columns.type}
+                </th>
+                <th scope="col" className="px-3 py-2 text-right font-medium">
+                  {copy.columns.citations}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {rows.map((r) => (
+                <tr key={r.sourceId} className="hover:bg-neutral-50">
+                  <td className="px-3 py-2 font-medium text-neutral-900">{r.sourceName}</td>
+                  <td className="px-3 py-2 text-neutral-600">
+                    <span className="inline-flex items-center gap-1">
+                      <Globe className="h-3 w-3 text-neutral-400" aria-hidden="true" />
+                      {r.normalizedDomain ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {r.sourceType}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{r.citationCount}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {rows.map((r) => (
-                  <tr key={r.sourceId} className="hover:bg-neutral-50">
-                    <td className="px-3 py-2 font-medium text-neutral-900">{r.sourceName}</td>
-                    <td className="px-3 py-2 text-neutral-600">
-                      <span className="inline-flex items-center gap-1">
-                        <Globe className="h-3 w-3 text-neutral-400" aria-hidden="true" />
-                        {r.normalizedDomain ?? "—"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {r.sourceType}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{r.citationCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -550,12 +555,9 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
   const copy = REPORTS_COPY.overview.domainTypes;
   if (rows.length === 0) {
     return (
-      <Card>
-        <ChartCardHeader icon={Layers} title={copy.title} tooltip={copy.tooltip} />
-        <CardContent className="pt-0">
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        </CardContent>
-      </Card>
+      <CollapsibleCard icon={Layers} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
     );
   }
 
@@ -567,18 +569,15 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
   }));
 
   return (
-    <Card>
-      <ChartCardHeader icon={Layers} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        <DonutChartWrapper
-          data={slices}
-          formatValue={(v) =>
-            `${v} (${Math.round((v / rows.reduce((s, r) => s + r.citationCount, 0)) * 100)}%)`
-          }
-          height={260}
-        />
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={Layers} title={copy.title} tooltip={copy.tooltip}>
+      <DonutChartWrapper
+        data={slices}
+        formatValue={(v) =>
+          `${v} (${Math.round((v / rows.reduce((s, r) => s + r.citationCount, 0)) * 100)}%)`
+        }
+        height={260}
+      />
+    </CollapsibleCard>
   );
 }
 
@@ -593,6 +592,9 @@ interface ComparisonControlsRowProps {
   competitors: readonly BrandSelectorEntity[];
   selectedKeys: readonly string[];
   onSelectedKeysChange: (next: string[]) => void;
+  selectedLensCodes: readonly string[];
+  onSelectedLensCodesChange: (next: string[]) => void;
+  lensCountsByCode?: Readonly<Record<string, number>>;
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -606,10 +608,18 @@ function ComparisonControlsRow({
   competitors,
   selectedKeys,
   onSelectedKeysChange,
+  selectedLensCodes,
+  onSelectedLensCodesChange,
+  lensCountsByCode,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+    // Sticky at top of the scrolling content so the row stays reachable as
+    // the user scrolls through the (now very long) overview. `top-0` pins to
+    // the closest scroll container, `z-20` lifts the bar above chart cards
+    // but stays below selector dropdowns (which use z-30). `bg-white` keeps
+    // chart content from bleeding through when the bar is parked.
+    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
       <BrandSelector
         trackedBrands={trackedBrands}
         competitors={competitors}
@@ -617,6 +627,11 @@ function ComparisonControlsRow({
         onChange={onSelectedKeysChange}
       />
       <DateRangePicker value={range} onChange={onRangeChange} />
+      <LensSelector
+        selectedCodes={selectedLensCodes}
+        onChange={onSelectedLensCodesChange}
+        countsByCode={lensCountsByCode}
+      />
       {isRefreshing && (
         <span
           aria-live="polite"
@@ -811,22 +826,19 @@ function TrendCard({
   }, [data.series, metric, selectedSet]);
 
   return (
-    <Card>
-      <ChartCardHeader
-        icon={metric.format === "sentiment" ? Smile : TrendingUp}
-        title={metric.label}
-        tooltip={REPORTS_COPY.overview.trendChart.tooltip}
-      />
-      <CardContent className="pt-0">
-        {filteredSeries.length === 0 ? (
-          <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
-        ) : metric.format === "sentiment" ? (
-          <SentimentTimeline series={filteredSeries} />
-        ) : (
-          <NumericTrendChart series={filteredSeries} format={metric.format} />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard
+      icon={metric.format === "sentiment" ? Smile : TrendingUp}
+      title={metric.label}
+      tooltip={REPORTS_COPY.overview.trendChart.tooltip}
+    >
+      {filteredSeries.length === 0 ? (
+        <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
+      ) : metric.format === "sentiment" ? (
+        <SentimentTimeline series={filteredSeries} />
+      ) : (
+        <NumericTrendChart series={filteredSeries} format={metric.format} />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -973,65 +985,62 @@ function TopEntitiesCard({
   const visibleRows = rows.filter((r) => selectedSet.has(`${r.entityType}:${r.entityId}`));
 
   return (
-    <Card>
-      <ChartCardHeader icon={Trophy} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {visibleRows.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.empty}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th scope="col" className="px-4 py-2 text-left font-medium">
-                    {copy.columns.entity}
-                  </th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">
-                    {copy.columns.visibility}
-                  </th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">
-                    {copy.columns.shareOfVoice}
-                  </th>
-                  <th scope="col" className="px-4 py-2 text-left font-medium">
-                    {copy.columns.sentiment}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {visibleRows.map((row) => (
-                  <tr key={`${row.entityType}:${row.entityId}`} className="hover:bg-neutral-50">
-                    <td className="px-4 py-2">
-                      <span className="font-medium text-neutral-900">{row.name}</span>
-                      {row.isTrackedBrand && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {copy.youChip}
+    <CollapsibleCard icon={Trophy} title={copy.title} tooltip={copy.tooltip}>
+      {visibleRows.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.empty}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th scope="col" className="px-4 py-2 text-left font-medium">
+                  {copy.columns.entity}
+                </th>
+                <th scope="col" className="px-4 py-2 text-right font-medium">
+                  {copy.columns.visibility}
+                </th>
+                <th scope="col" className="px-4 py-2 text-right font-medium">
+                  {copy.columns.shareOfVoice}
+                </th>
+                <th scope="col" className="px-4 py-2 text-left font-medium">
+                  {copy.columns.sentiment}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {visibleRows.map((row) => (
+                <tr key={`${row.entityType}:${row.entityId}`} className="hover:bg-neutral-50">
+                  <td className="px-4 py-2">
+                    <span className="font-medium text-neutral-900">{row.name}</span>
+                    {row.isTrackedBrand && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {copy.youChip}
+                      </Badge>
+                    )}
+                  </td>
+                  <MetricCell value={row.visibility} delta={row.visibilityDelta} />
+                  <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
+                  <td className="px-4 py-2 text-left">
+                    {row.sentiment ? (
+                      <div className="flex items-center gap-2">
+                        <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
+                          {row.sentiment}
                         </Badge>
-                      )}
-                    </td>
-                    <MetricCell value={row.visibility} delta={row.visibilityDelta} />
-                    <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
-                    <td className="px-4 py-2 text-left">
-                      {row.sentiment ? (
-                        <div className="flex items-center gap-2">
-                          <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
-                            {row.sentiment}
-                          </Badge>
-                          {row.sentimentDelta != null && (
-                            <SentimentDeltaChip delta={row.sentimentDelta} />
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-neutral-400">{copy.noData}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                        {row.sentimentDelta != null && (
+                          <SentimentDeltaChip delta={row.sentimentDelta} />
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-neutral-400">{copy.noData}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -1123,8 +1132,14 @@ function entityColor(isBrand: boolean, index: number): string {
 // Slice C depth sections — fetched from /api/overview/depth
 // ---------------------------------------------------------------------------
 
-function DepthSections({ range }: { range: DateRangeSelection }) {
-  const { data, isLoading, isError } = useWorkspaceDepth(range);
+function DepthSections({
+  range,
+  lensCodes,
+}: {
+  range: DateRangeSelection;
+  lensCodes: readonly string[];
+}) {
+  const { data, isLoading, isError } = useWorkspaceDepth(range, lensCodes);
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
 
   if (isLoading || isError || !data) return null;
@@ -1146,20 +1161,17 @@ function MentionsByPlatformCard({ rows }: { rows: readonly PlatformMentionDto[] 
     .filter((r) => r.brandMentionRate != null)
     .map((r) => ({ label: r.platformName, value: r.brandMentionRate ?? 0 }));
   return (
-    <Card>
-      <ChartCardHeader icon={BarChart3} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <BarChartWrapper
-            data={data}
-            valueAxisLabel={copy.axisLabel}
-            formatValue={(v) => `${Math.round(v * 100)}%`}
-          />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={BarChart3} title={copy.title} tooltip={copy.tooltip}>
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <BarChartWrapper
+          data={data}
+          valueAxisLabel={copy.axisLabel}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+        />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -1172,16 +1184,13 @@ function SentimentDistributionCard({ slices }: { slices: readonly SentimentSlice
     color: sentimentColors[s.sentiment] ?? sentimentColors.Unknown,
   }));
   return (
-    <Card>
-      <ChartCardHeader icon={Smile} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <DonutChartWrapper data={data} />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={Smile} title={copy.title} tooltip={copy.tooltip}>
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <DonutChartWrapper data={data} />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -1207,22 +1216,19 @@ function TopicHeatmapCard({ heatmap }: { heatmap: TopicHeatmapDto }) {
   const empty = data.rows.length === 0 || data.cols.length === 0;
 
   return (
-    <Card>
-      <ChartCardHeader
-        icon={Grid3X3}
-        title={copy.title}
-        subtitle={copy.subtitle}
-        tooltip={copy.tooltip}
-        actions={!empty ? <TopicMetricToggle metric={metric} onChange={setMetric} /> : undefined}
-      />
-      <CardContent className="pt-0">
-        {empty ? (
-          <p className="text-sm text-neutral-500">{copy.noData}</p>
-        ) : (
-          <HeatmapWrapper data={data} />
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard
+      icon={Grid3X3}
+      title={copy.title}
+      subtitle={copy.subtitle}
+      tooltip={copy.tooltip}
+      actions={!empty ? <TopicMetricToggle metric={metric} onChange={setMetric} /> : undefined}
+    >
+      {empty ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <HeatmapWrapper data={data} />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -1273,52 +1279,49 @@ function RecentChatsCard({
 }) {
   const copy = REPORTS_COPY.overview.recentChats;
   return (
-    <Card>
-      <ChartCardHeader icon={MessageSquare} title={copy.title} tooltip={copy.tooltip} />
-      <CardContent className="pt-0">
-        {chats.length === 0 ? (
-          <p className="text-sm text-neutral-500">{copy.empty}</p>
-        ) : (
-          <ul className="space-y-3">
-            {chats.map((chat) => (
-              <li key={chat.answerId}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(chat)}
-                  className="w-full rounded-lg border border-neutral-200 bg-white p-3 text-left transition hover:border-primary-300 hover:bg-primary-50/40"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="line-clamp-2 text-sm font-medium text-neutral-900">
-                      {chat.promptText}
-                    </p>
-                    <span className="shrink-0 text-xs text-neutral-500">
-                      {formatRelativeTime(chat.capturedAt)}
-                    </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs text-neutral-600">{chat.answerSnippet}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                    <Badge variant="secondary">{chat.brandName}</Badge>
-                    <Badge variant="outline">{chat.platformName}</Badge>
-                    <Badge variant="outline">{chat.lensName}</Badge>
-                    {chat.brandSentiment && (
-                      <Badge variant={sentimentVariant(chat.brandSentiment)}>
-                        {chat.brandSentiment}
-                      </Badge>
-                    )}
-                    <span>
-                      {chat.mentionCount} {copy.mentionsLabel}
-                    </span>
-                    <span>
-                      {chat.citationCount} {copy.citationsLabel}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <CollapsibleCard icon={MessageSquare} title={copy.title} tooltip={copy.tooltip}>
+      {chats.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.empty}</p>
+      ) : (
+        <ul className="space-y-3">
+          {chats.map((chat) => (
+            <li key={chat.answerId}>
+              <button
+                type="button"
+                onClick={() => onSelect(chat)}
+                className="w-full rounded-lg border border-neutral-200 bg-white p-3 text-left transition hover:border-primary-300 hover:bg-primary-50/40"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="line-clamp-2 text-sm font-medium text-neutral-900">
+                    {chat.promptText}
+                  </p>
+                  <span className="shrink-0 text-xs text-neutral-500">
+                    {formatRelativeTime(chat.capturedAt)}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs text-neutral-600">{chat.answerSnippet}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                  <Badge variant="secondary">{chat.brandName}</Badge>
+                  <Badge variant="outline">{chat.platformName}</Badge>
+                  <Badge variant="outline">{chat.lensName}</Badge>
+                  {chat.brandSentiment && (
+                    <Badge variant={sentimentVariant(chat.brandSentiment)}>
+                      {chat.brandSentiment}
+                    </Badge>
+                  )}
+                  <span>
+                    {chat.mentionCount} {copy.mentionsLabel}
+                  </span>
+                  <span>
+                    {chat.citationCount} {copy.citationsLabel}
+                  </span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CollapsibleCard>
   );
 }
 

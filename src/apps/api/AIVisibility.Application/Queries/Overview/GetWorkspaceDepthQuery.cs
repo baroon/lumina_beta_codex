@@ -8,7 +8,10 @@ namespace AIVisibility.Application.Queries.Overview;
 /// with topics grouped by name across brands), and the last N AIAnswers
 /// across the workspace (interleaved newest-first).
 /// </summary>
-public record GetWorkspaceDepthQuery(DateTime? From, DateTime? To) : IRequest<WorkspaceDepthDto>;
+public record GetWorkspaceDepthQuery(
+    DateTime? From,
+    DateTime? To,
+    IReadOnlyList<string>? LensCodes) : IRequest<WorkspaceDepthDto>;
 
 public sealed record WorkspaceDepthDto(
     Guid WorkspaceId,

@@ -9,9 +9,16 @@ namespace AIVisibility.Application.Queries.Overview;
 ///
 /// Window is a half-open <c>[From, To]</c> range. <c>From=null</c> means
 /// "all time" (no lower bound); <c>To=null</c> resolves to UTC now.
+/// <c>LensCodes</c> filters the answer-derived sections (hero counts);
+/// when null or empty no lens filter is applied. The longitudinal trend
+/// series + Top Entities table read from pre-aggregated TrendPoints
+/// (no lens granularity) and stay workspace-wide on purpose.
 /// Always returns a non-null payload — an empty workspace produces zeros.
 /// </summary>
-public record GetWorkspaceOverviewQuery(DateTime? From, DateTime? To) : IRequest<WorkspaceOverviewDto>;
+public record GetWorkspaceOverviewQuery(
+    DateTime? From,
+    DateTime? To,
+    IReadOnlyList<string>? LensCodes) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,

@@ -48,9 +48,14 @@ public class GetWorkspaceCompetitiveQueryHandler
             return Empty(workspaceId, windowFrom, windowTo);
         }
 
+        // Resolve the lens filter to Lens.Id values once so the EF
+        // predicate downstream can reuse the same set without re-querying.
+        var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
+
         // Answers in window across all trackers — joined with AnswerSignal so
         // we only include answers the signal extractor produced output for
-        // (mirrors v2 + Slice C handler).
+        // (mirrors v2 + Slice C handler). When a lens filter is in play we
+        // additionally join Prompt to restrict to the chosen lens(es).
         var answerRows = await (
             from a in _db.AIAnswers.AsNoTracking()
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
@@ -59,6 +64,8 @@ public class GetWorkspaceCompetitiveQueryHandler
             where trackerIds.Contains(s.TrackerConfigurationId)
                 && (windowFrom == null || s.StartedAt >= windowFrom)
                 && s.StartedAt <= windowTo
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
@@ -354,6 +361,17 @@ public class GetWorkspaceCompetitiveQueryHandler
             .ThenByDescending(e => e.IsTrackedBrand ? 0 : (e.RecommendationRate ?? double.NegativeInfinity))
             .ThenBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveLensIdSetAsync(
+        IReadOnlyList<string>? codes, CancellationToken ct)
+    {
+        if (codes is null || codes.Count == 0) return null;
+        var ids = await _db.Lenses.AsNoTracking()
+            .Where(l => codes.Contains(l.Code))
+            .Select(l => l.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
     }
 
     private sealed record AnswerRow(Guid AnswerId, Guid TrackerId);

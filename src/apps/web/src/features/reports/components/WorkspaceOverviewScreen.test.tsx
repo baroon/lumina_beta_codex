@@ -18,6 +18,13 @@ vi.mock("../hooks/useWorkspaceOverview", () => ({
   useWorkspaceOverview: () => hookState,
 }));
 
+// Lens-count chip data — the screen calls this hook unconditionally
+// for the LensSelector dropdown chips. Stub it as "no data" by default;
+// individual tests don't need to assert on it.
+vi.mock("../hooks/useLensCounts", () => ({
+  useLensCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
 // Slice B competitive sections fetched separately. Default: no data.
 let competitiveState: {
   data?: import("@/types/api").WorkspaceCompetitiveDto;

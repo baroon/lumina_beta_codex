@@ -14,10 +14,11 @@ import {
  * Uses `keepPreviousData` so changing the date range keeps the section
  * mounted while the new payload loads.
  */
-export function useWorkspaceDepth(selection: DateRangeSelection) {
+export function useWorkspaceDepth(selection: DateRangeSelection, lensCodes: readonly string[]) {
+  const lensKey = [...lensCodes].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-depth", serializeDateRangeSelection(selection)],
-    queryFn: () => overviewApi.depth(resolveDateRange(selection)),
+    queryKey: ["workspace-depth", serializeDateRangeSelection(selection), lensKey],
+    queryFn: () => overviewApi.depth(resolveDateRange(selection), lensCodes),
     placeholderData: keepPreviousData,
   });
 }
