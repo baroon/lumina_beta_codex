@@ -21,12 +21,17 @@ import {
  * `<LoadingPage />` flash on every date-range change); the screen reads
  * `isFetching` for a subtle "refreshing" affordance during the swap.
  */
-export function useWorkspaceOverview(selection: DateRangeSelection, lensCodes: readonly string[]) {
+export function useWorkspaceOverview(
+  selection: DateRangeSelection,
+  lensCodes: readonly string[],
+  topicNames: readonly string[],
+) {
   // Sort + join so [A,B] and [B,A] hit the same cache entry.
   const lensKey = [...lensCodes].sort().join(",");
+  const topicKey = [...topicNames].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-overview", serializeDateRangeSelection(selection), lensKey],
-    queryFn: () => overviewApi.overview(resolveDateRange(selection), lensCodes),
+    queryKey: ["workspace-overview", serializeDateRangeSelection(selection), lensKey, topicKey],
+    queryFn: () => overviewApi.overview(resolveDateRange(selection), lensCodes, topicNames),
     placeholderData: keepPreviousData,
   });
 }

@@ -11,7 +11,8 @@ namespace AIVisibility.Application.Queries.Overview;
 public record GetWorkspaceDepthQuery(
     DateTime? From,
     DateTime? To,
-    IReadOnlyList<string>? LensCodes) : IRequest<WorkspaceDepthDto>;
+    IReadOnlyList<string>? LensCodes,
+    IReadOnlyList<string>? TopicNames) : IRequest<WorkspaceDepthDto>;
 
 public sealed record WorkspaceDepthDto(
     Guid WorkspaceId,

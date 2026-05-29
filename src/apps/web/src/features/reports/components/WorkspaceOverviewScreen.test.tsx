@@ -25,6 +25,16 @@ vi.mock("../hooks/useLensCounts", () => ({
   useLensCounts: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
+vi.mock("../hooks/useTopicCounts", () => ({
+  useTopicCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
+// Discovery-summary strip is also called unconditionally. Stubbed empty
+// so the rest of the screen rendering tests aren't affected by it.
+vi.mock("../hooks/useDiscoverySummary", () => ({
+  useDiscoverySummary: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+
 // Slice B competitive sections fetched separately. Default: no data.
 let competitiveState: {
   data?: import("@/types/api").WorkspaceCompetitiveDto;

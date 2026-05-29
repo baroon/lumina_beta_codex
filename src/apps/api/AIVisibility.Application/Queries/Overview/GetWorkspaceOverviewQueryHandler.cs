@@ -33,6 +33,10 @@ public class GetWorkspaceOverviewQueryHandler
         // resolved set is the honest "no lens matched" outcome — hero
         // counts come out as zero, which is what we want.
         var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
+        // Same semantics for topics — resolved from names (the dedup
+        // unit the FE picker operates on) to all matching Topic.Id rows
+        // so duplicates across brands / discovery runs are honored.
+        var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -78,7 +82,7 @@ public class GetWorkspaceOverviewQueryHandler
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, cancellationToken);
+        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, cancellationToken);
 
         // Hero counts for the immediately-preceding equivalent window so
         // the FE can render an up/down delta chip on each hero tile.
@@ -93,7 +97,7 @@ public class GetWorkspaceOverviewQueryHandler
                     && s.StartedAt < prevTo)
                 .Select(s => s.Id)
                 .ToListAsync(cancellationToken);
-            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, cancellationToken);
         }
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
@@ -162,6 +166,7 @@ public class GetWorkspaceOverviewQueryHandler
         IReadOnlyList<Guid> scanIds,
         HashSet<Guid> trackedBrandIds,
         HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0)
@@ -171,7 +176,7 @@ public class GetWorkspaceOverviewQueryHandler
 
         var scanIdSet = scanIds.ToHashSet();
 
-        // Apply the lens filter at the PromptRun source so every
+        // Apply the lens + topic filters at the PromptRun source so every
         // downstream count (answers → mentions → citations) flows from
         // the same scoped set.
         var promptRunsInScope = _db.PromptRuns.AsNoTracking()
@@ -180,6 +185,11 @@ public class GetWorkspaceOverviewQueryHandler
         {
             promptRunsInScope = promptRunsInScope.Where(pr =>
                 _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)));
+        }
+        if (topicIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr =>
+                _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)));
         }
         var promptRunIdsInScope = promptRunsInScope.Select(pr => pr.Id);
 
@@ -359,6 +369,26 @@ public class GetWorkspaceOverviewQueryHandler
         var ids = await _db.Lenses.AsNoTracking()
             .Where(l => codes.Contains(l.Code))
             .Select(l => l.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    /// <summary>
+    /// Resolve topic names (case-sensitive match — names come from the
+    /// same FE list the user picks from) to every matching Topic.Id in
+    /// the current workspace. Topics are per-brand so the same name may
+    /// resolve to multiple ids; we want all of them so duplicates from
+    /// repeated discovery runs are honored.
+    /// </summary>
+    private async Task<HashSet<Guid>?> ResolveTopicIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Topics.AsNoTracking()
+            .Where(t => names.Contains(t.Name)
+                && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
+            .Select(t => t.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

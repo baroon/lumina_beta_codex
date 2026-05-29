@@ -48,14 +48,15 @@ public class GetWorkspaceCompetitiveQueryHandler
             return Empty(workspaceId, windowFrom, windowTo);
         }
 
-        // Resolve the lens filter to Lens.Id values once so the EF
-        // predicate downstream can reuse the same set without re-querying.
+        // Resolve the lens + topic filters once so the EF predicate
+        // downstream can reuse the same sets without re-querying.
         var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
+        var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
 
         // Answers in window across all trackers — joined with AnswerSignal so
         // we only include answers the signal extractor produced output for
-        // (mirrors v2 + Slice C handler). When a lens filter is in play we
-        // additionally join Prompt to restrict to the chosen lens(es).
+        // (mirrors v2 + Slice C handler). Lens + topic filters narrow the
+        // answer set via EXISTS subqueries on Prompts / PromptTopics.
         var answerRows = await (
             from a in _db.AIAnswers.AsNoTracking()
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
@@ -66,6 +67,8 @@ public class GetWorkspaceCompetitiveQueryHandler
                 && s.StartedAt <= windowTo
                 && (lensIdFilter == null ||
                     _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
@@ -370,6 +373,19 @@ public class GetWorkspaceCompetitiveQueryHandler
         var ids = await _db.Lenses.AsNoTracking()
             .Where(l => codes.Contains(l.Code))
             .Select(l => l.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveTopicIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Topics.AsNoTracking()
+            .Where(t => names.Contains(t.Name)
+                && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
+            .Select(t => t.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

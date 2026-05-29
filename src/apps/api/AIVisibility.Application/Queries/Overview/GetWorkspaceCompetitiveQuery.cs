@@ -15,7 +15,8 @@ namespace AIVisibility.Application.Queries.Overview;
 public record GetWorkspaceCompetitiveQuery(
     DateTime? From,
     DateTime? To,
-    IReadOnlyList<string>? LensCodes)
+    IReadOnlyList<string>? LensCodes,
+    IReadOnlyList<string>? TopicNames)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(

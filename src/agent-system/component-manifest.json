@@ -311,6 +311,24 @@
           "notes": "Dropdown chip for filtering the Workspace Overview by Visibility Lens. Multi-select with checkboxes, click-outside dismiss, empty array sentinel (`[]`) reads as 'All lenses'. Selection threads through the three overview hooks as `?lensCodes=` so hero counts, share-of-voice, mention distribution, competitive gap, recommendation rate, citation domains, sentiment distribution, topic heatmap, and recent chats all honor the filter. The longitudinal trend chart and Top Entities table are read from pre-aggregated TrendPoints (no lens granularity) and stay workspace-wide on purpose."
         },
         {
+          "name": "TopicSelector",
+          "category": "Molecules",
+          "path": "src/components/molecules/TopicSelector.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Checkbox", "Input", "lucide-react"],
+          "notes": "Dropdown chip for filtering the Workspace Overview by Topic. Mirrors LensSelector but with dynamic options sourced from the workspace's discovery output (deduplicated by name case-insensitively). Multi-select with checkboxes, substring search, optional per-topic mention-count chip. Empty array sentinel reads as 'All topics'. Selection threads as `?topicNames=` through the three overview endpoints."
+        },
+        {
+          "name": "DiscoverySummaryStrip",
+          "category": "Molecules",
+          "path": "src/components/molecules/DiscoverySummaryStrip.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["lucide-react"],
+          "notes": "Inline 'Tracking N products · M markets · K audiences · L topics · X trust signals' strip rendered near the top of the Workspace Overview. Each chip click opens a popover listing the names so the user sees the system remembers what they captured in discovery. Purely informational — not a filter source. Empty workspace → renders nothing."
+        },
+        {
           "name": "CollapsibleCard",
           "category": "Molecules",
           "path": "src/components/molecules/CollapsibleCard.tsx",

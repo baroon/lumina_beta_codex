@@ -704,6 +704,36 @@ export interface LensCountDto {
   mentionCount: number;
 }
 
+/**
+ * Per-topic mention count, deduped by topic name (case-insensitive)
+ * since the same name can map to multiple Topic rows across brands /
+ * discovery runs. Drives the count chip rendered next to each topic
+ * row in `TopicSelector`.
+ */
+export interface TopicCountDto {
+  topicName: string;
+  mentionCount: number;
+}
+
+/**
+ * Workspace discovery summary — names + counts for every dimension the
+ * user captured during the brand-discovery flow. Drives the inline
+ * "Tracking 5 products · 2 markets · …" strip at the top of the
+ * Workspace Overview. Purely informational; not a filter source.
+ */
+export interface DiscoverySummaryDto {
+  products: DiscoveryDimensionDto[];
+  markets: DiscoveryDimensionDto[];
+  audiences: DiscoveryDimensionDto[];
+  topics: DiscoveryDimensionDto[];
+  trustSignals: DiscoveryDimensionDto[];
+}
+
+export interface DiscoveryDimensionDto {
+  id: string;
+  name: string;
+}
+
 export interface WorkspaceOverviewDto {
   workspaceId: string;
   /** Effective window lower bound (ISO). Null when caller asked for "All time". */

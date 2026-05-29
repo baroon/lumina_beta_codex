@@ -143,7 +143,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         using var ctx = NewContext();
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null, null), CancellationToken.None);
 
         result.Should().NotBeNull();
         result.TopDomains.Should().BeEmpty();
@@ -158,7 +158,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null, null), CancellationToken.None);
 
         // Trustpilot: 3 (Acme) + 1 (Beta) = 4; Wikipedia: 1. Both surface.
         result.TopDomains.Should().HaveCount(2);
@@ -176,7 +176,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null, null), CancellationToken.None);
 
         // Tracked brands first, alphabetical: Acme then Beta. Then competitors.
         result.MentionDistribution[0].Name.Should().Be("Acme");
@@ -202,7 +202,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null, null), CancellationToken.None);
 
         // Two tracked brand groups.
         result.CompetitiveGaps.Should().HaveCount(2);
@@ -239,7 +239,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         Build(ctx);
         var sut = NewHandler(ctx);
 
-        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null), CancellationToken.None);
+        var result = await sut.Handle(new GetWorkspaceCompetitiveQuery(DateTime.UtcNow.AddDays(-30), null, null, null), CancellationToken.None);
 
         // Acme: 4 mentions, 2 rec → 0.5.
         var acme = result.RecommendationRates.Single(r => r.Name == "Acme");
@@ -266,7 +266,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         // any other code drops every answer and downstream sections.
         var emptyFilter = await sut.Handle(
             new GetWorkspaceCompetitiveQuery(
-                DateTime.UtcNow.AddDays(-30), null, new[] { "nonexistent-lens" }),
+                DateTime.UtcNow.AddDays(-30), null, new[] { "nonexistent-lens" }, null),
             CancellationToken.None);
         emptyFilter.TopDomains.Should().BeEmpty();
         emptyFilter.MentionDistribution.Sum(m => m.MentionCount).Should().Be(0);
@@ -277,7 +277,7 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         // filter is wired through without dropping legitimate rows.
         var matched = await sut.Handle(
             new GetWorkspaceCompetitiveQuery(
-                DateTime.UtcNow.AddDays(-30), null, new[] { "x" }),
+                DateTime.UtcNow.AddDays(-30), null, new[] { "x" }, null),
             CancellationToken.None);
         matched.MentionDistribution.Sum(m => m.MentionCount).Should().BeGreaterThan(0);
         matched.TopDomains.Should().NotBeEmpty();

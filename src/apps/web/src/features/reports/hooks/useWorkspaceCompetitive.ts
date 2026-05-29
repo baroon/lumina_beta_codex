@@ -15,11 +15,13 @@ import {
 export function useWorkspaceCompetitive(
   selection: DateRangeSelection,
   lensCodes: readonly string[],
+  topicNames: readonly string[],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
+  const topicKey = [...topicNames].sort().join(",");
   return useQuery({
-    queryKey: ["workspace-competitive", serializeDateRangeSelection(selection), lensKey],
-    queryFn: () => overviewApi.competitive(resolveDateRange(selection), lensCodes),
+    queryKey: ["workspace-competitive", serializeDateRangeSelection(selection), lensKey, topicKey],
+    queryFn: () => overviewApi.competitive(resolveDateRange(selection), lensCodes, topicNames),
     placeholderData: keepPreviousData,
   });
 }

@@ -22,6 +22,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
+import { DiscoverySummaryStrip } from "@/components/molecules/DiscoverySummaryStrip";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { sentimentColors } from "@/components/charts/chartTheme";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
@@ -35,11 +36,14 @@ import {
 } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LensSelector } from "@/components/molecules/LensSelector";
+import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { BrandSelector, type BrandSelectorEntity } from "@/components/molecules/BrandSelector";
 import { REPORTS_COPY } from "@/content/reports";
+import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
 import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
+import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
@@ -146,12 +150,14 @@ export function WorkspaceOverviewScreen() {
   // No data fetch honors it yet; once we settle on one variant we will
   // wire `?lensCodes=` through the overview endpoints.
   const [selectedLensCodes, setSelectedLensCodes] = useState<string[]>([]);
+  const [selectedTopicNames, setSelectedTopicNames] = useState<string[]>([]);
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(
     range,
     selectedLensCodes,
+    selectedTopicNames,
   );
   // Per-lens mention counts for the chip in the LensSelector. Unscoped
   // from `selectedLensCodes` on purpose so the chip stays stable as the
@@ -161,6 +167,21 @@ export function WorkspaceOverviewScreen() {
     if (!lensCountsRaw) return {};
     return Object.fromEntries(lensCountsRaw.map((l) => [l.lensCode, l.mentionCount]));
   }, [lensCountsRaw]);
+  // Per-topic mention counts — drives the chip on each row of the
+  // TopicSelector dropdown. Same stability rules as `useLensCounts`.
+  const { data: topicCountsRaw } = useTopicCounts(range);
+  const topicCountsByName = useMemo<Record<string, number>>(() => {
+    if (!topicCountsRaw) return {};
+    return Object.fromEntries(topicCountsRaw.map((t) => [t.topicName, t.mentionCount]));
+  }, [topicCountsRaw]);
+  // Discovery summary — names/counts for products, markets, audiences,
+  // topics, trust signals. Drives the inline strip near the top + supplies
+  // the topic-name list to the TopicSelector dropdown.
+  const { data: discoverySummary } = useDiscoverySummary();
+  const allTopicNames = useMemo<string[]>(
+    () => discoverySummary?.topics.map((t) => t.name) ?? [],
+    [discoverySummary],
+  );
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -208,6 +229,16 @@ export function WorkspaceOverviewScreen() {
     <div className="space-y-6">
       <PageHeader title={copy.title} description={copy.subtitle} />
 
+      {discoverySummary && (
+        <DiscoverySummaryStrip
+          products={discoverySummary.products}
+          markets={discoverySummary.markets}
+          audiences={discoverySummary.audiences}
+          topics={discoverySummary.topics}
+          trustSignals={discoverySummary.trustSignals}
+        />
+      )}
+
       <ComparisonControlsRow
         range={range}
         onRangeChange={setRange}
@@ -218,6 +249,10 @@ export function WorkspaceOverviewScreen() {
         selectedLensCodes={selectedLensCodes}
         onSelectedLensCodesChange={setSelectedLensCodes}
         lensCountsByCode={lensCountsByCode}
+        allTopicNames={allTopicNames}
+        selectedTopicNames={selectedTopicNames}
+        onSelectedTopicNamesChange={setSelectedTopicNames}
+        topicCountsByName={topicCountsByName}
         isRefreshing={isFetching && !isLoading}
       />
 
@@ -258,11 +293,16 @@ export function WorkspaceOverviewScreen() {
           <CompetitiveSections
             range={range}
             lensCodes={selectedLensCodes}
+            topicNames={selectedTopicNames}
             selectedKeys={selectedKeys}
           />
 
           {/* Slice C depth sections + recent chats. Same pattern. */}
-          <DepthSections range={range} lensCodes={selectedLensCodes} />
+          <DepthSections
+            range={range}
+            lensCodes={selectedLensCodes}
+            topicNames={selectedTopicNames}
+          />
         </div>
       )}
     </div>
@@ -276,13 +316,15 @@ export function WorkspaceOverviewScreen() {
 function CompetitiveSections({
   range,
   lensCodes,
+  topicNames,
   selectedKeys,
 }: {
   range: DateRangeSelection;
   lensCodes: readonly string[];
+  topicNames: readonly string[];
   selectedKeys: readonly string[];
 }) {
-  const { data, isLoading, isError } = useWorkspaceCompetitive(range, lensCodes);
+  const { data, isLoading, isError } = useWorkspaceCompetitive(range, lensCodes, topicNames);
   if (isLoading || isError || !data) return null;
 
   return (
@@ -595,6 +637,11 @@ interface ComparisonControlsRowProps {
   selectedLensCodes: readonly string[];
   onSelectedLensCodesChange: (next: string[]) => void;
   lensCountsByCode?: Readonly<Record<string, number>>;
+  /** Workspace's topic-name universe (deduplicated). */
+  allTopicNames: readonly string[];
+  selectedTopicNames: readonly string[];
+  onSelectedTopicNamesChange: (next: string[]) => void;
+  topicCountsByName?: Readonly<Record<string, number>>;
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -611,6 +658,10 @@ function ComparisonControlsRow({
   selectedLensCodes,
   onSelectedLensCodesChange,
   lensCountsByCode,
+  allTopicNames,
+  selectedTopicNames,
+  onSelectedTopicNamesChange,
+  topicCountsByName,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
@@ -631,6 +682,12 @@ function ComparisonControlsRow({
         selectedCodes={selectedLensCodes}
         onChange={onSelectedLensCodesChange}
         countsByCode={lensCountsByCode}
+      />
+      <TopicSelector
+        allTopicNames={allTopicNames}
+        selectedNames={selectedTopicNames}
+        onChange={onSelectedTopicNamesChange}
+        countsByName={topicCountsByName}
       />
       {isRefreshing && (
         <span
@@ -1135,11 +1192,13 @@ function entityColor(isBrand: boolean, index: number): string {
 function DepthSections({
   range,
   lensCodes,
+  topicNames,
 }: {
   range: DateRangeSelection;
   lensCodes: readonly string[];
+  topicNames: readonly string[];
 }) {
-  const { data, isLoading, isError } = useWorkspaceDepth(range, lensCodes);
+  const { data, isLoading, isError } = useWorkspaceDepth(range, lensCodes, topicNames);
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
 
   if (isLoading || isError || !data) return null;

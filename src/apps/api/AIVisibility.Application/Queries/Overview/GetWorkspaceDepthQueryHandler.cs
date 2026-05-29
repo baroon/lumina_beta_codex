@@ -74,6 +74,10 @@ public class GetWorkspaceDepthQueryHandler
             request.LensCodes is null || request.LensCodes.Count == 0
                 ? null
                 : request.LensCodes.ToHashSet(StringComparer.Ordinal);
+        // Topic filter resolves names → Topic.Id set (one name may map to
+        // many ids because topics are per-brand). Applied via an EXISTS
+        // subquery on PromptTopics so per-row joins stay clean.
+        var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -83,6 +87,8 @@ public class GetWorkspaceDepthQueryHandler
             join lens in _db.Lenses.AsNoTracking() on p.LensId equals lens.Id
             where scanIds.Contains(pr.ScanRunId)
                 && (lensCodeFilter == null || lensCodeFilter.Contains(lens.Code))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == p.Id && topicIdFilter.Contains(pt.TopicId)))
             select new RunRow(
                 s.Id,
                 s.TrackerConfigurationId,
@@ -345,6 +351,19 @@ public class GetWorkspaceDepthQueryHandler
         if (string.IsNullOrEmpty(s)) return string.Empty;
         s = s.Trim();
         return s.Length <= max ? s : s.Substring(0, max).TrimEnd() + "…";
+    }
+
+    private async Task<HashSet<Guid>?> ResolveTopicIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Topics.AsNoTracking()
+            .Where(t => names.Contains(t.Name)
+                && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
     }
 
     private sealed record RunRow(

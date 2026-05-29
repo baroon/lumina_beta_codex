@@ -18,7 +18,8 @@ namespace AIVisibility.Application.Queries.Overview;
 public record GetWorkspaceOverviewQuery(
     DateTime? From,
     DateTime? To,
-    IReadOnlyList<string>? LensCodes) : IRequest<WorkspaceOverviewDto>;
+    IReadOnlyList<string>? LensCodes,
+    IReadOnlyList<string>? TopicNames) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,
