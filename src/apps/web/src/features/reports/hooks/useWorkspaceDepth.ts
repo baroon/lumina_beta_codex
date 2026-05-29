@@ -20,11 +20,13 @@ export function useWorkspaceDepth(
   topicNames: readonly string[],
   productNames: readonly string[],
   marketNames: readonly string[],
+  audienceNames: readonly string[],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
   const productKey = [...productNames].sort().join(",");
   const marketKey = [...marketNames].sort().join(",");
+  const audienceKey = [...audienceNames].sort().join(",");
   return useQuery({
     queryKey: [
       "workspace-depth",
@@ -33,6 +35,7 @@ export function useWorkspaceDepth(
       topicKey,
       productKey,
       marketKey,
+      audienceKey,
     ],
     queryFn: () =>
       overviewApi.depth(
@@ -41,6 +44,7 @@ export function useWorkspaceDepth(
         topicNames,
         productNames,
         marketNames,
+        audienceNames,
       ),
     placeholderData: keepPreviousData,
   });

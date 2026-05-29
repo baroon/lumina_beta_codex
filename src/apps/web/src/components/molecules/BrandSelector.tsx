@@ -129,7 +129,6 @@ export function BrandSelector({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "inline-flex items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
-          "min-w-[180px]",
         )}
       >
         <span>{buttonLabel}</span>

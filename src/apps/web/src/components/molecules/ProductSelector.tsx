@@ -54,7 +54,7 @@ export function ProductSelector({
   const total = sorted.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
-  const buttonLabel = allSelected ? "All products" : `${selected} of ${total} products`;
+  const buttonLabel = allSelected ? `${total} products` : `${selected} of ${total} products`;
 
   function toggle(name: string) {
     const base = selectedNames.length === 0 ? sorted : selectedNames;

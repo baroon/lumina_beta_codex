@@ -29,10 +29,10 @@ function Harness({
 }
 
 describe("ProductSelector", () => {
-  it("trigger reads 'All products' on the empty-sentinel default", () => {
+  it("trigger reads 'N products' on the empty-sentinel default", () => {
     render(<Harness initial={[]} />);
     expect(screen.getByRole("button", { name: /product selector/i })).toHaveTextContent(
-      "All products",
+      "3 products",
     );
   });
 

@@ -39,6 +39,7 @@ public class GetWorkspaceOverviewQueryHandler
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
+        var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -84,7 +85,7 @@ public class GetWorkspaceOverviewQueryHandler
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, cancellationToken);
+        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, cancellationToken);
 
         // Hero counts for the immediately-preceding equivalent window so
         // the FE can render an up/down delta chip on each hero tile.
@@ -99,7 +100,7 @@ public class GetWorkspaceOverviewQueryHandler
                     && s.StartedAt < prevTo)
                 .Select(s => s.Id)
                 .ToListAsync(cancellationToken);
-            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, cancellationToken);
         }
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
@@ -171,6 +172,7 @@ public class GetWorkspaceOverviewQueryHandler
         HashSet<Guid>? topicIdFilter,
         HashSet<Guid>? productIdFilter,
         HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0)
@@ -204,6 +206,11 @@ public class GetWorkspaceOverviewQueryHandler
         {
             promptRunsInScope = promptRunsInScope.Where(pr =>
                 _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)));
+        }
+        if (audienceIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr =>
+                _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)));
         }
         var promptRunIdsInScope = promptRunsInScope.Select(pr => pr.Id);
 
@@ -429,6 +436,19 @@ public class GetWorkspaceOverviewQueryHandler
             .Where(m => names.Contains(m.Name)
                 && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
             .Select(m => m.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveAudienceIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Audiences.AsNoTracking()
+            .Where(a => names.Contains(a.Name)
+                && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
+            .Select(a => a.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

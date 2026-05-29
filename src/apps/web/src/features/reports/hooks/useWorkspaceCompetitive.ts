@@ -18,11 +18,13 @@ export function useWorkspaceCompetitive(
   topicNames: readonly string[],
   productNames: readonly string[],
   marketNames: readonly string[],
+  audienceNames: readonly string[],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
   const productKey = [...productNames].sort().join(",");
   const marketKey = [...marketNames].sort().join(",");
+  const audienceKey = [...audienceNames].sort().join(",");
   return useQuery({
     queryKey: [
       "workspace-competitive",
@@ -31,6 +33,7 @@ export function useWorkspaceCompetitive(
       topicKey,
       productKey,
       marketKey,
+      audienceKey,
     ],
     queryFn: () =>
       overviewApi.competitive(
@@ -39,6 +42,7 @@ export function useWorkspaceCompetitive(
         topicNames,
         productNames,
         marketNames,
+        audienceNames,
       ),
     placeholderData: keepPreviousData,
   });

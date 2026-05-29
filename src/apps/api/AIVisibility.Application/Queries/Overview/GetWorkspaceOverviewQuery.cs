@@ -21,7 +21,8 @@ public record GetWorkspaceOverviewQuery(
     IReadOnlyList<string>? LensCodes,
     IReadOnlyList<string>? TopicNames,
     IReadOnlyList<string>? ProductNames,
-    IReadOnlyList<string>? MarketNames) : IRequest<WorkspaceOverviewDto>;
+    IReadOnlyList<string>? MarketNames,
+    IReadOnlyList<string>? AudienceNames) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,

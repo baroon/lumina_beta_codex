@@ -27,12 +27,14 @@ export function useWorkspaceOverview(
   topicNames: readonly string[],
   productNames: readonly string[],
   marketNames: readonly string[],
+  audienceNames: readonly string[],
 ) {
   // Sort + join so [A,B] and [B,A] hit the same cache entry.
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
   const productKey = [...productNames].sort().join(",");
   const marketKey = [...marketNames].sort().join(",");
+  const audienceKey = [...audienceNames].sort().join(",");
   return useQuery({
     queryKey: [
       "workspace-overview",
@@ -41,6 +43,7 @@ export function useWorkspaceOverview(
       topicKey,
       productKey,
       marketKey,
+      audienceKey,
     ],
     queryFn: () =>
       overviewApi.overview(
@@ -49,6 +52,7 @@ export function useWorkspaceOverview(
         topicNames,
         productNames,
         marketNames,
+        audienceNames,
       ),
     placeholderData: keepPreviousData,
   });

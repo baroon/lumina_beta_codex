@@ -29,11 +29,9 @@ function Harness({
 }
 
 describe("MarketSelector", () => {
-  it("trigger reads 'All markets' on the empty-sentinel default", () => {
+  it("trigger reads 'N markets' on the empty-sentinel default", () => {
     render(<Harness initial={[]} />);
-    expect(screen.getByRole("button", { name: /market selector/i })).toHaveTextContent(
-      "All markets",
-    );
+    expect(screen.getByRole("button", { name: /market selector/i })).toHaveTextContent("3 markets");
   });
 
   it("trigger reads 'No markets' when the workspace has no markets", () => {

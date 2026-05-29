@@ -1,6 +1,7 @@
 import { apiClient } from "./apiClient";
 import type { DateRange } from "@/components/molecules/DateRangePicker";
 import type {
+  AudienceCountDto,
   DiscoverySummaryDto,
   LensCountDto,
   MarketCountDto,
@@ -25,6 +26,7 @@ function buildOverviewQuery(
   topicNames: readonly string[] = [],
   productNames: readonly string[] = [],
   marketNames: readonly string[] = [],
+  audienceNames: readonly string[] = [],
 ): string {
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from.toISOString());
@@ -34,6 +36,7 @@ function buildOverviewQuery(
   for (const name of topicNames) params.append("topicNames", name);
   for (const name of productNames) params.append("productNames", name);
   for (const name of marketNames) params.append("marketNames", name);
+  for (const name of audienceNames) params.append("audienceNames", name);
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -50,9 +53,10 @@ export const overviewApi = {
     topicNames: readonly string[],
     productNames: readonly string[],
     marketNames: readonly string[],
+    audienceNames: readonly string[],
   ) =>
     apiClient.get<WorkspaceOverviewDto>(
-      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames)}`,
+      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
     ),
   competitive: (
     range: DateRange,
@@ -60,9 +64,10 @@ export const overviewApi = {
     topicNames: readonly string[],
     productNames: readonly string[],
     marketNames: readonly string[],
+    audienceNames: readonly string[],
   ) =>
     apiClient.get<WorkspaceCompetitiveDto>(
-      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames)}`,
+      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
     ),
   depth: (
     range: DateRange,
@@ -70,9 +75,10 @@ export const overviewApi = {
     topicNames: readonly string[],
     productNames: readonly string[],
     marketNames: readonly string[],
+    audienceNames: readonly string[],
   ) =>
     apiClient.get<WorkspaceDepthDto>(
-      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames)}`,
+      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
     ),
   /**
    * Per-lens mention counts for the current window. Deliberately
@@ -91,6 +97,11 @@ export const overviewApi = {
   /** Per-market mention counts for the market selector chip. */
   marketCounts: (range: DateRange) =>
     apiClient.get<MarketCountDto[]>(`/api/overview/market-counts${buildOverviewQuery(range, [])}`),
+  /** Per-audience mention counts for the audience selector chip. */
+  audienceCounts: (range: DateRange) =>
+    apiClient.get<AudienceCountDto[]>(
+      `/api/overview/audience-counts${buildOverviewQuery(range, [])}`,
+    ),
   /**
    * Workspace-level discovery summary (products / markets / audiences /
    * topics / trust signals). Workspace-scoped, no filters — drives the

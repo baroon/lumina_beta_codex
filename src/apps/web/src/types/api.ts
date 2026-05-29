@@ -735,6 +735,15 @@ export interface MarketCountDto {
 }
 
 /**
+ * Per-audience mention count, deduped by audience name. Drives the
+ * count chip in `AudienceSelector`.
+ */
+export interface AudienceCountDto {
+  audienceName: string;
+  mentionCount: number;
+}
+
+/**
  * Workspace discovery summary — names + counts for every dimension the
  * user captured during the brand-discovery flow. Drives the inline
  * "Tracking 5 products · 2 markets · …" strip at the top of the

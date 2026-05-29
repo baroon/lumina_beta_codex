@@ -80,6 +80,7 @@ public class GetWorkspaceDepthQueryHandler
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
+        var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -95,6 +96,8 @@ public class GetWorkspaceDepthQueryHandler
                     _db.PromptProducts.Any(pp => pp.PromptId == p.Id && productIdFilter.Contains(pp.ProductId)))
                 && (marketIdFilter == null ||
                     _db.PromptMarkets.Any(pm => pm.PromptId == p.Id && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == p.Id && audienceIdFilter.Contains(pa.AudienceId)))
             select new RunRow(
                 s.Id,
                 s.TrackerConfigurationId,
@@ -394,6 +397,19 @@ public class GetWorkspaceDepthQueryHandler
             .Where(m => names.Contains(m.Name)
                 && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
             .Select(m => m.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveAudienceIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Audiences.AsNoTracking()
+            .Where(a => names.Contains(a.Name)
+                && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
+            .Select(a => a.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

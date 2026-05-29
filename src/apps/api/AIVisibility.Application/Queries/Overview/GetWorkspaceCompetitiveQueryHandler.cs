@@ -54,6 +54,7 @@ public class GetWorkspaceCompetitiveQueryHandler
         var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
+        var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
 
         // Answers in window across all trackers — joined with AnswerSignal so
         // we only include answers the signal extractor produced output for.
@@ -75,6 +76,8 @@ public class GetWorkspaceCompetitiveQueryHandler
                     _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
                 && (marketIdFilter == null ||
                     _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
@@ -418,6 +421,19 @@ public class GetWorkspaceCompetitiveQueryHandler
             .Where(m => names.Contains(m.Name)
                 && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
             .Select(m => m.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    private async Task<HashSet<Guid>?> ResolveAudienceIdSetAsync(
+        IReadOnlyList<string>? names, CancellationToken ct)
+    {
+        if (names is null || names.Count == 0) return null;
+        var workspaceId = _workspace.WorkspaceId;
+        var ids = await _db.Audiences.AsNoTracking()
+            .Where(a => names.Contains(a.Name)
+                && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
+            .Select(a => a.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

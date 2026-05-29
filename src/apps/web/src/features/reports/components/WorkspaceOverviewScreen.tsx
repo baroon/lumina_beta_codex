@@ -21,8 +21,14 @@ import {
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
+import { AudienceSelector } from "@/components/molecules/AudienceSelector";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
-import { DiscoverySummaryStrip } from "@/components/molecules/DiscoverySummaryStrip";
+import {
+  DateGranularityToggle,
+  type DateGranularity,
+} from "@/components/molecules/DateGranularityToggle";
+import { LensChipRow } from "@/components/molecules/LensChipRow";
+import { TrustSignalsPill } from "@/components/molecules/TrustSignalsPill";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { sentimentColors } from "@/components/charts/chartTheme";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
@@ -35,7 +41,6 @@ import {
   type DateRangeSelection,
 } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
-import { LensSelector } from "@/components/molecules/LensSelector";
 import { MarketSelector } from "@/components/molecules/MarketSelector";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
@@ -44,6 +49,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { BrandSelector, type BrandSelectorEntity } from "@/components/molecules/BrandSelector";
 import { REPORTS_COPY } from "@/content/reports";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
+import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
 import { useMarketCounts } from "@/features/reports/hooks/useMarketCounts";
 import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
@@ -51,6 +57,7 @@ import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
+import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
 import type {
   BrandCompetitiveGapGroupDto,
@@ -157,6 +164,11 @@ export function WorkspaceOverviewScreen() {
   const [selectedTopicNames, setSelectedTopicNames] = useState<string[]>([]);
   const [selectedProductNames, setSelectedProductNames] = useState<string[]>([]);
   const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
+  const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
+  // Chart-granularity toggle (D/W/M). The BE returns per-scan points;
+  // we re-bucket them FE-side in `TrendCard` via `bucketTrendPoints` so
+  // flipping D/W/M is instant and doesn't refetch.
+  const [granularity, setGranularity] = useState<DateGranularity>("day");
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -166,6 +178,7 @@ export function WorkspaceOverviewScreen() {
     selectedTopicNames,
     selectedProductNames,
     selectedMarketNames,
+    selectedAudienceNames,
   );
   // Per-lens mention counts for the chip in the LensSelector. Unscoped
   // from `selectedLensCodes` on purpose so the chip stays stable as the
@@ -192,6 +205,11 @@ export function WorkspaceOverviewScreen() {
     if (!marketCountsRaw) return {};
     return Object.fromEntries(marketCountsRaw.map((m) => [m.marketName, m.mentionCount]));
   }, [marketCountsRaw]);
+  const { data: audienceCountsRaw } = useAudienceCounts(range);
+  const audienceCountsByName = useMemo<Record<string, number>>(() => {
+    if (!audienceCountsRaw) return {};
+    return Object.fromEntries(audienceCountsRaw.map((a) => [a.audienceName, a.mentionCount]));
+  }, [audienceCountsRaw]);
   // Discovery summary — names/counts for products, markets, audiences,
   // topics, trust signals. Drives the inline strip near the top + supplies
   // the topic-name list to the TopicSelector dropdown.
@@ -206,6 +224,14 @@ export function WorkspaceOverviewScreen() {
   );
   const allMarketNames = useMemo<string[]>(
     () => discoverySummary?.markets.map((m) => m.name) ?? [],
+    [discoverySummary],
+  );
+  const allAudienceNames = useMemo<string[]>(
+    () => discoverySummary?.audiences.map((a) => a.name) ?? [],
+    [discoverySummary],
+  );
+  const allTrustSignalNames = useMemo<string[]>(
+    () => discoverySummary?.trustSignals.map((ts) => ts.name) ?? [],
     [discoverySummary],
   );
   const copy = REPORTS_COPY.overview;
@@ -255,19 +281,11 @@ export function WorkspaceOverviewScreen() {
     <div className="space-y-6">
       <PageHeader title={copy.title} description={copy.subtitle} />
 
-      {discoverySummary && (
-        <DiscoverySummaryStrip
-          products={discoverySummary.products}
-          markets={discoverySummary.markets}
-          audiences={discoverySummary.audiences}
-          topics={discoverySummary.topics}
-          trustSignals={discoverySummary.trustSignals}
-        />
-      )}
-
       <ComparisonControlsRow
         range={range}
         onRangeChange={setRange}
+        granularity={granularity}
+        onGranularityChange={setGranularity}
         trackedBrands={trackedBrandsEntities}
         competitors={competitorEntities}
         selectedKeys={selectedKeys}
@@ -287,6 +305,11 @@ export function WorkspaceOverviewScreen() {
         selectedMarketNames={selectedMarketNames}
         onSelectedMarketNamesChange={setSelectedMarketNames}
         marketCountsByName={marketCountsByName}
+        allAudienceNames={allAudienceNames}
+        selectedAudienceNames={selectedAudienceNames}
+        onSelectedAudienceNamesChange={setSelectedAudienceNames}
+        audienceCountsByName={audienceCountsByName}
+        allTrustSignalNames={allTrustSignalNames}
         isRefreshing={isFetching && !isLoading}
       />
 
@@ -316,6 +339,7 @@ export function WorkspaceOverviewScreen() {
           <TrendChartsGrid
             data={data}
             selectedKeys={selectedKeys}
+            granularity={granularity}
             registerRef={(metric, el) => {
               chartRefs.current[metric] = el;
             }}
@@ -330,6 +354,7 @@ export function WorkspaceOverviewScreen() {
             topicNames={selectedTopicNames}
             productNames={selectedProductNames}
             marketNames={selectedMarketNames}
+            audienceNames={selectedAudienceNames}
             selectedKeys={selectedKeys}
           />
 
@@ -340,6 +365,7 @@ export function WorkspaceOverviewScreen() {
             topicNames={selectedTopicNames}
             productNames={selectedProductNames}
             marketNames={selectedMarketNames}
+            audienceNames={selectedAudienceNames}
           />
         </div>
       )}
@@ -357,6 +383,7 @@ function CompetitiveSections({
   topicNames,
   productNames,
   marketNames,
+  audienceNames,
   selectedKeys,
 }: {
   range: DateRangeSelection;
@@ -364,6 +391,7 @@ function CompetitiveSections({
   topicNames: readonly string[];
   productNames: readonly string[];
   marketNames: readonly string[];
+  audienceNames: readonly string[];
   selectedKeys: readonly string[];
 }) {
   const { data, isLoading, isError } = useWorkspaceCompetitive(
@@ -372,6 +400,7 @@ function CompetitiveSections({
     topicNames,
     productNames,
     marketNames,
+    audienceNames,
   );
   if (isLoading || isError || !data) return null;
 
@@ -678,6 +707,8 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 interface ComparisonControlsRowProps {
   range: DateRangeSelection;
   onRangeChange: (next: DateRangeSelection) => void;
+  granularity: DateGranularity;
+  onGranularityChange: (next: DateGranularity) => void;
   trackedBrands: readonly BrandSelectorEntity[];
   competitors: readonly BrandSelectorEntity[];
   selectedKeys: readonly string[];
@@ -700,6 +731,13 @@ interface ComparisonControlsRowProps {
   selectedMarketNames: readonly string[];
   onSelectedMarketNamesChange: (next: string[]) => void;
   marketCountsByName?: Readonly<Record<string, number>>;
+  /** Workspace's audience-name universe (deduplicated). */
+  allAudienceNames: readonly string[];
+  selectedAudienceNames: readonly string[];
+  onSelectedAudienceNamesChange: (next: string[]) => void;
+  audienceCountsByName?: Readonly<Record<string, number>>;
+  /** Workspace's trust-signal names — informational only (no filter). */
+  allTrustSignalNames: readonly string[];
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -709,6 +747,8 @@ interface ComparisonControlsRowProps {
 function ComparisonControlsRow({
   range,
   onRangeChange,
+  granularity,
+  onGranularityChange,
   trackedBrands,
   competitors,
   selectedKeys,
@@ -728,55 +768,89 @@ function ComparisonControlsRow({
   selectedMarketNames,
   onSelectedMarketNamesChange,
   marketCountsByName,
+  allAudienceNames,
+  selectedAudienceNames,
+  onSelectedAudienceNamesChange,
+  audienceCountsByName,
+  allTrustSignalNames,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
-    // Sticky at top of the scrolling content so the row stays reachable as
-    // the user scrolls through the (now very long) overview. `top-0` pins to
-    // the closest scroll container, `z-20` lifts the bar above chart cards
-    // but stays below selector dropdowns (which use z-30). `bg-white` keeps
-    // chart content from bleeding through when the bar is parked.
-    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-      <BrandSelector
-        trackedBrands={trackedBrands}
-        competitors={competitors}
-        selectedKeys={selectedKeys}
-        onChange={onSelectedKeysChange}
-      />
-      <DateRangePicker value={range} onChange={onRangeChange} />
-      <LensSelector
-        selectedCodes={selectedLensCodes}
-        onChange={onSelectedLensCodesChange}
-        countsByCode={lensCountsByCode}
-      />
-      <TopicSelector
-        allTopicNames={allTopicNames}
-        selectedNames={selectedTopicNames}
-        onChange={onSelectedTopicNamesChange}
-        countsByName={topicCountsByName}
-      />
-      <ProductSelector
-        allProductNames={allProductNames}
-        selectedNames={selectedProductNames}
-        onChange={onSelectedProductNamesChange}
-        countsByName={productCountsByName}
-      />
-      <MarketSelector
-        allMarketNames={allMarketNames}
-        selectedNames={selectedMarketNames}
-        onChange={onSelectedMarketNamesChange}
-        countsByName={marketCountsByName}
-      />
-      {isRefreshing && (
-        <span
-          aria-live="polite"
-          aria-label="Refreshing"
-          className="inline-flex items-center gap-1.5 text-xs text-neutral-500"
-        >
-          <Loader2 size={14} className="animate-spin text-primary-500" aria-hidden />
-          Refreshing…
-        </span>
-      )}
+    // Sticky filter region with two side-by-side columns:
+    //   - LEFT  : a narrow Time column — D/W/M granularity stacked above
+    //             the date-range picker. Stretches to match the height
+    //             of the right column.
+    //   - RIGHT : flex-1; stacks the Lenses row above the Trackers row
+    //             so both dimension groups share the same horizontal
+    //             space and headings line up consistently.
+    // Both columns wrap internally (flex-wrap), so the page never needs
+    // a horizontal scrollbar regardless of how many dimensions land in
+    // them.
+    <div className="sticky top-0 z-20 flex flex-wrap items-stretch gap-2">
+      <div className="flex shrink-0 flex-col gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+        <DateGranularityToggle value={granularity} onChange={onGranularityChange} />
+        <DateRangePicker value={range} onChange={onRangeChange} />
+      </div>
+
+      <div className="flex min-w-[24rem] flex-1 flex-col gap-2">
+        <div className="flex flex-1 flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 shadow-sm">
+          <span className="shrink-0 pr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Lenses
+          </span>
+          <LensChipRow
+            selectedCodes={selectedLensCodes}
+            onChange={onSelectedLensCodesChange}
+            countsByCode={lensCountsByCode}
+          />
+          {isRefreshing && (
+            <span
+              aria-live="polite"
+              aria-label="Refreshing"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs text-neutral-500"
+            >
+              <Loader2 size={14} className="animate-spin text-primary-500" aria-hidden />
+              Refreshing…
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 shadow-sm">
+          <span className="shrink-0 pr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Trackers
+          </span>
+          <BrandSelector
+            trackedBrands={trackedBrands}
+            competitors={competitors}
+            selectedKeys={selectedKeys}
+            onChange={onSelectedKeysChange}
+          />
+          <TopicSelector
+            allTopicNames={allTopicNames}
+            selectedNames={selectedTopicNames}
+            onChange={onSelectedTopicNamesChange}
+            countsByName={topicCountsByName}
+          />
+          <ProductSelector
+            allProductNames={allProductNames}
+            selectedNames={selectedProductNames}
+            onChange={onSelectedProductNamesChange}
+            countsByName={productCountsByName}
+          />
+          <MarketSelector
+            allMarketNames={allMarketNames}
+            selectedNames={selectedMarketNames}
+            onChange={onSelectedMarketNamesChange}
+            countsByName={marketCountsByName}
+          />
+          <AudienceSelector
+            allAudienceNames={allAudienceNames}
+            selectedNames={selectedAudienceNames}
+            onChange={onSelectedAudienceNamesChange}
+            countsByName={audienceCountsByName}
+          />
+          <TrustSignalsPill allNames={allTrustSignalNames} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -918,11 +992,13 @@ function HeroDelta({ current, previous }: { current: number | null; previous: nu
 interface TrendChartsGridProps {
   data: WorkspaceOverviewDto;
   selectedKeys: readonly string[];
+  /** Chart-axis granularity from the D/W/M toggle. */
+  granularity: DateGranularity;
   /** Registers per-metric DOM refs so the hero-tile drill-down can scroll. */
   registerRef: (metricValue: string, el: HTMLDivElement | null) => void;
 }
 
-function TrendChartsGrid({ data, selectedKeys, registerRef }: TrendChartsGridProps) {
+function TrendChartsGrid({ data, selectedKeys, granularity, registerRef }: TrendChartsGridProps) {
   return (
     <div className="grid gap-4">
       {METRIC_OPTIONS.map((metric) => (
@@ -932,7 +1008,12 @@ function TrendChartsGrid({ data, selectedKeys, registerRef }: TrendChartsGridPro
           className="scroll-mt-4"
           data-testid={`trend-card-${metric.value}`}
         >
-          <TrendCard data={data} metric={metric} selectedKeys={selectedKeys} />
+          <TrendCard
+            data={data}
+            metric={metric}
+            selectedKeys={selectedKeys}
+            granularity={granularity}
+          />
         </div>
       ))}
     </div>
@@ -943,10 +1024,12 @@ function TrendCard({
   data,
   metric,
   selectedKeys,
+  granularity,
 }: {
   data: WorkspaceOverviewDto;
   metric: MetricOption;
   selectedKeys: readonly string[];
+  granularity: DateGranularity;
 }) {
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
 
@@ -960,18 +1043,35 @@ function TrendCard({
     });
   }, [data.series, metric, selectedSet]);
 
+  // FE-side bucketing: re-aggregate per-scan points into weekly/monthly
+  // buckets when the toggle isn't "day". The BE always returns per-scan
+  // points; bucketing here keeps the toggle interactive and avoids a
+  // round-trip on every D/W/M flip.
+  const bucketedSeries = useMemo(
+    () =>
+      filteredSeries.map((s) => ({
+        ...s,
+        points: bucketTrendPoints(s.points, granularity),
+      })),
+    [filteredSeries, granularity],
+  );
+
   return (
     <CollapsibleCard
       icon={metric.format === "sentiment" ? Smile : TrendingUp}
       title={metric.label}
       tooltip={REPORTS_COPY.overview.trendChart.tooltip}
     >
-      {filteredSeries.length === 0 ? (
+      {bucketedSeries.length === 0 ? (
         <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
       ) : metric.format === "sentiment" ? (
-        <SentimentTimeline series={filteredSeries} />
+        <SentimentTimeline series={bucketedSeries} granularity={granularity} />
       ) : (
-        <NumericTrendChart series={filteredSeries} format={metric.format} />
+        <NumericTrendChart
+          series={bucketedSeries}
+          format={metric.format}
+          granularity={granularity}
+        />
       )}
     </CollapsibleCard>
   );
@@ -980,11 +1080,14 @@ function TrendCard({
 function NumericTrendChart({
   series,
   format,
+  granularity,
 }: {
   series: readonly EntityTrendSeriesDto[];
   format: Exclude<MetricFormat, "sentiment">;
+  granularity: DateGranularity;
 }) {
   const axis = axisConfigForFormat(format);
+  const formatX = (iso: string) => formatBucketLabel(iso, granularity);
   const chartSeries: LineChartSeries[] = series.map((s, i) => ({
     id: s.entityId,
     name: s.entityName,
@@ -995,7 +1098,7 @@ function NumericTrendChart({
     <LineChartWrapper
       series={chartSeries}
       formatValue={axis.formatValue}
-      formatX={formatShortDate}
+      formatX={formatX}
       maxValue={axis.maxValue}
       minValue={axis.minValue}
       reverseY={axis.reverseY}
@@ -1035,19 +1138,31 @@ function axisConfigForFormat(format: "pct" | "rank"): {
 // trend. One row per entity, colored markers for each scan's mode.
 // ---------------------------------------------------------------------------
 
-function SentimentTimeline({ series }: { series: readonly EntityTrendSeriesDto[] }) {
+function SentimentTimeline({
+  series,
+  granularity,
+}: {
+  series: readonly EntityTrendSeriesDto[];
+  granularity: DateGranularity;
+}) {
   if (series.length === 0) return null;
   return (
     <div className="space-y-3">
       {series.map((s) => (
-        <SentimentRow key={s.entityId} series={s} />
+        <SentimentRow key={s.entityId} series={s} granularity={granularity} />
       ))}
       <SentimentLegend />
     </div>
   );
 }
 
-function SentimentRow({ series }: { series: EntityTrendSeriesDto }) {
+function SentimentRow({
+  series,
+  granularity,
+}: {
+  series: EntityTrendSeriesDto;
+  granularity: DateGranularity;
+}) {
   return (
     <div className="flex items-center gap-3">
       <div
@@ -1060,17 +1175,18 @@ function SentimentRow({ series }: { series: EntityTrendSeriesDto }) {
         {series.points.map((p) => {
           const category = p.category ?? "Unknown";
           const color = sentimentColors[category] ?? sentimentColors.Unknown;
+          const label = formatBucketLabel(p.capturedAt, granularity);
           return (
             <div
               key={p.scanRunId}
               className="flex flex-col items-center gap-1"
-              title={`${formatShortDate(p.capturedAt)} — ${category}`}
+              title={`${label} — ${category}`}
             >
               <span
                 className="h-4 w-4 rounded-full ring-1 ring-inset ring-neutral-900/10"
                 style={{ backgroundColor: color }}
               />
-              <span className="text-[10px] text-neutral-500">{formatShortDate(p.capturedAt)}</span>
+              <span className="text-[10px] text-neutral-500">{label}</span>
             </div>
           );
         })}
@@ -1096,9 +1212,18 @@ function SentimentLegend() {
   );
 }
 
-function formatShortDate(iso: string): string {
+/**
+ * Renders the bucket-start ISO that comes back from `bucketTrendPoints`
+ * (or a per-scan capturedAt when granularity is "day") in a label that
+ * matches the toggle: "May 28" for day/week, "May 2026" for month.
+ */
+function formatBucketLabel(iso: string, granularity: DateGranularity): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const d = new Date(iso);
+    if (granularity === "month") {
+      return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+    }
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   } catch {
     return iso;
   }
@@ -1273,12 +1398,14 @@ function DepthSections({
   topicNames,
   productNames,
   marketNames,
+  audienceNames,
 }: {
   range: DateRangeSelection;
   lensCodes: readonly string[];
   topicNames: readonly string[];
   productNames: readonly string[];
   marketNames: readonly string[];
+  audienceNames: readonly string[];
 }) {
   const { data, isLoading, isError } = useWorkspaceDepth(
     range,
@@ -1286,6 +1413,7 @@ function DepthSections({
     topicNames,
     productNames,
     marketNames,
+    audienceNames,
   );
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
 

@@ -29,9 +29,9 @@ function Harness({
 }
 
 describe("TopicSelector", () => {
-  it("trigger reads 'All topics' on the empty-sentinel default", () => {
+  it("trigger reads 'N topics' on the empty-sentinel default", () => {
     render(<Harness initial={[]} />);
-    expect(screen.getByRole("button", { name: /topic selector/i })).toHaveTextContent("All topics");
+    expect(screen.getByRole("button", { name: /topic selector/i })).toHaveTextContent("3 topics");
   });
 
   it("trigger reads 'No topics' when the workspace has no topics yet", () => {

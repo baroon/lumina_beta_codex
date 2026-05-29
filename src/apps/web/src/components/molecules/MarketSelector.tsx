@@ -54,7 +54,7 @@ export function MarketSelector({
   const total = sorted.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
-  const buttonLabel = allSelected ? "All markets" : `${selected} of ${total} markets`;
+  const buttonLabel = allSelected ? `${total} markets` : `${selected} of ${total} markets`;
 
   function toggle(name: string) {
     const base = selectedNames.length === 0 ? sorted : selectedNames;

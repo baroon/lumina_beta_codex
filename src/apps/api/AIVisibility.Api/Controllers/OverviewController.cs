@@ -31,10 +31,11 @@ public class OverviewController : ControllerBase
         [FromQuery(Name = "topicNames")] string[]? topicNames = null,
         [FromQuery(Name = "productNames")] string[]? productNames = null,
         [FromQuery(Name = "marketNames")] string[]? marketNames = null,
+        [FromQuery(Name = "audienceNames")] string[]? audienceNames = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceOverviewQuery(from, to, lensCodes, topicNames, productNames, marketNames), cancellationToken);
+            new GetWorkspaceOverviewQuery(from, to, lensCodes, topicNames, productNames, marketNames, audienceNames), cancellationToken);
         return Ok(result);
     }
 }

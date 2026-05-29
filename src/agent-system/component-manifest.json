@@ -302,13 +302,22 @@
           "notes": "Peec-style date range picker for the Workspace Overview top bar. Preset list (Last 7/14/30/90/180/365 days, All time, Reset) on the left + react-day-picker range calendar on the right. Selection state modeled as a tagged union (preset|custom|all) so rolling-window presets don't burst the React Query cache between renders; exports resolveDateRange + serializeDateRangeSelection helpers consumed by useWorkspace{Overview,Competitive,Depth}."
         },
         {
-          "name": "LensSelector",
+          "name": "LensChipRow",
           "category": "Molecules",
-          "path": "src/components/molecules/LensSelector.tsx",
+          "path": "src/components/molecules/LensChipRow.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Checkbox", "lucide-react"],
-          "notes": "Dropdown chip for filtering the Workspace Overview by Visibility Lens. Multi-select with checkboxes, click-outside dismiss, empty array sentinel (`[]`) reads as 'All lenses'. Selection threads through the three overview hooks as `?lensCodes=` so hero counts, share-of-voice, mention distribution, competitive gap, recommendation rate, citation domains, sentiment distribution, topic heatmap, and recent chats all honor the filter. The longitudinal trend chart and Top Entities table are read from pre-aggregated TrendPoints (no lens granularity) and stay workspace-wide on purpose."
+          "dependencies": ["lucide-react"],
+          "notes": "Row of 6 toggle chips for filtering the Workspace Overview by Visibility Lens — one chip per lens (Discovery, Buying Intent, Competitor Comparison, Sentiment & Trust, Citation Visibility, Content Gaps). Each chip shows the lens name + a mention-count badge from `/api/overview/lens-counts` and toggles include/exclude in place. Empty-array selection reads as 'all selected' so the BE call shape matches the trackers' multi-selects. Replaces the earlier LensSelector dropdown — at dashboard widths each lens is more discoverable as its own chip than as a dropdown row."
+        },
+        {
+          "name": "DateGranularityToggle",
+          "category": "Molecules",
+          "path": "src/components/molecules/DateGranularityToggle.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Day / Week / Month aggregation toggle that lives next to the DateRangePicker in the date bar of the Workspace Overview. Currently presentational only — the BE still returns scan-level points; wire bucketing through once a chart needs it."
         },
         {
           "name": "MarketSelector",
@@ -338,13 +347,22 @@
           "notes": "Dropdown chip for filtering the Workspace Overview by Topic. Mirrors LensSelector but with dynamic options sourced from the workspace's discovery output (deduplicated by name case-insensitively). Multi-select with checkboxes, substring search, optional per-topic mention-count chip. Empty array sentinel reads as 'All topics'. Selection threads as `?topicNames=` through the three overview endpoints."
         },
         {
-          "name": "DiscoverySummaryStrip",
+          "name": "AudienceSelector",
           "category": "Molecules",
-          "path": "src/components/molecules/DiscoverySummaryStrip.tsx",
+          "path": "src/components/molecules/AudienceSelector.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Checkbox", "Input", "lucide-react"],
+          "notes": "Dropdown chip for filtering the Workspace Overview by Audience. Same structure as TopicSelector / ProductSelector / MarketSelector — multi-select with substring search and an inline mention-count chip per row (deduped by audience name case-insensitively). Selection threads as `?audienceNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptAudience row."
+        },
+        {
+          "name": "TrustSignalsPill",
+          "category": "Molecules",
+          "path": "src/components/molecules/TrustSignalsPill.tsx",
           "status": "implemented",
           "variants": [],
           "dependencies": ["lucide-react"],
-          "notes": "Inline 'Tracking N products · M markets · K audiences · L topics · X trust signals' strip rendered near the top of the Workspace Overview. Each chip click opens a popover listing the names so the user sees the system remembers what they captured in discovery. Purely informational — not a filter source. Empty workspace → renders nothing."
+          "notes": "Informational pill in the unified Workspace Overview filter bar. Shows the count + opens a popover listing the workspace trust signals. Does NOT filter — per the Phase-3 decision, trust signals are scoring inputs, not prompt-level filter dimensions (no PromptTrustSignal table exists). Sits alongside the real filter pills so the user has visibility into the dimension without implying functionality we don't support."
         },
         {
           "name": "CollapsibleCard",

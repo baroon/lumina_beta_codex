@@ -1,44 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Tag } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import { Checkbox } from "@/components/atoms/checkbox";
 import { Input } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
-interface TopicSelectorProps {
-  /**
-   * Topic names available in the workspace, deduplicated case-insensitively.
-   * Comes from the discovery summary so the list reflects what the user
-   * actually captured in the discovery flow.
-   */
-  allTopicNames: readonly string[];
-  /** Currently-selected topic names. Empty array = no filter ("All topics"). */
+interface AudienceSelectorProps {
+  /** Audience names in the workspace, already deduped case-insensitively. */
+  allAudienceNames: readonly string[];
+  /** Currently-selected audience names. Empty array = no filter ("All audiences"). */
   selectedNames: readonly string[];
-  /** Called with the new selected-names set when the user toggles. */
   onChange: (next: string[]) => void;
-  /**
-   * Optional per-topic mention count, keyed by name. Renders as a small
-   * pill on each row so the user can spot empty topics before toggling.
-   * Missing entries fall back to "no chip".
-   */
   countsByName?: Readonly<Record<string, number>>;
-  /** Optional aria-label / data-testid base. */
   ariaLabel?: string;
 }
 
 /**
- * Dropdown chip for filtering the Workspace Overview by Topic. Mirrors
- * the {@link LensSelector} pattern — multi-select with checkboxes, empty
- * array sentinel reads as "All topics". Options are dynamic (derived
- * from the workspace's discovery output) so a search box helps the user
- * find a topic in larger workspaces.
+ * Dropdown chip for filtering the Workspace Overview by Audience. Same
+ * structure as TopicSelector / ProductSelector / MarketSelector —
+ * multi-select with substring search and an inline mention-count chip
+ * per row. Empty array sentinel reads as "All audiences". Threads as
+ * `?audienceNames=` through the three overview endpoints.
  */
-export function TopicSelector({
-  allTopicNames,
+export function AudienceSelector({
+  allAudienceNames,
   selectedNames,
   onChange,
   countsByName,
-  ariaLabel = "Topic selector",
-}: TopicSelectorProps) {
+  ariaLabel = "Audience selector",
+}: AudienceSelectorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -54,10 +43,9 @@ export function TopicSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Sort the workspace's topic names once; substring filter is applied per render.
   const sorted = useMemo(
-    () => [...allTopicNames].sort((a, b) => a.localeCompare(b)),
-    [allTopicNames],
+    () => [...allAudienceNames].sort((a, b) => a.localeCompare(b)),
+    [allAudienceNames],
   );
   const q = query.trim().toLowerCase();
   const visible = q === "" ? sorted : sorted.filter((n) => n.toLowerCase().includes(q));
@@ -65,7 +53,7 @@ export function TopicSelector({
   const total = sorted.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
-  const buttonLabel = allSelected ? `${total} topics` : `${selected} of ${total} topics`;
+  const buttonLabel = allSelected ? `${total} audiences` : `${selected} of ${total} audiences`;
 
   function toggle(name: string) {
     const base = selectedNames.length === 0 ? sorted : selectedNames;
@@ -92,8 +80,8 @@ export function TopicSelector({
           total === 0 && "cursor-default opacity-60 hover:bg-white",
         )}
       >
-        <Tag size={14} className="text-neutral-500" aria-hidden />
-        <span>{total === 0 ? "No topics" : buttonLabel}</span>
+        <Users size={14} className="text-neutral-500" aria-hidden />
+        <span>{total === 0 ? "No audiences" : buttonLabel}</span>
         {total > 0 && (
           <ChevronDown
             className={cn("h-4 w-4 text-neutral-400 transition", open && "rotate-180")}
@@ -113,12 +101,12 @@ export function TopicSelector({
               inputSize="sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search topics…"
-              aria-label="Search topics"
+              placeholder="Search audiences…"
+              aria-label="Search audiences"
             />
           </div>
           <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-            <span>Topics</span>
+            <span>Audiences</span>
             <button
               type="button"
               onClick={() => onChange([])}
@@ -130,7 +118,7 @@ export function TopicSelector({
           <ul className="max-h-72 overflow-y-auto py-1">
             {visible.length === 0 ? (
               <li className="px-3 py-4 text-center text-xs text-neutral-500">
-                No topics match &ldquo;{query}&rdquo;.
+                No audiences match &ldquo;{query}&rdquo;.
               </li>
             ) : (
               visible.map((name) => {
@@ -146,7 +134,7 @@ export function TopicSelector({
                       />
                       <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
                       {countsByName && name in countsByName && (
-                        <TopicMentionChip count={countsByName[name]} />
+                        <AudienceMentionChip count={countsByName[name]} />
                       )}
                     </label>
                   </li>
@@ -160,7 +148,7 @@ export function TopicSelector({
   );
 }
 
-function TopicMentionChip({ count }: { count: number }) {
+function AudienceMentionChip({ count }: { count: number }) {
   const empty = count === 0;
   return (
     <span
