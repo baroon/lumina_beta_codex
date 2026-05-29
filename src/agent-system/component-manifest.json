@@ -302,6 +302,15 @@
           "notes": "Peec-style date range picker for the Workspace Overview top bar. Preset list (Last 7/14/30/90/180/365 days, All time, Reset) on the left + react-day-picker range calendar on the right. Selection state modeled as a tagged union (preset|custom|all) so rolling-window presets don't burst the React Query cache between renders; exports resolveDateRange + serializeDateRangeSelection helpers consumed by useWorkspace{Overview,Competitive,Depth}."
         },
         {
+          "name": "ChartCardHeader",
+          "category": "Molecules",
+          "path": "src/components/molecules/ChartCardHeader.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Tooltip", "lucide-react"],
+          "notes": "Compact header for chart cards on the Workspace Overview. Leading primary-tinted icon badge + neutral-900 title + optional info tooltip ⓘ (Radix Tooltip) + optional right-side actions slot. Tooltip body is plain text resolved by the caller from the content layer — the molecule stays a pure UI primitive so locale switching happens upstream."
+        },
+        {
           "name": "SourceTypeDropdown",
           "category": "Molecules",
           "path": "src/components/molecules/SourceTypeDropdown.tsx",

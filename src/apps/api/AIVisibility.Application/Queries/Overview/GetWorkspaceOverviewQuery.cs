@@ -26,6 +26,14 @@ public sealed record WorkspaceOverviewDto(
     /// <summary>How many scans landed in the window — sanity check on the trend chart.</summary>
     int ScanCount,
     WorkspaceHeroDto Hero,
+    /// <summary>
+    /// Hero counts for the equivalent window immediately before
+    /// <see cref="From"/> (same length, shifted back). Null when the
+    /// caller asked for "all time" (no previous window exists) or when
+    /// the workspace is empty for that span. Used by the FE to render
+    /// the up/down delta chip next to each hero number.
+    /// </summary>
+    WorkspaceHeroDto? PreviousHero,
     /// <summary>One series per (entity, metric) across the entire workspace, ordered chronologically.</summary>
     IReadOnlyList<EntityTrendSeriesDto> Series,
     /// <summary>Top entities table — every tracked brand first, then competitors by visibility desc.</summary>

@@ -34,6 +34,9 @@ function ControlledHarness({
         setSelected(next);
         onChangeSpy?.(next);
       }}
+      // Disable the "Manage brands" footer link in unit tests so we don't
+      // need to mount a TanStack router context.
+      manageBrandsHref={null}
     />
   );
 }
@@ -55,21 +58,21 @@ describe("BrandSelector", () => {
     render(<ControlledHarness />);
     await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
 
-    // "Tracked brand(s)" appears only in the panel header.
-    expect(screen.getByText(/^tracked brand/i)).toBeInTheDocument();
-    // "All brands" appears in the button label AND the section header — make
-    // sure both are present.
+    expect(screen.getByText(/^tracked brands?$/i)).toBeInTheDocument();
+    // "All brands" appears in the button label AND the section header.
     expect(screen.getAllByText(/^all brands$/i).length).toBeGreaterThanOrEqual(2);
 
-    // Each tracked brand appears in the panel; You chip is on the brand row.
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("Beta")).toBeInTheDocument();
-    // Multiple "You" chips because we have two tracked brands.
-    expect(screen.getAllByText(/^You$/)).toHaveLength(2);
-
-    // Competitors visible.
     expect(screen.getByText("Glassdoor")).toBeInTheDocument();
     expect(screen.getByText("Indeed")).toBeInTheDocument();
+  });
+
+  it("marks each tracked brand row with a 'Tracked' indicator", async () => {
+    render(<ControlledHarness />);
+    await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
+    // One dot per tracked brand.
+    expect(screen.getAllByLabelText(/^Tracked$/)).toHaveLength(trackedBrands.length);
   });
 
   it("toggling a single entity emits the new selection", async () => {
@@ -77,7 +80,6 @@ describe("BrandSelector", () => {
     render(<ControlledHarness onChangeSpy={onChangeSpy} />);
     await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
 
-    // Click Indeed's checkbox to de-select it.
     const indeedCheckbox = screen.getByRole("checkbox", { name: "Indeed" });
     await userEvent.click(indeedCheckbox);
 
@@ -87,21 +89,28 @@ describe("BrandSelector", () => {
     expect(next).toHaveLength(allKeys.length - 1);
   });
 
-  it("master section checkbox toggles every item in that section", async () => {
+  it("section 'Select all' link selects every item in that section", async () => {
     const onChangeSpy = vi.fn();
     render(<ControlledHarness initial={[]} onChangeSpy={onChangeSpy} />);
     await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
 
-    // Toggle "All brands" master checkbox (competitors section).
-    const masterCheckboxes = screen.getAllByRole("checkbox", { name: /toggle all/i });
-    expect(masterCheckboxes).toHaveLength(2);
-    const allBrandsMaster = masterCheckboxes[1];
-    await userEvent.click(allBrandsMaster);
+    // Two sections (Tracked + All brands) so two "Select all" buttons.
+    const selectAllLinks = screen.getAllByRole("button", { name: /select all/i });
+    expect(selectAllLinks).toHaveLength(2);
+    // Click the one in the "All brands" section (second).
+    await userEvent.click(selectAllLinks[1]);
 
     expect(onChangeSpy).toHaveBeenCalledOnce();
     const next = onChangeSpy.mock.calls[0][0] as string[];
     expect(next).toEqual(expect.arrayContaining(competitors.map((c) => `Competitor:${c.id}`)));
     expect(next).toHaveLength(competitors.length);
+  });
+
+  it("section link flips to 'Clear' when every item in the section is selected", async () => {
+    render(<ControlledHarness initial={allKeys} />);
+    await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
+    // Both sections are fully selected → both links read "Clear".
+    expect(screen.getAllByRole("button", { name: /^clear$/i })).toHaveLength(2);
   });
 
   it("search filters entities by substring", async () => {

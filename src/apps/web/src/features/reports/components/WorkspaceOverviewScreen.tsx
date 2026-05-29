@@ -1,8 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Globe, Minus, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Globe,
+  Grid3X3,
+  Layers,
+  MessageSquare,
+  Minus,
+  PieChart,
+  Smile,
+  Target,
+  ThumbsUp,
+  TrendingUp,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
+import { Card, CardContent } from "@/components/atoms/card";
+import { ChartCardHeader } from "@/components/molecules/ChartCardHeader";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { sentimentColors } from "@/components/charts/chartTheme";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
@@ -189,7 +207,11 @@ export function WorkspaceOverviewScreen() {
         </Card>
       ) : (
         <>
-          <HeroRow hero={data.hero} onDrillDown={handleHeroDrillDown} />
+          <HeroRow
+            hero={data.hero}
+            previousHero={data.previousHero}
+            onDrillDown={handleHeroDrillDown}
+          />
           <TrendChartsGrid
             data={data}
             selectedKeys={selectedKeys}
@@ -260,10 +282,8 @@ function ShareOfVoiceCard({
   if (total === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{copy.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <ChartCardHeader icon={PieChart} title={copy.title} tooltip={copy.tooltip} />
+        <CardContent className="pt-0">
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         </CardContent>
       </Card>
@@ -279,10 +299,8 @@ function ShareOfVoiceCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={PieChart} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         <DonutChartWrapper
           data={slices}
           formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
@@ -314,16 +332,13 @@ function RecommendationRateCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={ThumbsUp} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {data.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
           <BarChartWrapper
             data={data}
-            maxValue={1}
             valueAxisLabel={copy.axisLabel}
             formatValue={(v) => `${Math.round(v * 100)}%`}
           />
@@ -354,10 +369,8 @@ function BrandVsCompetitorCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.brandVsCompetitor}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={BarChart3} title={copy.brandVsCompetitor} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {data.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
@@ -389,10 +402,8 @@ function MentionDistributionCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.distribution}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Users} title={copy.distribution} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {data.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
@@ -429,10 +440,8 @@ function CompetitiveGapGroupsCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Target} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {visibleGroups.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noGroups}</p>
         ) : (
@@ -471,10 +480,8 @@ function TopCitationDomainsCard({ rows }: { rows: readonly DomainRowDto[] }) {
   const copy = REPORTS_COPY.overview.topDomains;
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Globe} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {rows.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
@@ -532,10 +539,8 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
   if (rows.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{copy.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <ChartCardHeader icon={Layers} title={copy.title} tooltip={copy.tooltip} />
+        <CardContent className="pt-0">
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         </CardContent>
       </Card>
@@ -551,10 +556,8 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Layers} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         <DonutChartWrapper
           data={slices}
           formatValue={(v) =>
@@ -607,9 +610,11 @@ function ComparisonControlsRow({
 
 function HeroRow({
   hero,
+  previousHero,
   onDrillDown,
 }: {
   hero: WorkspaceHeroDto;
+  previousHero: WorkspaceHeroDto | null;
   onDrillDown: (metric: string) => void;
 }) {
   return (
@@ -617,21 +622,29 @@ function HeroRow({
       <HeroTile
         label="Queries"
         value={hero.queries.toLocaleString()}
+        current={hero.queries}
+        previous={previousHero?.queries ?? null}
         onClick={() => onDrillDown("mention")}
       />
       <HeroTile
         label="Mentions"
         value={hero.mentions.toLocaleString()}
+        current={hero.mentions}
+        previous={previousHero?.mentions ?? null}
         onClick={() => onDrillDown("mention")}
       />
       <HeroTile
         label="Citations"
         value={hero.citations.toLocaleString()}
+        current={hero.citations}
+        previous={previousHero?.citations ?? null}
         onClick={() => onDrillDown("owned")}
       />
       <HeroTile
         label="Brand mention rate"
         value={hero.brandMentionRate == null ? "—" : `${Math.round(hero.brandMentionRate * 100)}%`}
+        current={hero.brandMentionRate}
+        previous={previousHero?.brandMentionRate ?? null}
         onClick={() => onDrillDown("mention")}
       />
     </div>
@@ -641,19 +654,31 @@ function HeroRow({
 function HeroTile({
   label,
   value,
+  current,
+  previous,
   onClick,
 }: {
   label: string;
   value: string;
+  /** Raw numeric current value used to derive the delta chip. */
+  current: number | null;
+  /** Equivalent previous-window value. Null = no delta to show. */
+  previous: number | null;
   onClick?: () => void;
 }) {
+  const inner = (
+    <>
+      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
+      <div className="mt-1 flex items-baseline gap-2">
+        <p className="text-2xl font-semibold text-neutral-900">{value}</p>
+        <HeroDelta current={current} previous={previous} />
+      </div>
+    </>
+  );
   if (!onClick) {
     return (
       <Card>
-        <CardContent className="p-4">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
-          <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
-        </CardContent>
+        <CardContent className="p-4">{inner}</CardContent>
       </Card>
     );
   }
@@ -668,9 +693,44 @@ function HeroTile({
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400",
       )}
     >
-      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
+      {inner}
     </button>
+  );
+}
+
+/**
+ * Small inline delta chip — up/down arrow + relative % vs the equivalent
+ * previous window. Hidden when there is no previous (e.g. "All time"),
+ * when both values are zero, or when the rounded change is 0%. Treats
+ * previous=0 + current>0 as "New" — relative % change is undefined when
+ * the baseline is zero, so we surface that as a positive signal instead
+ * of dividing by zero.
+ */
+function HeroDelta({ current, previous }: { current: number | null; previous: number | null }) {
+  if (current == null || previous == null) return null;
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-semantic-success-600">
+        <ArrowUp size={12} aria-hidden /> New
+      </span>
+    );
+  }
+  const pct = ((current - previous) / previous) * 100;
+  const rounded = Math.round(pct);
+  if (rounded === 0) return null;
+  const isUp = rounded > 0;
+  return (
+    <span
+      aria-label={`${isUp ? "Up" : "Down"} ${Math.abs(rounded)} percent vs previous period`}
+      className={cn(
+        "inline-flex items-center gap-0.5 text-xs font-medium",
+        isUp ? "text-semantic-success-600" : "text-semantic-error-600",
+      )}
+    >
+      {isUp ? <ArrowUp size={12} aria-hidden /> : <ArrowDown size={12} aria-hidden />}
+      {Math.abs(rounded)}%
+    </span>
   );
 }
 
@@ -725,10 +785,12 @@ function TrendCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{metric.label}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader
+        icon={metric.format === "sentiment" ? Smile : TrendingUp}
+        title={metric.label}
+        tooltip={REPORTS_COPY.overview.trendChart.tooltip}
+      />
+      <CardContent className="pt-0">
         {filteredSeries.length === 0 ? (
           <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
         ) : metric.format === "sentiment" ? (
@@ -780,7 +842,10 @@ function axisConfigForFormat(format: "pct" | "rank"): {
 } {
   switch (format) {
     case "pct":
-      return { formatValue: (v) => `${Math.round(v * 100)}%`, maxValue: 1, minValue: 0 };
+      // No maxValue cap — let Recharts auto-scale the Y axis to a nice
+      // round value above the data max so small percentages don't get
+      // lost in a 0-100% band.
+      return { formatValue: (v) => `${Math.round(v * 100)}%`, minValue: 0 };
     case "rank":
       // Rank 1 = best; flip the axis so "up = better" reads naturally.
       return {
@@ -882,10 +947,8 @@ function TopEntitiesCard({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Trophy} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {visibleRows.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.empty}</p>
         ) : (
@@ -1057,16 +1120,13 @@ function MentionsByPlatformCard({ rows }: { rows: readonly PlatformMentionDto[] 
     .map((r) => ({ label: r.platformName, value: r.brandMentionRate ?? 0 }));
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={BarChart3} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {data.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
           <BarChartWrapper
             data={data}
-            maxValue={1}
             valueAxisLabel={copy.axisLabel}
             formatValue={(v) => `${Math.round(v * 100)}%`}
           />
@@ -1086,10 +1146,8 @@ function SentimentDistributionCard({ slices }: { slices: readonly SentimentSlice
   }));
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={Smile} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {data.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
@@ -1123,16 +1181,14 @@ function TopicHeatmapCard({ heatmap }: { heatmap: TopicHeatmapDto }) {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle>{copy.title}</CardTitle>
-            <p className="text-sm text-neutral-500">{copy.subtitle}</p>
-          </div>
-          {!empty && <TopicMetricToggle metric={metric} onChange={setMetric} />}
-        </div>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader
+        icon={Grid3X3}
+        title={copy.title}
+        subtitle={copy.subtitle}
+        tooltip={copy.tooltip}
+        actions={!empty ? <TopicMetricToggle metric={metric} onChange={setMetric} /> : undefined}
+      />
+      <CardContent className="pt-0">
         {empty ? (
           <p className="text-sm text-neutral-500">{copy.noData}</p>
         ) : (
@@ -1191,10 +1247,8 @@ function RecentChatsCard({
   const copy = REPORTS_COPY.overview.recentChats;
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{copy.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <ChartCardHeader icon={MessageSquare} title={copy.title} tooltip={copy.tooltip} />
+      <CardContent className="pt-0">
         {chats.length === 0 ? (
           <p className="text-sm text-neutral-500">{copy.empty}</p>
         ) : (

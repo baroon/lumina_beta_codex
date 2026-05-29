@@ -238,7 +238,6 @@ function ShareOfVoiceSection({ metrics, breakdowns }: ShareOfVoiceSectionProps) 
           data={data}
           layout="horizontal"
           valueAxisLabel={copy.shareOfVoice.valueAxis}
-          maxValue={1}
           formatValue={(v) => `${Math.round(v * 100)}%`}
         />
       </CardContent>
@@ -359,7 +358,7 @@ function BreakdownChartCard({
   data: BarChartDatum[];
   emptyText: string;
   valueAxisLabel: string;
-  /** Pin the value axis to [0, 1] and format as percent (for rate-shaped metrics). */
+  /** Format the value axis as a percent (for rate-shaped metrics). */
   rate?: boolean;
 }) {
   return (
@@ -375,7 +374,6 @@ function BreakdownChartCard({
             data={data}
             layout="horizontal"
             valueAxisLabel={valueAxisLabel}
-            maxValue={rate ? 1 : undefined}
             formatValue={rate ? (v) => `${Math.round(v * 100)}%` : undefined}
           />
         )}

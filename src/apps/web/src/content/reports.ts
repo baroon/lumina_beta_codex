@@ -1,3 +1,12 @@
+/**
+ * Placeholder body for chart-card info tooltips while the copy is being
+ * authored. Lives in this file (not the component) so swapping it for the
+ * real per-card text — eventually per-locale — is a content change, not a
+ * code change. Remove this constant once every `tooltip` entry has bespoke
+ * copy.
+ */
+const TBD_TOOLTIP = "Description coming soon.";
+
 export const REPORTS_COPY = {
   scanResults: {
     title: "Scan Results",
@@ -183,8 +192,12 @@ export const REPORTS_COPY = {
       noScans: "No scans have run yet for any of your brands.",
       noTrendData: "No trend data in the selected window yet.",
     },
+    trendChart: {
+      tooltip: TBD_TOOLTIP,
+    },
     topEntities: {
       title: "Top brands",
+      tooltip: TBD_TOOLTIP,
       columns: {
         entity: "Brand",
         visibility: "Visibility",
@@ -197,27 +210,32 @@ export const REPORTS_COPY = {
     },
     sov: {
       title: "Share of voice",
+      tooltip: TBD_TOOLTIP,
       noData: "No brand or competitor mentions in this window.",
     },
     mentions: {
       brandVsCompetitor: "Brand vs competitor mentions",
       distribution: "Mention distribution",
+      tooltip: TBD_TOOLTIP,
       axisLabel: "Mentions",
       noData: "No mention data in this window.",
     },
     competitiveGap: {
       title: "Competitive gap",
+      tooltip: TBD_TOOLTIP,
       perBrandLabel: "Gaps for {brandName}",
       noData: "No tracked competitors mentioned in this window.",
       noGroups: "No tracked-brand gap data in this window.",
     },
     recommendationRate: {
       title: "Recommendation rate by entity",
+      tooltip: TBD_TOOLTIP,
       axisLabel: "Rec. rate",
       noData: "No mentions in this window.",
     },
     topDomains: {
       title: "Top citation domains",
+      tooltip: TBD_TOOLTIP,
       columns: {
         source: "Source",
         domain: "Domain",
@@ -228,19 +246,23 @@ export const REPORTS_COPY = {
     },
     domainTypes: {
       title: "Domain types",
+      tooltip: TBD_TOOLTIP,
       noData: "No citation data in this window.",
     },
     platforms: {
       title: "Mentions by platform",
+      tooltip: TBD_TOOLTIP,
       axisLabel: "Brand mention rate",
       noData: "No platform data in this window.",
     },
     sentiment: {
       title: "Brand sentiment distribution",
+      tooltip: TBD_TOOLTIP,
       noData: "No brand mentions in this window.",
     },
     topicCoverage: {
       title: "Topic coverage",
+      tooltip: TBD_TOOLTIP,
       subtitle: "Per-topic coverage by platform — toggle to see answers or citations",
       noData: "No topic data in this window.",
       metricLabels: {
@@ -251,6 +273,7 @@ export const REPORTS_COPY = {
     },
     recentChats: {
       title: "Recent chats",
+      tooltip: TBD_TOOLTIP,
       empty: "No answers in this window.",
       mentionsLabel: "mentions",
       citationsLabel: "citations",

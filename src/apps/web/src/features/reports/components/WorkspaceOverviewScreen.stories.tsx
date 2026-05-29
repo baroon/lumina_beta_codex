@@ -22,6 +22,7 @@ const overviewFixture: WorkspaceOverviewDto = {
     { competitorId: glassdoorId, name: "Glassdoor" },
   ],
   hero: { queries: 240, mentions: 137, citations: 41, brandMentionRate: 0.57 },
+  previousHero: { queries: 210, mentions: 122, citations: 45, brandMentionRate: 0.51 },
   series: [
     {
       entityType: "Brand",
@@ -384,6 +385,7 @@ export const EmptyWorkspace: Story = {
         competitors: [],
         scanCount: 0,
         hero: { queries: 0, mentions: 0, citations: 0, brandMentionRate: null },
+        previousHero: null,
         series: [],
         topEntities: [],
       } satisfies WorkspaceOverviewDto);

@@ -704,6 +704,13 @@ export interface WorkspaceOverviewDto {
   competitors: WorkspaceCompetitorDto[];
   scanCount: number;
   hero: WorkspaceHeroDto;
+  /**
+   * Hero counts for the equivalent window immediately before {@link from}
+   * (same length, shifted back). Null when "All time" was requested or
+   * when no scans landed in that span. Used to render the up/down delta
+   * chip on each hero tile.
+   */
+  previousHero: WorkspaceHeroDto | null;
   series: EntityTrendSeriesDto[];
   topEntities: WorkspaceTopEntityRowDto[];
 }

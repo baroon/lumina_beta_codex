@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
-import { Badge } from "@/components/atoms/badge";
+import { ChevronDown, Plus, Search } from "lucide-react";
 import { Checkbox } from "@/components/atoms/checkbox";
 import { Input } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
@@ -27,17 +26,22 @@ interface BrandSelectorProps {
   onChange: (next: string[]) => void;
   /** Optional aria-label / data-testid base name. */
   ariaLabel?: string;
+  /**
+   * Route the "Manage brands" footer link points at. Defaults to the brand
+   * list page (`/`). Set to `null` to hide the footer link entirely (e.g.
+   * for tests or for embedded contexts).
+   */
+  manageBrandsHref?: string | null;
 }
 
 /**
- * Phase 4 v3 Slice A — entity multi-selector for the Workspace Overview.
+ * Entity multi-selector for the Workspace Overview top bar.
  *
- * Mirrors the peec.ai brand-picker UX: button shows "N of M" (or "All
- * brands" when everything is checked); the dropdown panel splits entities
- * into "Tracked brand(s)" + "All brands", each with a section-level
- * master checkbox plus per-entity checkboxes, gated by a single
- * substring search on `name`. Selection state is owned by the caller —
- * the molecule is presentational + click-outside-aware.
+ * Two sections (Tracked / All brands) with a leading colored-initial
+ * avatar per row, a small primary dot on tracked brands (instead of a
+ * heavier "You" badge), a per-section "Select all / Clear" link in
+ * place of a section-level master checkbox, and a "Manage brands"
+ * footer link. Selection state is owned by the caller.
  */
 export function BrandSelector({
   trackedBrands,
@@ -45,6 +49,7 @@ export function BrandSelector({
   selectedKeys,
   onChange,
   ariaLabel = "Brand selector",
+  manageBrandsHref = "/",
 }: BrandSelectorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -64,7 +69,6 @@ export function BrandSelector({
 
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
 
-  // Substring filter (case-insensitive) applied to both sections.
   const q = query.trim().toLowerCase();
   const trackedVisible = useMemo(
     () =>
@@ -166,9 +170,9 @@ export function BrandSelector({
                 items={trackedVisible}
                 isItemSelected={(e) => selectedSet.has(keyOf(e))}
                 onToggle={toggle}
-                masterChecked={trackedAllSelected}
-                onMasterToggle={(next) => setSectionAll(trackedBrands, next)}
-                showYouChip
+                allSelected={trackedAllSelected}
+                onSectionToggle={(next) => setSectionAll(trackedBrands, next)}
+                showTrackedDot
                 totalInSection={trackedBrands.length}
               />
             )}
@@ -179,17 +183,34 @@ export function BrandSelector({
                 items={competitorsVisible}
                 isItemSelected={(e) => selectedSet.has(keyOf(e))}
                 onToggle={toggle}
-                masterChecked={competitorsAllSelected}
-                onMasterToggle={(next) => setSectionAll(competitors, next)}
+                allSelected={competitorsAllSelected}
+                onSectionToggle={(next) => setSectionAll(competitors, next)}
                 totalInSection={competitors.length}
               />
             )}
             {trackedVisible.length === 0 && competitorsVisible.length === 0 && (
               <p className="px-3 py-4 text-center text-xs text-neutral-500">
-                No brands match “{query}”.
+                No brands match &ldquo;{query}&rdquo;.
               </p>
             )}
           </div>
+
+          {manageBrandsHref && (
+            <div className="border-t border-neutral-100 p-1">
+              {/* Plain <a> — clicking "Manage brands" navigates to a
+                  heavyweight page where a fresh router boot is fine, and
+                  this keeps the molecule decoupled from the router so it
+                  can be unit-tested without a router context. */}
+              <a
+                href={manageBrandsHref}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+              >
+                <Plus className="h-4 w-4 text-neutral-500" aria-hidden />
+                <span>Manage brands</span>
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -202,9 +223,12 @@ interface SectionBlockProps {
   items: readonly BrandSelectorEntity[];
   isItemSelected: (entity: BrandSelectorEntity) => boolean;
   onToggle: (entity: BrandSelectorEntity) => void;
-  masterChecked: boolean;
-  onMasterToggle: (next: boolean) => void;
-  showYouChip?: boolean;
+  /** Whether every entity in the section is currently selected. */
+  allSelected: boolean;
+  /** Called by the section-level "Select all" / "Clear" link. */
+  onSectionToggle: (next: boolean) => void;
+  /** When true, renders a small primary dot after the brand name. */
+  showTrackedDot?: boolean;
   /** Used to pluralize the header label. */
   totalInSection: number;
 }
@@ -215,22 +239,24 @@ function SectionBlock({
   items,
   isItemSelected,
   onToggle,
-  masterChecked,
-  onMasterToggle,
-  showYouChip = false,
+  allSelected,
+  onSectionToggle,
+  showTrackedDot = false,
   totalInSection,
 }: SectionBlockProps) {
   const headerLabel = totalInSection === 1 ? title : pluralTitle;
+  const linkLabel = allSelected ? "Clear" : "Select all";
   return (
     <div className="py-1">
-      <div className="flex items-center gap-2 px-3 py-1.5 text-xs uppercase tracking-wide text-neutral-500">
-        <Checkbox
-          checked={masterChecked}
-          onCheckedChange={(checked) => onMasterToggle(checked === true)}
-          aria-label={`Toggle all ${headerLabel.toLowerCase()}`}
-          checkboxSize="sm"
-        />
-        <span className="ml-1">{headerLabel}</span>
+      <div className="flex items-center justify-between px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <span>{headerLabel}</span>
+        <button
+          type="button"
+          onClick={() => onSectionToggle(!allSelected)}
+          className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
+        >
+          {linkLabel}
+        </button>
       </div>
       <ul role="group" className="space-y-0">
         {items.map((entity) => {
@@ -244,11 +270,14 @@ function SectionBlock({
                   aria-label={entity.name}
                   checkboxSize="sm"
                 />
+                <BrandInitialAvatar name={entity.name} />
                 <span className="flex-1 truncate">{entity.name}</span>
-                {showYouChip && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    You
-                  </Badge>
+                {showTrackedDot && (
+                  <span
+                    aria-label="Tracked"
+                    title="Tracked brand"
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500"
+                  />
                 )}
               </label>
             </li>
@@ -257,4 +286,46 @@ function SectionBlock({
       </ul>
     </div>
   );
+}
+
+/**
+ * Colored initial avatar — small circle with the first letter of the
+ * brand name. Color is picked deterministically from a 6-entry palette
+ * via a tiny name hash so the same brand always renders the same color
+ * across renders, but adjacent brands look distinct.
+ */
+function BrandInitialAvatar({ name }: { name: string }) {
+  const trimmed = name.trim();
+  const initial = trimmed.length === 0 ? "?" : trimmed[0].toUpperCase();
+  const idx = nameHash(trimmed) % AVATAR_PALETTE.length;
+  const palette = AVATAR_PALETTE[idx];
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+        palette.bg,
+        palette.fg,
+      )}
+    >
+      {initial}
+    </span>
+  );
+}
+
+const AVATAR_PALETTE = [
+  { bg: "bg-primary-100", fg: "text-primary-700" },
+  { bg: "bg-accent-100", fg: "text-accent-700" },
+  { bg: "bg-amber-100", fg: "text-amber-700" },
+  { bg: "bg-emerald-100", fg: "text-emerald-700" },
+  { bg: "bg-rose-100", fg: "text-rose-700" },
+  { bg: "bg-violet-100", fg: "text-violet-700" },
+] as const;
+
+function nameHash(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return hash;
 }

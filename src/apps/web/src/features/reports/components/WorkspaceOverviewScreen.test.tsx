@@ -154,6 +154,7 @@ const fixture: WorkspaceOverviewDto = {
   ],
   competitors: [{ competitorId: indeedId, name: "Indeed" }],
   hero: { queries: 100, mentions: 60, citations: 15, brandMentionRate: 0.45 },
+  previousHero: { queries: 80, mentions: 40, citations: 10, brandMentionRate: 0.3 },
   series: [
     {
       entityType: "Brand",

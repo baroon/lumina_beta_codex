@@ -74,6 +74,22 @@ public class GetWorkspaceOverviewQueryHandler
 
         var hero = await BuildHeroAsync(scanIds, trackedBrandIds, cancellationToken);
 
+        // Hero counts for the immediately-preceding equivalent window so
+        // the FE can render an up/down delta chip on each hero tile.
+        // "All time" mode has no notion of "previous" so we skip the
+        // second query.
+        WorkspaceHeroDto? previousHero = null;
+        if (TryGetPreviousWindow(windowFrom, windowTo, out var prevFrom, out var prevTo))
+        {
+            var prevScanIds = await _db.ScanRuns.AsNoTracking()
+                .Where(s => trackerIds.Contains(s.TrackerConfigurationId)
+                    && s.StartedAt >= prevFrom
+                    && s.StartedAt < prevTo)
+                .Select(s => s.Id)
+                .ToListAsync(cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, cancellationToken);
+        }
+
         var trendPoints = await _db.TrendPoints.AsNoTracking()
             .Where(p => trackerIds.Contains(p.TrackerConfigurationId)
                 && (windowFrom == null || p.CapturedAt >= windowFrom)
@@ -93,8 +109,30 @@ public class GetWorkspaceOverviewQueryHandler
             Competitors: competitorRows,
             ScanCount: scanIds.Count,
             Hero: hero,
+            PreviousHero: previousHero,
             Series: series,
             TopEntities: topEntities);
+    }
+
+    /// <summary>
+    /// Compute the equivalent window immediately before the current one
+    /// — same length, shifted back. Returns <c>false</c> when the caller
+    /// asked for "all time" (no upper bound on the past, no meaningful
+    /// previous span).
+    /// </summary>
+    private static bool TryGetPreviousWindow(
+        DateTime? windowFrom, DateTime windowTo, out DateTime previousFrom, out DateTime previousTo)
+    {
+        if (windowFrom is null)
+        {
+            previousFrom = default;
+            previousTo = default;
+            return false;
+        }
+        var length = windowTo - windowFrom.Value;
+        previousTo = windowFrom.Value;
+        previousFrom = windowFrom.Value - length;
+        return true;
     }
 
     private static WorkspaceOverviewDto EmptyDto(
@@ -106,6 +144,7 @@ public class GetWorkspaceOverviewQueryHandler
             Array.Empty<WorkspaceCompetitorDto>(),
             0,
             new WorkspaceHeroDto(0, 0, 0, null),
+            null,
             Array.Empty<EntityTrendSeriesDto>(),
             Array.Empty<WorkspaceTopEntityRowDto>());
 
