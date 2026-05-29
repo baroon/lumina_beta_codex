@@ -6,6 +6,7 @@ import {
   Globe,
   Grid3X3,
   Layers,
+  Loader2,
   MessageSquare,
   Minus,
   PieChart,
@@ -142,7 +143,7 @@ export function WorkspaceOverviewScreen() {
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const { data, isLoading, isError, error, refetch } = useWorkspaceOverview(range);
+  const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(range);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -197,6 +198,7 @@ export function WorkspaceOverviewScreen() {
         competitors={competitorEntities}
         selectedKeys={selectedKeys}
         onSelectedKeysChange={setSelectedKeys}
+        isRefreshing={isFetching && !isLoading}
       />
 
       {data.trackedBrands.length === 0 ? (
@@ -206,7 +208,17 @@ export function WorkspaceOverviewScreen() {
           </CardContent>
         </Card>
       ) : (
-        <>
+        // Soft dim while a refetch is in flight. `placeholderData` keeps the
+        // prior payload mounted so nothing actually swaps in — the dim is the
+        // only visual signal that fresh data is on the way (plus the spinner
+        // in the control bar above).
+        <div
+          aria-busy={isFetching && !isLoading}
+          className={cn(
+            "space-y-6 transition-opacity duration-150",
+            isFetching && !isLoading && "opacity-60",
+          )}
+        >
           <HeroRow
             hero={data.hero}
             previousHero={data.previousHero}
@@ -227,7 +239,7 @@ export function WorkspaceOverviewScreen() {
 
           {/* Slice C depth sections + recent chats. Same pattern. */}
           <DepthSections range={range} />
-        </>
+        </div>
       )}
     </div>
   );
@@ -581,6 +593,10 @@ interface ComparisonControlsRowProps {
   competitors: readonly BrandSelectorEntity[];
   selectedKeys: readonly string[];
   onSelectedKeysChange: (next: string[]) => void;
+  /** True while a new date range is fetching (placeholderData kept the
+   *  prior payload visible). Drives a tiny spinner inside the bar so the
+   *  user knows fresh data is on its way. */
+  isRefreshing?: boolean;
 }
 
 function ComparisonControlsRow({
@@ -590,6 +606,7 @@ function ComparisonControlsRow({
   competitors,
   selectedKeys,
   onSelectedKeysChange,
+  isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
@@ -600,6 +617,16 @@ function ComparisonControlsRow({
         onChange={onSelectedKeysChange}
       />
       <DateRangePicker value={range} onChange={onRangeChange} />
+      {isRefreshing && (
+        <span
+          aria-live="polite"
+          aria-label="Refreshing"
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500"
+        >
+          <Loader2 size={14} className="animate-spin text-primary-500" aria-hidden />
+          Refreshing…
+        </span>
+      )}
     </div>
   );
 }
