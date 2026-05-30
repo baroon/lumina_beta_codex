@@ -1,6 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
+using AIVisibility.Infrastructure.Analysis;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Scanning;
 using FluentAssertions;
@@ -20,12 +21,21 @@ public class ScanExecutorTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options);
 
-    private static (Guid RunId, Guid PromptRunId) Seed(AppDbContext ctx)
+    private static (Guid RunId, Guid PromptRunId, Guid BrandId) Seed(AppDbContext ctx)
     {
+        var brand = new Brand
+        {
+            Id = Guid.NewGuid(),
+            Name = "Acme",
+            WebsiteUrl = "https://acme.com",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
         var tracker = new TrackerConfiguration
         {
             Id = Guid.NewGuid(),
-            BrandId = Guid.NewGuid(),
+            BrandId = brand.Id,
+            Brand = brand,
             Name = "T",
             PromptAllocation = 30,
             Cadence = Cadence.Daily,
@@ -64,39 +74,78 @@ public class ScanExecutorTests
             AIPlatformId = platform.Id,
             Status = PromptRunStatus.Pending,
         };
+        ctx.Brands.Add(brand);
         ctx.TrackerConfigurations.Add(tracker);
         ctx.Prompts.Add(prompt);
         ctx.AIPlatforms.Add(platform);
         ctx.ScanRuns.Add(run);
         ctx.PromptRuns.Add(pr);
         ctx.SaveChanges();
-        return (run.Id, pr.Id);
+        return (run.Id, pr.Id, brand.Id);
     }
 
     private static Mock<IBackgroundJobClient> NewJobs()
     {
         var jobs = new Mock<IBackgroundJobClient>();
-        // Hangfire's Enqueue<T> / ContinueJobWith<T> extensions internally call Create(Job, IState).
-        // Stub the return so the extensions have a job id to return for chaining.
         jobs.Setup(j => j.Create(It.IsAny<Job>(), It.IsAny<IState>()))
             .Returns("stub-job-id");
         return jobs;
     }
 
-    private static ScanExecutor Executor(AppDbContext ctx, IScanProvider provider, IBackgroundJobClient? jobs = null) =>
-        new(ctx, provider, jobs ?? NewJobs().Object, new Mock<ILogger<ScanExecutor>>().Object);
+    private static SignalExtractor StubExtractor()
+    {
+        var openAi = new Mock<IOpenAiService>();
+        // No envelope returned -> SignalExtractor returns null per-answer, so
+        // the inline write step is skipped. Tests that care about the inline
+        // write either inject a real envelope (and assert against the writer)
+        // or use the writer mock directly.
+        openAi
+            .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(string.Empty);
+        return new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
+    }
+
+    private static ISignalExtractionContextFactory StubContextFactory(Guid brandId)
+    {
+        var factory = new Mock<ISignalExtractionContextFactory>();
+        factory
+            .Setup(f => f.BuildAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SignalExtractionContext(
+                new Brand { Id = brandId, Name = "Acme" },
+                Array.Empty<Competitor>(),
+                Array.Empty<Product>()));
+        return factory.Object;
+    }
+
+    private static ScanExecutor Executor(
+        AppDbContext ctx,
+        IScanProvider provider,
+        IBackgroundJobClient? jobs = null,
+        IAnswerSignalWriter? writer = null,
+        SignalExtractor? extractor = null,
+        ISignalExtractionContextFactory? contextFactory = null,
+        Guid? brandId = null) =>
+        new(
+            ctx,
+            provider,
+            jobs ?? NewJobs().Object,
+            extractor ?? StubExtractor(),
+            writer ?? Mock.Of<IAnswerSignalWriter>(),
+            contextFactory ?? StubContextFactory(brandId ?? Guid.NewGuid()),
+            new Mock<ILogger<ScanExecutor>>().Object);
 
     [Fact]
     public async Task Execute_StoresAnswer_AndCompletes()
     {
         using var ctx = NewContext();
-        var (runId, prId) = Seed(ctx);
+        var (runId, prId, brandId) = Seed(ctx);
         var provider = new Mock<IScanProvider>();
         provider
             .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ScanAnswer(true, "Acme is best.", null, "raw"));
 
-        await Executor(ctx, provider.Object).ExecuteAsync(runId, CancellationToken.None);
+        await Executor(ctx, provider.Object, brandId: brandId).ExecuteAsync(runId, CancellationToken.None);
 
         var run = await ctx.ScanRuns.FindAsync(runId);
         run!.Status.Should().Be(ScanRunStatus.Completed);
@@ -110,13 +159,13 @@ public class ScanExecutorTests
     public async Task Execute_MarksFailed_WhenProviderFails()
     {
         using var ctx = NewContext();
-        var (runId, prId) = Seed(ctx);
+        var (runId, prId, brandId) = Seed(ctx);
         var provider = new Mock<IScanProvider>();
         provider
             .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ScanAnswer(false, string.Empty, "not configured"));
 
-        await Executor(ctx, provider.Object).ExecuteAsync(runId, CancellationToken.None);
+        await Executor(ctx, provider.Object, brandId: brandId).ExecuteAsync(runId, CancellationToken.None);
 
         var run = await ctx.ScanRuns.FindAsync(runId);
         run!.FailedCount.Should().Be(1);
@@ -126,41 +175,132 @@ public class ScanExecutorTests
     }
 
     [Fact]
-    public async Task Execute_CreatesAnalysisJob_AndEnqueuesExtractWithAggregateContinuation()
+    public async Task Execute_RunsExtractionInline_AfterEachAnswer()
     {
         using var ctx = NewContext();
-        var (runId, _) = Seed(ctx);
+        var (runId, _, brandId) = Seed(ctx);
+        var provider = new Mock<IScanProvider>();
+        provider
+            .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ScanAnswer(true, "answer", null, "raw"));
+
+        // Real extractor returning a minimal signal so the inline writer call
+        // receives a non-null result.
+        var openAi = new Mock<IOpenAiService>();
+        openAi
+            .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MinimalEnvelope);
+        var extractor = new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
+
+        var writer = new Mock<IAnswerSignalWriter>();
+        writer
+            .Setup(w => w.WriteAsync(
+                It.IsAny<SignalExtractionResult>(),
+                It.IsAny<SignalExtractionContext>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        await Executor(
+            ctx, provider.Object,
+            writer: writer.Object,
+            extractor: extractor,
+            brandId: brandId).ExecuteAsync(runId, CancellationToken.None);
+
+        writer.Verify(w => w.WriteAsync(
+            It.IsAny<SignalExtractionResult>(),
+            It.IsAny<SignalExtractionContext>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_PerAnswerExtractionFailure_DoesNotFailTheScan()
+    {
+        using var ctx = NewContext();
+        var (runId, prId, brandId) = Seed(ctx);
+        var provider = new Mock<IScanProvider>();
+        provider
+            .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ScanAnswer(true, "answer", null, "raw"));
+
+        var openAi = new Mock<IOpenAiService>();
+        openAi
+            .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(MinimalEnvelope);
+        var extractor = new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
+
+        var writer = new Mock<IAnswerSignalWriter>();
+        writer
+            .Setup(w => w.WriteAsync(
+                It.IsAny<SignalExtractionResult>(),
+                It.IsAny<SignalExtractionContext>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("simulated writer failure"));
+
+        await Executor(
+            ctx, provider.Object,
+            writer: writer.Object,
+            extractor: extractor,
+            brandId: brandId).ExecuteAsync(runId, CancellationToken.None);
+
+        // PromptRun + ScanRun still complete despite the extraction failure.
+        var run = await ctx.ScanRuns.FindAsync(runId);
+        run!.Status.Should().Be(ScanRunStatus.Completed);
+        (await ctx.PromptRuns.FindAsync(prId))!.Status.Should().Be(PromptRunStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Execute_CreatesAnalysisJob_AndEnqueuesMetricAggregationDirectly()
+    {
+        using var ctx = NewContext();
+        var (runId, _, brandId) = Seed(ctx);
         var provider = new Mock<IScanProvider>();
         provider
             .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ScanAnswer(true, "answer", null, "raw"));
         var jobs = NewJobs();
 
-        await Executor(ctx, provider.Object, jobs.Object).ExecuteAsync(runId, CancellationToken.None);
+        await Executor(ctx, provider.Object, jobs.Object, brandId: brandId)
+            .ExecuteAsync(runId, CancellationToken.None);
 
-        // AnalysisJob row exists, references the right ScanRun, starts in Queued status.
+        // AnalysisJob row exists with extraction already stamped — inline
+        // extraction means the row lands with ExtractStartedAt and
+        // ExtractCompletedAt populated, status Running awaiting aggregation.
         var analysisJob = await ctx.AnalysisJobs.SingleAsync(j => j.ScanRunId == runId);
-        analysisJob.Status.Should().Be(AnalysisJobStatus.Queued);
-        analysisJob.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
-        analysisJob.ExtractStartedAt.Should().BeNull();   // jobs haven't run yet
+        analysisJob.Status.Should().Be(AnalysisJobStatus.Running);
+        analysisJob.ExtractStartedAt.Should().NotBeNull();
+        analysisJob.ExtractCompletedAt.Should().NotBeNull();
         analysisJob.AggregateCompletedAt.Should().BeNull();
 
-        // Hangfire received an ISignalExtractionJob.ExtractAsync(analysisJobId) enqueued normally.
-        jobs.Verify(j => j.Create(
-                It.Is<Job>(job =>
-                    job.Type == typeof(ISignalExtractionJob)
-                    && job.Method.Name == nameof(ISignalExtractionJob.ExtractAsync)
-                    && (Guid)job.Args[0] == analysisJob.Id),
-                It.IsAny<EnqueuedState>()),
-            Times.Once);
-
-        // And an IMetricAggregationJob.AggregateAsync chained via continuation (AwaitingState).
+        // MetricAggregationJob is enqueued directly (no SignalExtractionJob
+        // continuation in the new flow).
         jobs.Verify(j => j.Create(
                 It.Is<Job>(job =>
                     job.Type == typeof(IMetricAggregationJob)
                     && job.Method.Name == nameof(IMetricAggregationJob.AggregateAsync)
                     && (Guid)job.Args[0] == analysisJob.Id),
-                It.IsAny<AwaitingState>()),
+                It.IsAny<EnqueuedState>()),
             Times.Once);
     }
+
+    private const string MinimalEnvelope = """
+        {
+          "answer_signal": {
+            "brand_mentioned": true, "brand_recommended": true,
+            "brand_rank": 1, "brand_sentiment": "Positive",
+            "brand_recommendation_strength": "Strong",
+            "top_recommended_entity": "Acme",
+            "answer_has_ranking": true, "answer_has_comparison": false,
+            "answer_has_citations": false, "confidence_score": 0.9
+          },
+          "mentions": [
+            { "entity_type": "Brand", "name": "Acme", "is_recommended": true,
+              "recommendation_strength": "Strong", "sentiment": "Positive",
+              "evidence_snippet": "Acme is top.", "confidence_score": 0.95 }
+          ],
+          "citations": []
+        }
+        """;
 }

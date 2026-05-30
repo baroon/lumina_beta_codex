@@ -84,11 +84,48 @@ export const TRACKERS_COPY = {
     activatedDescription: "{checks} scan checks, {cadence} cadence.",
   },
   scan: {
-    running: "Running your prompts across AI platforms…",
-    runningDetail: "{done} of {total} scan checks complete",
-    completeTitle: "First scan complete",
-    completeDescription: "{completed} answers collected across your platforms.",
-    completeWithFailures: "{completed} answers collected · {failed} couldn’t be reached.",
-    openOverview: "Open overview",
+    // Live progress screen (post-activation, while the scan runs).
+    progressTitleTemplate: "Checking {platforms} for {brand}…",
+    progressTitleFallback: "Checking AI platforms for {brand}…",
+    progressSubtext: "{done}/{total} complete",
+    platformStatus: {
+      Pending: "Pending",
+      Running: "Running",
+      Done: "Done",
+      Failed: "Failed",
+    } as Record<string, string>,
+    liveResultsTitle: "Live results",
+    mentions: "Mentions",
+    citations: "Citations",
+    recommended: "Recommended",
+    sentiment: "Sentiment",
+    // Product-awareness messages that cycle every ~6s in place of the
+    // old McKinsey pull-quote. Order is the rotation order; keep them
+    // self-contained sentences so the rotation reads naturally.
+    awarenessMessages: [
+      "Visibility Lenses look at your brand through 6 angles — Discovery, Buying Intent, Competitor Comparison, Sentiment & Trust, Citation Visibility, and Content Gaps.",
+      "A Tracker is a long-lived view of how AI platforms talk about your brand. Every scan adds another snapshot to the trend.",
+      "The thorough discovery you just did means every future scan asks better questions. The work is already paying off.",
+      "We analyze every answer the way a careful reviewer would — sentence by sentence, source by source — just faster.",
+      "Trends move the needle. One scan tells you where you stand; the next tells you whether you're getting better.",
+      "Citations show you which sources AI reaches for in your category — and whether your own content is in the mix.",
+    ] as readonly string[],
+    // Complete screen (terminal state after Completed / Failed).
+    completeTitle: "Your first scan is complete!",
+    completeSubtitle:
+      "We've analyzed how AI platforms talk about {brand} across {queries} queries.",
+    completeSubtitleFallback:
+      "We've analyzed how AI platforms talk about your brand across {queries} queries.",
+    whatWeFoundTitle: "What we found",
+    completeBody:
+      "This is just the beginning. Your scan results have detailed insights, trends, and recommendations.",
+    viewScanResults: "View scan results",
+    sentimentLabels: {
+      Positive: "Positive",
+      Neutral: "Neutral",
+      Negative: "Negative",
+      Mixed: "Mixed",
+      Unknown: "Pending",
+    } as Record<string, string>,
   },
 } as const;

@@ -13,6 +13,17 @@ const config: Config = {
   theme: {
     extend: {
       ...tokens,
+      // Short cross-fade used by the rotating product-awareness messages
+      // on the scan-progress screen; keyed remounts trigger the animation.
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 400ms ease-out",
+      },
     },
   },
   plugins: [],

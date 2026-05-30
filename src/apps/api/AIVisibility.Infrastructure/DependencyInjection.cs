@@ -86,15 +86,17 @@ public static class DependencyInjection
         services.AddScoped<IPlatformClient, CopilotPlatformClient>();
         services.AddScoped<IScanProvider, ScanProviderRouter>();
 
-        // Phase 3 analysis pipeline: two Hangfire-invoked jobs chained via ContinueJobWith.
-        // ScanExecutor enqueues SignalExtractionJob on scan completion; that job's success
-        // triggers MetricAggregationJob via continuation. Slice 2 ships real per-answer
-        // LLM extraction inside SignalExtractionJob; aggregation is still skeleton (Slice 4).
+        // Phase 3 analysis pipeline: extraction now happens inline inside
+        // ScanExecutor (per-answer) so the live counters on the scan-progress
+        // screen tick up while the scan runs. ScanExecutor enqueues
+        // MetricAggregationJob at end-of-scan for the scan-wide rollups
+        // (which need every answer's extraction to have landed).
         services.Configure<AnalysisOptions>(configuration.GetSection(AnalysisOptions.SectionName));
         services.AddScoped<SignalExtractor>();
         services.AddScoped<MetricAggregator>();
         services.AddScoped<ISourceClassifier, LlmSourceClassifier>();
-        services.AddScoped<ISignalExtractionJob, SignalExtractionJob>();
+        services.AddScoped<IAnswerSignalWriter, AnswerSignalWriter>();
+        services.AddScoped<ISignalExtractionContextFactory, SignalExtractionContextFactory>();
         services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();
 
         // Crawling

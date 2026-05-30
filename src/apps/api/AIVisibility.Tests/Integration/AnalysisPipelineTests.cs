@@ -7,7 +7,6 @@ using AIVisibility.Infrastructure.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace AIVisibility.Tests.Integration;
@@ -22,10 +21,12 @@ namespace AIVisibility.Tests.Integration;
 /// answer→signal→aggregation chain).
 ///
 /// Mocks <see cref="IOpenAiService"/> (the D8 test seam) and constructs the
-/// real <see cref="SignalExtractor"/>, <see cref="SignalExtractionJob"/>, and
+/// real <see cref="SignalExtractor"/>, <see cref="AnswerSignalWriter"/>, and
 /// <see cref="MetricAggregationJob"/> against a single in-memory DbContext —
 /// the same wiring the production DI graph produces, minus Hangfire's runtime
-/// (which we don't test — that's a third-party concern).
+/// (which we don't test — that's a third-party concern). Extraction now runs
+/// inline-per-answer (as in ScanExecutor); the test helper
+/// <see cref="RunInlineExtractionAsync"/> mirrors that loop.
 ///
 /// Phase 4 Slice 0: the persistence path now produces the full Source /
 /// SourceUrl / BrandSourceClassification chain. The pipeline test asserts on
@@ -184,22 +185,65 @@ public class AnalysisPipelineTests
         return new Fixture(job.Id, brand, acme, beta, pro, answers);
     }
 
-    private static (SignalExtractionJob Extract, MetricAggregationJob Aggregate) BuildJobs(
-        AppDbContext ctx, IOpenAiService openAi, ISourceClassifier? classifier = null, int concurrency = 5)
+    private sealed record Pipeline(
+        SignalExtractor Extractor,
+        AnswerSignalWriter Writer,
+        SignalExtractionContextFactory ContextFactory,
+        MetricAggregationJob Aggregate);
+
+    private static Pipeline BuildPipeline(
+        AppDbContext ctx, IOpenAiService openAi, ISourceClassifier? classifier = null)
     {
         var extractor = new SignalExtractor(openAi, new Mock<ILogger<SignalExtractor>>().Object);
-        var options = Options.Create(new AnalysisOptions { ExtractionConcurrency = concurrency });
-        // Phase 4 Slice 1: SignalExtractionJob now takes ISourceClassifier.
-        // Tests that don't care default to a stub that returns null for every
-        // call — leaves rows at their RuleBased verdict (the pre-Phase 4
-        // behavior the existing assertions were written for).
+        // Phase 4 Slice 1: AnswerSignalWriter now takes ISourceClassifier.
+        // Tests that don't care default to a stub returning null per call —
+        // leaves rows at their RuleBased verdict (the pre-Phase 4 behavior
+        // the existing assertions were written for).
         classifier ??= new Mock<ISourceClassifier>().Object;
-        var extract = new SignalExtractionJob(
-            ctx, extractor, classifier, options, new Mock<ILogger<SignalExtractionJob>>().Object);
+        var writer = new AnswerSignalWriter(
+            ctx, classifier, new Mock<ILogger<AnswerSignalWriter>>().Object);
+        var contextFactory = new SignalExtractionContextFactory(ctx);
         var aggregator = new MetricAggregator(ctx, new Mock<ILogger<MetricAggregator>>().Object);
         var aggregate = new MetricAggregationJob(
             ctx, aggregator, new Mock<ILogger<MetricAggregationJob>>().Object);
-        return (extract, aggregate);
+        return new Pipeline(extractor, writer, contextFactory, aggregate);
+    }
+
+    /// <summary>
+    /// Runs the inline-extraction step the way ScanExecutor does in
+    /// production: build context once per scan, then extract + write
+    /// per answer. Per-answer extraction failures are swallowed so the
+    /// rest of the scan persists (D3). Stamps the AnalysisJob
+    /// extract timestamps + Status=Running, which the aggregate step
+    /// then flips to Completed.
+    /// </summary>
+    private static async Task RunInlineExtractionAsync(
+        AppDbContext ctx, Guid analysisJobId, IReadOnlyList<AIAnswer> answers, Pipeline pipe)
+    {
+        var job = await ctx.AnalysisJobs.FirstAsync(j => j.Id == analysisJobId);
+        job.Status = AnalysisJobStatus.Running;
+        job.ExtractStartedAt = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
+
+        var context = await pipe.ContextFactory.BuildAsync(job.ScanRunId, CancellationToken.None);
+
+        foreach (var answer in answers)
+        {
+            try
+            {
+                var result = await pipe.Extractor.ExtractAsync(answer, context, CancellationToken.None);
+                if (result is null) continue;
+                await pipe.Writer.WriteAsync(result, context, CancellationToken.None);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // D3 catch-and-continue parity with ScanExecutor.
+                _ = ex;
+            }
+        }
+
+        job.ExtractCompletedAt = DateTime.UtcNow;
+        await ctx.SaveChangesAsync();
     }
 
     [Fact]
@@ -310,12 +354,12 @@ public class AnalysisPipelineTests
             .ReturnsAsync(answer3)
             .ReturnsAsync(answer4);
 
-        var (extract, aggregate) = BuildJobs(ctx, openAi.Object, concurrency: 1);
+        var pipe = BuildPipeline(ctx, openAi.Object);
 
-        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
-        // ScanExecutor wires the Hangfire ContinueWith — here we invoke aggregate
-        // directly to test the contract the chain depends on.
-        await aggregate.AggregateAsync(fx.AnalysisJobId, CancellationToken.None);
+        // Per-answer inline extraction (the new pre-Completed flow), then
+        // the aggregate job that ScanExecutor enqueues at end-of-scan.
+        await RunInlineExtractionAsync(ctx, fx.AnalysisJobId, fx.Answers, pipe);
+        await pipe.Aggregate.AggregateAsync(fx.AnalysisJobId, CancellationToken.None);
 
         // -- AnalysisJob status + timestamps --
         var job = await ctx.AnalysisJobs.AsNoTracking().FirstAsync(j => j.Id == fx.AnalysisJobId);
@@ -525,8 +569,8 @@ public class AnalysisPipelineTests
                 It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SourceClassificationVerdict(SourceType.Reference, 0.95, "Wikipedia is reference."));
 
-        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
-        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+        var pipe = BuildPipeline(ctx, openAi.Object, classifier.Object);
+        await RunInlineExtractionAsync(ctx, fx.AnalysisJobId, fx.Answers, pipe);
 
         var classifications = await ctx.BrandSourceClassifications.AsNoTracking()
             .Where(c => c.BrandId == fx.Brand.Id)
@@ -599,8 +643,8 @@ public class AnalysisPipelineTests
                 It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SourceClassificationVerdict?)null);
 
-        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
-        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+        var pipe = BuildPipeline(ctx, openAi.Object, classifier.Object);
+        await RunInlineExtractionAsync(ctx, fx.AnalysisJobId, fx.Answers, pipe);
 
         var classification = await ctx.BrandSourceClassifications.AsNoTracking()
             .SingleAsync(c => c.BrandId == fx.Brand.Id);
@@ -650,8 +694,8 @@ public class AnalysisPipelineTests
                 It.IsAny<SourceClassificationRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("simulated upstream failure"));
 
-        var (extract, _) = BuildJobs(ctx, openAi.Object, classifier.Object, concurrency: 1);
-        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
+        var pipe = BuildPipeline(ctx, openAi.Object, classifier.Object);
+        await RunInlineExtractionAsync(ctx, fx.AnalysisJobId, fx.Answers, pipe);
 
         var classification = await ctx.BrandSourceClassifications.AsNoTracking()
             .SingleAsync(c => c.BrandId == fx.Brand.Id);
@@ -672,10 +716,10 @@ public class AnalysisPipelineTests
         var fx = SeedFixture(ctx, answerCount: 0);
 
         var openAi = new Mock<IOpenAiService>(); // Never called.
-        var (extract, aggregate) = BuildJobs(ctx, openAi.Object);
+        var pipe = BuildPipeline(ctx, openAi.Object);
 
-        await extract.ExtractAsync(fx.AnalysisJobId, CancellationToken.None);
-        await aggregate.AggregateAsync(fx.AnalysisJobId, CancellationToken.None);
+        await RunInlineExtractionAsync(ctx, fx.AnalysisJobId, fx.Answers, pipe);
+        await pipe.Aggregate.AggregateAsync(fx.AnalysisJobId, CancellationToken.None);
 
         var job = await ctx.AnalysisJobs.AsNoTracking().FirstAsync(j => j.Id == fx.AnalysisJobId);
         job.Status.Should().Be(AnalysisJobStatus.Completed);

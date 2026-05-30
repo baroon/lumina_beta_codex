@@ -252,6 +252,38 @@ export interface ScanStatus {
   failedCount: number;
   startedAt: string;
   completedAt: string | null;
+  /** Tracked brand name — drives the scan-progress title. */
+  brandName: string;
+  /** Per-platform progress slice, ordered alphabetically by platform name. */
+  platforms: ScanPlatformProgress[];
+  /** Live aggregates joined to this scan's answers; updates every poll. */
+  liveCounters: LiveCounters;
+}
+
+export interface ScanPlatformProgress {
+  platformId: string;
+  code: string;
+  name: string;
+  completed: number;
+  failed: number;
+  total: number;
+  /** "Pending" | "Running" | "Done" | "Failed". */
+  status: string;
+}
+
+export interface LiveCounters {
+  mentions: number;
+  citations: number;
+  recommended: number;
+  sentiment: SentimentDistribution;
+}
+
+export interface SentimentDistribution {
+  positive: number;
+  neutral: number;
+  negative: number;
+  mixed: number;
+  unknown: number;
 }
 
 // --- Scan Results (Slice (d) reporting) ----------------------------------
