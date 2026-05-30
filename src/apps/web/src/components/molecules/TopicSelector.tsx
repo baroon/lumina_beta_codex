@@ -3,37 +3,38 @@ import { ChevronDown, Tag } from "lucide-react";
 import { Checkbox } from "@/components/atoms/checkbox";
 import { Input } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
 interface TopicSelectorProps {
   /**
-   * Topic names available in the workspace, deduplicated case-insensitively.
-   * Comes from the discovery summary so the list reflects what the user
-   * actually captured in the discovery flow.
+   * Per-brand topic groups from the workspace's discovery summary.
+   * Each brand becomes a section in the dropdown; items are
+   * deduplicated within the brand on the BE.
    */
-  allTopicNames: readonly string[];
-  /** Currently-selected topic names. Empty array = no filter ("All topics"). */
+  topicsByBrand: readonly BrandedDimensionGroupDto[];
+  /**
+   * Currently-selected topic names (case-sensitive). Empty array = no
+   * filter ("All topics"). Selection is name-based, so a name shared
+   * across two brands toggles in both sections.
+   */
   selectedNames: readonly string[];
-  /** Called with the new selected-names set when the user toggles. */
   onChange: (next: string[]) => void;
   /**
-   * Optional per-topic mention count, keyed by name. Renders as a small
-   * pill on each row so the user can spot empty topics before toggling.
-   * Missing entries fall back to "no chip".
+   * Per-topic mention count keyed by name. Optional. Renders as a
+   * pill next to each row so empty topics are easy to spot.
    */
   countsByName?: Readonly<Record<string, number>>;
-  /** Optional aria-label / data-testid base. */
   ariaLabel?: string;
 }
 
 /**
- * Dropdown chip for filtering the Workspace Overview by Topic. Mirrors
- * the {@link LensSelector} pattern — multi-select with checkboxes, empty
- * array sentinel reads as "All topics". Options are dynamic (derived
- * from the workspace's discovery output) so a search box helps the user
- * find a topic in larger workspaces.
+ * Dropdown chip for filtering the Workspace Overview by Topic. The
+ * dropdown body is split into per-brand sections so the user can see
+ * which topic belongs to which brand. Selection is still keyed by
+ * name (shared names toggle together) to match the BE filter shape.
  */
 export function TopicSelector({
-  allTopicNames,
+  topicsByBrand,
   selectedNames,
   onChange,
   countsByName,
@@ -54,21 +55,36 @@ export function TopicSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Sort the workspace's topic names once; substring filter is applied per render.
-  const sorted = useMemo(
-    () => [...allTopicNames].sort((a, b) => a.localeCompare(b)),
-    [allTopicNames],
-  );
-  const q = query.trim().toLowerCase();
-  const visible = q === "" ? sorted : sorted.filter((n) => n.toLowerCase().includes(q));
+  // Deduplicated alphabetical list of names — drives the trigger label,
+  // the "all selected" sentinel collapse, and the search universe.
+  const allNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of topicsByBrand) for (const i of g.items) set.add(i.name);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [topicsByBrand]);
 
-  const total = sorted.length;
+  const q = query.trim().toLowerCase();
+  const visibleGroups = useMemo(() => {
+    if (q === "") return topicsByBrand;
+    return topicsByBrand
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((i) => i.name.toLowerCase().includes(q)),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [topicsByBrand, q]);
+
+  const total = allNames.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
   const buttonLabel = allSelected ? `${total} topics` : `${selected} of ${total} topics`;
 
+  function isChecked(name: string): boolean {
+    return selectedNames.length === 0 || selectedNames.includes(name);
+  }
+
   function toggle(name: string) {
-    const base = selectedNames.length === 0 ? sorted : selectedNames;
+    const base = selectedNames.length === 0 ? allNames : selectedNames;
     if (base.includes(name)) {
       const next = base.filter((n) => n !== name);
       onChange(next.length === 0 ? [] : next);
@@ -127,40 +143,74 @@ export function TopicSelector({
               {allSelected ? "Clear" : "Select all"}
             </button>
           </div>
-          <ul className="max-h-72 overflow-y-auto py-1">
-            {visible.length === 0 ? (
-              <li className="px-3 py-4 text-center text-xs text-neutral-500">
+          <div className="max-h-72 overflow-y-auto">
+            {visibleGroups.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-neutral-500">
                 No topics match &ldquo;{query}&rdquo;.
-              </li>
+              </p>
             ) : (
-              visible.map((name) => {
-                const checked = selectedNames.length === 0 ? true : selectedNames.includes(name);
-                return (
-                  <li key={name}>
-                    <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => toggle(name)}
-                        aria-label={name}
-                        checkboxSize="sm"
-                      />
-                      <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
-                      {countsByName && name in countsByName && (
-                        <TopicMentionChip count={countsByName[name]} />
-                      )}
-                    </label>
-                  </li>
-                );
-              })
+              visibleGroups.map((group) => (
+                <BrandSection
+                  key={group.brandId}
+                  brandName={group.brandName}
+                  itemNames={group.items.map((i) => i.name)}
+                  isChecked={isChecked}
+                  onToggle={toggle}
+                  countsByName={countsByName}
+                />
+              ))
             )}
-          </ul>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function TopicMentionChip({ count }: { count: number }) {
+interface BrandSectionProps {
+  brandName: string;
+  itemNames: readonly string[];
+  isChecked: (name: string) => boolean;
+  onToggle: (name: string) => void;
+  countsByName?: Readonly<Record<string, number>>;
+}
+
+function BrandSection({
+  brandName,
+  itemNames,
+  isChecked,
+  onToggle,
+  countsByName,
+}: BrandSectionProps) {
+  return (
+    <div className="py-1">
+      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        {brandName}
+      </div>
+      <ul role="group" aria-label={brandName}>
+        {itemNames.map((name) => {
+          const checked = isChecked(name);
+          return (
+            <li key={`${brandName}:${name}`}>
+              <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() => onToggle(name)}
+                  aria-label={name}
+                  checkboxSize="sm"
+                />
+                <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
+                {countsByName && name in countsByName && <MentionChip count={countsByName[name]} />}
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function MentionChip({ count }: { count: number }) {
   const empty = count === 0;
   return (
     <span

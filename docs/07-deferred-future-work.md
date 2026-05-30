@@ -36,6 +36,7 @@
 - Consolidated API contract
 - Consolidated authorization model
 - Data retention/deletion policy
+- **Unique constraint on `Brand (WorkspaceId, Name)`** — today nothing prevents the same brand name being added twice to a workspace (we have seen the "Nostri × 3" duplication in dev). The discovery-summary handler and the BrandSelector both paper over this with name-based dedup, and the tracker dropdowns now show the same brand section twice when duplicates exist. Add a case-insensitive unique index in EF + a migration; decide on the upsert path (most likely: discovery should reuse an existing Brand row for the workspace rather than insert a new one). Until the constraint lands, keep the FE dedup as a safety net.
 
 ## Analytics deferred
 

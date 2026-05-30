@@ -326,7 +326,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Checkbox", "Input", "lucide-react"],
-          "notes": "Dropdown chip for filtering the Workspace Overview by Market. Same structure as TopicSelector / ProductSelector — multi-select with substring search and an inline mention-count chip per row (deduped by market name case-insensitively). Selection threads as `?marketNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptMarket row."
+          "notes": "Dropdown chip for filtering the Workspace Overview by Market. Body is split into per-brand sections (one header per brand with that brand's markets underneath) so the user can see which brand each market belongs to. Selection is still name-based, so a market name shared across brands toggles in both sections at once. Multi-select with substring search and inline mention-count chip per row. Selection threads as `?marketNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptMarket row."
         },
         {
           "name": "ProductSelector",
@@ -335,7 +335,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Checkbox", "Input", "lucide-react"],
-          "notes": "Dropdown chip for filtering the Workspace Overview by Product. Same structure as TopicSelector — multi-select with substring search and an inline mention-count chip per row (deduped by product name case-insensitively). Selection threads as `?productNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptProduct row."
+          "notes": "Dropdown chip for filtering the Workspace Overview by Product. Body is split into per-brand sections (one header per brand with that brand's products underneath) so the user can see which brand each product belongs to. Selection is still name-based, so a product name shared across brands toggles in both sections at once. Multi-select with substring search and inline mention-count chip per row. Selection threads as `?productNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptProduct row."
         },
         {
           "name": "TopicSelector",
@@ -344,7 +344,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Checkbox", "Input", "lucide-react"],
-          "notes": "Dropdown chip for filtering the Workspace Overview by Topic. Mirrors LensSelector but with dynamic options sourced from the workspace's discovery output (deduplicated by name case-insensitively). Multi-select with checkboxes, substring search, optional per-topic mention-count chip. Empty array sentinel reads as 'All topics'. Selection threads as `?topicNames=` through the three overview endpoints."
+          "notes": "Dropdown chip for filtering the Workspace Overview by Topic. Body is split into per-brand sections (one header per brand with that brand's topics underneath) so the user can see which brand each topic belongs to. Selection is still name-based, so a topic name shared across brands toggles in both sections at once. Multi-select with checkboxes, substring search, optional per-topic mention-count chip. Empty array sentinel reads as 'All topics'. Selection threads as `?topicNames=` through the three overview endpoints."
         },
         {
           "name": "AudienceSelector",
@@ -353,7 +353,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Checkbox", "Input", "lucide-react"],
-          "notes": "Dropdown chip for filtering the Workspace Overview by Audience. Same structure as TopicSelector / ProductSelector / MarketSelector — multi-select with substring search and an inline mention-count chip per row (deduped by audience name case-insensitively). Selection threads as `?audienceNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptAudience row."
+          "notes": "Dropdown chip for filtering the Workspace Overview by Audience. Body is split into per-brand sections (one header per brand with that brand's audiences underneath) so the user can see which brand each audience belongs to. Selection is still name-based, so an audience name shared across brands toggles in both sections at once. Multi-select with substring search and inline mention-count chip per row. Selection threads as `?audienceNames=` through the three overview endpoints; the BE filters PromptRuns whose Prompt has any matching PromptAudience row."
         },
         {
           "name": "TrustSignalsPill",
@@ -362,7 +362,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["lucide-react"],
-          "notes": "Informational pill in the unified Workspace Overview filter bar. Shows the count + opens a popover listing the workspace trust signals. Does NOT filter — per the Phase-3 decision, trust signals are scoring inputs, not prompt-level filter dimensions (no PromptTrustSignal table exists). Sits alongside the real filter pills so the user has visibility into the dimension without implying functionality we don't support."
+          "notes": "Informational pill in the unified Workspace Overview filter bar. Trigger shows the workspace-wide unique trust-signal count; clicking opens a popover that lists the signals grouped per brand (matching the per-brand sectioning used by the four real filter dropdowns). Does NOT filter — per the Phase-3 decision, trust signals are scoring inputs, not prompt-level filter dimensions (no PromptTrustSignal table exists). Sits alongside the real filter pills so the user has visibility into the dimension without implying functionality we don't support."
         },
         {
           "name": "CollapsibleCard",

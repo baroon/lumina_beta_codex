@@ -1,8 +1,21 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { ProductSelector } from "./ProductSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const products = ["Indeed Premium", "Indeed Free", "Resume Builder", "Indeed Hiring Insights"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const sampleGroups: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["Indeed Premium", "Indeed Free"]),
+  group("gensler", "Gensler", ["Resume Builder", "Indeed Hiring Insights"]),
+];
+
 const counts = {
   "Indeed Premium": 24,
   "Indeed Free": 18,
@@ -15,7 +28,7 @@ function Demo({ initial }: { initial: string[] }) {
   return (
     <div className="p-8">
       <ProductSelector
-        allProductNames={products}
+        productsByBrand={sampleGroups}
         selectedNames={v}
         onChange={setV}
         countsByName={counts}
@@ -43,7 +56,7 @@ export const SomeSelected: Story = {
 export const EmptyWorkspace: Story = {
   render: () => (
     <div className="p-8">
-      <ProductSelector allProductNames={[]} selectedNames={[]} onChange={() => {}} />
+      <ProductSelector productsByBrand={[]} selectedNames={[]} onChange={() => {}} />
     </div>
   ),
 };

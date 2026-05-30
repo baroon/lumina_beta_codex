@@ -1,8 +1,21 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { AudienceSelector } from "./AudienceSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const audiences = ["Job seekers", "Hiring managers", "Recruiters", "Students"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const sampleGroups: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["Job seekers", "Hiring managers"]),
+  group("gensler", "Gensler", ["Recruiters", "Students"]),
+];
+
 const counts = { "Job seekers": 18, "Hiring managers": 7, Recruiters: 2, Students: 0 };
 
 function Demo({ initial }: { initial: string[] }) {
@@ -10,7 +23,7 @@ function Demo({ initial }: { initial: string[] }) {
   return (
     <div className="p-8">
       <AudienceSelector
-        allAudienceNames={audiences}
+        audiencesByBrand={sampleGroups}
         selectedNames={v}
         onChange={setV}
         countsByName={counts}
@@ -33,7 +46,7 @@ export const SomeSelected: Story = { render: () => <Demo initial={["Job seekers"
 export const EmptyWorkspace: Story = {
   render: () => (
     <div className="p-8">
-      <AudienceSelector allAudienceNames={[]} selectedNames={[]} onChange={() => {}} />
+      <AudienceSelector audiencesByBrand={[]} selectedNames={[]} onChange={() => {}} />
     </div>
   ),
 };

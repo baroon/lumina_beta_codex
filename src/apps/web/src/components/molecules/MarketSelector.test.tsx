@@ -3,22 +3,34 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MarketSelector } from "./MarketSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const MARKETS = ["India", "United Kingdom", "United States"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const DEFAULT_GROUPS: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["India", "United States"]),
+  group("gensler", "Gensler", ["United Kingdom", "United States"]),
+];
 
 function Harness({
   initial = [] as string[],
   spy,
-  markets = MARKETS,
+  groups = DEFAULT_GROUPS,
 }: {
   initial?: string[];
   spy?: (next: string[]) => void;
-  markets?: string[];
+  groups?: BrandedDimensionGroupDto[];
 }) {
   const [v, setV] = useState<string[]>(initial);
   return (
     <MarketSelector
-      allMarketNames={markets}
+      marketsByBrand={groups}
       selectedNames={v}
       onChange={(next) => {
         setV(next);
@@ -35,18 +47,28 @@ describe("MarketSelector", () => {
   });
 
   it("trigger reads 'No markets' when the workspace has no markets", () => {
-    render(<Harness markets={[]} />);
+    render(<Harness groups={[]} />);
     expect(screen.getByRole("button", { name: /market selector/i })).toBeDisabled();
+  });
+
+  it("renders sections per brand", async () => {
+    render(<Harness initial={[]} />);
+    await userEvent.click(screen.getByRole("button", { name: /market selector/i }));
+    expect(screen.getByRole("group", { name: "Nostri" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Gensler" })).toBeInTheDocument();
   });
 
   it("toggling a market off the sentinel emits the remaining names", async () => {
     const spy = vi.fn();
     render(<Harness initial={[]} spy={spy} />);
     await userEvent.click(screen.getByRole("button", { name: /market selector/i }));
-    await userEvent.click(screen.getByLabelText("United States"));
+    // Two checkboxes for "United States" (one per brand); clicking either
+    // emits the name-based remainder.
+    await userEvent.click(screen.getAllByLabelText("United States")[0]);
     const next = spy.mock.calls[0][0] as string[];
-    expect(next).toHaveLength(2);
     expect(next).not.toContain("United States");
+    expect(next).toContain("India");
+    expect(next).toContain("United Kingdom");
   });
 
   it("substring search filters options", async () => {

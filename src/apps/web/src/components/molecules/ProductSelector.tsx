@@ -3,27 +3,24 @@ import { Box, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/atoms/checkbox";
 import { Input } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
 interface ProductSelectorProps {
-  /** Product names in the workspace, already deduped case-insensitively. */
-  allProductNames: readonly string[];
-  /** Currently-selected product names. Empty array = no filter ("All products"). */
+  productsByBrand: readonly BrandedDimensionGroupDto[];
   selectedNames: readonly string[];
   onChange: (next: string[]) => void;
-  /** Per-product mention count keyed by name. Optional. */
   countsByName?: Readonly<Record<string, number>>;
   ariaLabel?: string;
 }
 
 /**
  * Dropdown chip for filtering the Workspace Overview by Product. Same
- * structure as {@link TopicSelector} — multi-select with substring
- * search and an inline mention-count chip per row. Empty array sentinel
- * reads as "All products". Threads as `?productNames=` through the
- * three overview endpoints.
+ * structure as {@link TopicSelector} — per-brand sections in the body,
+ * name-based selection (shared names toggle together). Threads as
+ * `?productNames=` through the three overview endpoints.
  */
 export function ProductSelector({
-  allProductNames,
+  productsByBrand,
   selectedNames,
   onChange,
   countsByName,
@@ -44,20 +41,31 @@ export function ProductSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const sorted = useMemo(
-    () => [...allProductNames].sort((a, b) => a.localeCompare(b)),
-    [allProductNames],
-  );
-  const q = query.trim().toLowerCase();
-  const visible = q === "" ? sorted : sorted.filter((n) => n.toLowerCase().includes(q));
+  const allNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of productsByBrand) for (const i of g.items) set.add(i.name);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [productsByBrand]);
 
-  const total = sorted.length;
+  const q = query.trim().toLowerCase();
+  const visibleGroups = useMemo(() => {
+    if (q === "") return productsByBrand;
+    return productsByBrand
+      .map((g) => ({ ...g, items: g.items.filter((i) => i.name.toLowerCase().includes(q)) }))
+      .filter((g) => g.items.length > 0);
+  }, [productsByBrand, q]);
+
+  const total = allNames.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
   const buttonLabel = allSelected ? `${total} products` : `${selected} of ${total} products`;
 
+  function isChecked(name: string): boolean {
+    return selectedNames.length === 0 || selectedNames.includes(name);
+  }
+
   function toggle(name: string) {
-    const base = selectedNames.length === 0 ? sorted : selectedNames;
+    const base = selectedNames.length === 0 ? allNames : selectedNames;
     if (base.includes(name)) {
       const next = base.filter((n) => n !== name);
       onChange(next.length === 0 ? [] : next);
@@ -116,40 +124,74 @@ export function ProductSelector({
               {allSelected ? "Clear" : "Select all"}
             </button>
           </div>
-          <ul className="max-h-72 overflow-y-auto py-1">
-            {visible.length === 0 ? (
-              <li className="px-3 py-4 text-center text-xs text-neutral-500">
+          <div className="max-h-72 overflow-y-auto">
+            {visibleGroups.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-neutral-500">
                 No products match &ldquo;{query}&rdquo;.
-              </li>
+              </p>
             ) : (
-              visible.map((name) => {
-                const checked = selectedNames.length === 0 ? true : selectedNames.includes(name);
-                return (
-                  <li key={name}>
-                    <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => toggle(name)}
-                        aria-label={name}
-                        checkboxSize="sm"
-                      />
-                      <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
-                      {countsByName && name in countsByName && (
-                        <ProductMentionChip count={countsByName[name]} />
-                      )}
-                    </label>
-                  </li>
-                );
-              })
+              visibleGroups.map((group) => (
+                <BrandSection
+                  key={group.brandId}
+                  brandName={group.brandName}
+                  itemNames={group.items.map((i) => i.name)}
+                  isChecked={isChecked}
+                  onToggle={toggle}
+                  countsByName={countsByName}
+                />
+              ))
             )}
-          </ul>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function ProductMentionChip({ count }: { count: number }) {
+interface BrandSectionProps {
+  brandName: string;
+  itemNames: readonly string[];
+  isChecked: (name: string) => boolean;
+  onToggle: (name: string) => void;
+  countsByName?: Readonly<Record<string, number>>;
+}
+
+function BrandSection({
+  brandName,
+  itemNames,
+  isChecked,
+  onToggle,
+  countsByName,
+}: BrandSectionProps) {
+  return (
+    <div className="py-1">
+      <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        {brandName}
+      </div>
+      <ul role="group" aria-label={brandName}>
+        {itemNames.map((name) => {
+          const checked = isChecked(name);
+          return (
+            <li key={`${brandName}:${name}`}>
+              <label className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() => onToggle(name)}
+                  aria-label={name}
+                  checkboxSize="sm"
+                />
+                <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
+                {countsByName && name in countsByName && <MentionChip count={countsByName[name]} />}
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function MentionChip({ count }: { count: number }) {
   const empty = count === 0;
   return (
     <span

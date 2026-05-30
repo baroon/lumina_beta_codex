@@ -21,63 +21,84 @@ public class GetWorkspaceDiscoverySummaryQueryHandler
     {
         var workspaceId = _workspace.WorkspaceId;
 
-        var brandIds = await _db.Brands.AsNoTracking()
+        var brands = await _db.Brands.AsNoTracking()
             .Where(b => b.WorkspaceId == workspaceId)
-            .Select(b => b.Id)
+            .Select(b => new { b.Id, b.Name })
             .ToListAsync(cancellationToken);
 
-        if (brandIds.Count == 0)
+        if (brands.Count == 0)
         {
             return new DiscoverySummaryDto(
-                Array.Empty<DiscoveryDimensionDto>(),
-                Array.Empty<DiscoveryDimensionDto>(),
-                Array.Empty<DiscoveryDimensionDto>(),
-                Array.Empty<DiscoveryDimensionDto>(),
-                Array.Empty<DiscoveryDimensionDto>());
+                Array.Empty<BrandedDimensionGroupDto>(),
+                Array.Empty<BrandedDimensionGroupDto>(),
+                Array.Empty<BrandedDimensionGroupDto>(),
+                Array.Empty<BrandedDimensionGroupDto>(),
+                Array.Empty<BrandedDimensionGroupDto>());
         }
 
-        // Each dimension is brand-scoped (and even per-DiscoveryRun within
-        // a brand). A workspace with multiple brands — or a brand that was
-        // discovered repeatedly — produces the same logical dimension
-        // multiple times (e.g. "United States" market appearing once per
-        // brand). Dedup by name (case-insensitive) in-memory so the strip
-        // shows one row per distinct dimension. Names ride along so the
-        // FE popover can list them without a second round-trip.
-        var products = Dedup(await _db.Products.AsNoTracking()
-            .Where(p => brandIds.Contains(p.BrandId))
-            .Select(p => new DiscoveryDimensionDto(p.Id, p.Name))
-            .ToListAsync(cancellationToken));
-        var markets = Dedup(await _db.Markets.AsNoTracking()
-            .Where(m => brandIds.Contains(m.BrandId))
-            .Select(m => new DiscoveryDimensionDto(m.Id, m.Name))
-            .ToListAsync(cancellationToken));
-        var audiences = Dedup(await _db.Audiences.AsNoTracking()
-            .Where(a => brandIds.Contains(a.BrandId))
-            .Select(a => new DiscoveryDimensionDto(a.Id, a.Name))
-            .ToListAsync(cancellationToken));
-        var topics = Dedup(await _db.Topics.AsNoTracking()
-            .Where(t => brandIds.Contains(t.BrandId))
-            .Select(t => new DiscoveryDimensionDto(t.Id, t.Name))
-            .ToListAsync(cancellationToken));
-        var trustSignals = Dedup(await _db.TrustSignals.AsNoTracking()
-            .Where(ts => brandIds.Contains(ts.BrandId))
-            .Select(ts => new DiscoveryDimensionDto(ts.Id, ts.Name))
-            .ToListAsync(cancellationToken));
+        var brandIds = brands.Select(b => b.Id).ToList();
+        var brandNameById = brands.ToDictionary(b => b.Id, b => b.Name);
+
+        var products = await LoadGroupsAsync(
+            _db.Products.AsNoTracking()
+                .Where(p => brandIds.Contains(p.BrandId))
+                .Select(p => new DimensionRow(p.Id, p.BrandId, p.Name)),
+            brandNameById, cancellationToken);
+
+        var markets = await LoadGroupsAsync(
+            _db.Markets.AsNoTracking()
+                .Where(m => brandIds.Contains(m.BrandId))
+                .Select(m => new DimensionRow(m.Id, m.BrandId, m.Name)),
+            brandNameById, cancellationToken);
+
+        var audiences = await LoadGroupsAsync(
+            _db.Audiences.AsNoTracking()
+                .Where(a => brandIds.Contains(a.BrandId))
+                .Select(a => new DimensionRow(a.Id, a.BrandId, a.Name)),
+            brandNameById, cancellationToken);
+
+        var topics = await LoadGroupsAsync(
+            _db.Topics.AsNoTracking()
+                .Where(t => brandIds.Contains(t.BrandId))
+                .Select(t => new DimensionRow(t.Id, t.BrandId, t.Name)),
+            brandNameById, cancellationToken);
+
+        var trustSignals = await LoadGroupsAsync(
+            _db.TrustSignals.AsNoTracking()
+                .Where(ts => brandIds.Contains(ts.BrandId))
+                .Select(ts => new DimensionRow(ts.Id, ts.BrandId, ts.Name)),
+            brandNameById, cancellationToken);
 
         return new DiscoverySummaryDto(products, markets, audiences, topics, trustSignals);
     }
 
     /// <summary>
-    /// Collapse rows that share a name (case-insensitive) to a single
-    /// representative DTO and sort alphabetically. Trimmed for the chip
-    /// strip's "Tracking N …" use case where we want a workspace-wide
-    /// distinct list, not the underlying per-brand rows.
+    /// Materialize the dimension rows, group by brand, dedupe within
+    /// each brand (case-insensitive name match — the same brand
+    /// discovered twice would otherwise show the same topic row twice),
+    /// and sort both brands and their items alphabetically. Brands with
+    /// no rows for the dimension are omitted from that dimension's list.
     /// </summary>
-    private static IReadOnlyList<DiscoveryDimensionDto> Dedup(
-        IEnumerable<DiscoveryDimensionDto> rows) =>
-        rows
-            .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+    private static async Task<IReadOnlyList<BrandedDimensionGroupDto>> LoadGroupsAsync(
+        IQueryable<DimensionRow> rows,
+        IReadOnlyDictionary<Guid, string> brandNameById,
+        CancellationToken cancellationToken)
+    {
+        var materialized = await rows.ToListAsync(cancellationToken);
+        return materialized
+            .GroupBy(r => r.BrandId)
+            .Select(g => new BrandedDimensionGroupDto(
+                g.Key,
+                brandNameById[g.Key],
+                g
+                    .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(nameGroup => nameGroup.First())
+                    .OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(r => new DiscoveryDimensionDto(r.Id, r.Name))
+                    .ToList()))
+            .OrderBy(g => g.BrandName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private sealed record DimensionRow(Guid Id, Guid BrandId, string Name);
 }

@@ -1,8 +1,22 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { MarketSelector } from "./MarketSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const markets = ["United States", "United Kingdom", "India", "Canada"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const sampleGroups: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["United States", "Canada"]),
+  group("gensler", "Gensler", ["United States", "United Kingdom"]),
+  group("hok", "HOK", ["India"]),
+];
+
 const counts = {
   "United States": 22,
   "United Kingdom": 9,
@@ -15,7 +29,7 @@ function Demo({ initial }: { initial: string[] }) {
   return (
     <div className="p-8">
       <MarketSelector
-        allMarketNames={markets}
+        marketsByBrand={sampleGroups}
         selectedNames={v}
         onChange={setV}
         countsByName={counts}
@@ -41,7 +55,7 @@ export const SomeSelected: Story = { render: () => <Demo initial={["United State
 export const EmptyWorkspace: Story = {
   render: () => (
     <div className="p-8">
-      <MarketSelector allMarketNames={[]} selectedNames={[]} onChange={() => {}} />
+      <MarketSelector marketsByBrand={[]} selectedNames={[]} onChange={() => {}} />
     </div>
   ),
 };

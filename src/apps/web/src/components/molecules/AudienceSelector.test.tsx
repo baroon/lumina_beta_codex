@@ -3,22 +3,34 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AudienceSelector } from "./AudienceSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const AUDIENCES = ["Hiring managers", "Job seekers", "Recruiters"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const DEFAULT_GROUPS: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["Hiring managers", "Job seekers"]),
+  group("gensler", "Gensler", ["Recruiters"]),
+];
 
 function Harness({
   initial = [] as string[],
   spy,
-  audiences = AUDIENCES,
+  groups = DEFAULT_GROUPS,
 }: {
   initial?: string[];
   spy?: (next: string[]) => void;
-  audiences?: string[];
+  groups?: BrandedDimensionGroupDto[];
 }) {
   const [v, setV] = useState<string[]>(initial);
   return (
     <AudienceSelector
-      allAudienceNames={audiences}
+      audiencesByBrand={groups}
       selectedNames={v}
       onChange={(next) => {
         setV(next);
@@ -37,8 +49,15 @@ describe("AudienceSelector", () => {
   });
 
   it("trigger reads 'No audiences' and is disabled when the workspace has none", () => {
-    render(<Harness audiences={[]} />);
+    render(<Harness groups={[]} />);
     expect(screen.getByRole("button", { name: /audience selector/i })).toBeDisabled();
+  });
+
+  it("renders sections per brand", async () => {
+    render(<Harness initial={[]} />);
+    await userEvent.click(screen.getByRole("button", { name: /audience selector/i }));
+    expect(screen.getByRole("group", { name: "Nostri" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Gensler" })).toBeInTheDocument();
   });
 
   it("toggling an audience off the sentinel emits the remaining names", async () => {

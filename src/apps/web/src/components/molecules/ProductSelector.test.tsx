@@ -3,22 +3,34 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ProductSelector } from "./ProductSelector";
+import type { BrandedDimensionGroupDto } from "@/types/api";
 
-const PRODUCTS = ["Indeed Free", "Indeed Premium", "Resume Builder"];
+function group(brandId: string, brandName: string, items: string[]): BrandedDimensionGroupDto {
+  return {
+    brandId,
+    brandName,
+    items: items.map((name, i) => ({ id: `${brandId}-${i}`, name })),
+  };
+}
+
+const DEFAULT_GROUPS: BrandedDimensionGroupDto[] = [
+  group("nostri", "Nostri", ["Indeed Free", "Indeed Premium"]),
+  group("gensler", "Gensler", ["Resume Builder"]),
+];
 
 function Harness({
   initial = [] as string[],
   spy,
-  products = PRODUCTS,
+  groups = DEFAULT_GROUPS,
 }: {
   initial?: string[];
   spy?: (next: string[]) => void;
-  products?: string[];
+  groups?: BrandedDimensionGroupDto[];
 }) {
   const [v, setV] = useState<string[]>(initial);
   return (
     <ProductSelector
-      allProductNames={products}
+      productsByBrand={groups}
       selectedNames={v}
       onChange={(next) => {
         setV(next);
@@ -37,8 +49,15 @@ describe("ProductSelector", () => {
   });
 
   it("trigger reads 'No products' when the workspace has no products", () => {
-    render(<Harness products={[]} />);
+    render(<Harness groups={[]} />);
     expect(screen.getByRole("button", { name: /product selector/i })).toBeDisabled();
+  });
+
+  it("renders sections per brand", async () => {
+    render(<Harness initial={[]} />);
+    await userEvent.click(screen.getByRole("button", { name: /product selector/i }));
+    expect(screen.getByRole("group", { name: "Nostri" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Gensler" })).toBeInTheDocument();
   });
 
   it("toggling a product off the sentinel emits the remaining names", async () => {
@@ -51,11 +70,12 @@ describe("ProductSelector", () => {
     expect(next).not.toContain("Indeed Premium");
   });
 
-  it("substring search filters options", async () => {
+  it("substring search filters options and hides empty sections", async () => {
     render(<Harness initial={[]} />);
     await userEvent.click(screen.getByRole("button", { name: /product selector/i }));
     await userEvent.type(screen.getByPlaceholderText(/search products/i), "premium");
     expect(screen.getByText("Indeed Premium")).toBeInTheDocument();
     expect(screen.queryByText("Resume Builder")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Gensler" })).not.toBeInTheDocument();
   });
 });

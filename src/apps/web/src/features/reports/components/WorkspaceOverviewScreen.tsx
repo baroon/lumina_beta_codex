@@ -61,6 +61,7 @@ import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
 import type {
   BrandCompetitiveGapGroupDto,
+  BrandedDimensionGroupDto,
   CompetitiveGapDto,
   DomainRowDto,
   DomainTypeShareDto,
@@ -75,6 +76,12 @@ import type {
   WorkspaceRecentChatDto,
   WorkspaceTopEntityRowDto,
 } from "@/types/api";
+
+// Module-level empty array so the `topicsByBrand ?? EMPTY_GROUPS`
+// fallbacks below don't allocate a new `[]` per render — keeps the
+// dropdown selectors' memoization stable when the query hasn't
+// resolved yet.
+const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
 
 // Stable per-entity palette. First tracked brand picks index 0 (primary
 // brand color); each subsequent entity rotates through.
@@ -167,8 +174,10 @@ export function WorkspaceOverviewScreen() {
   const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
   // Chart-granularity toggle (D/W/M). The BE returns per-scan points;
   // we re-bucket them FE-side in `TrendCard` via `bucketTrendPoints` so
-  // flipping D/W/M is instant and doesn't refetch.
-  const [granularity, setGranularity] = useState<DateGranularity>("day");
+  // flipping D/W/M is instant and doesn't refetch. Default = Week: the
+  // 30-day default window typically holds ~4 scans, and weekly buckets
+  // read cleaner than per-scan points at that range.
+  const [granularity, setGranularity] = useState<DateGranularity>("week");
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -210,30 +219,16 @@ export function WorkspaceOverviewScreen() {
     if (!audienceCountsRaw) return {};
     return Object.fromEntries(audienceCountsRaw.map((a) => [a.audienceName, a.mentionCount]));
   }, [audienceCountsRaw]);
-  // Discovery summary — names/counts for products, markets, audiences,
-  // topics, trust signals. Drives the inline strip near the top + supplies
-  // the topic-name list to the TopicSelector dropdown.
+  // Discovery summary — per-brand groupings for products, markets,
+  // audiences, topics, trust signals. Each tracker dropdown renders one
+  // section per brand using these groups so the user can see which
+  // dimensions belong to which brand.
   const { data: discoverySummary } = useDiscoverySummary();
-  const allTopicNames = useMemo<string[]>(
-    () => discoverySummary?.topics.map((t) => t.name) ?? [],
-    [discoverySummary],
-  );
-  const allProductNames = useMemo<string[]>(
-    () => discoverySummary?.products.map((p) => p.name) ?? [],
-    [discoverySummary],
-  );
-  const allMarketNames = useMemo<string[]>(
-    () => discoverySummary?.markets.map((m) => m.name) ?? [],
-    [discoverySummary],
-  );
-  const allAudienceNames = useMemo<string[]>(
-    () => discoverySummary?.audiences.map((a) => a.name) ?? [],
-    [discoverySummary],
-  );
-  const allTrustSignalNames = useMemo<string[]>(
-    () => discoverySummary?.trustSignals.map((ts) => ts.name) ?? [],
-    [discoverySummary],
-  );
+  const topicsByBrand = discoverySummary?.topics ?? EMPTY_GROUPS;
+  const productsByBrand = discoverySummary?.products ?? EMPTY_GROUPS;
+  const marketsByBrand = discoverySummary?.markets ?? EMPTY_GROUPS;
+  const audiencesByBrand = discoverySummary?.audiences ?? EMPTY_GROUPS;
+  const trustSignalsByBrand = discoverySummary?.trustSignals ?? EMPTY_GROUPS;
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -293,23 +288,23 @@ export function WorkspaceOverviewScreen() {
         selectedLensCodes={selectedLensCodes}
         onSelectedLensCodesChange={setSelectedLensCodes}
         lensCountsByCode={lensCountsByCode}
-        allTopicNames={allTopicNames}
+        topicsByBrand={topicsByBrand}
         selectedTopicNames={selectedTopicNames}
         onSelectedTopicNamesChange={setSelectedTopicNames}
         topicCountsByName={topicCountsByName}
-        allProductNames={allProductNames}
+        productsByBrand={productsByBrand}
         selectedProductNames={selectedProductNames}
         onSelectedProductNamesChange={setSelectedProductNames}
         productCountsByName={productCountsByName}
-        allMarketNames={allMarketNames}
+        marketsByBrand={marketsByBrand}
         selectedMarketNames={selectedMarketNames}
         onSelectedMarketNamesChange={setSelectedMarketNames}
         marketCountsByName={marketCountsByName}
-        allAudienceNames={allAudienceNames}
+        audiencesByBrand={audiencesByBrand}
         selectedAudienceNames={selectedAudienceNames}
         onSelectedAudienceNamesChange={setSelectedAudienceNames}
         audienceCountsByName={audienceCountsByName}
-        allTrustSignalNames={allTrustSignalNames}
+        trustSignalsByBrand={trustSignalsByBrand}
         isRefreshing={isFetching && !isLoading}
       />
 
@@ -716,28 +711,25 @@ interface ComparisonControlsRowProps {
   selectedLensCodes: readonly string[];
   onSelectedLensCodesChange: (next: string[]) => void;
   lensCountsByCode?: Readonly<Record<string, number>>;
-  /** Workspace's topic-name universe (deduplicated). */
-  allTopicNames: readonly string[];
+  /** Workspace's topics, grouped per brand for the dropdown sections. */
+  topicsByBrand: readonly BrandedDimensionGroupDto[];
   selectedTopicNames: readonly string[];
   onSelectedTopicNamesChange: (next: string[]) => void;
   topicCountsByName?: Readonly<Record<string, number>>;
-  /** Workspace's product-name universe (deduplicated). */
-  allProductNames: readonly string[];
+  productsByBrand: readonly BrandedDimensionGroupDto[];
   selectedProductNames: readonly string[];
   onSelectedProductNamesChange: (next: string[]) => void;
   productCountsByName?: Readonly<Record<string, number>>;
-  /** Workspace's market-name universe (deduplicated). */
-  allMarketNames: readonly string[];
+  marketsByBrand: readonly BrandedDimensionGroupDto[];
   selectedMarketNames: readonly string[];
   onSelectedMarketNamesChange: (next: string[]) => void;
   marketCountsByName?: Readonly<Record<string, number>>;
-  /** Workspace's audience-name universe (deduplicated). */
-  allAudienceNames: readonly string[];
+  audiencesByBrand: readonly BrandedDimensionGroupDto[];
   selectedAudienceNames: readonly string[];
   onSelectedAudienceNamesChange: (next: string[]) => void;
   audienceCountsByName?: Readonly<Record<string, number>>;
-  /** Workspace's trust-signal names — informational only (no filter). */
-  allTrustSignalNames: readonly string[];
+  /** Workspace's trust signals grouped per brand — informational only. */
+  trustSignalsByBrand: readonly BrandedDimensionGroupDto[];
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -756,23 +748,23 @@ function ComparisonControlsRow({
   selectedLensCodes,
   onSelectedLensCodesChange,
   lensCountsByCode,
-  allTopicNames,
+  topicsByBrand,
   selectedTopicNames,
   onSelectedTopicNamesChange,
   topicCountsByName,
-  allProductNames,
+  productsByBrand,
   selectedProductNames,
   onSelectedProductNamesChange,
   productCountsByName,
-  allMarketNames,
+  marketsByBrand,
   selectedMarketNames,
   onSelectedMarketNamesChange,
   marketCountsByName,
-  allAudienceNames,
+  audiencesByBrand,
   selectedAudienceNames,
   onSelectedAudienceNamesChange,
   audienceCountsByName,
-  allTrustSignalNames,
+  trustSignalsByBrand,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
@@ -787,7 +779,7 @@ function ComparisonControlsRow({
     // a horizontal scrollbar regardless of how many dimensions land in
     // them.
     <div className="sticky top-0 z-20 flex flex-wrap items-stretch gap-2">
-      <div className="flex shrink-0 flex-col gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex shrink-0 flex-col items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
         <DateGranularityToggle value={granularity} onChange={onGranularityChange} />
         <DateRangePicker value={range} onChange={onRangeChange} />
       </div>
@@ -825,30 +817,30 @@ function ComparisonControlsRow({
             onChange={onSelectedKeysChange}
           />
           <TopicSelector
-            allTopicNames={allTopicNames}
+            topicsByBrand={topicsByBrand}
             selectedNames={selectedTopicNames}
             onChange={onSelectedTopicNamesChange}
             countsByName={topicCountsByName}
           />
           <ProductSelector
-            allProductNames={allProductNames}
+            productsByBrand={productsByBrand}
             selectedNames={selectedProductNames}
             onChange={onSelectedProductNamesChange}
             countsByName={productCountsByName}
           />
           <MarketSelector
-            allMarketNames={allMarketNames}
+            marketsByBrand={marketsByBrand}
             selectedNames={selectedMarketNames}
             onChange={onSelectedMarketNamesChange}
             countsByName={marketCountsByName}
           />
           <AudienceSelector
-            allAudienceNames={allAudienceNames}
+            audiencesByBrand={audiencesByBrand}
             selectedNames={selectedAudienceNames}
             onChange={onSelectedAudienceNamesChange}
             countsByName={audienceCountsByName}
           />
-          <TrustSignalsPill allNames={allTrustSignalNames} />
+          <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
         </div>
       </div>
     </div>

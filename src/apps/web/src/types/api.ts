@@ -745,16 +745,30 @@ export interface AudienceCountDto {
 
 /**
  * Workspace discovery summary — names + counts for every dimension the
- * user captured during the brand-discovery flow. Drives the inline
- * "Tracking 5 products · 2 markets · …" strip at the top of the
- * Workspace Overview. Purely informational; not a filter source.
+ * user captured during the brand-discovery flow, grouped per brand.
+ * Each tracker dropdown on the Workspace Overview renders one section
+ * per brand using these groups so the user can see which dimensions
+ * belong to which brand. Filter behavior on the overview is still
+ * name-based, so shared names across brands toggle together.
  */
 export interface DiscoverySummaryDto {
-  products: DiscoveryDimensionDto[];
-  markets: DiscoveryDimensionDto[];
-  audiences: DiscoveryDimensionDto[];
-  topics: DiscoveryDimensionDto[];
-  trustSignals: DiscoveryDimensionDto[];
+  products: BrandedDimensionGroupDto[];
+  markets: BrandedDimensionGroupDto[];
+  audiences: BrandedDimensionGroupDto[];
+  topics: BrandedDimensionGroupDto[];
+  trustSignals: BrandedDimensionGroupDto[];
+}
+
+/**
+ * One brand's slice of a dimension list. Items are deduplicated within
+ * the brand by the BE (a brand discovered twice doesn't show the same
+ * topic row twice); duplicates ACROSS brands are kept so each brand's
+ * section is complete.
+ */
+export interface BrandedDimensionGroupDto {
+  brandId: string;
+  brandName: string;
+  items: DiscoveryDimensionDto[];
 }
 
 export interface DiscoveryDimensionDto {
