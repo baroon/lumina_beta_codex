@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { TRACKERS_COPY } from "@/content/trackers";
@@ -12,6 +12,7 @@ import {
   useAddCustomPrompt,
   useUpdatePrompt,
 } from "../hooks/usePrompts";
+import { PromptGenerationProgress } from "./PromptGenerationProgress";
 import { PromptLensGroup } from "./PromptLensGroup";
 import { TrackerScheduleScreen } from "./TrackerScheduleScreen";
 
@@ -54,16 +55,14 @@ export function PromptReviewScreen({ trackerId }: PromptReviewScreenProps) {
     return <TrackerScheduleScreen trackerId={trackerId} />;
   }
 
-  // Full-screen spinner only on the very first generation (initial load / empty tracker),
-  // never for a regenerate of an already-populated tracker.
+  // First-generation wait state (initial load + empty tracker + the
+  // generator is mid-call). Show the same onboarding language as the
+  // scan-progress screen so the wait feels intentional. NOT used for
+  // regenerating an already-populated tracker — those are scoped
+  // mutations and get a localized spinner inside their own lens group.
   const firstGeneration = generate.isPending && (prompts.data?.count ?? 0) === 0;
   if (prompts.isLoading || firstGeneration) {
-    return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 p-4 text-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-primary-600" />
-        <p className="text-sm text-neutral-500">{TRACKERS_COPY.review.generating}</p>
-      </div>
-    );
+    return <PromptGenerationProgress brandName={prompts.data?.brandName ?? ""} />;
   }
 
   if (!prompts.data) return null;

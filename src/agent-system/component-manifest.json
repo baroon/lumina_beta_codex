@@ -320,6 +320,24 @@
           "notes": "Day / Week / Month aggregation toggle that lives next to the DateRangePicker in the date bar of the Workspace Overview. Currently presentational only — the BE still returns scan-level points; wire bucketing through once a chart needs it."
         },
         {
+          "name": "OnboardingStepper",
+          "category": "Molecules",
+          "path": "src/components/molecules/OnboardingStepper.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Compact pill-dot progress indicator used across the first-tracker onboarding flow (prompt-generation + scan-progress screens today; future onboarding steps reuse the same shape). The active step gets an elongated pill; reached steps are filled circles; remaining steps are muted."
+        },
+        {
+          "name": "RotatingMessage",
+          "category": "Molecules",
+          "path": "src/components/molecules/RotatingMessage.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Cycles through a list of messages every N ms with a short fade. Sits on long-running onboarding screens (prompt generation, scan progress) so the user has something to read while they wait — also used to sneak product education into otherwise blank wait time."
+        },
+        {
           "name": "MarketSelector",
           "category": "Molecules",
           "path": "src/components/molecules/MarketSelector.tsx",
@@ -847,6 +865,15 @@
           "variants": [],
           "dependencies": ["SectionHeader", "Button", "Badge", "Input", "Select", "InlineEdit"],
           "notes": "Collapsible card for one Visibility Lens (description, count, per-check regenerate): tinted prompt rows with AI/human source icon, multi-line inline-editable text, per-prompt remove, and an inline add-custom form."
+        },
+        {
+          "name": "PromptGenerationProgress",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/PromptGenerationProgress.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["OnboardingStepper", "RotatingMessage", "lucide-react"],
+          "notes": "Wait-screen rendered by PromptReviewScreen while the LLM crafts the initial prompt set. Mirrors the visual language of ScanProgressScreen (5-dot stepper at step 4, three-stage icon row with a pulsing middle stage, rotating product-awareness messages) so the multi-second wait reads as 'the system is working' rather than 'the system is stuck'. Falls back to a generic title when the brand name isn't loaded yet."
         },
         {
           "name": "TrackerScheduleScreen",

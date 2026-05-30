@@ -20,6 +20,24 @@ export const TRACKERS_COPY = {
     title: "Visibility Tracker created",
     description: "{name} is ready. Prompt setup is coming next.",
   },
+  generationProgress: {
+    // First-generation progress screen (PromptGenerationProgress). Plays
+    // while the LLM crafts the initial prompt set after the user activates
+    // tracker setup.
+    title: "Crafting prompts for {brand}…",
+    titleFallback: "Crafting your prompts…",
+    subtext: "We're translating your discovery into the questions buyers actually ask AI.",
+    // Awareness messages that cycle in the bottom card. Same shape as the
+    // scan-progress rotation; copy is prompt-specific.
+    awarenessMessages: [
+      "Prompts are the questions real buyers ask AI. We craft them across 6 lenses so you see every angle of how AI talks about you.",
+      "Your prompts are tailored from what you confirmed in discovery — products, audiences, markets, competitors.",
+      "Good prompts spell the difference between a generic snapshot and one that mirrors your buyer's journey.",
+      "Each Visibility Lens needs its own question style — Discovery, Buying Intent, Comparison, Trust, Citations, and Gaps.",
+      "Most prompts here are LLM-crafted; you can edit, add your own, or regenerate any single lens after you review.",
+      "The thorough discovery you just did means every future scan asks better questions. The work is already paying off.",
+    ] as readonly string[],
+  },
   review: {
     title: "Review your prompts",
     description:

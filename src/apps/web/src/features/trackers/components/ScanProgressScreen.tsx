@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, BarChart3, Sparkles, Telescope } from "lucide-react";
 import { Button } from "@/components/atoms/button";
+import { OnboardingStepper } from "@/components/molecules/OnboardingStepper";
+import { RotatingMessage } from "@/components/molecules/RotatingMessage";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { cn } from "@/lib/utils";
 import type { ScanPlatformProgress, ScanStatus, SentimentDistribution } from "@/types/api";
@@ -13,9 +14,6 @@ interface ScanProgressScreenProps {
 
 const STEPS_TOTAL = 5;
 const COPY = TRACKERS_COPY.scan;
-
-/** Awareness-message rotation interval (ms). */
-const ROTATE_INTERVAL_MS = 6000;
 
 /**
  * Post-onboarding scan-progress screen.
@@ -226,34 +224,6 @@ function BigStat({ value, label, tone }: BigStatProps) {
   );
 }
 
-/**
- * Cycles through product-awareness messages every ~6s with a short
- * cross-fade. Replaces the static McKinsey pull-quote we shipped first
- * — keeps the visual rhythm of "something keeps happening" while
- * sneaking a little product education in.
- */
-function RotatingMessage({ messages }: { messages: readonly string[] }) {
-  const [index, setIndex] = useState(0);
-  // Soft cross-fade: the rendered message gets `key={index}`, so React
-  // remounts it and the CSS `animate-fade-in` plays from scratch.
-  useEffect(() => {
-    if (messages.length <= 1) return;
-    const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % messages.length);
-    }, ROTATE_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, [messages.length]);
-
-  if (messages.length === 0) return null;
-  return (
-    <div className="rounded-md bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-      <p key={index} className="animate-fade-in italic transition-opacity" aria-live="polite">
-        {messages[index]}
-      </p>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Complete celebration state
 // ---------------------------------------------------------------------------
@@ -314,39 +284,8 @@ function CompleteState({ data }: { data: ScanStatus }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stepper + small helpers
+// Small helpers
 // ---------------------------------------------------------------------------
-
-function OnboardingStepper({
-  currentStep,
-  totalSteps,
-}: {
-  currentStep: number;
-  totalSteps: number;
-}) {
-  return (
-    <ol
-      className="flex items-center justify-center gap-2"
-      aria-label={`Step ${currentStep} of ${totalSteps}`}
-    >
-      {Array.from({ length: totalSteps }, (_, i) => {
-        const stepIndex = i + 1;
-        const active = stepIndex === currentStep;
-        const reached = stepIndex < currentStep;
-        return (
-          <li
-            key={stepIndex}
-            className={cn(
-              "h-2 rounded-full transition-all",
-              active ? "w-8 bg-primary-500" : reached ? "w-2 bg-primary-400" : "w-2 bg-neutral-200",
-            )}
-            aria-current={active ? "step" : undefined}
-          />
-        );
-      })}
-    </ol>
-  );
-}
 
 function formatPlatformList(names: readonly string[]): string {
   if (names.length === 0) return "";

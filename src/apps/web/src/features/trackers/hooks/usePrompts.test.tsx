@@ -44,10 +44,12 @@ describe("usePrompts hooks", () => {
     api.list.mockResolvedValue({
       promptAllocation: 30,
       count: 0,
+      brandName: "Acme",
+      trackerName: "Acme tracker",
       prompts: [],
       checks: [],
       topics: [],
-    } as PromptList);
+    } satisfies PromptList);
     const { wrapper } = createWrapper();
     const { result } = renderHook(() => usePrompts("t1"), { wrapper });
 

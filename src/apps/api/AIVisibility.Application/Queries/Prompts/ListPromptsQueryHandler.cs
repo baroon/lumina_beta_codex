@@ -20,6 +20,11 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
             .FirstOrDefaultAsync(t => t.Id == request.TrackerId, cancellationToken);
         if (tracker == null) return null;
 
+        var brandName = await _db.Brands.AsNoTracking()
+            .Where(b => b.Id == tracker.BrandId)
+            .Select(b => b.Name)
+            .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+
         // Non-archived prompts only (Draft + Active).
         var prompts = await _db.Prompts
             .Include(p => p.Topics)
@@ -102,6 +107,13 @@ public class ListPromptsQueryHandler : IRequestHandler<ListPromptsQuery, PromptL
                 ReviewReason(p.LensId)))
             .ToList();
 
-        return new PromptListDto(tracker.PromptAllocation, dtos.Count, dtos, checks, topicOptions);
+        return new PromptListDto(
+            tracker.PromptAllocation,
+            dtos.Count,
+            brandName,
+            tracker.Name,
+            dtos,
+            checks,
+            topicOptions);
     }
 }

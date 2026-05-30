@@ -28,6 +28,8 @@ vi.mock("./TrackerScheduleScreen", () => ({
 const sampleList: PromptList = {
   promptAllocation: 30,
   count: 3,
+  brandName: "Acme",
+  trackerName: "Acme tracker",
   prompts: [
     {
       id: "p1",
@@ -139,17 +141,26 @@ describe("PromptReviewScreen", () => {
     expect(screen.getByTestId("schedule-screen")).toBeInTheDocument();
   });
 
-  it("shows the generating state while loading", () => {
+  it("renders PromptGenerationProgress while the prompts query is loading", () => {
     listState = { isLoading: true, isSuccess: false };
     render(<PromptReviewScreen trackerId="tr1" />);
-    expect(screen.getByText(/generating your prompts/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(/Crafting/i);
+    expect(screen.getByRole("list", { name: /step 4 of 5/i })).toBeInTheDocument();
   });
 
   it("auto-generates and shows an empty state when there are no prompts", () => {
     listState = {
       isLoading: false,
       isSuccess: true,
-      data: { promptAllocation: 30, count: 0, prompts: [], checks: [], topics: [] },
+      data: {
+        promptAllocation: 30,
+        count: 0,
+        brandName: "Acme",
+        trackerName: "Acme tracker",
+        prompts: [],
+        checks: [],
+        topics: [],
+      },
     };
     render(<PromptReviewScreen trackerId="tr1" />);
     expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
@@ -163,6 +174,8 @@ describe("PromptReviewScreen", () => {
       data: {
         promptAllocation: 1,
         count: 1,
+        brandName: "Acme",
+        trackerName: "Acme tracker",
         checks: [],
         topics: [],
         prompts: [
@@ -191,6 +204,8 @@ describe("PromptReviewScreen", () => {
       data: {
         promptAllocation: 30,
         count: 1,
+        brandName: "Acme",
+        trackerName: "Acme tracker",
         checks: [{ id: "c2", name: "Competitor Comparison" }],
         topics: [],
         prompts: [

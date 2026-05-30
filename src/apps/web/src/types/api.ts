@@ -191,6 +191,9 @@ export interface PromptOption {
 export interface PromptList {
   promptAllocation: number;
   count: number;
+  /** Tracked brand name — drives the prompt-generation progress title. */
+  brandName: string;
+  trackerName: string;
   prompts: PromptDto[];
   checks: PromptOption[];
   topics: PromptOption[];
