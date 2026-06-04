@@ -32,4 +32,11 @@ public sealed record CompetitorListItemDto(
     /// count as denominator). Null when the CompetitorShareOfVoice metric row
     /// is absent for this competitor.
     /// </summary>
-    double? ShareOfVoice);
+    double? ShareOfVoice,
+    /// <summary>
+    /// Share of recommendations for this competitor — recommended mentions /
+    /// total recommended (brand + competitor) mentions across the scan.
+    /// Null when nobody was recommended in the scan (the metric row is not
+    /// emitted in that case).
+    /// </summary>
+    double? RecommendationShare);

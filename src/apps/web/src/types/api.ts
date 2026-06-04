@@ -335,6 +335,8 @@ export interface CoreMetricsDto {
   brandFirstMentionRate: number | null;
   /** Mean recommendation score in [-1, +1]. Null when no answers in scope had the brand mentioned. */
   brandRecommendationScore: number | null;
+  /** Brand's share of all recommendations in the scan. Null when nobody was recommended. */
+  brandRecommendationShare: number | null;
   competitorMentionCount: number;
   productMentionCount: number;
   citationCount: number;
@@ -430,6 +432,8 @@ export interface CompetitorBreakdownDto {
   recommendationCount: number;
   /** Share of voice — competitor's mentions / (brand + competitor mentions) across the scan. Null when missing. */
   shareOfVoice: number | null;
+  /** Share of recommendations — competitor's recs / total recs across the scan. Null when no recs in scan. */
+  recommendationShare: number | null;
 }
 
 // --- All Scans list (temporary navigation utility) -----------------------
@@ -620,6 +624,8 @@ export interface CompetitorListItemDto {
   recommendationRate: number | null;
   /** Competitor's mentions / (brand + competitor mentions) across the scan. Null when missing. */
   shareOfVoice: number | null;
+  /** Competitor's recs / total recs across the scan. Null when no recs in scan. */
+  recommendationShare: number | null;
 }
 
 export interface ScanCompetitorDetailDto {

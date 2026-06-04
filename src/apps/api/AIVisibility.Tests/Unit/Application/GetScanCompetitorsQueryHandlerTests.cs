@@ -52,9 +52,11 @@ public class GetScanCompetitorsQueryHandlerTests
         AddMetric(ctx, scan.Id, acme.Id, MetricNames.MentionCount, 4);
         AddMetric(ctx, scan.Id, acme.Id, MetricNames.RecommendationCount, 1);
         AddMetric(ctx, scan.Id, acme.Id, MetricNames.CompetitorShareOfVoice, 0.5);
+        AddMetric(ctx, scan.Id, acme.Id, MetricNames.CompetitorRecommendationShare, 0.4);
         AddMetric(ctx, scan.Id, beta.Id, MetricNames.MentionCount, 2);
         AddMetric(ctx, scan.Id, beta.Id, MetricNames.RecommendationCount, 0);
         AddMetric(ctx, scan.Id, beta.Id, MetricNames.CompetitorShareOfVoice, 0.25);
+        AddMetric(ctx, scan.Id, beta.Id, MetricNames.CompetitorRecommendationShare, 0.0);
 
         ctx.SaveChanges();
         return (scan.Id, acme.Id, beta.Id);
@@ -102,6 +104,8 @@ public class GetScanCompetitorsQueryHandlerTests
         acme.RecommendationRate.Should().BeApproximately(0.25, 1e-9);
         // CompetitorShareOfVoice flows through from the seeded scan_metrics row.
         acme.ShareOfVoice.Should().BeApproximately(0.5, 1e-9);
+        // CompetitorRecommendationShare flows through too — same pattern.
+        acme.RecommendationShare.Should().BeApproximately(0.4, 1e-9);
     }
 
     [Fact]

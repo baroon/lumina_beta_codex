@@ -98,6 +98,7 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             AverageBrandRank: ReadDoubleOrNull(overall, "AverageBrandRank"),
             BrandFirstMentionRate: ReadDoubleOrNull(overall, MetricNames.BrandFirstMentionRate),
             BrandRecommendationScore: ReadDoubleOrNull(overall, MetricNames.BrandRecommendationScore),
+            BrandRecommendationShare: ReadDoubleOrNull(overall, MetricNames.BrandRecommendationShare),
             CompetitorMentionCount: ReadIntOrZero(overall, "CompetitorMentionCount"),
             ProductMentionCount: ReadIntOrZero(overall, "ProductMentionCount"),
             CitationCount: ReadIntOrZero(overall, "CitationCount"),
@@ -227,7 +228,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
                     kv.Value,
                     MentionCount: ReadIntOrZero(rows, "MentionCount"),
                     RecommendationCount: ReadIntOrZero(rows, "RecommendationCount"),
-                    ShareOfVoice: ReadDoubleOrNull(rows, MetricNames.CompetitorShareOfVoice));
+                    ShareOfVoice: ReadDoubleOrNull(rows, MetricNames.CompetitorShareOfVoice),
+                    RecommendationShare: ReadDoubleOrNull(rows, MetricNames.CompetitorRecommendationShare));
             })
             .ToList();
     }

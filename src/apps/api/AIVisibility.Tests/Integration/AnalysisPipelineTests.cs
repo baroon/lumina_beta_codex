@@ -452,21 +452,24 @@ public class AnalysisPipelineTests
         //   +1 BrandSentimentScore (1 brand-mentioned signal → emitted)
         //   +1 BrandFirstMentionRate (≥1 answer with any mention → emitted)
         //   +1 BrandRecommendationScore (1 brand-mentioned signal → emitted)
-        // = +11 per non-Competitor scope that has answers; the fixture has
-        // 1 Platform group + 1 Lens group + 0 Topic groups so 21 each at
+        //   +1 BrandRecommendationShare (1 brand rec / 1 total rec = 1.0;
+        //      Acme's mention is not-recommended so it doesn't contribute)
+        // = +12 per non-Competitor scope that has answers; the fixture has
+        // 1 Platform group + 1 Lens group + 0 Topic groups so 22 each at
         // Platform and Lens.
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
-        // competitor co-mentioned with brand in this fixture), so 22.
+        // competitor co-mentioned with brand in this fixture), so 23.
         //
-        // Competitor scope: 4 metrics — MentionCount + RecommendationCount
+        // Competitor scope: 5 metrics — MentionCount + RecommendationCount
         // + CoMentionedWithBrandCount (Acme co-mentioned with brand once)
-        // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(22);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(21);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(21);
-        metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(4);
+        // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5)
+        // + CompetitorRecommendationShare (Acme 0 recs / 1 total rec = 0.0).
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(23);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(22);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(22);
+        metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(5);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(68);
+        metrics.Should().HaveCount(72);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

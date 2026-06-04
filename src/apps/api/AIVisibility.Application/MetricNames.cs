@@ -79,6 +79,17 @@ public static class MetricNames
     /// </summary>
     public const string BrandRecommendationScore = "BrandRecommendationScore";
 
+    /// <summary>
+    /// Brand's share of all recommendations in scope — brand-recommended
+    /// mention count / total recommended (brand + competitor) mention count.
+    /// Distinct from <see cref="BrandRecommendationRate"/> (rate per answer):
+    /// recommendation share answers "of all recommendations the AI made, what
+    /// fraction went to our brand?". Skipped (no row) when no recommendations
+    /// exist in scope — same denominator-zero pattern as
+    /// <see cref="BrandShareOfVoice"/>.
+    /// </summary>
+    public const string BrandRecommendationShare = "BrandRecommendationShare";
+
     // -- Per-competitor metrics (Competitor scope only — scope_id = competitor.id) --
 
     /// <summary>Mentions targeting this tracked competitor.</summary>
@@ -108,6 +119,18 @@ public static class MetricNames
     /// existing — denominator-zero is unreachable in practice.
     /// </summary>
     public const string CompetitorShareOfVoice = "CompetitorShareOfVoice";
+
+    /// <summary>
+    /// Per-competitor share of recommendations — this competitor's
+    /// recommended mentions divided by total recommended (brand + competitor)
+    /// mentions across the entire scan. Companion to
+    /// <see cref="BrandRecommendationShare"/>. Range [0, 1]. Skipped when
+    /// total recommendations across the scan is zero (no row), or when the
+    /// competitor itself was never recommended (0 numerator → row would be
+    /// emitted with 0 if a recommendation exists somewhere; otherwise no row
+    /// when the denominator is zero).
+    /// </summary>
+    public const string CompetitorRecommendationShare = "CompetitorRecommendationShare";
 
     // -- Co-mention breadth (Overall scope only) --
 

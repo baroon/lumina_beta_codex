@@ -86,6 +86,7 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
       brandShareOfVoice: 0.667,
       brandFirstMentionRate: 0.5,
       brandRecommendationScore: 0.45,
+      brandRecommendationShare: 0.4,
       averageBrandRank: null,
       competitorMentionCount: 7,
       productMentionCount: 0,
@@ -144,6 +145,7 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
           mentionCount: 3,
           recommendationCount: 1,
           shareOfVoice: 0.5,
+          recommendationShare: 0.5,
         },
         {
           competitorId: "c2",
@@ -151,6 +153,7 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
           mentionCount: 0,
           recommendationCount: 0,
           shareOfVoice: null,
+          recommendationShare: null,
         },
       ],
     },

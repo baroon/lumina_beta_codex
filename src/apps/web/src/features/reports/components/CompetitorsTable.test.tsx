@@ -14,6 +14,7 @@ function competitor(overrides: Partial<CompetitorListItemDto> = {}): CompetitorL
     mentionRate: 0.4,
     recommendationRate: 0.33,
     shareOfVoice: 0.5,
+    recommendationShare: 0.4,
     ...overrides,
   };
 }

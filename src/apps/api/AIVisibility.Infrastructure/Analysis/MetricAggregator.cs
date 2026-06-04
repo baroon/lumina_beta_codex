@@ -121,6 +121,13 @@ public class MetricAggregator
         var sovDenom = mentions.Count(m =>
             m.EntityType == MentionEntityType.Brand ||
             m.EntityType == MentionEntityType.Competitor);
+        // Recommendation-share denominator — total recommended (brand +
+        // competitor) mentions across the scan. May be zero (nobody got
+        // recommended); when so, we skip emitting the per-competitor rec
+        // share entirely.
+        var recShareDenom = mentions.Count(m =>
+            (m.EntityType == MentionEntityType.Brand ||
+             m.EntityType == MentionEntityType.Competitor) && m.IsRecommended);
         foreach (var grp in mentions
             .Where(m => m.EntityType == MentionEntityType.Competitor)
             .GroupBy(m => m.EntityId))
@@ -134,6 +141,12 @@ public class MetricAggregator
                 MetricNames.CoMentionedWithBrandCount, coCount, now));
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
                 MetricNames.CompetitorShareOfVoice, (double)grp.Count() / sovDenom, now));
+            if (recShareDenom > 0)
+            {
+                rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
+                    MetricNames.CompetitorRecommendationShare,
+                    (double)grp.Count(m => m.IsRecommended) / recShareDenom, now));
+            }
         }
 
         // Overall scope — distinct competitors that ever co-appeared with us.
@@ -369,6 +382,7 @@ public class MetricAggregator
         if (scope != ScanMetricScope.Competitor)
         {
             foreach (var row in BuildShareOfVoice(scanRunId, scope, scopeId, mentions, now)) yield return row;
+            foreach (var row in BuildRecommendationShare(scanRunId, scope, scopeId, mentions, now)) yield return row;
             foreach (var row in BuildSentimentDistribution(scanRunId, scope, scopeId, contexts, now)) yield return row;
             foreach (var row in BuildSentimentScore(scanRunId, scope, scopeId, contexts, now)) yield return row;
             foreach (var row in BuildRecommendationScore(scanRunId, scope, scopeId, contexts, now)) yield return row;
@@ -389,6 +403,26 @@ public class MetricAggregator
         if (denom == 0) yield break;
         yield return MetricRow(scanRunId, scope, scopeId,
             MetricNames.BrandShareOfVoice, (double)brand / denom, now);
+    }
+
+    /// <summary>
+    /// Brand's share of recommendations in scope — recommended brand mentions
+    /// divided by total recommended (brand + competitor) mentions. Same
+    /// denominator-zero pattern as <see cref="BuildShareOfVoice"/>; skipped
+    /// when nobody got recommended in scope.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildRecommendationShare(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<Mention> mentions, DateTime now)
+    {
+        var brand = mentions.Count(m =>
+            m.EntityType == MentionEntityType.Brand && m.IsRecommended);
+        var competitor = mentions.Count(m =>
+            m.EntityType == MentionEntityType.Competitor && m.IsRecommended);
+        var denom = brand + competitor;
+        if (denom == 0) yield break;
+        yield return MetricRow(scanRunId, scope, scopeId,
+            MetricNames.BrandRecommendationShare, (double)brand / denom, now);
     }
 
     /// <summary>

@@ -15,6 +15,7 @@ const fixture: ScanCompetitorsDto = {
       mentionRate: 0.4,
       recommendationRate: 0.33,
       shareOfVoice: 0.6,
+      recommendationShare: 0.5,
     },
     {
       competitorId: "c2",
@@ -25,6 +26,7 @@ const fixture: ScanCompetitorsDto = {
       mentionRate: 0.16,
       recommendationRate: 0,
       shareOfVoice: 0.25,
+      recommendationShare: 0,
     },
   ],
 };

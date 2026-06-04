@@ -12,6 +12,7 @@ const competitors: CompetitorListItemDto[] = [
     mentionRate: 0.4,
     recommendationRate: 0.33,
     shareOfVoice: 0.6,
+    recommendationShare: 0.5,
   },
   {
     competitorId: "c2",
@@ -22,6 +23,7 @@ const competitors: CompetitorListItemDto[] = [
     mentionRate: 0.16,
     recommendationRate: 0,
     shareOfVoice: 0.25,
+    recommendationShare: 0,
   },
   {
     competitorId: "c3",
@@ -32,6 +34,7 @@ const competitors: CompetitorListItemDto[] = [
     mentionRate: 0,
     recommendationRate: null,
     shareOfVoice: null,
+    recommendationShare: null,
   },
 ];
 

@@ -68,6 +68,13 @@ public sealed record CoreMetricsDto(
     /// mentioned — same denominator-zero pattern as BrandShareOfVoice.
     /// </summary>
     double? BrandRecommendationScore,
+    /// <summary>
+    /// Brand's share of all recommendations in the scan (Phase 4
+    /// measurement-model expansion, item 19). Distinct from
+    /// BrandRecommendationRate (per-answer). Null when no entities were
+    /// recommended in scope.
+    /// </summary>
+    double? BrandRecommendationShare,
     // Mention counts.
     int CompetitorMentionCount,
     int ProductMentionCount,
@@ -154,4 +161,11 @@ public sealed record CompetitorBreakdownDto(
     /// CompetitorShareOfVoice row exists for this competitor in scan_metrics
     /// (mirrors the aggregator's denominator-unreachable guard).
     /// </summary>
-    double? ShareOfVoice);
+    double? ShareOfVoice,
+    /// <summary>
+    /// Share of recommendations for this competitor — recommended mentions /
+    /// total recommended (brand + competitor) mentions across the scan.
+    /// Range [0, 1]. Null when nobody in the scan was recommended (no
+    /// CompetitorRecommendationShare metric row exists in that case).
+    /// </summary>
+    double? RecommendationShare);

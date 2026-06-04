@@ -686,6 +686,7 @@ public class MetricAggregatorTests
                 MetricNames.RecommendationCount,
                 MetricNames.CoMentionedWithBrandCount,
                 MetricNames.CompetitorShareOfVoice,
+                MetricNames.CompetitorRecommendationShare,
             });
     }
 

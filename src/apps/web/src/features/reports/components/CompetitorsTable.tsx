@@ -50,6 +50,9 @@ export function CompetitorsTable({ competitors, onSelectCompetitor }: Competitor
             <th scope="col" className="px-4 py-3 text-right font-medium">
               {copy.headers.recommendationRate}
             </th>
+            <th scope="col" className="px-4 py-3 text-right font-medium">
+              {copy.headers.recommendationShare}
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -86,6 +89,7 @@ export function CompetitorsTable({ competitors, onSelectCompetitor }: Competitor
                 {c.recommendationCount}
               </td>
               <RateCell value={c.recommendationRate} />
+              <RateCell value={c.recommendationShare} />
             </tr>
           ))}
         </tbody>

@@ -92,6 +92,7 @@ public class GetScanCompetitorsQueryHandler : IRequestHandler<GetScanCompetitors
             RecommendationCount: recCount,
             MentionRate: mentionRate,
             RecommendationRate: recRate,
-            ShareOfVoice: DoubleOrNull(MetricNames.CompetitorShareOfVoice));
+            ShareOfVoice: DoubleOrNull(MetricNames.CompetitorShareOfVoice),
+            RecommendationShare: DoubleOrNull(MetricNames.CompetitorRecommendationShare));
     }
 }
