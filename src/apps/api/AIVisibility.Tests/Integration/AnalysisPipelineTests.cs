@@ -457,22 +457,25 @@ public class AnalysisPipelineTests
         //   +1 BrandAbsenceRate (always emits when scope has ≥1 answer;
         //      3/4 absent — answers 1, 2, 3 are not-mentioned and have no
         //      Owned citation in their own answer rows)
-        // = +13 per non-Competitor scope that has answers; the fixture has
-        // 1 Platform group + 1 Lens group + 0 Topic groups so 23 each at
+        //   +1 AverageAnswerCertainty (always emits when scope has ≥1 answer;
+        //      every signal carries the field defaulted to 0.5 here since
+        //      the canned JSON omits it)
+        // = +14 per non-Competitor scope that has answers; the fixture has
+        // 1 Platform group + 1 Lens group + 0 Topic groups so 24 each at
         // Platform and Lens.
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
-        // competitor co-mentioned with brand in this fixture), so 24.
+        // competitor co-mentioned with brand in this fixture), so 25.
         //
         // Competitor scope: 5 metrics — MentionCount + RecommendationCount
         // + CoMentionedWithBrandCount (Acme co-mentioned with brand once)
         // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5)
         // + CompetitorRecommendationShare (Acme 0 recs / 1 total rec = 0.0).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(24);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(23);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(23);
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(25);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(24);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(24);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(5);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(75);
+        metrics.Should().HaveCount(78);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

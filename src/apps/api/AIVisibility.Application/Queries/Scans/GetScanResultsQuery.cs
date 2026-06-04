@@ -90,6 +90,11 @@ public sealed record CoreMetricsDto(
     /// </summary>
     double? BrandAbsenceRate,
     /// <summary>
+    /// Mean answer-certainty across all answers (Phase 4 item 12). Range
+    /// [0, 1]. Null only when the scan has no answers.
+    /// </summary>
+    double? AverageAnswerCertainty,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).

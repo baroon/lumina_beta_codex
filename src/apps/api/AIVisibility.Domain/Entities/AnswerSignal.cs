@@ -55,6 +55,18 @@ public class AnswerSignal
     /// </summary>
     public double BrandRecommendationScore { get; set; }
 
+    /// <summary>
+    /// How confidently the answer states its claims — distinct from
+    /// <c>ConfidenceScore</c> (the extractor's confidence in its own
+    /// reading). Range [0, 1]: 1.0 = unequivocal ("X is THE leader"),
+    /// 0.0 = heavily hedged ("X might possibly work in some cases").
+    /// Defaults to 0.5 (neutral) when the LLM omits it. Phase 4
+    /// measurement-model expansion (item 12). No D13 coercion — an
+    /// unmentioned brand doesn't affect the answer's overall certainty
+    /// about whatever it DID discuss.
+    /// </summary>
+    public double AnswerCertainty { get; set; } = 0.5;
+
     public string? TopRecommendedEntity { get; set; }
 
     // Answer-shape flags from the LLM

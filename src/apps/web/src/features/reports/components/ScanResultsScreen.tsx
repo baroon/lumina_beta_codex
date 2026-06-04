@@ -199,6 +199,10 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           subValue={formatMomentum(metrics.brandAbsenceRateMomentum)}
         />
         <MetricTile
+          label={m.averageAnswerCertainty}
+          value={formatRate(metrics.averageAnswerCertainty)}
+        />
+        <MetricTile
           label={m.averageBrandRank}
           value={formatRankWithUniverse(
             metrics.averageBrandRank,

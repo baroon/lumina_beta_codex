@@ -49,7 +49,8 @@ public class SignalExtractor
             "answer_has_ranking": bool,
             "answer_has_comparison": bool,
             "answer_has_citations": bool,
-            "confidence_score": number       // 0.0-1.0
+            "confidence_score": number,      // 0.0-1.0 — YOUR confidence in this extraction
+            "answer_certainty": number       // 0.0-1.0 — how confidently the answer ITSELF states its claims
           },
           "mentions": [
             {
@@ -199,6 +200,22 @@ public class SignalExtractor
              0.0  Unknown      (not discussed, or no recommendation signal)
             -0.7  NotRecommended ("avoid", "not recommended", "fails at X")
         - Score MUST be in [-1.0, +1.0]. Out-of-range values will be clamped.
+
+        Answer-certainty rules (answer_certainty):
+        - Measures HOW HEDGED the answer is, on a continuous 0.0..1.0 axis.
+        - NOT the same as confidence_score (which is your confidence in this
+          extraction). answer_certainty is about the LANGUAGE the AI used:
+            1.0  Unequivocal: "X is THE best", "without question", "definitively"
+            0.8  Strong: "X is widely regarded as the leader"
+            0.6  Mostly confident with minor caveats: "X is generally the best,
+                 though Y is competitive in some niches"
+            0.5  Default / mixed framing (start here if unsure)
+            0.3  Hedged: "X might be a good option", "could be worth considering"
+            0.1  Heavily hedged: "it depends", "hard to say", "no clear best"
+        - An answer can be both unmentioned-for-the-brand AND high-certainty
+          (the AI was confident in talking about competitors); answer_certainty
+          is INDEPENDENT of whether the tracked brand was mentioned.
+        - Score MUST be in [0.0, 1.0]. Out-of-range values will be clamped.
 
         Sentiment-score rules (brand_sentiment_score, mention.sentiment_score):
         - Score is a fine-grained reading of the enum on a continuous -1.0..+1.0 axis.
@@ -390,6 +407,9 @@ public class SignalExtractor
             CompetitorSourceCount = citations.Count(c => c.ClassifiedAs == SourceType.Competitor),
             ThirdPartySourceCount = 0,
             ConfidenceScore = TryGetDouble(s, "confidence_score") ?? 0.5,
+            // Clamp to [0,1] — the prompt asks for the range but a fragile
+            // LLM might emit -0.1 or 1.5. Default 0.5 (neutral) when omitted.
+            AnswerCertainty = Math.Clamp(TryGetDouble(s, "answer_certainty") ?? 0.5, 0.0, 1.0),
             CreatedAt = now,
         };
     }

@@ -49,6 +49,7 @@ const EMPTY_RESULTS: ScanResultsDto = {
     brandRecommendationScore: null,
     brandRecommendationShare: null,
     brandAbsenceRate: null,
+    averageAnswerCertainty: null,
     brandMentionRateMomentum: null,
     brandShareOfVoiceMomentum: null,
     brandAbsenceRateMomentum: null,

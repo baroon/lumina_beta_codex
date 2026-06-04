@@ -41,6 +41,7 @@ export const REPORTS_COPY = {
       brandRecommendationScore: "Recommendation score",
       brandRecommendationShare: "Recommendation share",
       brandAbsenceRate: "Absence rate",
+      averageAnswerCertainty: "Answer certainty",
       averageBrandRank: "Average brand rank",
       competitorMentionCount: "Competitor mentions",
       productMentionCount: "Product mentions",

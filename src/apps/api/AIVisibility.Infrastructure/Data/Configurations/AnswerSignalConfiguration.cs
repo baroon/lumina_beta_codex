@@ -37,6 +37,8 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
         builder.Property(s => s.ThirdPartySourceCount).HasColumnName("third_party_source_count");
 
         builder.Property(s => s.ConfidenceScore).HasColumnName("confidence_score");
+        builder.Property(s => s.AnswerCertainty).HasColumnName("answer_certainty")
+            .HasDefaultValue(0.5);
         builder.Property(s => s.CreatedAt).HasColumnName("created_at");
 
         builder.HasOne(s => s.AIAnswer).WithMany().HasForeignKey(s => s.AIAnswerId);

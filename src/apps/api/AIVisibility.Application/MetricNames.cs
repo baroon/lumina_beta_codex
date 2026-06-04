@@ -110,6 +110,16 @@ public static class MetricNames
     /// </summary>
     public const string AverageBrandRankUniverseSize = "AverageBrandRankUniverseSize";
 
+    /// <summary>
+    /// Mean <see cref="AnswerSignal.AnswerCertainty"/> across all answers in
+    /// scope. Range [0, 1]. Phase 4 measurement-model expansion (item 12).
+    /// Always emitted when the scope has ≥1 answer — every AnswerSignal
+    /// carries an AnswerCertainty value (defaulted to 0.5 when the LLM
+    /// omits it). Distinct from the existing ConfidenceScore aggregate,
+    /// which measures the extractor's confidence.
+    /// </summary>
+    public const string AverageAnswerCertainty = "AverageAnswerCertainty";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

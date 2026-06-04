@@ -424,6 +424,9 @@ public class MetricAggregator
             }
         }
 
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.AverageAnswerCertainty,
+            contexts.Average(c => c.Signal.AnswerCertainty), now);
+
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.CompetitorMentionCount,
             mentions.Count(m => m.EntityType == MentionEntityType.Competitor), now);
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.ProductMentionCount,
