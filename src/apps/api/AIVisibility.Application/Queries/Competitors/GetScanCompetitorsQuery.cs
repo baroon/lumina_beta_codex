@@ -25,4 +25,11 @@ public sealed record CompetitorListItemDto(
     /// <summary>MentionCount / total scan answer count, [0..1]. Null when the scan has no successful answers.</summary>
     double? MentionRate,
     /// <summary>RecommendationCount / MentionCount when MentionCount &gt; 0; null otherwise — recommendation only makes sense once mentioned.</summary>
-    double? RecommendationRate);
+    double? RecommendationRate,
+    /// <summary>
+    /// Share of voice for this competitor — its mentions / (brand + competitor
+    /// mentions across the scan). Distinct from MentionRate (which uses answer
+    /// count as denominator). Null when the CompetitorShareOfVoice metric row
+    /// is absent for this competitor.
+    /// </summary>
+    double? ShareOfVoice);

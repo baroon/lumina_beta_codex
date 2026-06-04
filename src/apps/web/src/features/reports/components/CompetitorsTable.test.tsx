@@ -13,6 +13,7 @@ function competitor(overrides: Partial<CompetitorListItemDto> = {}): CompetitorL
     recommendationCount: 4,
     mentionRate: 0.4,
     recommendationRate: 0.33,
+    shareOfVoice: 0.5,
     ...overrides,
   };
 }

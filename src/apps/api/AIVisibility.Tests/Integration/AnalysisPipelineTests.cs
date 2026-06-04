@@ -458,14 +458,15 @@ public class AnalysisPipelineTests
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
         // competitor co-mentioned with brand in this fixture), so 22.
         //
-        // Competitor scope: 3 metrics — MentionCount + RecommendationCount
-        // + CoMentionedWithBrandCount (Acme co-mentioned with brand once).
+        // Competitor scope: 4 metrics — MentionCount + RecommendationCount
+        // + CoMentionedWithBrandCount (Acme co-mentioned with brand once)
+        // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5).
         metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(22);
         metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(21);
         metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(21);
-        metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(3);
+        metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(4);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(67);
+        metrics.Should().HaveCount(68);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

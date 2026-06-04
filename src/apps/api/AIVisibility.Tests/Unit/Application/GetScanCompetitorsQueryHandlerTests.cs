@@ -51,8 +51,10 @@ public class GetScanCompetitorsQueryHandlerTests
         // Aggregator output: Acme mentioned 4×, recommended 1×. Beta mentioned 2×, recommended 0×.
         AddMetric(ctx, scan.Id, acme.Id, MetricNames.MentionCount, 4);
         AddMetric(ctx, scan.Id, acme.Id, MetricNames.RecommendationCount, 1);
+        AddMetric(ctx, scan.Id, acme.Id, MetricNames.CompetitorShareOfVoice, 0.5);
         AddMetric(ctx, scan.Id, beta.Id, MetricNames.MentionCount, 2);
         AddMetric(ctx, scan.Id, beta.Id, MetricNames.RecommendationCount, 0);
+        AddMetric(ctx, scan.Id, beta.Id, MetricNames.CompetitorShareOfVoice, 0.25);
 
         ctx.SaveChanges();
         return (scan.Id, acme.Id, beta.Id);
@@ -98,6 +100,29 @@ public class GetScanCompetitorsQueryHandlerTests
         acme.MentionRate.Should().BeApproximately(0.4, 1e-9);
         // 1 recommendation across 4 mentions = 0.25.
         acme.RecommendationRate.Should().BeApproximately(0.25, 1e-9);
+        // CompetitorShareOfVoice flows through from the seeded scan_metrics row.
+        acme.ShareOfVoice.Should().BeApproximately(0.5, 1e-9);
+    }
+
+    [Fact]
+    public async Task ShareOfVoice_IsNull_WhenMetricRowMissing()
+    {
+        // Sanity: if the aggregator did not emit a CompetitorShareOfVoice row
+        // (legacy data, partial recompute), the handler surfaces it as null
+        // rather than zero — same semantics as the other rate fields.
+        using var ctx = NewContext();
+        var brand = new Brand { Id = Guid.NewGuid(), Name = "B" };
+        var tracker = new TrackerConfiguration { Id = Guid.NewGuid(), BrandId = brand.Id, Brand = brand, Name = "T", Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow };
+        var scan = new ScanRun { Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, TrackerConfiguration = tracker, TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed, StartedAt = DateTime.UtcNow };
+        var comp = new Competitor { Id = Guid.NewGuid(), BrandId = brand.Id, Name = "Epsilon", Domain = "eps.com" };
+        ctx.Brands.Add(brand); ctx.TrackerConfigurations.Add(tracker); ctx.ScanRuns.Add(scan); ctx.Competitors.Add(comp);
+        AddMetric(ctx, scan.Id, comp.Id, MetricNames.MentionCount, 1);
+        AddMetric(ctx, scan.Id, comp.Id, MetricNames.RecommendationCount, 0);
+        ctx.SaveChanges();
+
+        var sut = new GetScanCompetitorsQueryHandler(ctx);
+        var result = await sut.Handle(new GetScanCompetitorsQuery(scan.Id), CancellationToken.None);
+        result!.Competitors.Single().ShareOfVoice.Should().BeNull();
     }
 
     [Fact]

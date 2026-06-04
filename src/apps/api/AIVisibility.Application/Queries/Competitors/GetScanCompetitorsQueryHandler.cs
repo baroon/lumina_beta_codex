@@ -76,6 +76,7 @@ public class GetScanCompetitorsQueryHandler : IRequestHandler<GetScanCompetitors
         if (!competitors.TryGetValue(competitorId, out var competitor)) return null;
 
         int IntOrZero(string name) => (int)(rows.FirstOrDefault(r => r.MetricName == name)?.MetricValue ?? 0);
+        double? DoubleOrNull(string name) => rows.FirstOrDefault(r => r.MetricName == name)?.MetricValue;
 
         var mentionCount = IntOrZero(MetricNames.MentionCount);
         var recCount = IntOrZero(MetricNames.RecommendationCount);
@@ -90,6 +91,7 @@ public class GetScanCompetitorsQueryHandler : IRequestHandler<GetScanCompetitors
             MentionCount: mentionCount,
             RecommendationCount: recCount,
             MentionRate: mentionRate,
-            RecommendationRate: recRate);
+            RecommendationRate: recRate,
+            ShareOfVoice: DoubleOrNull(MetricNames.CompetitorShareOfVoice));
     }
 }

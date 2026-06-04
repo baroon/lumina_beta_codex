@@ -111,9 +111,16 @@ public class MetricAggregator
         var coMentionsByCompetitor = BuildBrandCoMentionMap(pairs, mentions, brandId);
 
         // Competitor scope — per-tracked-competitor MentionCount + RecommendationCount
-        // + CoMentionedWithBrandCount. Only emitted for competitors that
-        // actually had at least one mention; the co-mention count is 0 when
-        // they appeared but never alongside our brand.
+        // + CoMentionedWithBrandCount + ShareOfVoice. Only emitted for
+        // competitors that actually had at least one mention; the co-mention
+        // count is 0 when they appeared but never alongside our brand.
+        //
+        // SoV denominator mirrors BrandShareOfVoice (brand + competitor mention
+        // counts across the scan). Denominator-zero is unreachable here: the
+        // outer foreach only runs for competitors with ≥1 Mention row.
+        var sovDenom = mentions.Count(m =>
+            m.EntityType == MentionEntityType.Brand ||
+            m.EntityType == MentionEntityType.Competitor);
         foreach (var grp in mentions
             .Where(m => m.EntityType == MentionEntityType.Competitor)
             .GroupBy(m => m.EntityId))
@@ -125,6 +132,8 @@ public class MetricAggregator
             var coCount = coMentionsByCompetitor.TryGetValue(grp.Key, out var set) ? set.Count : 0;
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
                 MetricNames.CoMentionedWithBrandCount, coCount, now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
+                MetricNames.CompetitorShareOfVoice, (double)grp.Count() / sovDenom, now));
         }
 
         // Overall scope — distinct competitors that ever co-appeared with us.

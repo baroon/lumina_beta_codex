@@ -47,6 +47,7 @@ const fixture: ScanCompetitorsDto = {
       recommendationCount: 4,
       mentionRate: 0.4,
       recommendationRate: 0.33,
+      shareOfVoice: 0.6,
     },
   ],
 };

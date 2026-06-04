@@ -428,6 +428,8 @@ export interface CompetitorBreakdownDto {
   competitorName: string;
   mentionCount: number;
   recommendationCount: number;
+  /** Share of voice — competitor's mentions / (brand + competitor mentions) across the scan. Null when missing. */
+  shareOfVoice: number | null;
 }
 
 // --- All Scans list (temporary navigation utility) -----------------------
@@ -616,6 +618,8 @@ export interface CompetitorListItemDto {
   mentionRate: number | null;
   /** RecommendationCount / MentionCount when MentionCount > 0; null otherwise. */
   recommendationRate: number | null;
+  /** Competitor's mentions / (brand + competitor mentions) across the scan. Null when missing. */
+  shareOfVoice: number | null;
 }
 
 export interface ScanCompetitorDetailDto {

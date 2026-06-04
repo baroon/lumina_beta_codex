@@ -147,4 +147,11 @@ public sealed record CompetitorBreakdownDto(
     Guid CompetitorId,
     string CompetitorName,
     int MentionCount,
-    int RecommendationCount);
+    int RecommendationCount,
+    /// <summary>
+    /// Share of voice for this competitor — mentions / (brand + competitor
+    /// mentions across the scan). Range [0, 1]. Null only when no
+    /// CompetitorShareOfVoice row exists for this competitor in scan_metrics
+    /// (mirrors the aggregator's denominator-unreachable guard).
+    /// </summary>
+    double? ShareOfVoice);

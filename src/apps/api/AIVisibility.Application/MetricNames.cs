@@ -98,6 +98,17 @@ public static class MetricNames
     /// </summary>
     public const string CoMentionedWithBrandCount = "CoMentionedWithBrandCount";
 
+    /// <summary>
+    /// Per-competitor share of voice — this competitor's mentions divided by
+    /// total (brand + competitor) mentions across the entire scan. Same
+    /// denominator semantics as <see cref="BrandShareOfVoice"/> at Overall
+    /// scope; emitted at Competitor scope so each competitor gets a row.
+    /// Range [0, 1]. Skipped (no row) only when the total mention count is
+    /// zero, which already prevents the per-competitor MentionCount row from
+    /// existing — denominator-zero is unreachable in practice.
+    /// </summary>
+    public const string CompetitorShareOfVoice = "CompetitorShareOfVoice";
+
     // -- Co-mention breadth (Overall scope only) --
 
     /// <summary>

@@ -42,6 +42,9 @@ export function CompetitorsTable({ competitors, onSelectCompetitor }: Competitor
               {copy.headers.mentionRate}
             </th>
             <th scope="col" className="px-4 py-3 text-right font-medium">
+              {copy.headers.shareOfVoice}
+            </th>
+            <th scope="col" className="px-4 py-3 text-right font-medium">
               {copy.headers.recommendations}
             </th>
             <th scope="col" className="px-4 py-3 text-right font-medium">
@@ -78,6 +81,7 @@ export function CompetitorsTable({ competitors, onSelectCompetitor }: Competitor
                 {c.mentionCount}
               </td>
               <RateCell value={c.mentionRate} />
+              <RateCell value={c.shareOfVoice} />
               <td className="px-4 py-3 text-right tabular-nums text-neutral-900">
                 {c.recommendationCount}
               </td>

@@ -226,7 +226,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
                     kv.Key,
                     kv.Value,
                     MentionCount: ReadIntOrZero(rows, "MentionCount"),
-                    RecommendationCount: ReadIntOrZero(rows, "RecommendationCount"));
+                    RecommendationCount: ReadIntOrZero(rows, "RecommendationCount"),
+                    ShareOfVoice: ReadDoubleOrNull(rows, MetricNames.CompetitorShareOfVoice));
             })
             .ToList();
     }

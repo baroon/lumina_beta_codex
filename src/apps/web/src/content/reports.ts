@@ -340,6 +340,7 @@ export const REPORTS_COPY = {
         competitor: "Competitor",
         mentions: "Mentions",
         mentionRate: "Mention rate",
+        shareOfVoice: "Share of voice",
         recommendations: "Recommendations",
         recommendationRate: "Rec. rate",
       },

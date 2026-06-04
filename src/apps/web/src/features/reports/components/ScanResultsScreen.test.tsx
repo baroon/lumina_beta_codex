@@ -138,8 +138,20 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
         },
       ],
       byCompetitor: [
-        { competitorId: "c1", competitorName: "Acme", mentionCount: 3, recommendationCount: 1 },
-        { competitorId: "c2", competitorName: "Beta", mentionCount: 0, recommendationCount: 0 },
+        {
+          competitorId: "c1",
+          competitorName: "Acme",
+          mentionCount: 3,
+          recommendationCount: 1,
+          shareOfVoice: 0.5,
+        },
+        {
+          competitorId: "c2",
+          competitorName: "Beta",
+          mentionCount: 0,
+          recommendationCount: 0,
+          shareOfVoice: null,
+        },
       ],
     },
     ...overrides,
