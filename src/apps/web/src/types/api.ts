@@ -339,6 +339,12 @@ export interface CoreMetricsDto {
   brandRecommendationShare: number | null;
   /** Fraction of answers where the brand is entirely absent (no mention, no owned citation). Null when no answers in scope. */
   brandAbsenceRate: number | null;
+  /** Change in BrandMentionRate vs previous scan. Null on first scan. */
+  brandMentionRateMomentum: number | null;
+  /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */
+  brandShareOfVoiceMomentum: number | null;
+  /** Change in BrandAbsenceRate vs previous scan. Inverse direction — positive = worse. Null on first scan. */
+  brandAbsenceRateMomentum: number | null;
   competitorMentionCount: number;
   productMentionCount: number;
   citationCount: number;

@@ -82,6 +82,23 @@ public sealed record CoreMetricsDto(
     /// when the scope has no answers.
     /// </summary>
     double? BrandAbsenceRate,
+    /// <summary>
+    /// Change in BrandMentionRate vs the previous completed scan (current -
+    /// previous). Null when this is the tracker's first scan. Range
+    /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).
+    /// </summary>
+    double? BrandMentionRateMomentum,
+    /// <summary>
+    /// Change in BrandShareOfVoice vs the previous completed scan. Same
+    /// null/range semantics as BrandMentionRateMomentum.
+    /// </summary>
+    double? BrandShareOfVoiceMomentum,
+    /// <summary>
+    /// Change in BrandAbsenceRate vs the previous completed scan. NOTE:
+    /// inverse direction — a positive value means the brand is now absent
+    /// from MORE answers. Same null/range semantics.
+    /// </summary>
+    double? BrandAbsenceRateMomentum,
     // Mention counts.
     int CompetitorMentionCount,
     int ProductMentionCount,

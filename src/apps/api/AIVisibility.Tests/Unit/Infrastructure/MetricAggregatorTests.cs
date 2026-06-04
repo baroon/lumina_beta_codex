@@ -691,6 +691,110 @@ public class MetricAggregatorTests
     }
 
     [Fact]
+    public async Task Momentum_EmitsDeltasVsPreviousCompletedScanOnSameTracker()
+    {
+        // Seed a "previous" ScanRun on the same tracker with hand-picked
+        // Overall-scope metric rows, then run the aggregator on a "current"
+        // scan and verify the momentum rows = current - previous.
+        using var ctx = NewContext();
+        var brandId = Guid.NewGuid();
+        var brand = new Brand { Id = brandId, Name = "B", WebsiteUrl = "https://b.io" };
+        var tracker = new TrackerConfiguration
+        {
+            Id = Guid.NewGuid(), BrandId = brand.Id, Brand = brand, Name = "T",
+            Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow,
+        };
+        var previousScan = new ScanRun
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id,
+            TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed,
+            StartedAt = DateTime.UtcNow.AddDays(-1),
+            CompletedAt = DateTime.UtcNow.AddDays(-1),
+        };
+        ctx.Brands.Add(brand);
+        ctx.TrackerConfigurations.Add(tracker);
+        ctx.ScanRuns.Add(previousScan);
+        // Hand-seed previous-scan headline metrics: mention rate 0.20, SoV 0.50,
+        // absence 0.70.
+        var now = DateTime.UtcNow;
+        void Seed(string name, double value)
+        {
+            ctx.ScanMetrics.Add(new ScanMetric
+            {
+                Id = Guid.NewGuid(), ScanRunId = previousScan.Id,
+                Scope = ScanMetricScope.Overall, ScopeId = null,
+                MetricName = name, MetricValue = value, CreatedAt = now,
+            });
+        }
+        Seed(MetricNames.BrandMentionRate, 0.20);
+        Seed(MetricNames.BrandShareOfVoice, 0.50);
+        Seed(MetricNames.BrandAbsenceRate, 0.70);
+        ctx.SaveChanges();
+
+        // Current scan seeded via the standard helper — sets up a separate
+        // tracker, so cross-tracker contamination check passes.
+        var platform = Guid.NewGuid();
+        var lens = Guid.NewGuid();
+        var currentScanId = SeedScanAndAnswers(ctx,
+            // One answer with the brand mentioned and 1 competitor mention so
+            // BrandMentionRate=1.0, BrandShareOfVoice=0.5, BrandAbsenceRate=0.
+            new AnswerSetup(Guid.NewGuid(), platform, lens, Array.Empty<Guid>(),
+                BrandMentioned: true, BrandRecommended: true, BrandRank: null,
+                Mentions: new[]
+                {
+                    (MentionEntityType.Brand, brandId, true),
+                    (MentionEntityType.Competitor, Guid.NewGuid(), false),
+                },
+                Citations: Array.Empty<SourceType>()));
+
+        // Re-parent the helper's scan onto the seeded tracker so the previous-
+        // scan lookup walks the right history. Need to also push StartedAt
+        // ahead of the previous scan.
+        var current = ctx.ScanRuns.Find(currentScanId)!;
+        current.TrackerConfigurationId = tracker.Id;
+        current.StartedAt = DateTime.UtcNow;
+        ctx.SaveChanges();
+
+        var rows = await NewAggregator(ctx).ComputeAsync(currentScanId, CancellationToken.None);
+
+        // BrandMentionRate current = 1/1 = 1.0; previous = 0.20; delta = +0.80.
+        rows.Single(r => r.Scope == ScanMetricScope.Overall && r.ScopeId == null
+                     && r.MetricName == MetricNames.BrandMentionRateMomentum)
+            .MetricValue.Should().BeApproximately(0.80, 1e-9);
+        // BrandShareOfVoice current = 1/2 = 0.5; previous = 0.50; delta = 0.
+        rows.Single(r => r.Scope == ScanMetricScope.Overall && r.ScopeId == null
+                     && r.MetricName == MetricNames.BrandShareOfVoiceMomentum)
+            .MetricValue.Should().BeApproximately(0.0, 1e-9);
+        // BrandAbsenceRate current = 0/1 = 0; previous = 0.70; delta = -0.70.
+        rows.Single(r => r.Scope == ScanMetricScope.Overall && r.ScopeId == null
+                     && r.MetricName == MetricNames.BrandAbsenceRateMomentum)
+            .MetricValue.Should().BeApproximately(-0.70, 1e-9);
+    }
+
+    [Fact]
+    public async Task Momentum_EmitsNothing_OnFirstScanForTracker()
+    {
+        // No previous completed scan exists → momentum rows are absent
+        // entirely (not zero, not null — the metric just doesn't appear).
+        using var ctx = NewContext();
+        var platform = Guid.NewGuid();
+        var lens = Guid.NewGuid();
+        var brandId = Guid.NewGuid();
+        var scanRunId = SeedScanAndAnswers(ctx,
+            new AnswerSetup(Guid.NewGuid(), platform, lens, Array.Empty<Guid>(),
+                BrandMentioned: true, BrandRecommended: true, BrandRank: null,
+                Mentions: new[] { (MentionEntityType.Brand, brandId, true) },
+                Citations: Array.Empty<SourceType>()));
+
+        var rows = await NewAggregator(ctx).ComputeAsync(scanRunId, CancellationToken.None);
+
+        rows.Where(r => r.MetricName == MetricNames.BrandMentionRateMomentum
+                     || r.MetricName == MetricNames.BrandShareOfVoiceMomentum
+                     || r.MetricName == MetricNames.BrandAbsenceRateMomentum)
+            .Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task ShareOfVoice_EmitsAtTopicScope_WhenAnswerMapsToTopic()
     {
         // Topic scope test: an answer mapped to a topic should produce per-topic

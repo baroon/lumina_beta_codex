@@ -167,12 +167,20 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
         <CardTitle>{REPORTS_COPY.scanResults.sections.coreMetrics}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricTile label={m.brandMentionRate} value={formatRate(metrics.brandMentionRate)} />
+        <MetricTile
+          label={m.brandMentionRate}
+          value={formatRate(metrics.brandMentionRate)}
+          subValue={formatMomentum(metrics.brandMentionRateMomentum)}
+        />
         <MetricTile
           label={m.brandRecommendationRate}
           value={formatRate(metrics.brandRecommendationRate)}
         />
-        <MetricTile label={m.brandShareOfVoice} value={formatRate(metrics.brandShareOfVoice)} />
+        <MetricTile
+          label={m.brandShareOfVoice}
+          value={formatRate(metrics.brandShareOfVoice)}
+          subValue={formatMomentum(metrics.brandShareOfVoiceMomentum)}
+        />
         <MetricTile
           label={m.brandFirstMentionRate}
           value={formatRate(metrics.brandFirstMentionRate)}
@@ -185,7 +193,11 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           label={m.brandRecommendationShare}
           value={formatRate(metrics.brandRecommendationShare)}
         />
-        <MetricTile label={m.brandAbsenceRate} value={formatRate(metrics.brandAbsenceRate)} />
+        <MetricTile
+          label={m.brandAbsenceRate}
+          value={formatRate(metrics.brandAbsenceRate)}
+          subValue={formatMomentum(metrics.brandAbsenceRateMomentum)}
+        />
         <MetricTile label={m.averageBrandRank} value={formatRank(metrics.averageBrandRank)} />
         <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
         <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />
@@ -507,6 +519,18 @@ function formatSignedScore(value: number | null): string {
   if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
   const sign = value >= 0 ? "+" : "−";
   return `${sign}${Math.abs(value).toFixed(2)}`;
+}
+
+// Momentum subValue — "↑ +5 pp" / "↓ -3 pp" vs the previous scan. Undefined
+// when value is null so the tile hides its subValue slot entirely (first scan
+// has no comparison point).
+function formatMomentum(value: number | null): string | undefined {
+  if (value == null) return undefined;
+  const pp = Math.round(value * 100);
+  if (pp === 0) return `± 0 pp ${REPORTS_COPY.scanResults.metrics.momentumSuffix}`;
+  const arrow = pp > 0 ? "↑" : "↓";
+  const sign = pp > 0 ? "+" : "−";
+  return `${arrow} ${sign}${Math.abs(pp)} pp ${REPORTS_COPY.scanResults.metrics.momentumSuffix}`;
 }
 
 function formatOwnedShare(ownedCount: number, total: number): string {

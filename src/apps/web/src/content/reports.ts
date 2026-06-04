@@ -52,6 +52,7 @@ export const REPORTS_COPY = {
       ownedCitationShare: "Owned citation share",
       overallSentiment: "Overall sentiment",
       noData: "No data",
+      momentumSuffix: "vs last scan",
     },
     shareOfVoice: {
       title: "Share of voice — brand vs competitors",

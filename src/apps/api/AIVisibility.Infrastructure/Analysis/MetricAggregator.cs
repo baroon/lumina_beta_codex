@@ -196,7 +196,75 @@ public class MetricAggregator
             rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Topic, grp.Key, scoped, now));
         }
 
+        // Cross-scan momentum — compare the headline rate metrics we just
+        // emitted against the previous completed scan for the same tracker.
+        // Skipped when no previous scan exists (first scan for a tracker).
+        var previous = await LoadPreviousScanOverallMetricsAsync(scanRunId, cancellationToken);
+        if (previous != null)
+        {
+            var currentOverall = rows
+                .Where(r => r.Scope == ScanMetricScope.Overall && r.ScopeId == null)
+                .ToDictionary(r => r.MetricName, r => r.MetricValue);
+            rows.AddRange(BuildMomentumRows(scanRunId, currentOverall, previous, now));
+        }
+
         return rows;
+    }
+
+    /// <summary>
+    /// Loads the Overall-scope metric values from the most recent completed
+    /// scan_run for the same tracker, ordered by StartedAt desc. Returns null
+    /// when this is the tracker's first completed scan (no momentum to emit).
+    /// </summary>
+    private async Task<Dictionary<string, double>?> LoadPreviousScanOverallMetricsAsync(
+        Guid currentScanId, CancellationToken ct)
+    {
+        var current = await _db.ScanRuns.AsNoTracking()
+            .Where(s => s.Id == currentScanId)
+            .Select(s => new { s.TrackerConfigurationId, s.StartedAt })
+            .FirstOrDefaultAsync(ct);
+        if (current == null) return null;
+
+        var previousScanId = await _db.ScanRuns.AsNoTracking()
+            .Where(s => s.TrackerConfigurationId == current.TrackerConfigurationId
+                     && s.Id != currentScanId
+                     && s.Status == ScanRunStatus.Completed
+                     && s.StartedAt < current.StartedAt)
+            .OrderByDescending(s => s.StartedAt)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+        if (previousScanId == null) return null;
+
+        return await _db.ScanMetrics.AsNoTracking()
+            .Where(m => m.ScanRunId == previousScanId
+                     && m.Scope == ScanMetricScope.Overall
+                     && m.ScopeId == null)
+            .ToDictionaryAsync(m => m.MetricName, m => m.MetricValue, ct);
+    }
+
+    /// <summary>
+    /// Builds momentum rows (current - previous) for the headline rate metrics.
+    /// Each row is only emitted when BOTH scans have the source metric — a
+    /// momentum delta is undefined if either side is missing.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildMomentumRows(
+        Guid scanRunId, Dictionary<string, double> current,
+        Dictionary<string, double> previous, DateTime now)
+    {
+        (string Source, string Momentum)[] headlines =
+        {
+            (MetricNames.BrandMentionRate, MetricNames.BrandMentionRateMomentum),
+            (MetricNames.BrandShareOfVoice, MetricNames.BrandShareOfVoiceMomentum),
+            (MetricNames.BrandAbsenceRate, MetricNames.BrandAbsenceRateMomentum),
+        };
+        foreach (var (source, momentum) in headlines)
+        {
+            if (current.TryGetValue(source, out var c) && previous.TryGetValue(source, out var p))
+            {
+                yield return MetricRow(scanRunId, ScanMetricScope.Overall, null,
+                    momentum, c - p, now);
+            }
+        }
     }
 
     /// <summary>

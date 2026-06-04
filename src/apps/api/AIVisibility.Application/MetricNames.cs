@@ -101,6 +101,34 @@ public static class MetricNames
     /// </summary>
     public const string BrandAbsenceRate = "BrandAbsenceRate";
 
+    // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
+
+    /// <summary>
+    /// Change in <see cref="BrandMentionRate"/> versus the previous completed
+    /// scan for the same tracker (current - previous). Positive = visibility
+    /// rising, negative = decay. Range [-1.0, +1.0]. Skipped (no row) when no
+    /// previous completed scan exists. Always at Overall scope only — comparing
+    /// per-platform/lens slices across scans is unreliable because the platform
+    /// or lens mix can shift between scans.
+    /// </summary>
+    public const string BrandMentionRateMomentum = "BrandMentionRateMomentum";
+
+    /// <summary>
+    /// Change in <see cref="BrandShareOfVoice"/> versus the previous completed
+    /// scan (current - previous). Positive = gaining ground vs competitors,
+    /// negative = losing share. Range [-1.0, +1.0]. Overall scope only; same
+    /// skip-on-no-previous rule as <see cref="BrandMentionRateMomentum"/>.
+    /// </summary>
+    public const string BrandShareOfVoiceMomentum = "BrandShareOfVoiceMomentum";
+
+    /// <summary>
+    /// Change in <see cref="BrandAbsenceRate"/> versus the previous completed
+    /// scan (current - previous). UNLIKE the other momentum metrics, lower is
+    /// better here — a positive delta means the brand is now absent from more
+    /// answers. FE should style direction inverted (red on +, green on -).
+    /// </summary>
+    public const string BrandAbsenceRateMomentum = "BrandAbsenceRateMomentum";
+
     // -- Per-competitor metrics (Competitor scope only — scope_id = competitor.id) --
 
     /// <summary>Mentions targeting this tracked competitor.</summary>
