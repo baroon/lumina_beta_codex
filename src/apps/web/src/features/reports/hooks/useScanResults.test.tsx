@@ -47,6 +47,7 @@ const EMPTY_RESULTS: ScanResultsDto = {
     brandFirstMentionRate: null,
     brandRecommendationScore: null,
     brandRecommendationShare: null,
+    brandAbsenceRate: null,
     averageBrandRank: null,
     competitorMentionCount: 0,
     productMentionCount: 0,

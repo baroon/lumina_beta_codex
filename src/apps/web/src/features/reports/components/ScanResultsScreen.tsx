@@ -185,6 +185,7 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           label={m.brandRecommendationShare}
           value={formatRate(metrics.brandRecommendationShare)}
         />
+        <MetricTile label={m.brandAbsenceRate} value={formatRate(metrics.brandAbsenceRate)} />
         <MetricTile label={m.averageBrandRank} value={formatRank(metrics.averageBrandRank)} />
         <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
         <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />

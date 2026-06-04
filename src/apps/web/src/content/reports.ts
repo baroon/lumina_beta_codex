@@ -40,6 +40,7 @@ export const REPORTS_COPY = {
       brandFirstMentionRate: "Lead share",
       brandRecommendationScore: "Recommendation score",
       brandRecommendationShare: "Recommendation share",
+      brandAbsenceRate: "Absence rate",
       averageBrandRank: "Average brand rank",
       competitorMentionCount: "Competitor mentions",
       productMentionCount: "Product mentions",

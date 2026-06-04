@@ -90,6 +90,17 @@ public static class MetricNames
     /// </summary>
     public const string BrandRecommendationShare = "BrandRecommendationShare";
 
+    /// <summary>
+    /// Fraction of answers in scope where the brand is entirely absent —
+    /// not mentioned in the answer text AND no owned citation appears in
+    /// the answer. Stricter than <c>1 - BrandMentionRate</c> because it
+    /// also catches "brand's site was cited but the brand wasn't named"
+    /// (still a visibility signal). Range [0, 1]. Skipped (no row) when
+    /// the scope has no answers — same denominator-zero pattern as the
+    /// existing rate metrics.
+    /// </summary>
+    public const string BrandAbsenceRate = "BrandAbsenceRate";
+
     // -- Per-competitor metrics (Competitor scope only — scope_id = competitor.id) --
 
     /// <summary>Mentions targeting this tracked competitor.</summary>

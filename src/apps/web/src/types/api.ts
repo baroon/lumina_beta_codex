@@ -337,6 +337,8 @@ export interface CoreMetricsDto {
   brandRecommendationScore: number | null;
   /** Brand's share of all recommendations in the scan. Null when nobody was recommended. */
   brandRecommendationShare: number | null;
+  /** Fraction of answers where the brand is entirely absent (no mention, no owned citation). Null when no answers in scope. */
+  brandAbsenceRate: number | null;
   competitorMentionCount: number;
   productMentionCount: number;
   citationCount: number;

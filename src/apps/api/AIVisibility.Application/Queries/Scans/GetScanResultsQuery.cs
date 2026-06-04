@@ -75,6 +75,13 @@ public sealed record CoreMetricsDto(
     /// recommended in scope.
     /// </summary>
     double? BrandRecommendationShare,
+    /// <summary>
+    /// Fraction of answers where the brand was entirely absent — not
+    /// mentioned in body AND not cited as an owned source. Stricter than
+    /// (1 - BrandMentionRate) and a better "we're invisible" KPI. Null
+    /// when the scope has no answers.
+    /// </summary>
+    double? BrandAbsenceRate,
     // Mention counts.
     int CompetitorMentionCount,
     int ProductMentionCount,

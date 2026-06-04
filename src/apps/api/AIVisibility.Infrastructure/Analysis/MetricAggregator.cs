@@ -318,6 +318,18 @@ public class MetricAggregator
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.BrandRecommendationRate,
             (double)brandRecommended / total, now);
 
+        // BrandAbsenceRate — stricter than (1 - BrandMentionRate) because we
+        // also exclude answers where the brand's site appeared as a citation
+        // (still a visibility signal even if the brand isn't named in body).
+        var ownedAnswerIds = citations
+            .Where(c => citationLookup.TryGetValue(c.Id, out var v) && v.SourceType == SourceType.Owned)
+            .Select(c => c.AIAnswerId)
+            .ToHashSet();
+        var absent = contexts.Count(c =>
+            !c.Signal.BrandMentioned && !ownedAnswerIds.Contains(c.AIAnswerId));
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.BrandAbsenceRate,
+            (double)absent / total, now);
+
         var ranked = contexts.Where(c => c.Signal.BrandRank.HasValue).ToList();
         if (ranked.Count > 0)
         {
