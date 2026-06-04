@@ -21,15 +21,18 @@ public class AnswerSignalWriter : IAnswerSignalWriter
 {
     private readonly IAppDbContext _db;
     private readonly ISourceClassifier _classifier;
+    private readonly ISourceAuthorityClassifier _authorityClassifier;
     private readonly ILogger<AnswerSignalWriter> _logger;
 
     public AnswerSignalWriter(
         IAppDbContext db,
         ISourceClassifier classifier,
+        ISourceAuthorityClassifier authorityClassifier,
         ILogger<AnswerSignalWriter> logger)
     {
         _db = db;
         _classifier = classifier;
+        _authorityClassifier = authorityClassifier;
         _logger = logger;
     }
 
@@ -113,6 +116,9 @@ public class AnswerSignalWriter : IAnswerSignalWriter
                 SourceName = sample.SourceName,
                 Domain = sample.NormalizedDomain,
                 NormalizedDomain = sample.NormalizedDomain,
+                // Phase 4 item 16: resolve curated authority at write time so
+                // downstream aggregations can read it directly off the Source.
+                AuthorityScore = _authorityClassifier.Score(sample.NormalizedDomain),
                 CreatedAt = now,
             };
             _db.Sources.Add(newSource);

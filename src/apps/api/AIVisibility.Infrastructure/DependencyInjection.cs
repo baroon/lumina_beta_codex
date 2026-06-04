@@ -95,6 +95,9 @@ public static class DependencyInjection
         services.AddScoped<SignalExtractor>();
         services.AddScoped<MetricAggregator>();
         services.AddScoped<ISourceClassifier, LlmSourceClassifier>();
+        // Authority classifier is stateless; singleton avoids re-allocating
+        // the curated dictionary on every scoped resolve.
+        services.AddSingleton<ISourceAuthorityClassifier, CuratedSourceAuthorityClassifier>();
         services.AddScoped<IAnswerSignalWriter, AnswerSignalWriter>();
         services.AddScoped<ISignalExtractionContextFactory, SignalExtractionContextFactory>();
         services.AddScoped<IMetricAggregationJob, MetricAggregationJob>();

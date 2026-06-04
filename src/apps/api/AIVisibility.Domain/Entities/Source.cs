@@ -25,6 +25,25 @@ public class Source
     /// <summary>Canonical domain (lowercase, "www." stripped) used for dedup + classification.</summary>
     public string? NormalizedDomain { get; set; }
 
+    /// <summary>
+    /// Curated authority score on a 0-100 scale (Phase 4 measurement-model
+    /// expansion, item 16). Null = no opinion (domain not on the curated
+    /// list). Major newsroom + reference domains land 70-100; tier-2
+    /// industry publications 40-69; user-generated content 10-39. The
+    /// score lets aggregations weight citations beyond the existing
+    /// Owned/Competitor/ThirdParty buckets.
+    /// </summary>
+    public double? AuthorityScore { get; set; }
+
+    /// <summary>
+    /// When the cited content was published, if extractable. Currently null
+    /// across the board — the schema is in place for a future enrichment
+    /// pass that scrapes / extracts publish dates. "6-month-old source vs
+    /// 6-year-old source" is the recency dimension we want once the
+    /// pipeline can populate it.
+    /// </summary>
+    public DateTime? PublishedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public ICollection<SourceUrl> Urls { get; set; } = new List<SourceUrl>();

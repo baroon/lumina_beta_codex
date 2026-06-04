@@ -59,6 +59,8 @@ const EMPTY_RESULTS: ScanResultsDto = {
     brandWithCaveatsCount: 0,
     brandTopicRecommendedCount: 0,
     brandTopicNotRecommendedCount: 0,
+    highAuthorityCitationCount: 0,
+    lowAuthorityCitationCount: 0,
     brandMentionRateMomentum: null,
     brandShareOfVoiceMomentum: null,
     brandAbsenceRateMomentum: null,

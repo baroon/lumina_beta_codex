@@ -361,6 +361,10 @@ export interface CoreMetricsDto {
   brandTopicRecommendedCount: number;
   /** Per-topic rows where the brand is explicitly NOT recommended. */
   brandTopicNotRecommendedCount: number;
+  /** Citations from curated high-authority domains (score >= 70). */
+  highAuthorityCitationCount: number;
+  /** Citations from curated low-authority domains (score < 70). Null-authority sources excluded. */
+  lowAuthorityCitationCount: number;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

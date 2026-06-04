@@ -691,6 +691,23 @@ public class MetricAggregator
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.UnknownCitationCount,
             unknownCount, now);
 
+        // Phase 4 item 16: high/low authority citation counts. Null authority
+        // = "no opinion" and excluded from both buckets — only curated entries
+        // contribute. Threshold 70 matches CuratedSourceAuthorityClassifier's
+        // tier boundary (tier 2 national pubs and up).
+        var highAuthority = 0;
+        var lowAuthority = 0;
+        foreach (var c in citations)
+        {
+            if (!citationLookup.TryGetValue(c.Id, out var v) || v.AuthorityScore is null) continue;
+            if (v.AuthorityScore >= 70) highAuthority++;
+            else lowAuthority++;
+        }
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.HighAuthorityCitationCount,
+            highAuthority, now);
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.LowAuthorityCitationCount,
+            lowAuthority, now);
+
         // Slice-(c)-followup aggregates emit at every non-Competitor scope.
         if (scope != ScanMetricScope.Competitor)
         {
@@ -1032,7 +1049,7 @@ public class MetricAggregator
     /// inline citation.classification / citation.normalized_source_name
     /// columns with this lookup.
     /// </summary>
-    private sealed record CitationView(string SourceName, SourceType SourceType);
+    private sealed record CitationView(string SourceName, SourceType SourceType, double? AuthorityScore);
 
     private async Task<IReadOnlyDictionary<Guid, CitationView>> BuildCitationLookupAsync(
         IReadOnlyList<Citation> citations, Guid brandId, CancellationToken ct)
@@ -1042,7 +1059,7 @@ public class MetricAggregator
         var sourceIds = citations.Select(c => c.SourceId).Distinct().ToList();
         var sources = await _db.Sources.AsNoTracking()
             .Where(s => sourceIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id, s => s.SourceName, ct);
+            .ToDictionaryAsync(s => s.Id, s => new { s.SourceName, s.AuthorityScore }, ct);
         var classifications = await _db.BrandSourceClassifications.AsNoTracking()
             .Where(c => c.BrandId == brandId && sourceIds.Contains(c.SourceId))
             .ToDictionaryAsync(c => c.SourceId, c => c.SourceType, ct);
@@ -1050,9 +1067,11 @@ public class MetricAggregator
         var lookup = new Dictionary<Guid, CitationView>(citations.Count);
         foreach (var c in citations)
         {
-            var name = sources.TryGetValue(c.SourceId, out var n) ? n : "unknown";
+            var src = sources.TryGetValue(c.SourceId, out var s) ? s : null;
+            var name = src?.SourceName ?? "unknown";
+            var authority = src?.AuthorityScore;
             var type = classifications.TryGetValue(c.SourceId, out var st) ? st : SourceType.Unknown;
-            lookup[c.Id] = new CitationView(name, type);
+            lookup[c.Id] = new CitationView(name, type, authority);
         }
         return lookup;
     }

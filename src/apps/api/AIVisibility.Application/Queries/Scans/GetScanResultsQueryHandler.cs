@@ -111,6 +111,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             BrandWithCaveatsCount: ReadIntOrZero(overall, MetricNames.BrandWithCaveatsCount),
             BrandTopicRecommendedCount: ReadIntOrZero(overall, MetricNames.BrandTopicRecommendedCount),
             BrandTopicNotRecommendedCount: ReadIntOrZero(overall, MetricNames.BrandTopicNotRecommendedCount),
+            HighAuthorityCitationCount: ReadIntOrZero(overall, MetricNames.HighAuthorityCitationCount),
+            LowAuthorityCitationCount: ReadIntOrZero(overall, MetricNames.LowAuthorityCitationCount),
             BrandMentionRateMomentum: ReadDoubleOrNull(overall, MetricNames.BrandMentionRateMomentum),
             BrandShareOfVoiceMomentum: ReadDoubleOrNull(overall, MetricNames.BrandShareOfVoiceMomentum),
             BrandAbsenceRateMomentum: ReadDoubleOrNull(overall, MetricNames.BrandAbsenceRateMomentum),

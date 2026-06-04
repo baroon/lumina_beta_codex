@@ -16,6 +16,8 @@ public class SourceConfiguration : IEntityTypeConfiguration<Source>
             .HasMaxLength(500).IsRequired();
         builder.Property(s => s.Domain).HasColumnName("domain").HasMaxLength(500);
         builder.Property(s => s.NormalizedDomain).HasColumnName("normalized_domain").HasMaxLength(500);
+        builder.Property(s => s.AuthorityScore).HasColumnName("authority_score");
+        builder.Property(s => s.PublishedAt).HasColumnName("published_at");
         builder.Property(s => s.CreatedAt).HasColumnName("created_at");
 
         // Dedup index: a Source is unique by (normalized_domain, source_name)

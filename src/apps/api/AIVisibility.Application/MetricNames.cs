@@ -193,6 +193,23 @@ public static class MetricNames
     /// </summary>
     public const string BrandTopicNotRecommendedCount = "BrandTopicNotRecommendedCount";
 
+    /// <summary>
+    /// Count of citations in scope whose source has a curated authority score
+    /// of 70 or higher (Phase 4 measurement-model expansion, item 16).
+    /// "What share of our citations come from high-authority sources?" is a
+    /// quality signal independent of the existing Owned/Competitor/ThirdParty
+    /// classification. Always emitted at non-Competitor scopes.
+    /// </summary>
+    public const string HighAuthorityCitationCount = "HighAuthorityCitationCount";
+
+    /// <summary>
+    /// Count of citations in scope whose source has a curated authority score
+    /// strictly below 70 — the "tier 2 / UGC / unknown-authority" pool.
+    /// Sources with no curated entry (null authority score) do NOT count
+    /// here; null signals "no opinion", distinct from "low authority".
+    /// </summary>
+    public const string LowAuthorityCitationCount = "LowAuthorityCitationCount";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

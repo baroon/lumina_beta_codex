@@ -144,6 +144,17 @@ public sealed record CoreMetricsDto(
     /// </summary>
     int BrandTopicNotRecommendedCount,
     /// <summary>
+    /// Citations sourced from curated high-authority domains (score ≥ 70).
+    /// Phase 4 measurement-model expansion (item 16).
+    /// </summary>
+    int HighAuthorityCitationCount,
+    /// <summary>
+    /// Citations sourced from curated low-authority domains (score &lt; 70).
+    /// Excludes sources with null authority — null is no opinion, distinct
+    /// from low.
+    /// </summary>
+    int LowAuthorityCitationCount,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).
