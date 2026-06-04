@@ -124,6 +124,16 @@ public sealed record CoreMetricsDto(
     /// </summary>
     int BrandLosingComparisonCount,
     /// <summary>
+    /// Structured "Recommended for X" context entries attached to brand
+    /// mentions in scope (Phase 4 item 2).
+    /// </summary>
+    int BrandRecommendedForCount,
+    /// <summary>
+    /// "With caveats" context entries — how many qualifying limitations
+    /// the AI attached to brand mentions.
+    /// </summary>
+    int BrandWithCaveatsCount,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).

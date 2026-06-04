@@ -46,6 +46,7 @@ export const REPORTS_COPY = {
       averageBrandRecommendationPosition: "Avg rec position",
       brandRiskFlagCount: "Risk flags",
       brandComparisonRecord: "Comparisons (W/L)",
+      brandRecommendationContext: "Rec. context (For/Caveats)",
       averageBrandRank: "Average brand rank",
       competitorMentionCount: "Competitor mentions",
       productMentionCount: "Product mentions",

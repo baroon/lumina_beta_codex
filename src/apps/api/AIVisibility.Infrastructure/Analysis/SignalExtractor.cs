@@ -95,7 +95,9 @@ public class SignalExtractor
                   "on_aspect": string,       // canonical snake_case aspect: "price", "speed", "support_quality", "ease_of_use", etc.
                   "winner": "this|other"     // who the answer says wins THIS aspect — this entity or the other
                 }
-              ]
+              ],
+              "recommended_for": [string],   // scenarios / audiences / use-cases the answer endorses THIS entity FOR. See recommendation-context rules. May be [].
+              "with_caveats": [string]       // limitations / caveats the answer attaches to THIS entity. See recommendation-context rules. May be [].
             }
           ],
           "citations": [
@@ -203,6 +205,30 @@ public class SignalExtractor
             Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
             Unverifiable -- speculative or future-tense ("will likely IPO next year")
         - When the answer asserts nothing factual about an entity, return [].
+
+        Recommendation-context rules (mention.recommended_for, mention.with_caveats):
+        - recommended_for captures scenarios / audiences / use-cases the
+          answer endorses THIS entity FOR. Each entry is a short noun phrase:
+            "investigative journalism"
+            "small teams"
+            "enterprise security"
+            "developers who value performance"
+        - with_caveats captures limitations / contexts where the answer is
+          NOT endorsing the entity:
+            "not for breaking news"
+            "expensive at scale"
+            "limited mobile support"
+            "steeper learning curve"
+        - Each list is independent of sentiment and recommendation strength.
+          A NotRecommended entity can still have a recommended_for (rare —
+          the answer might say "only useful for niche X"). A Strong entity
+          can still have caveats.
+        - 3-15 words per entry; keep it specific. Drop generic entries like
+          "general use" or "everyone".
+        - Normalize lightly: lowercase first word unless proper noun,
+          collapse whitespace. The extractor downstream lowercases for
+          grouping.
+        - Empty lists when the answer is purely overall ("X is great").
 
         Comparison rules (mention.comparisons):
         - One row per (this entity, vs_entity, on_aspect) tuple where the
@@ -365,10 +391,10 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates, attributes, claims, riskFlags, comparisons) = BuildMentions(root, answer.Id, answer.AnswerText, context);
+            var (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
             var recommendations = BuildAnswerRecommendations(root, answer.Id);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags, comparisons);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags, comparisons, recommendationContexts);
         }
         catch (Exception ex)
         {
@@ -489,7 +515,7 @@ public class SignalExtractor
         };
     }
 
-    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags, List<MentionComparison> Comparisons) BuildMentions(
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags, List<MentionComparison> Comparisons, List<MentionRecommendationContext> RecommendationContexts) BuildMentions(
         JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
@@ -498,9 +524,10 @@ public class SignalExtractor
         var claims = new List<FactualClaim>();
         var riskFlags = new List<MentionRiskFlag>();
         var comparisons = new List<MentionComparison>();
+        var recommendationContexts = new List<MentionRecommendationContext>();
         if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
-            return (mentions, candidates, attributes, claims, riskFlags, comparisons);
+            return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts);
         }
 
         var now = DateTime.UtcNow;
@@ -550,6 +577,7 @@ public class SignalExtractor
                 claims.AddRange(BuildFactualClaims(m, mention.Id, now));
                 riskFlags.AddRange(BuildRiskFlags(m, mention.Id, now));
                 comparisons.AddRange(BuildComparisons(m, mention.Id, normalized, now));
+                recommendationContexts.AddRange(BuildRecommendationContexts(m, mention.Id, now));
             }
             else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
             {
@@ -569,7 +597,7 @@ public class SignalExtractor
                 });
             }
         }
-        return (mentions, candidates, attributes, claims, riskFlags, comparisons);
+        return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts);
     }
 
     private static IEnumerable<DraftCitation> BuildDraftCitations(
@@ -859,6 +887,45 @@ public class SignalExtractor
                 Severity = ParseEnum<RiskSeverity>(r, "severity", RiskSeverity.Low),
                 EvidenceSnippet = Truncate(
                     TryGetNullableString(r, "evidence_snippet") ?? string.Empty, 500),
+                CreatedAt = now,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Reads recommended_for and with_caveats arrays from a mention's JSON
+    /// element and turns each non-empty entry into a draft
+    /// <see cref="MentionRecommendationContext"/>. Values lowercased +
+    /// whitespace-collapsed for grouping. Empty / whitespace entries dropped.
+    /// </summary>
+    private static IEnumerable<MentionRecommendationContext> BuildRecommendationContexts(
+        JsonElement mention, Guid mentionId, DateTime now)
+    {
+        foreach (var row in ReadContextArray(mention, "recommended_for", RecommendationContextType.RecommendedFor, mentionId, now))
+            yield return row;
+        foreach (var row in ReadContextArray(mention, "with_caveats", RecommendationContextType.WithCaveats, mentionId, now))
+            yield return row;
+    }
+
+    private static IEnumerable<MentionRecommendationContext> ReadContextArray(
+        JsonElement mention, string property, RecommendationContextType type, Guid mentionId, DateTime now)
+    {
+        if (!mention.TryGetProperty(property, out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var entry in arr.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.String) continue;
+            var raw = entry.GetString();
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            yield return new MentionRecommendationContext
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                ContextType = type,
+                ContextValue = Truncate(Normalize(raw), 300),
                 CreatedAt = now,
             };
         }

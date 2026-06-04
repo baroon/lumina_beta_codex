@@ -96,6 +96,14 @@ public class MetricAggregator
                 .Where(c => mentionIds.Contains(c.MentionId))
                 .ToListAsync(cancellationToken);
 
+        // Phase 4 item 2: structured recommendation context rows attached to
+        // mentions. Brand-scope rollup counts recommended-for vs caveat rows.
+        var allRecContexts = mentionIds.Count == 0
+            ? new List<MentionRecommendationContext>()
+            : await _db.MentionRecommendationContexts.AsNoTracking()
+                .Where(c => mentionIds.Contains(c.MentionId))
+                .ToListAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
@@ -293,6 +301,47 @@ public class MetricAggregator
                 MetricNames.BrandWinningComparisonCount, Wins(scoped), now));
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
                 MetricNames.BrandLosingComparisonCount, Losses(scoped), now));
+        }
+
+        // Phase 4 item 2: per-scope brand recommendation context counts.
+        var brandRecContexts = allRecContexts
+            .Where(c => brandMentionIds.Contains(c.MentionId))
+            .ToList();
+        var brandRecContextByAnswer = brandRecContexts
+            .Join(mentions, c => c.MentionId, m => m.Id, (c, m) => (Context: c, AnswerId: m.AIAnswerId))
+            .ToLookup(x => x.AnswerId, x => x.Context);
+        int RecFor(IEnumerable<MentionRecommendationContext> set) =>
+            set.Count(c => c.ContextType == RecommendationContextType.RecommendedFor);
+        int WithCaveats(IEnumerable<MentionRecommendationContext> set) =>
+            set.Count(c => c.ContextType == RecommendationContextType.WithCaveats);
+
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandRecommendedForCount, RecFor(brandRecContexts), now));
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandWithCaveatsCount, WithCaveats(brandRecContexts), now));
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            var scoped = grp.SelectMany(c => brandRecContextByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandRecommendedForCount, RecFor(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandWithCaveatsCount, WithCaveats(scoped), now));
+        }
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            var scoped = grp.SelectMany(c => brandRecContextByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandRecommendedForCount, RecFor(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandWithCaveatsCount, WithCaveats(scoped), now));
+        }
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            var scoped = grp.SelectMany(x => brandRecContextByAnswer[x.Context.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandRecommendedForCount, RecFor(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandWithCaveatsCount, WithCaveats(scoped), now));
         }
 
         // Phase 4 item 6: per-scope brand recommendation metrics. Same loop

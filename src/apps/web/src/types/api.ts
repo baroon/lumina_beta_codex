@@ -353,6 +353,10 @@ export interface CoreMetricsDto {
   brandWinningComparisonCount: number;
   /** Head-to-head comparisons the brand loses on the named aspect. */
   brandLosingComparisonCount: number;
+  /** Recommended for X scenario count attached to brand mentions. */
+  brandRecommendedForCount: number;
+  /** With caveats count attached to brand mentions. */
+  brandWithCaveatsCount: number;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

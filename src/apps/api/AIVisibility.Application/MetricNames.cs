@@ -161,6 +161,21 @@ public static class MetricNames
     /// </summary>
     public const string BrandLosingComparisonCount = "BrandLosingComparisonCount";
 
+    /// <summary>
+    /// Count of distinct "Recommended for X" context entries attached to
+    /// brand mentions in scope (Phase 4 measurement-model expansion, item 2).
+    /// Higher = AI has more specific scenarios where it endorses the brand.
+    /// Always emitted at non-Competitor scopes.
+    /// </summary>
+    public const string BrandRecommendedForCount = "BrandRecommendedForCount";
+
+    /// <summary>
+    /// Count of distinct "With caveats" context entries attached to brand
+    /// mentions in scope. Higher = AI is qualifying its endorsement.
+    /// Always emitted at non-Competitor scopes.
+    /// </summary>
+    public const string BrandWithCaveatsCount = "BrandWithCaveatsCount";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

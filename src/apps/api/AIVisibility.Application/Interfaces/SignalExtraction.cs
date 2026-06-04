@@ -57,7 +57,13 @@ public sealed record SignalExtractionResult(
     /// entity on this aspect — who wins" so the aggregator can count
     /// directed wins/losses per dimension.
     /// </summary>
-    IReadOnlyList<MentionComparison> Comparisons);
+    IReadOnlyList<MentionComparison> Comparisons,
+    /// <summary>
+    /// Structured recommendation context (Phase 4 measurement-model
+    /// expansion, item #2). One row per "Recommended for X" or
+    /// "With caveats about Y" entry the answer attached to this entity.
+    /// </summary>
+    IReadOnlyList<MentionRecommendationContext> RecommendationContexts);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's
