@@ -96,6 +96,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             BrandRecommendationRate: ReadDoubleOrNull(overall, "BrandRecommendationRate"),
             BrandShareOfVoice: ReadDoubleOrNull(overall, "BrandShareOfVoice"),
             AverageBrandRank: ReadDoubleOrNull(overall, "AverageBrandRank"),
+            BrandFirstMentionRate: ReadDoubleOrNull(overall, MetricNames.BrandFirstMentionRate),
+            BrandRecommendationScore: ReadDoubleOrNull(overall, MetricNames.BrandRecommendationScore),
             CompetitorMentionCount: ReadIntOrZero(overall, "CompetitorMentionCount"),
             ProductMentionCount: ReadIntOrZero(overall, "ProductMentionCount"),
             CitationCount: ReadIntOrZero(overall, "CitationCount"),

@@ -56,6 +56,18 @@ public sealed record CoreMetricsDto(
     double? BrandRecommendationRate,
     double? BrandShareOfVoice,
     double? AverageBrandRank,
+    /// <summary>
+    /// Lead share — fraction of answers (with ≥1 mention) where the brand
+    /// was the first-named entity by position. Phase 4 measurement-model
+    /// expansion. Null when no answers had any mentions in scope.
+    /// </summary>
+    double? BrandFirstMentionRate,
+    /// <summary>
+    /// Mean recommendation score (Phase 4 measurement-model expansion),
+    /// range [-1.0, +1.0]. Null when no answers in scope had the brand
+    /// mentioned — same denominator-zero pattern as BrandShareOfVoice.
+    /// </summary>
+    double? BrandRecommendationScore,
     // Mention counts.
     int CompetitorMentionCount,
     int ProductMentionCount,

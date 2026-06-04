@@ -173,6 +173,14 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           value={formatRate(metrics.brandRecommendationRate)}
         />
         <MetricTile label={m.brandShareOfVoice} value={formatRate(metrics.brandShareOfVoice)} />
+        <MetricTile
+          label={m.brandFirstMentionRate}
+          value={formatRate(metrics.brandFirstMentionRate)}
+        />
+        <MetricTile
+          label={m.brandRecommendationScore}
+          value={formatSignedScore(metrics.brandRecommendationScore)}
+        />
         <MetricTile label={m.averageBrandRank} value={formatRank(metrics.averageBrandRank)} />
         <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
         <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />
@@ -486,6 +494,14 @@ function formatRate(value: number | null): string {
 function formatRank(value: number | null): string {
   if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
   return value.toFixed(1);
+}
+
+// Recommendation score is signed [-1, +1]; show explicit sign + 2 decimals so
+// −0.10 and +0.10 read distinctly.
+function formatSignedScore(value: number | null): string {
+  if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
+  const sign = value >= 0 ? "+" : "−";
+  return `${sign}${Math.abs(value).toFixed(2)}`;
 }
 
 function formatOwnedShare(ownedCount: number, total: number): string {

@@ -29,6 +29,15 @@ public class Mention
 
     public bool IsRecommended { get; set; }
     public RecommendationStrength RecommendationStrength { get; set; } = RecommendationStrength.Unknown;
+
+    /// <summary>
+    /// Numeric per-mention recommendation strength, range [-1.0, +1.0].
+    /// Mirrors <see cref="AnswerSignal.BrandRecommendationScore"/> at the
+    /// per-entity grain — feeds future per-competitor / per-product
+    /// recommendation rollups.
+    /// </summary>
+    public double RecommendationScore { get; set; }
+
     public Sentiment Sentiment { get; set; } = Sentiment.Unknown;
 
     /// <summary>

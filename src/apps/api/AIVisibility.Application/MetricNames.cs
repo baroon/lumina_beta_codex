@@ -59,6 +59,26 @@ public static class MetricNames
     /// </summary>
     public const string BrandSentimentScore = "BrandSentimentScore";
 
+    /// <summary>
+    /// Fraction of answers (with ≥1 mention) where the brand was the
+    /// first-named entity by <c>Mention.FirstMentionPosition</c>. Strong
+    /// order-of-mention preference signal independent of explicit
+    /// ranking — "Apple, Google, Microsoft are top picks" puts Apple as
+    /// the lead-mentioned entity without any rank-1 claim. Range [0, 1].
+    /// Skipped (no row) when no scoped answers had any mentions —
+    /// same denominator-zero pattern as <see cref="BrandShareOfVoice"/>.
+    /// </summary>
+    public const string BrandFirstMentionRate = "BrandFirstMentionRate";
+
+    /// <summary>
+    /// Mean of <c>AnswerSignal.BrandRecommendationScore</c> across signals
+    /// where the brand was mentioned. Range [-1.0, +1.0] — finer-grained
+    /// companion to <see cref="BrandRecommendationStrength"/> distribution.
+    /// Omitted (no row) when no signals in scope had the brand mentioned —
+    /// same denominator-zero pattern as <see cref="BrandSentimentScore"/>.
+    /// </summary>
+    public const string BrandRecommendationScore = "BrandRecommendationScore";
+
     // -- Per-competitor metrics (Competitor scope only — scope_id = competitor.id) --
 
     /// <summary>Mentions targeting this tracked competitor.</summary>

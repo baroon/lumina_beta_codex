@@ -43,6 +43,7 @@ public class SignalExtractor
             "brand_sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
             "brand_sentiment_score": number, // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
             "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
+            "brand_recommendation_score": number, // -1.0..+1.0; finer-grained than the strength enum. See recommendation-score rules below.
             "top_recommended_entity": string|null,
             "answer_has_ranking": bool,
             "answer_has_comparison": bool,
@@ -55,6 +56,7 @@ public class SignalExtractor
               "name": string,                // exact mention text from the answer
               "is_recommended": bool,
               "recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
+              "recommendation_score": number, // -1.0..+1.0; finer-grained than the strength enum. See recommendation-score rules below.
               "sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
               "sentiment_score": number,     // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
               "evidence_snippet": string,    // ≤500 chars; quoted sentence(s) from the answer
@@ -173,6 +175,18 @@ public class SignalExtractor
           those are already captured by recommendation strength + sentiment.
         - Return [] when the answer doesn't ascribe specific qualities to the entity.
 
+        Recommendation-score rules (brand_recommendation_score, mention.recommendation_score):
+        - Score is a fine-grained reading of the recommendation_strength enum on
+          a continuous -1.0..+1.0 axis.
+        - Positive scores mean recommended; negative scores mean recommended-against.
+        - Magnitude reflects strength:
+            +0.9  Strong       ("the best", "top pick", unreserved endorsement)
+            +0.5  Moderate     ("a solid choice with some caveats")
+            +0.2  Weak         ("mentioned as an option among many")
+             0.0  Unknown      (not discussed, or no recommendation signal)
+            -0.7  NotRecommended ("avoid", "not recommended", "fails at X")
+        - Score MUST be in [-1.0, +1.0]. Out-of-range values will be clamped.
+
         Sentiment-score rules (brand_sentiment_score, mention.sentiment_score):
         - Score is a fine-grained reading of the enum on a continuous -1.0..+1.0 axis.
         - Sign matches the enum: Positive enums score >0, Negative enums score <0,
@@ -196,6 +210,7 @@ public class SignalExtractor
             brand_sentiment = "Unknown"
             brand_sentiment_score = 0
             brand_recommendation_strength = "Unknown"
+            brand_recommendation_score = 0
             top_recommended_entity = null (unless the answer explicitly names another top entity)
           Do NOT emit "Negative" or "NotRecommended" just because the brand isn't mentioned —
           those values mean the brand was actively discussed in a negative or against-it way.
@@ -323,6 +338,9 @@ public class SignalExtractor
         var brandStrength = brandMentioned
             ? ParseEnum<RecommendationStrength>(s, "brand_recommendation_strength", RecommendationStrength.Unknown)
             : RecommendationStrength.Unknown;
+        var brandRecommendationScore = brandMentioned
+            ? ReadRecommendationScore(s, "brand_recommendation_score", brandStrength)
+            : 0.0;
         var brandRank = brandMentioned ? TryGetNullableInt(s, "brand_rank") : null;
         var brandRecommended = brandMentioned && (TryGetBoolean(s, "brand_recommended") ?? false);
 
@@ -336,6 +354,7 @@ public class SignalExtractor
             BrandSentiment = brandSentiment,
             BrandSentimentScore = brandSentimentScore,
             BrandRecommendationStrength = brandStrength,
+            BrandRecommendationScore = brandRecommendationScore,
             TopRecommendedEntity = TryGetNullableString(s, "top_recommended_entity"),
             AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
             AnswerHasComparison = s.GetProperty("answer_has_comparison").GetBoolean(),
@@ -387,6 +406,10 @@ public class SignalExtractor
                     entityType, resolved.Value, normalized, answerText, context);
                 var sentiment = ParseEnum<Sentiment>(m, "sentiment", Sentiment.Unknown);
                 var sentimentScore = ReadSentimentScore(m, "sentiment_score", sentiment);
+                var recommendationStrength = ParseEnum<RecommendationStrength>(
+                    m, "recommendation_strength", RecommendationStrength.Unknown);
+                var recommendationScore = ReadRecommendationScore(
+                    m, "recommendation_score", recommendationStrength);
                 var mention = new Mention
                 {
                     Id = Guid.NewGuid(),
@@ -395,8 +418,8 @@ public class SignalExtractor
                     EntityId = resolved.Value,
                     NormalizedName = normalized,
                     IsRecommended = TryGetBoolean(m, "is_recommended") ?? false,
-                    RecommendationStrength = ParseEnum<RecommendationStrength>(
-                        m, "recommendation_strength", RecommendationStrength.Unknown),
+                    RecommendationStrength = recommendationStrength,
+                    RecommendationScore = recommendationScore,
                     Sentiment = sentiment,
                     SentimentScore = sentimentScore,
                     ConfidenceScore = TryGetDouble(m, "confidence_score") ?? 0.5,
@@ -720,6 +743,32 @@ public class SignalExtractor
                 CreatedAt = now,
             };
         }
+    }
+
+    /// <summary>
+    /// Reads the numeric recommendation_score (or brand_recommendation_score)
+    /// from the LLM's JSON output, clamped to [-1.0, +1.0]. When the LLM
+    /// omits the field, derives a score from the strength enum so callers
+    /// always get a usable number — Strong→+0.9, Moderate→+0.5, Weak→+0.2,
+    /// NotRecommended→-0.7, Unknown→0.0. Measurement-model expansion item
+    /// #5: numeric recommendation strength alongside the legacy enum.
+    /// </summary>
+    private static double ReadRecommendationScore(
+        JsonElement parent, string name, RecommendationStrength fallbackEnum)
+    {
+        var raw = TryGetDouble(parent, name);
+        if (raw is not null)
+        {
+            return Math.Clamp(raw.Value, -1.0, 1.0);
+        }
+        return fallbackEnum switch
+        {
+            RecommendationStrength.Strong => 0.9,
+            RecommendationStrength.Moderate => 0.5,
+            RecommendationStrength.Weak => 0.2,
+            RecommendationStrength.NotRecommended => -0.7,
+            _ => 0.0,
+        };
     }
 
     /// <summary>

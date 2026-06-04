@@ -331,6 +331,10 @@ export interface CoreMetricsDto {
   brandRecommendationRate: number | null;
   brandShareOfVoice: number | null;
   averageBrandRank: number | null;
+  /** Lead share — fraction of answers where the brand was first-named by position. Null when no mentions in scope. */
+  brandFirstMentionRate: number | null;
+  /** Mean recommendation score in [-1, +1]. Null when no answers in scope had the brand mentioned. */
+  brandRecommendationScore: number | null;
   competitorMentionCount: number;
   productMentionCount: number;
   citationCount: number;

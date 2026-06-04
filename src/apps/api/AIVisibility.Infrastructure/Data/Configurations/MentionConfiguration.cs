@@ -31,6 +31,7 @@ public class MentionConfiguration : IEntityTypeConfiguration<Mention>
         builder.Property(m => m.IsRecommended).HasColumnName("is_recommended");
         builder.Property(m => m.RecommendationStrength).HasColumnName("recommendation_strength")
             .HasConversion<string>().HasMaxLength(50);
+        builder.Property(m => m.RecommendationScore).HasColumnName("recommendation_score").HasDefaultValue(0.0);
         builder.Property(m => m.Sentiment).HasColumnName("sentiment")
             .HasConversion<string>().HasMaxLength(50);
         builder.Property(m => m.SentimentScore).HasColumnName("sentiment_score").HasDefaultValue(0.0);

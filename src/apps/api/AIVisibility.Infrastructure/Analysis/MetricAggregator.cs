@@ -362,6 +362,8 @@ public class MetricAggregator
             foreach (var row in BuildShareOfVoice(scanRunId, scope, scopeId, mentions, now)) yield return row;
             foreach (var row in BuildSentimentDistribution(scanRunId, scope, scopeId, contexts, now)) yield return row;
             foreach (var row in BuildSentimentScore(scanRunId, scope, scopeId, contexts, now)) yield return row;
+            foreach (var row in BuildRecommendationScore(scanRunId, scope, scopeId, contexts, now)) yield return row;
+            foreach (var row in BuildLeadShare(scanRunId, scope, scopeId, contexts, mentions, now)) yield return row;
             foreach (var row in BuildTopCitedSources(scanRunId, scope, scopeId, citations, citationLookup, now)) yield return row;
         }
     }
@@ -381,6 +383,42 @@ public class MetricAggregator
     }
 
     /// <summary>
+    /// Lead share: fraction of answers (with ≥1 mention) where the brand
+    /// was the first-named entity by Mention.FirstMentionPosition. Strong
+    /// preference signal independent of explicit ranking — "Apple, Google,
+    /// Microsoft are top picks" puts Apple as the leader without a rank-1
+    /// claim. Skipped (no row) when no answers in scope had any mentions
+    /// (denominator-zero, same pattern as BrandShareOfVoice). Ties on
+    /// `min(first_mention_position)` resolve in the brand's favour by
+    /// virtue of OrderBy → First; in practice ties are rare since the
+    /// extractor normalises positions to char-offsets.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildLeadShare(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<AnswerContext> contexts, List<Mention> mentions, DateTime now)
+    {
+        var scopedAnswerIds = contexts.Select(c => c.AIAnswerId).ToHashSet();
+        var mentionsByAnswer = mentions
+            .Where(m => scopedAnswerIds.Contains(m.AIAnswerId))
+            .GroupBy(m => m.AIAnswerId)
+            .ToList();
+        if (mentionsByAnswer.Count == 0) yield break;
+
+        var leadCount = 0;
+        foreach (var grp in mentionsByAnswer)
+        {
+            var first = grp.OrderBy(m => m.FirstMentionPosition).First();
+            if (first.EntityType == MentionEntityType.Brand)
+            {
+                leadCount++;
+            }
+        }
+        yield return MetricRow(scanRunId, scope, scopeId,
+            MetricNames.BrandFirstMentionRate,
+            (double)leadCount / mentionsByAnswer.Count, now);
+    }
+
+    /// <summary>
     /// Mean BrandSentimentScore across signals where the brand was
     /// mentioned. Skipped when no signals in scope had the brand mentioned
     /// (denominator-zero — reporting treats absent as no-data, parallel to
@@ -395,6 +433,22 @@ public class MetricAggregator
         var avg = mentioned.Average(c => c.Signal.BrandSentimentScore);
         yield return MetricRow(scanRunId, scope, scopeId,
             MetricNames.BrandSentimentScore, avg, now);
+    }
+
+    /// <summary>
+    /// Mean BrandRecommendationScore across signals where the brand was
+    /// mentioned. Same denominator-zero pattern as BuildSentimentScore —
+    /// no row when nobody in scope mentioned the brand.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildRecommendationScore(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<AnswerContext> contexts, DateTime now)
+    {
+        var mentioned = contexts.Where(c => c.Signal.BrandMentioned).ToList();
+        if (mentioned.Count == 0) yield break;
+        var avg = mentioned.Average(c => c.Signal.BrandRecommendationScore);
+        yield return MetricRow(scanRunId, scope, scopeId,
+            MetricNames.BrandRecommendationScore, avg, now);
     }
 
     private static IEnumerable<ScanMetric> BuildSentimentDistribution(

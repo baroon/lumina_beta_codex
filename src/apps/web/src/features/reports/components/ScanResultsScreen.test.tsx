@@ -84,6 +84,8 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
       brandMentionRate: 0.333,
       brandRecommendationRate: 0.1,
       brandShareOfVoice: 0.667,
+      brandFirstMentionRate: 0.5,
+      brandRecommendationScore: 0.45,
       averageBrandRank: null,
       competitorMentionCount: 7,
       productMentionCount: 0,

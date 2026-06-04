@@ -450,20 +450,22 @@ public class AnalysisPipelineTests
         //   +1 BrandMentionCount (always emitted, value=1 here)
         //   +1 BrandFirstMentionPosition (1 brand mention → emitted)
         //   +1 BrandSentimentScore (1 brand-mentioned signal → emitted)
-        // = +9 per non-Competitor scope that has answers; the fixture has 1
-        // Platform group + 1 Lens group + 0 Topic groups so 19 each at
+        //   +1 BrandFirstMentionRate (≥1 answer with any mention → emitted)
+        //   +1 BrandRecommendationScore (1 brand-mentioned signal → emitted)
+        // = +11 per non-Competitor scope that has answers; the fixture has
+        // 1 Platform group + 1 Lens group + 0 Topic groups so 21 each at
         // Platform and Lens.
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
-        // competitor co-mentioned with brand in this fixture), so 20.
+        // competitor co-mentioned with brand in this fixture), so 22.
         //
         // Competitor scope: 3 metrics — MentionCount + RecommendationCount
         // + CoMentionedWithBrandCount (Acme co-mentioned with brand once).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(20);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(19);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(19);
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(22);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(21);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(21);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(3);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(61);
+        metrics.Should().HaveCount(67);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

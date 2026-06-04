@@ -22,6 +22,8 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
             .HasDefaultValue(0.0);
         builder.Property(s => s.BrandRecommendationStrength).HasColumnName("brand_recommendation_strength")
             .HasConversion<string>().HasMaxLength(50);
+        builder.Property(s => s.BrandRecommendationScore).HasColumnName("brand_recommendation_score")
+            .HasDefaultValue(0.0);
         builder.Property(s => s.TopRecommendedEntity).HasColumnName("top_recommended_entity")
             .HasMaxLength(500);
 

@@ -34,6 +34,19 @@ public class AnswerSignal
     public double BrandSentimentScore { get; set; }
 
     public RecommendationStrength BrandRecommendationStrength { get; set; } = RecommendationStrength.Unknown;
+
+    /// <summary>
+    /// Numeric brand recommendation strength for this answer, range
+    /// [-1.0, +1.0]. -1.0 = actively recommended-against, 0.0 = unmentioned
+    /// or neutral, +1.0 = top pick / unreserved endorsement. Populated by
+    /// the extractor LLM alongside <see cref="BrandRecommendationStrength"/>;
+    /// when the LLM omits the score, derived from the enum (Strong→+0.9,
+    /// Moderate→+0.5, Weak→+0.2, NotRecommended→-0.7, Unknown→0). D13
+    /// absence coercion: when <see cref="BrandMentioned"/> is false,
+    /// forced to 0 — parallels the enum-to-Unknown path.
+    /// </summary>
+    public double BrandRecommendationScore { get; set; }
+
     public string? TopRecommendedEntity { get; set; }
 
     // Answer-shape flags from the LLM
