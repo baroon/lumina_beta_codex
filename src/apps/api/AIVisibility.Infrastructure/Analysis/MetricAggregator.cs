@@ -80,6 +80,14 @@ public class MetricAggregator
             .ToListAsync(cancellationToken);
         var brandNameKeys = await ResolveBrandNameKeysAsync(brandId, cancellationToken);
 
+        // Phase 4 item 11: risk flags attached to mentions in this scan. The
+        // brand-scope rollup counts flags attached to brand mentions only.
+        var allRiskFlags = mentionIds.Count == 0
+            ? new List<MentionRiskFlag>()
+            : await _db.MentionRiskFlags.AsNoTracking()
+                .Where(f => mentionIds.Contains(f.MentionId))
+                .ToListAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
@@ -203,6 +211,40 @@ public class MetricAggregator
         {
             var scoped = grp.SelectMany(x => attrByAnswer[x.Context.AIAnswerId]);
             rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Topic, grp.Key, scoped, now));
+        }
+
+        // Phase 4 item 11: per-scope brand risk flag count. Brand-mention scoped
+        // so a risk flag attached to a competitor's mention does not bleed in.
+        var brandMentionIds = mentions
+            .Where(m => m.EntityType == MentionEntityType.Brand && m.EntityId == brandId)
+            .Select(m => m.Id)
+            .ToHashSet();
+        var brandRiskFlags = allRiskFlags
+            .Where(f => brandMentionIds.Contains(f.MentionId))
+            .ToList();
+        var brandRiskFlagByAnswer = brandRiskFlags
+            .Join(mentions, f => f.MentionId, m => m.Id, (f, m) => (Flag: f, AnswerId: m.AIAnswerId))
+            .ToLookup(x => x.AnswerId, x => x.Flag);
+
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandRiskFlagCount, brandRiskFlags.Count, now));
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            var count = grp.Sum(c => brandRiskFlagByAnswer[c.AIAnswerId].Count());
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandRiskFlagCount, count, now));
+        }
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            var count = grp.Sum(c => brandRiskFlagByAnswer[c.AIAnswerId].Count());
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandRiskFlagCount, count, now));
+        }
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            var count = grp.Sum(x => brandRiskFlagByAnswer[x.Context.AIAnswerId].Count());
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandRiskFlagCount, count, now));
         }
 
         // Phase 4 item 6: per-scope brand recommendation metrics. Same loop

@@ -43,7 +43,14 @@ public sealed record SignalExtractionResult(
     /// measurement-model expansion, item #6). Empty list when the answer
     /// recommended nothing. Position 1 is the AI's top recommendation.
     /// </summary>
-    IReadOnlyList<AnswerRecommendation> AnswerRecommendations);
+    IReadOnlyList<AnswerRecommendation> AnswerRecommendations,
+    /// <summary>
+    /// Per-mention risk / warning flags (Phase 4 measurement-model
+    /// expansion, item #11). Concerns surfaced about each mentioned
+    /// entity — independent of sentiment, a positive-sentiment answer
+    /// can still carry risk flags.
+    /// </summary>
+    IReadOnlyList<MentionRiskFlag> RiskFlags);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's

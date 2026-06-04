@@ -347,6 +347,8 @@ export interface CoreMetricsDto {
   brandTopRecommendationShare: number | null;
   /** Average brand position in answers where it appeared in the recommendation list. Null when never recommended. */
   averageBrandRecommendationPosition: number | null;
+  /** Count of risk flags attached to brand mentions in scope. */
+  brandRiskFlagCount: number;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

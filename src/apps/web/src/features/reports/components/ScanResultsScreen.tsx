@@ -210,6 +210,7 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           label={m.averageBrandRecommendationPosition}
           value={formatRank(metrics.averageBrandRecommendationPosition)}
         />
+        <MetricTile label={m.brandRiskFlagCount} value={metrics.brandRiskFlagCount} />
         <MetricTile
           label={m.averageBrandRank}
           value={formatRankWithUniverse(

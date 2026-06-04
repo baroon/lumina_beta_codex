@@ -44,6 +44,7 @@ public class AnswerSignalWriter : IAnswerSignalWriter
         foreach (var a in result.MentionAttributes) _db.MentionAttributes.Add(a);
         foreach (var fc in result.FactualClaims) _db.FactualClaims.Add(fc);
         foreach (var ar in result.AnswerRecommendations) _db.AnswerRecommendations.Add(ar);
+        foreach (var rf in result.RiskFlags) _db.MentionRiskFlags.Add(rf);
         AddMentionPairs(result.Mentions);
 
         if (result.Citations.Count == 0)

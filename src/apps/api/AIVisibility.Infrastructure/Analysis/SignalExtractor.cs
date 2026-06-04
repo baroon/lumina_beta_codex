@@ -81,6 +81,13 @@ public class SignalExtractor
                   "verifiability": "Verifiable|Subjective|Unverifiable",
                   "confidence_score": number
                 }
+              ],
+              "risk_flags": [                // concerns / criticisms / warnings the answer surfaces about THIS entity. See risk-flag rules below. May be [].
+                {
+                  "flag_type": string,       // canonical snake_case label: "layoffs", "lawsuit", "outage", "controversy", "security_incident", "regulatory", "defect", "leadership_change", etc.
+                  "severity": "Low|Medium|High",
+                  "evidence_snippet": string
+                }
               ]
             }
           ],
@@ -189,6 +196,29 @@ public class SignalExtractor
             Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
             Unverifiable -- speculative or future-tense ("will likely IPO next year")
         - When the answer asserts nothing factual about an entity, return [].
+
+        Risk-flag rules (mention.risk_flags):
+        - One row per distinct concern / criticism / warning the answer
+          raises about this entity. Concerns are INDEPENDENT of sentiment —
+          a positive-sentiment answer ("X is widely recommended, but they
+          had layoffs recently") still warrants a risk_flag against X.
+        - flag_type MUST be a short snake_case canonical label. Prefer the
+          curated vocabulary: layoffs, lawsuit, outage, controversy,
+          security_incident, regulatory, defect, leadership_change,
+          financial_decline, reliability, support_quality. Free-text is
+          allowed when no canonical label fits — keep it ≤3 words.
+        - severity:
+            Low    Ambiguous concern, "some users reported", limited scope
+            Medium Confirmed issue with limited blast radius ("known bug
+                   with feature X")
+            High   Material business risk: class-action, breach, recall,
+                   regulatory action, mass layoffs
+        - evidence_snippet ≤500 chars, quoted from the answer.
+        - DO NOT emit a risk_flag for normal negative sentiment ("competitors
+          are stronger") or for hypothetical concerns ("could be a concern if
+          you need X"). The flag should be about something concrete the
+          answer reports.
+        - Empty list when nothing risky is mentioned about the entity.
 
         Attribute rules (mention.attributes):
         - Extract specific qualities the answer ascribes to the entity — things like
@@ -309,10 +339,10 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates, attributes, claims) = BuildMentions(root, answer.Id, answer.AnswerText, context);
+            var (mentions, candidates, attributes, claims, riskFlags) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
             var recommendations = BuildAnswerRecommendations(root, answer.Id);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags);
         }
         catch (Exception ex)
         {
@@ -433,16 +463,17 @@ public class SignalExtractor
         };
     }
 
-    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims) BuildMentions(
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags) BuildMentions(
         JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
         var candidates = new List<MentionCandidate>();
         var attributes = new List<MentionAttribute>();
         var claims = new List<FactualClaim>();
+        var riskFlags = new List<MentionRiskFlag>();
         if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
-            return (mentions, candidates, attributes, claims);
+            return (mentions, candidates, attributes, claims, riskFlags);
         }
 
         var now = DateTime.UtcNow;
@@ -490,6 +521,7 @@ public class SignalExtractor
                 mentions.Add(mention);
                 attributes.AddRange(BuildAttributes(m, mention.Id, now));
                 claims.AddRange(BuildFactualClaims(m, mention.Id, now));
+                riskFlags.AddRange(BuildRiskFlags(m, mention.Id, now));
             }
             else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
             {
@@ -509,7 +541,7 @@ public class SignalExtractor
                 });
             }
         }
-        return (mentions, candidates, attributes, claims);
+        return (mentions, candidates, attributes, claims, riskFlags);
     }
 
     private static IEnumerable<DraftCitation> BuildDraftCitations(
@@ -772,6 +804,40 @@ public class SignalExtractor
         }
         return rows;
     }
+
+    /// <summary>
+    /// Reads the risk_flags array from a mention's JSON element and turns
+    /// each row into a draft <see cref="MentionRiskFlag"/>. Flag types are
+    /// normalised to lowercase snake_case for cross-answer grouping. Rows
+    /// missing flag_type are skipped. Missing array → empty list.
+    /// </summary>
+    private static IEnumerable<MentionRiskFlag> BuildRiskFlags(
+        JsonElement mention, Guid mentionId, DateTime now)
+    {
+        if (!mention.TryGetProperty("risk_flags", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var r in arr.EnumerateArray())
+        {
+            var flagType = TryGetNullableString(r, "flag_type");
+            if (string.IsNullOrWhiteSpace(flagType)) continue;
+            yield return new MentionRiskFlag
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                FlagType = Truncate(NormalizeFlagType(flagType), 100),
+                Severity = ParseEnum<RiskSeverity>(r, "severity", RiskSeverity.Low),
+                EvidenceSnippet = Truncate(
+                    TryGetNullableString(r, "evidence_snippet") ?? string.Empty, 500),
+                CreatedAt = now,
+            };
+        }
+    }
+
+    private static string NormalizeFlagType(string value) =>
+        System.Text.RegularExpressions.Regex.Replace(value.Trim().ToLowerInvariant(), @"\s+", "_");
 
     private static IEnumerable<FactualClaim> BuildFactualClaims(
         JsonElement mention, Guid mentionId, DateTime now)

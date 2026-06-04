@@ -138,6 +138,15 @@ public static class MetricNames
     /// </summary>
     public const string AverageBrandRecommendationPosition = "AverageBrandRecommendationPosition";
 
+    /// <summary>
+    /// Count of <c>MentionRiskFlag</c> rows attached to brand mentions in
+    /// scope (Phase 4 measurement-model expansion, item 11). Always emitted
+    /// when the scope has ≥1 brand mention (value may be 0 — distinct from
+    /// "no brand mentions at all"). Severity is preserved per-row in the
+    /// underlying table for drill-down; this is the headline count.
+    /// </summary>
+    public const string BrandRiskFlagCount = "BrandRiskFlagCount";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

@@ -107,6 +107,13 @@ public sealed record CoreMetricsDto(
     /// </summary>
     double? AverageBrandRecommendationPosition,
     /// <summary>
+    /// Count of risk flags attached to brand mentions in scope (Phase 4
+    /// item 11). Risk flags catch warning language like "however, recent
+    /// layoffs..." that pollutes an otherwise-positive answer. Always
+    /// emitted (zero is a legitimate signal).
+    /// </summary>
+    int BrandRiskFlagCount,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).
