@@ -45,6 +45,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<MentionAttribute> MentionAttributes => Set<MentionAttribute>();
     public DbSet<FactualClaim> FactualClaims => Set<FactualClaim>();
     public DbSet<MentionCandidate> MentionCandidates => Set<MentionCandidate>();
+    public DbSet<AnswerRecommendation> AnswerRecommendations => Set<AnswerRecommendation>();
     public DbSet<Citation> Citations => Set<Citation>();
     public DbSet<ScanMetric> ScanMetrics => Set<ScanMetric>();
     public DbSet<Source> Sources => Set<Source>();

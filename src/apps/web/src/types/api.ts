@@ -343,6 +343,10 @@ export interface CoreMetricsDto {
   brandAbsenceRate: number | null;
   /** Mean answer certainty (how confidently the AI itself stated claims). Range [0,1]. Null when no answers. */
   averageAnswerCertainty: number | null;
+  /** Fraction of answers (with ≥1 recommendation) where brand is the top pick. Null when no recs. */
+  brandTopRecommendationShare: number | null;
+  /** Average brand position in answers where it appeared in the recommendation list. Null when never recommended. */
+  averageBrandRecommendationPosition: number | null;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

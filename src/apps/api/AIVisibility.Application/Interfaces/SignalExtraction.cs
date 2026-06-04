@@ -37,7 +37,13 @@ public sealed record SignalExtractionResult(
     /// AnswerSignalWriter so the future review pipeline can flip them
     /// Verified/Disputed.
     /// </summary>
-    IReadOnlyList<FactualClaim> FactualClaims);
+    IReadOnlyList<FactualClaim> FactualClaims,
+    /// <summary>
+    /// Ordered list of entities the answer recommended (Phase 4
+    /// measurement-model expansion, item #6). Empty list when the answer
+    /// recommended nothing. Position 1 is the AI's top recommendation.
+    /// </summary>
+    IReadOnlyList<AnswerRecommendation> AnswerRecommendations);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's

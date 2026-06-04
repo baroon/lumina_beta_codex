@@ -95,6 +95,18 @@ public sealed record CoreMetricsDto(
     /// </summary>
     double? AverageAnswerCertainty,
     /// <summary>
+    /// Fraction of answers with ≥1 recommendation where the brand is the
+    /// AI's top pick (Phase 4 item 6). Range [0, 1]. Null when no answers
+    /// in scope had any recommendations.
+    /// </summary>
+    double? BrandTopRecommendationShare,
+    /// <summary>
+    /// Average position of the brand in answers where it appeared in the
+    /// recommendation list. Lower = stronger endorsement. Null when the
+    /// brand never appeared in any recommendation list.
+    /// </summary>
+    double? AverageBrandRecommendationPosition,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).

@@ -46,6 +46,7 @@ public class SignalExtractor
             "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
             "brand_recommendation_score": number, // -1.0..+1.0; finer-grained than the strength enum. See recommendation-score rules below.
             "top_recommended_entity": string|null,
+            "recommended_entities": [string],  // ordered top-first; full list of recommended entities (any type — brand/competitor/product/other), see rules below
             "answer_has_ranking": bool,
             "answer_has_comparison": bool,
             "answer_has_citations": bool,
@@ -130,6 +131,23 @@ public class SignalExtractor
         - If the answer ranks the brand but doesn't enumerate the full list
           (e.g. "Lumina is ranked 3rd on AlternativeTo.net"), set
           brand_rank_universe_size to null — don't guess.
+
+        Recommended-entities list rules (recommended_entities):
+        - Ordered top-first list of EVERY entity the answer recommends as a
+          good option. Recommendation = positive endorsement or top-pick framing.
+          Include entities of ANY type (brand, competitor, product, or a name
+          we do not track yet).
+        - Recommendation list rules:
+          - Position 1 = the most-recommended entry (the AI top pick).
+          - Subsequent positions = progressively weaker endorsements.
+          - Use names EXACTLY as the answer wrote them (preserve casing).
+          - Skip entities mentioned only for context (e.g. comparison foils).
+          - When the answer presents multiple roughly-equal options, still list
+            them in the order the answer named them.
+          - Empty list (not null) when the answer recommends nothing.
+        - Length cap: 20 entries. Truncate longer lists; rare in practice.
+        - The first element of this list (if any) is the same as
+          top_recommended_entity. Both fields MUST be consistent.
 
         Top-recommended-entity rules (top_recommended_entity):
         - When the answer endorses ONE entity as the clear top pick (above all
@@ -293,7 +311,8 @@ public class SignalExtractor
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
             var (mentions, candidates, attributes, claims) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims);
+            var recommendations = BuildAnswerRecommendations(root, answer.Id);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations);
         }
         catch (Exception ex)
         {
@@ -714,6 +733,46 @@ public class SignalExtractor
     /// noise. Subject is normalized (lowercased + collapsed whitespace);
     /// claim_text + asserted_value are truncated to their column limits.
     /// </summary>
+    /// <summary>
+    /// Reads the ordered <c>recommended_entities</c> array from the answer
+    /// signal and turns each entry into an <see cref="AnswerRecommendation"/>
+    /// row. Position is 1-based by order of appearance, after dropping empty/
+    /// whitespace entries. Cap at 20 entries to match the prompt cap. Missing
+    /// array → empty list (no recommendations is meaningful — distinct from
+    /// "the LLM forgot to emit the field").
+    /// </summary>
+    private static List<AnswerRecommendation> BuildAnswerRecommendations(
+        JsonElement root, Guid aiAnswerId)
+    {
+        var rows = new List<AnswerRecommendation>();
+        if (!root.TryGetProperty("answer_signal", out var signal)
+            || !signal.TryGetProperty("recommended_entities", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            return rows;
+        }
+        var now = DateTime.UtcNow;
+        var position = 1;
+        const int Cap = 20;
+        foreach (var entry in arr.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.String) continue;
+            var name = entry.GetString();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            rows.Add(new AnswerRecommendation
+            {
+                Id = Guid.NewGuid(),
+                AIAnswerId = aiAnswerId,
+                ClaimedName = Truncate(name.Trim(), 500),
+                NormalizedName = Normalize(name),
+                Position = position++,
+                CreatedAt = now,
+            });
+            if (rows.Count >= Cap) break;
+        }
+        return rows;
+    }
+
     private static IEnumerable<FactualClaim> BuildFactualClaims(
         JsonElement mention, Guid mentionId, DateTime now)
     {

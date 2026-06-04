@@ -203,6 +203,14 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           value={formatRate(metrics.averageAnswerCertainty)}
         />
         <MetricTile
+          label={m.brandTopRecommendationShare}
+          value={formatRate(metrics.brandTopRecommendationShare)}
+        />
+        <MetricTile
+          label={m.averageBrandRecommendationPosition}
+          value={formatRank(metrics.averageBrandRecommendationPosition)}
+        />
+        <MetricTile
           label={m.averageBrandRank}
           value={formatRankWithUniverse(
             metrics.averageBrandRank,

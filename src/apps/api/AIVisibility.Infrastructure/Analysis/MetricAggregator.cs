@@ -71,6 +71,15 @@ public class MetricAggregator
         var brandId = await ResolveBrandIdAsync(scanRunId, cancellationToken);
         var citationLookup = await BuildCitationLookupAsync(citations, brandId, cancellationToken);
 
+        // Phase 4 item 6: load this scan's recommendation lists + normalized
+        // brand name candidates so the per-scope rollups (BrandTopRecommendation-
+        // Share, AverageBrandRecommendationPosition) can score the brand's
+        // position in each answer's recommendation list.
+        var allRecommendations = await _db.AnswerRecommendations.AsNoTracking()
+            .Where(r => answerIds.Contains(r.AIAnswerId))
+            .ToListAsync(cancellationToken);
+        var brandNameKeys = await ResolveBrandNameKeysAsync(brandId, cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
@@ -194,6 +203,27 @@ public class MetricAggregator
         {
             var scoped = grp.SelectMany(x => attrByAnswer[x.Context.AIAnswerId]);
             rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Topic, grp.Key, scoped, now));
+        }
+
+        // Phase 4 item 6: per-scope brand recommendation metrics. Same loop
+        // shape as the attribute rollup above — Overall + Platform + Lens + Topic.
+        var recsByAnswer = allRecommendations.ToLookup(r => r.AIAnswerId);
+        rows.AddRange(BuildBrandRecommendationMetrics(scanRunId, ScanMetricScope.Overall, null,
+            contexts, recsByAnswer, brandNameKeys, now));
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            rows.AddRange(BuildBrandRecommendationMetrics(scanRunId, ScanMetricScope.Platform, grp.Key,
+                grp.ToList(), recsByAnswer, brandNameKeys, now));
+        }
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            rows.AddRange(BuildBrandRecommendationMetrics(scanRunId, ScanMetricScope.Lens, grp.Key,
+                grp.ToList(), recsByAnswer, brandNameKeys, now));
+        }
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            rows.AddRange(BuildBrandRecommendationMetrics(scanRunId, ScanMetricScope.Topic, grp.Key,
+                grp.Select(x => x.Context).ToList(), recsByAnswer, brandNameKeys, now));
         }
 
         // Cross-scan momentum — compare the headline rate metrics we just
@@ -744,6 +774,72 @@ public class MetricAggregator
             .FirstOrDefaultAsync(ct);
         return brandId;
     }
+
+    /// <summary>
+    /// Normalized brand-name key set: brand canonical name + every alias,
+    /// lowercased and whitespace-collapsed. Used to match the brand against
+    /// LLM-emitted recommendation names which often vary (alias forms,
+    /// title-cased vs lowercase). Empty when the brand id resolves to no row.
+    /// </summary>
+    private async Task<HashSet<string>> ResolveBrandNameKeysAsync(Guid brandId, CancellationToken ct)
+    {
+        var brand = await _db.Brands.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == brandId, ct);
+        if (brand == null) return new HashSet<string>();
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { NormalizeForMatch(brand.Name) };
+        foreach (var alias in brand.Aliases) keys.Add(NormalizeForMatch(alias));
+        keys.RemoveWhere(string.IsNullOrEmpty);
+        return keys;
+    }
+
+    /// <summary>
+    /// BrandTopRecommendationShare: fraction of answers with ≥1 recommendation
+    /// in scope where the brand sits at position 1 of that answer's list.
+    /// AverageBrandRecommendationPosition: mean position across answers where
+    /// the brand appears anywhere in the list. Both skipped on empty denominator.
+    /// Matches against the brand's normalized name + any aliases.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildBrandRecommendationMetrics(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<AnswerContext> contexts, ILookup<Guid, AnswerRecommendation> recsByAnswer,
+        HashSet<string> brandNameKeys, DateTime now)
+    {
+        if (brandNameKeys.Count == 0) yield break;
+
+        var answersWithRecs = contexts
+            .Where(c => recsByAnswer[c.AIAnswerId].Any())
+            .ToList();
+        if (answersWithRecs.Count > 0)
+        {
+            var topMatches = answersWithRecs.Count(c =>
+            {
+                var top = recsByAnswer[c.AIAnswerId].FirstOrDefault(r => r.Position == 1);
+                return top != null && brandNameKeys.Contains(top.NormalizedName);
+            });
+            yield return MetricRow(scanRunId, scope, scopeId,
+                MetricNames.BrandTopRecommendationShare,
+                (double)topMatches / answersWithRecs.Count, now);
+        }
+
+        var brandPositions = contexts
+            .Select(c => recsByAnswer[c.AIAnswerId]
+                .OrderBy(r => r.Position)
+                .FirstOrDefault(r => brandNameKeys.Contains(r.NormalizedName)))
+            .Where(r => r != null)
+            .Select(r => (double)r!.Position)
+            .ToList();
+        if (brandPositions.Count > 0)
+        {
+            yield return MetricRow(scanRunId, scope, scopeId,
+                MetricNames.AverageBrandRecommendationPosition,
+                brandPositions.Average(), now);
+        }
+    }
+
+    private static string NormalizeForMatch(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : System.Text.RegularExpressions.Regex.Replace(value.Trim().ToLowerInvariant(), @"\s+", " ");
 
     /// <summary>
     /// Per-citation joined view of (source name, SourceType) for the scan's

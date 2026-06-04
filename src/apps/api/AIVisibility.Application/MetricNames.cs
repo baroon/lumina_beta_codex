@@ -120,6 +120,24 @@ public static class MetricNames
     /// </summary>
     public const string AverageAnswerCertainty = "AverageAnswerCertainty";
 
+    /// <summary>
+    /// Fraction of answers (with ≥1 recommendation) where the brand is the
+    /// AI's top recommendation (position 1 in <c>answer_recommendations</c>).
+    /// Range [0, 1]. Phase 4 measurement-model expansion (item 6).
+    /// Skipped (no row) when no answers in scope had any recommendations —
+    /// same denominator-zero pattern as BrandFirstMentionRate.
+    /// </summary>
+    public const string BrandTopRecommendationShare = "BrandTopRecommendationShare";
+
+    /// <summary>
+    /// Average position (1-based) of the brand in answers where it appeared
+    /// in the recommendation list. Lower = stronger endorsement. Skipped
+    /// when the brand was never in any recommendation list — distinct from
+    /// BrandTopRecommendationShare (which uses the broader denominator of
+    /// "any recommendation").
+    /// </summary>
+    public const string AverageBrandRecommendationPosition = "AverageBrandRecommendationPosition";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>
