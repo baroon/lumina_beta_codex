@@ -24,7 +24,20 @@ public sealed record SignalExtractionResult(
     AnswerSignal Signal,
     IReadOnlyList<Mention> Mentions,
     IReadOnlyList<MentionCandidate> Candidates,
-    IReadOnlyList<DraftCitation> Citations);
+    IReadOnlyList<DraftCitation> Citations,
+    /// <summary>
+    /// Per-mention attribute drafts (Phase 4 measurement-model expansion,
+    /// item #10). Persisted as MentionAttribute rows by AnswerSignalWriter
+    /// after the Mentions land. Empty list when the LLM omits attributes.
+    /// </summary>
+    IReadOnlyList<MentionAttribute> MentionAttributes,
+    /// <summary>
+    /// Per-mention factual-claim drafts (Phase 4 measurement-model
+    /// expansion, item #14). Persisted as FactualClaim rows by
+    /// AnswerSignalWriter so the future review pipeline can flip them
+    /// Verified/Disputed.
+    /// </summary>
+    IReadOnlyList<FactualClaim> FactualClaims);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's

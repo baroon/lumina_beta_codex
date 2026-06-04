@@ -16,12 +16,14 @@ export const REPORTS_COPY = {
       coreMetrics: "Core Metrics",
       sentimentDistribution: "Brand Sentiment Distribution",
       topCitedSources: "Top Cited Sources",
+      brandAttributes: "What we're known for",
       shareOfVoice: "Share of Voice",
       byPlatform: "By Platform",
       byLens: "By Visibility Lens",
       byTopic: "By Topic",
       byCompetitor: "By Competitor",
     },
+    viewClaims: "Review factual claims",
     summary: {
       scanStatus: "Scan status",
       analysisStatus: "Analysis status",
@@ -406,6 +408,34 @@ export const REPORTS_COPY = {
     },
     empty: {
       notFound: "Topic data not found for this scan.",
+    },
+  },
+  claims: {
+    title: "Factual claims about your brand",
+    subtitle:
+      "Check-able statements the AI made about you on this scan. Spot errors before they spread.",
+    backToResults: "Back to scan results",
+    filterLabel: "Review status",
+    statusLabels: {
+      All: "All",
+      Pending: "Pending review",
+      Verified: "Verified",
+      Disputed: "Disputed",
+    } as Record<string, string>,
+    verifiabilityLabels: {
+      Verifiable: "Verifiable",
+      Subjective: "Subjective",
+      Unverifiable: "Unverifiable",
+    } as Record<string, string>,
+    row: {
+      about: "About",
+      subject: "Subject",
+      value: "Value",
+    },
+    empty: {
+      noClaims: "No factual claims were extracted on this scan.",
+      noClaimsForFilter: "No claims match the current filter.",
+      notFound: "Scan not found.",
     },
   },
   sources: {

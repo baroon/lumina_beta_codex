@@ -84,6 +84,13 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             .OrderBy(d => d.Rank)
             .ToList();
 
+        var topAttributes = overall
+            .Where(m => m.MetricName == MetricNames.BrandTopAttribute)
+            .Select(m => ReadBrandAttribute(m.MetadataJson, m.MetricValue))
+            .Where(d => d is not null).Select(d => d!)
+            .OrderBy(d => d.Rank)
+            .ToList();
+
         return new CoreMetricsDto(
             BrandMentionRate: ReadDoubleOrNull(overall, "BrandMentionRate"),
             BrandRecommendationRate: ReadDoubleOrNull(overall, "BrandRecommendationRate"),
@@ -97,7 +104,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             ThirdPartyCitationCount: ReadIntOrZero(overall, "ThirdPartyCitationCount"),
             UnknownCitationCount: ReadIntOrZero(overall, "UnknownCitationCount"),
             BrandSentimentDistribution: sentimentDist,
-            TopCitedSources: topCited);
+            TopCitedSources: topCited,
+            TopBrandAttributes: topAttributes);
     }
 
     // ------------------------------------------------------------------
@@ -269,5 +277,20 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
         if (!root.TryGetProperty("source_name", out var nameProp) || nameProp.ValueKind != JsonValueKind.String) return null;
         if (!root.TryGetProperty("rank", out var rankProp) || rankProp.ValueKind != JsonValueKind.Number) return null;
         return new TopCitedSourceDto(rankProp.GetInt32(), nameProp.GetString()!, (int)Math.Round(metricValue));
+    }
+
+    private static BrandAttributeDto? ReadBrandAttribute(string? metadataJson, double metricValue)
+    {
+        if (string.IsNullOrEmpty(metadataJson)) return null;
+        using var doc = JsonDocument.Parse(metadataJson);
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("attribute", out var nameProp) || nameProp.ValueKind != JsonValueKind.String) return null;
+        if (!root.TryGetProperty("polarity", out var polarityProp) || polarityProp.ValueKind != JsonValueKind.String) return null;
+        if (!root.TryGetProperty("rank", out var rankProp) || rankProp.ValueKind != JsonValueKind.Number) return null;
+        return new BrandAttributeDto(
+            rankProp.GetInt32(),
+            nameProp.GetString()!,
+            polarityProp.GetString()!,
+            (int)Math.Round(metricValue));
     }
 }

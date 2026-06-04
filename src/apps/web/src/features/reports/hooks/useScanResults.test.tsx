@@ -54,6 +54,7 @@ const EMPTY_RESULTS: ScanResultsDto = {
     unknownCitationCount: 0,
     brandSentimentDistribution: {},
     topCitedSources: [],
+    topBrandAttributes: [],
   },
   breakdowns: {
     byPlatform: [],

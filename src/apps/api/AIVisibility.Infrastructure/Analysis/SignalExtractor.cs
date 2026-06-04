@@ -58,7 +58,25 @@ public class SignalExtractor
               "sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
               "sentiment_score": number,     // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
               "evidence_snippet": string,    // ≤500 chars; quoted sentence(s) from the answer
-              "confidence_score": number     // 0.0-1.0
+              "confidence_score": number,    // 0.0-1.0
+              "attributes": [                // qualities the answer ascribes to THIS entity. See attribute rules below. May be [].
+                {
+                  "name": string,            // e.g. "in-depth analysis", "slow to break news"
+                  "polarity": "Positive|Neutral|Negative",
+                  "evidence_snippet": string,
+                  "confidence_score": number
+                }
+              ],
+              "factual_claims": [            // check-able facts the answer asserts ABOUT THIS entity. See factual-claim rules below. May be [].
+                {
+                  "claim_text": string,
+                  "subject": string,         // normalized snake_case category, e.g. "founding_year", "parent_company"
+                  "asserted_value": string,
+                  "evidence_snippet": string,
+                  "verifiability": "Verifiable|Subjective|Unverifiable",
+                  "confidence_score": number
+                }
+              ]
             }
           ],
           "citations": [
@@ -114,6 +132,46 @@ public class SignalExtractor
         - If brand_rank=1 (the tracked brand is ranked #1), top_recommended_
           entity MUST be the tracked brand's name — those two fields cannot
           disagree.
+
+        Factual-claim rules (mention.factual_claims):
+        - Extract check-able facts the answer asserts ABOUT this entity. Things you
+          could look up in Wikipedia, on the entity's own site, or via search:
+          founding year, parent company, ownership, headquarters, leadership,
+          product category, key features, pricing tier, awards, partnerships,
+          headcount, subscribers/users, languages supported.
+        - Skip: opinions, recommendations, sentiment, comparative framing, generic
+          praise. Those are captured by sentiment + attributes; mixing them in
+          here pollutes the fact-check inbox.
+        - claim_text: the full claim as a self-contained sentence, ≤1000 chars.
+        - subject: a short snake_case category for grouping. Use these when they
+          fit; coin a new one only if none match:
+            founding_year, parent_company, headquarters, leadership,
+            product_category, product_feature, price, award, partnership,
+            ownership, headcount, audience_size, languages, distribution.
+        - asserted_value: the specific value being asserted, ≤500 chars
+          ("1975", "Living Media India", "New Delhi", "subscription model").
+        - verifiability:
+            Verifiable -- a public fact you could look up
+            Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
+            Unverifiable -- speculative or future-tense ("will likely IPO next year")
+        - When the answer asserts nothing factual about an entity, return [].
+
+        Attribute rules (mention.attributes):
+        - Extract specific qualities the answer ascribes to the entity — things like
+          "in-depth analysis", "slow to break news", "expensive", "user-friendly",
+          "trustworthy", "limited mobile experience". Distinct adjectives or short
+          noun-phrases describing the entity, NOT generic re-statements of recommendation.
+        - polarity is independent of the entity's overall sentiment: an entity rated
+          Positive overall can still carry Negative attributes ("reliable for analysis,
+          BUT slow to break news" → "reliable for analysis" Positive, "breaking news"
+          Negative). Capture the per-attribute stance, not the umbrella sentiment.
+        - name MUST be a short, lowercase, normalized phrase (≤80 chars) — drop articles,
+          collapse whitespace, no ending punctuation. "In-depth analysis" → "in-depth
+          analysis"; "It is trustworthy." → "trustworthy".
+        - evidence_snippet quotes the answer text that supports the attribute (≤500 chars).
+        - Skip generic praise ("good", "great", "best") that doesn't name a specific quality —
+          those are already captured by recommendation strength + sentiment.
+        - Return [] when the answer doesn't ascribe specific qualities to the entity.
 
         Sentiment-score rules (brand_sentiment_score, mention.sentiment_score):
         - Score is a fine-grained reading of the enum on a continuous -1.0..+1.0 axis.
@@ -187,9 +245,9 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates) = BuildMentions(root, answer.Id, answer.AnswerText, context);
+            var (mentions, candidates, attributes, claims) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims);
         }
         catch (Exception ex)
         {
@@ -297,14 +355,16 @@ public class SignalExtractor
         };
     }
 
-    private (List<Mention> Mentions, List<MentionCandidate> Candidates) BuildMentions(
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims) BuildMentions(
         JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
         var candidates = new List<MentionCandidate>();
+        var attributes = new List<MentionAttribute>();
+        var claims = new List<FactualClaim>();
         if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
-            return (mentions, candidates);
+            return (mentions, candidates, attributes, claims);
         }
 
         var now = DateTime.UtcNow;
@@ -327,7 +387,7 @@ public class SignalExtractor
                     entityType, resolved.Value, normalized, answerText, context);
                 var sentiment = ParseEnum<Sentiment>(m, "sentiment", Sentiment.Unknown);
                 var sentimentScore = ReadSentimentScore(m, "sentiment_score", sentiment);
-                mentions.Add(new Mention
+                var mention = new Mention
                 {
                     Id = Guid.NewGuid(),
                     AIAnswerId = aiAnswerId,
@@ -344,7 +404,10 @@ public class SignalExtractor
                     MentionCount = mentionCount,
                     FirstMentionPosition = firstPosition,
                     CreatedAt = now,
-                });
+                };
+                mentions.Add(mention);
+                attributes.AddRange(BuildAttributes(m, mention.Id, now));
+                claims.AddRange(BuildFactualClaims(m, mention.Id, now));
             }
             else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
             {
@@ -364,7 +427,7 @@ public class SignalExtractor
                 });
             }
         }
-        return (mentions, candidates);
+        return (mentions, candidates, attributes, claims);
     }
 
     private static IEnumerable<DraftCitation> BuildDraftCitations(
@@ -579,6 +642,85 @@ public class SignalExtractor
     private static double? TryGetDouble(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
             ? v.GetDouble() : null;
+
+    /// <summary>
+    /// Reads the factual_claims array from a mention's JSON element and
+    /// turns each row into a draft <see cref="FactualClaim"/>. Required
+    /// fields (claim_text, subject, asserted_value) drop the row when
+    /// any is missing — keeps the review inbox clean of half-extracted
+    /// noise. Subject is normalized (lowercased + collapsed whitespace);
+    /// claim_text + asserted_value are truncated to their column limits.
+    /// </summary>
+    private static IEnumerable<FactualClaim> BuildFactualClaims(
+        JsonElement mention, Guid mentionId, DateTime now)
+    {
+        if (!mention.TryGetProperty("factual_claims", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var c in arr.EnumerateArray())
+        {
+            var claimText = TryGetNullableString(c, "claim_text");
+            var subject = Normalize(TryGetNullableString(c, "subject"));
+            var assertedValue = TryGetNullableString(c, "asserted_value");
+            if (string.IsNullOrWhiteSpace(claimText)
+                || string.IsNullOrEmpty(subject)
+                || string.IsNullOrWhiteSpace(assertedValue))
+            {
+                continue;
+            }
+            yield return new FactualClaim
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                ClaimText = Truncate(claimText, 1000),
+                Subject = Truncate(subject, 100),
+                AssertedValue = Truncate(assertedValue, 500),
+                EvidenceSnippet = Truncate(
+                    TryGetNullableString(c, "evidence_snippet") ?? string.Empty, 500),
+                Verifiability = ParseEnum<ClaimVerifiability>(
+                    c, "verifiability", ClaimVerifiability.Verifiable),
+                ReviewStatus = ClaimReviewStatus.Pending,
+                ConfidenceScore = TryGetDouble(c, "confidence_score") ?? 0.5,
+                CreatedAt = now,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Reads the attributes array from a mention's JSON element and turns
+    /// each row into a draft <see cref="MentionAttribute"/>. Names are
+    /// normalized (lowercased, whitespace collapsed, trimmed). Rows with
+    /// empty names are skipped. Missing array → empty list.
+    /// </summary>
+    private static IEnumerable<MentionAttribute> BuildAttributes(
+        JsonElement mention, Guid mentionId, DateTime now)
+    {
+        if (!mention.TryGetProperty("attributes", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var a in arr.EnumerateArray())
+        {
+            var rawName = TryGetNullableString(a, "name");
+            var name = Normalize(rawName);
+            if (string.IsNullOrEmpty(name)) continue;
+            var truncatedName = Truncate(name, 200);
+            yield return new MentionAttribute
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                Name = truncatedName,
+                Polarity = ParseEnum<AttributePolarity>(a, "polarity", AttributePolarity.Neutral),
+                EvidenceSnippet = Truncate(
+                    TryGetNullableString(a, "evidence_snippet") ?? string.Empty, 500),
+                ConfidenceScore = TryGetDouble(a, "confidence_score") ?? 0.5,
+                CreatedAt = now,
+            };
+        }
+    }
 
     /// <summary>
     /// Reads the numeric sentiment_score (or brand_sentiment_score) from the

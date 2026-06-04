@@ -1125,6 +1125,15 @@
           "notes": "Phase 4 Slice 3 Topic view list at /scans/{id}/topics. Pivots Topic-scope ScanMetric rows into per-topic table; row click navigates to topic detail route."
         },
         {
+          "name": "ScanClaimsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanClaimsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "Badge", "Button", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Phase 4 measurement-model expansion item #14 — factual-claim review inbox at /scans/{id}/claims. Lists every check-able claim the AI made about the brand on this scan with subject/asserted-value, polarity-coded verifiability badge, and a review-status pill (Pending / Verified / Disputed). Filter buttons re-query the BE with `?reviewStatus=` so the list stays cheap; the future Verify/Dispute mutation lives in the same screen but is deferred to a follow-up slice."
+        },
+        {
           "name": "TopicsTable",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/TopicsTable.tsx",

@@ -139,4 +139,17 @@ public static class MetricNames
     /// for deterministic ordering. Fewer than 5 distinct sources → fewer rows.
     /// </summary>
     public const string TopCitedSource = "TopCitedSource";
+
+    /// <summary>
+    /// Top-N attributes the AI ascribed to the brand within scope (Phase 4
+    /// measurement-model expansion, item #10). Emitted as up to 10 rows
+    /// per scope with
+    /// <c>metadata_json={"attribute":"in-depth analysis","polarity":"Positive","rank":N}</c>
+    /// and <c>metric_value</c> = count of brand mentions tagged with the
+    /// attribute in scope. Polarity at the aggregate level = mode polarity
+    /// across the attribute's mentions. Ties broken alphabetically on the
+    /// attribute name. Fewer than 10 distinct attributes → fewer rows;
+    /// zero brand attributes → no rows.
+    /// </summary>
+    public const string BrandTopAttribute = "BrandTopAttribute";
 }

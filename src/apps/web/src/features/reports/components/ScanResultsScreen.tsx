@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Database, Tags, Users } from "lucide-react";
+import { Database, ShieldAlert, Tags, Users } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
@@ -83,6 +83,14 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
           <Users className="h-4 w-4" />
           {REPORTS_COPY.competitors.viewCompetitors}
         </Link>
+        <Link
+          to="/scans/$scanRunId/claims"
+          params={{ scanRunId }}
+          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+        >
+          <ShieldAlert className="h-4 w-4" />
+          {REPORTS_COPY.scanResults.viewClaims}
+        </Link>
       </div>
 
       <SummarySection summary={data.summary} />
@@ -90,6 +98,7 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
       <SentimentDistributionSection distribution={data.coreMetrics.brandSentimentDistribution} />
       <ShareOfVoiceSection metrics={data.coreMetrics} breakdowns={data.breakdowns} />
       <TopCitedSourcesSection sources={data.coreMetrics.topCitedSources} />
+      <BrandAttributesSection attributes={data.coreMetrics.topBrandAttributes} />
       <BreakdownsSection breakdowns={data.breakdowns} />
     </div>
   );
@@ -285,6 +294,52 @@ function TopCitedSourcesSection({ sources }: TopCitedSourcesSectionProps) {
       </CardContent>
     </Card>
   );
+}
+
+interface BrandAttributesSectionProps {
+  attributes: import("@/types/api").BrandAttributeDto[];
+}
+
+/**
+ * Polarity-coloured chip cloud of attributes the AI ascribed to the
+ * brand at Overall scope (Phase 4 measurement-model expansion). Empty
+ * when no attributes were extracted for the brand on this scan.
+ */
+function BrandAttributesSection({ attributes }: BrandAttributesSectionProps) {
+  if (attributes.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{REPORTS_COPY.scanResults.sections.brandAttributes}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="flex flex-wrap gap-2" role="list">
+          {attributes.map((a) => (
+            <li key={`${a.rank}:${a.name}`}>
+              <Badge variant={attributePolarityVariant(a.polarity)} className="gap-1 text-xs">
+                <span>{a.name}</span>
+                <span className="opacity-70">×{a.mentionCount}</span>
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function attributePolarityVariant(
+  polarity: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (polarity) {
+    case "Positive":
+      return "success";
+    case "Negative":
+      return "destructive";
+    case "Neutral":
+    default:
+      return "secondary";
+  }
 }
 
 interface BreakdownsSectionProps {

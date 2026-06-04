@@ -39,6 +39,8 @@ public interface IAppDbContext
     DbSet<AnswerSignal> AnswerSignals { get; }
     DbSet<Mention> Mentions { get; }
     DbSet<MentionPair> MentionPairs { get; }
+    DbSet<MentionAttribute> MentionAttributes { get; }
+    DbSet<FactualClaim> FactualClaims { get; }
     DbSet<MentionCandidate> MentionCandidates { get; }
     DbSet<Citation> Citations { get; }
     DbSet<ScanMetric> ScanMetrics { get; }

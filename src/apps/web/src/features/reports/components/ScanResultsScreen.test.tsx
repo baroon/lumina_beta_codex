@@ -97,6 +97,10 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
         { rank: 1, sourceName: "Trustpilot", citationCount: 5 },
         { rank: 2, sourceName: "G2", citationCount: 3 },
       ],
+      topBrandAttributes: [
+        { rank: 1, name: "in-depth analysis", polarity: "Positive", mentionCount: 4 },
+        { rank: 2, name: "slow to break news", polarity: "Negative", mentionCount: 2 },
+      ],
     },
     breakdowns: {
       byPlatform: [

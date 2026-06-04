@@ -70,12 +70,30 @@ public sealed record CoreMetricsDto(
     // a pie chart directly. Only observed sentiment values appear as keys.
     IReadOnlyDictionary<string, int> BrandSentimentDistribution,
     // Top-5 cited sources sorted by rank.
-    IReadOnlyList<TopCitedSourceDto> TopCitedSources);
+    IReadOnlyList<TopCitedSourceDto> TopCitedSources,
+    /// <summary>
+    /// Top-N attributes (Phase 4 measurement-model expansion) the AI
+    /// ascribed to the brand at Overall scope. Sorted by rank ascending.
+    /// Empty when no brand attributes were extracted from any answer.
+    /// </summary>
+    IReadOnlyList<BrandAttributeDto> TopBrandAttributes);
 
 public sealed record TopCitedSourceDto(
     int Rank,
     string SourceName,
     int CitationCount);
+
+/// <summary>
+/// One attribute the AI ascribed to the brand at this scope, rolled up
+/// across the scan (Phase 4 measurement-model expansion, item #10).
+/// Polarity is the modal polarity across the attribute's mentions in
+/// scope. Mention count is the raw aggregator value.
+/// </summary>
+public sealed record BrandAttributeDto(
+    int Rank,
+    string Name,
+    string Polarity,
+    int MentionCount);
 
 // ============================================================================
 // Breakdowns — per-dimension cuts (REQ-004 §Breakdown Charts)

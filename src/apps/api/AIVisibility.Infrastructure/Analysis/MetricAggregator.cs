@@ -53,6 +53,16 @@ public class MetricAggregator
             .Where(p => answerIds.Contains(p.AIAnswerId))
             .Select(p => new { p.AIAnswerId, p.MentionAId, p.MentionBId })
             .ToListAsync(cancellationToken);
+        // Attributes joined to all mentions in this scan — used per-scope
+        // to compute BrandTopAttribute rollups (only the brand's mentions
+        // contribute; competitor/product attributes deferred to a later
+        // slice).
+        var mentionIds = mentions.Select(m => m.Id).ToList();
+        var allAttributes = mentionIds.Count == 0
+            ? new List<MentionAttribute>()
+            : await _db.MentionAttributes.AsNoTracking()
+                .Where(a => mentionIds.Contains(a.MentionId))
+                .ToListAsync(cancellationToken);
 
         // Phase 4 Slice 0: citation classification + source display name moved
         // off the citation row onto Source + BrandSourceClassification. Load
@@ -124,7 +134,90 @@ public class MetricAggregator
         rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
             MetricNames.DistinctCoMentionedBrandCount, distinctCoMentioned, now));
 
+        // BrandTopAttribute — top-10 attributes the AI ascribed to the
+        // brand, computed at each non-Competitor scope from the loaded
+        // MentionAttribute rows. Brand attributes only for this slice;
+        // per-competitor / per-product attributes deferred.
+        var brandAttributes = allAttributes
+            .Join(mentions.Where(m => m.EntityType == MentionEntityType.Brand && m.EntityId == brandId),
+                a => a.MentionId, m => m.Id,
+                (a, m) => new { Attribute = a, Mention = m })
+            .ToList();
+
+        // Overall scope.
+        rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Overall, null,
+            brandAttributes.Select(x => x.Attribute), now));
+
+        // Platform scope.
+        var attrByAnswer = brandAttributes
+            .ToLookup(x => x.Mention.AIAnswerId, x => x.Attribute);
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            var scoped = grp.SelectMany(c => attrByAnswer[c.AIAnswerId]);
+            rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Platform, grp.Key, scoped, now));
+        }
+
+        // Lens scope.
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            var scoped = grp.SelectMany(c => attrByAnswer[c.AIAnswerId]);
+            rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Lens, grp.Key, scoped, now));
+        }
+
+        // Topic scope — one (topic, attribute) row per linked topic.
+        var topicGroupsForAttrs = contexts
+            .SelectMany(c => c.TopicIds.Select(t => (TopicId: t, Context: c)))
+            .GroupBy(x => x.TopicId);
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            var scoped = grp.SelectMany(x => attrByAnswer[x.Context.AIAnswerId]);
+            rows.AddRange(BuildBrandTopAttributes(scanRunId, ScanMetricScope.Topic, grp.Key, scoped, now));
+        }
+
         return rows;
+    }
+
+    /// <summary>
+    /// Emits up to 10 BrandTopAttribute rows for a single scope from the
+    /// supplied attribute set. Groups by attribute name (case-insensitive
+    /// since the extractor already normalises), counts mentions, picks the
+    /// mode polarity per attribute, sorts by count desc → name asc, and
+    /// truncates to 10. Empty input → no rows.
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildBrandTopAttributes(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        IEnumerable<MentionAttribute> scopedAttributes, DateTime now)
+    {
+        var grouped = scopedAttributes
+            .GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Name = g.Key,
+                Count = g.Count(),
+                Polarity = g
+                    .GroupBy(a => a.Polarity)
+                    .OrderByDescending(pg => pg.Count())
+                    .Select(pg => pg.Key)
+                    .First(),
+            })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .ToList();
+
+        var rank = 0;
+        foreach (var entry in grouped)
+        {
+            rank++;
+            var metadata = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                attribute = entry.Name,
+                polarity = entry.Polarity.ToString(),
+                rank,
+            });
+            yield return MetricRowWithMetadata(scanRunId, scope, scopeId,
+                MetricNames.BrandTopAttribute, entry.Count, metadata, now);
+        }
     }
 
     /// <summary>

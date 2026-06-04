@@ -342,12 +342,45 @@ export interface CoreMetricsDto {
   // Only observed values appear — absent keys mean zero signals at that value.
   brandSentimentDistribution: Record<string, number>;
   topCitedSources: TopCitedSourceDto[];
+  /** Top-N attributes the AI ascribed to the brand at Overall scope. Empty when none extracted. */
+  topBrandAttributes: BrandAttributeDto[];
 }
 
 export interface TopCitedSourceDto {
   rank: number;
   sourceName: string;
   citationCount: number;
+}
+
+/** One brand attribute aggregated across the scan. */
+export interface BrandAttributeDto {
+  rank: number;
+  name: string;
+  /** 'Positive' | 'Neutral' | 'Negative' — mode polarity across mentions of the attribute. */
+  polarity: string;
+  mentionCount: number;
+}
+
+/** Scan-scoped factual claims (Phase 4 measurement-model expansion, item #14). */
+export interface ScanClaimsDto {
+  scanRunId: string;
+  claims: FactualClaimDto[];
+}
+
+export interface FactualClaimDto {
+  id: string;
+  entityName: string;
+  entityType: string;
+  claimText: string;
+  subject: string;
+  assertedValue: string;
+  evidenceSnippet: string;
+  /** 'Verifiable' | 'Subjective' | 'Unverifiable'. */
+  verifiability: string;
+  /** 'Pending' | 'Verified' | 'Disputed'. */
+  reviewStatus: string;
+  confidenceScore: number;
+  createdAt: string;
 }
 
 export interface BreakdownsDto {

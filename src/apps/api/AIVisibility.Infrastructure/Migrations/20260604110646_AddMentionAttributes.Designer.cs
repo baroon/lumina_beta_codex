@@ -3,6 +3,7 @@ using System;
 using AIVisibility.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIVisibility.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604110646_AddMentionAttributes")]
+    partial class AddMentionAttributes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -674,74 +677,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasIndex("BrandId");
 
                     b.ToTable("discovery_runs", (string)null);
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.FactualClaim", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AssertedValue")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("asserted_value");
-
-                    b.Property<string>("ClaimText")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("claim_text");
-
-                    b.Property<double>("ConfidenceScore")
-                        .HasColumnType("double precision")
-                        .HasColumnName("confidence_score");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("EvidenceSnippet")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("evidence_snippet");
-
-                    b.Property<Guid>("MentionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("mention_id");
-
-                    b.Property<string>("ReviewStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Pending")
-                        .HasColumnName("review_status");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("subject");
-
-                    b.Property<string>("Verifiability")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("verifiability");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MentionId");
-
-                    b.HasIndex("ReviewStatus");
-
-                    b.HasIndex("Subject");
-
-                    b.ToTable("factual_claims", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Lens", b =>
@@ -2273,17 +2208,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Brand");
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.FactualClaim", b =>
-                {
-                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
-                        .WithMany()
-                        .HasForeignKey("MentionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Mention");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Market", b =>
