@@ -462,22 +462,24 @@ public class AnalysisPipelineTests
         //      the canned JSON omits it)
         //   +1 BrandRiskFlagCount (always emits at non-Competitor scopes;
         //      value 0 here — the canned JSON has no risk_flags entries)
-        // = +15 per non-Competitor scope that has answers; the fixture has
-        // 1 Platform group + 1 Lens group + 0 Topic groups so 25 each at
+        //   +2 BrandWinningComparisonCount + BrandLosingComparisonCount
+        //      (always emit at non-Competitor scopes; values 0 here)
+        // = +17 per non-Competitor scope that has answers; the fixture has
+        // 1 Platform group + 1 Lens group + 0 Topic groups so 27 each at
         // Platform and Lens.
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
-        // competitor co-mentioned with brand in this fixture), so 26.
+        // competitor co-mentioned with brand in this fixture), so 28.
         //
         // Competitor scope: 5 metrics — MentionCount + RecommendationCount
         // + CoMentionedWithBrandCount (Acme co-mentioned with brand once)
         // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5)
         // + CompetitorRecommendationShare (Acme 0 recs / 1 total rec = 0.0).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(26);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(25);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(25);
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(28);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(27);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(27);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(5);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(81);
+        metrics.Should().HaveCount(87);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

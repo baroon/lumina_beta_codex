@@ -50,7 +50,14 @@ public sealed record SignalExtractionResult(
     /// entity — independent of sentiment, a positive-sentiment answer
     /// can still carry risk flags.
     /// </summary>
-    IReadOnlyList<MentionRiskFlag> RiskFlags);
+    IReadOnlyList<MentionRiskFlag> RiskFlags,
+    /// <summary>
+    /// Per-mention head-to-head comparisons (Phase 4 measurement-model
+    /// expansion, item #15). Each row records "this entity vs that
+    /// entity on this aspect — who wins" so the aggregator can count
+    /// directed wins/losses per dimension.
+    /// </summary>
+    IReadOnlyList<MentionComparison> Comparisons);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's

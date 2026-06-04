@@ -147,6 +147,20 @@ public static class MetricNames
     /// </summary>
     public const string BrandRiskFlagCount = "BrandRiskFlagCount";
 
+    /// <summary>
+    /// Count of head-to-head comparisons where the brand WINS the aspect
+    /// (Phase 4 measurement-model expansion, item 15). Always emitted at
+    /// non-Competitor scopes; value may be 0.
+    /// </summary>
+    public const string BrandWinningComparisonCount = "BrandWinningComparisonCount";
+
+    /// <summary>
+    /// Count of head-to-head comparisons where the brand LOSES the aspect.
+    /// Companion to <see cref="BrandWinningComparisonCount"/>. Always
+    /// emitted at non-Competitor scopes.
+    /// </summary>
+    public const string BrandLosingComparisonCount = "BrandLosingComparisonCount";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

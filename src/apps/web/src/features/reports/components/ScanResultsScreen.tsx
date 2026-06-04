@@ -212,6 +212,10 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
         />
         <MetricTile label={m.brandRiskFlagCount} value={metrics.brandRiskFlagCount} />
         <MetricTile
+          label={m.brandComparisonRecord}
+          value={`${metrics.brandWinningComparisonCount} / ${metrics.brandLosingComparisonCount}`}
+        />
+        <MetricTile
           label={m.averageBrandRank}
           value={formatRankWithUniverse(
             metrics.averageBrandRank,

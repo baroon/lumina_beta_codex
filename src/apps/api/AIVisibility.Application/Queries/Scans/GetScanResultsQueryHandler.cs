@@ -105,6 +105,8 @@ public class GetScanResultsQueryHandler : IRequestHandler<GetScanResultsQuery, S
             BrandTopRecommendationShare: ReadDoubleOrNull(overall, MetricNames.BrandTopRecommendationShare),
             AverageBrandRecommendationPosition: ReadDoubleOrNull(overall, MetricNames.AverageBrandRecommendationPosition),
             BrandRiskFlagCount: ReadIntOrZero(overall, MetricNames.BrandRiskFlagCount),
+            BrandWinningComparisonCount: ReadIntOrZero(overall, MetricNames.BrandWinningComparisonCount),
+            BrandLosingComparisonCount: ReadIntOrZero(overall, MetricNames.BrandLosingComparisonCount),
             BrandMentionRateMomentum: ReadDoubleOrNull(overall, MetricNames.BrandMentionRateMomentum),
             BrandShareOfVoiceMomentum: ReadDoubleOrNull(overall, MetricNames.BrandShareOfVoiceMomentum),
             BrandAbsenceRateMomentum: ReadDoubleOrNull(overall, MetricNames.BrandAbsenceRateMomentum),

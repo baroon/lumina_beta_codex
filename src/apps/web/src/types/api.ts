@@ -349,6 +349,10 @@ export interface CoreMetricsDto {
   averageBrandRecommendationPosition: number | null;
   /** Count of risk flags attached to brand mentions in scope. */
   brandRiskFlagCount: number;
+  /** Head-to-head comparisons the brand wins on the named aspect. */
+  brandWinningComparisonCount: number;
+  /** Head-to-head comparisons the brand loses on the named aspect. */
+  brandLosingComparisonCount: number;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

@@ -88,6 +88,13 @@ public class SignalExtractor
                   "severity": "Low|Medium|High",
                   "evidence_snippet": string
                 }
+              ],
+              "comparisons": [               // head-to-head comparisons this entity is part of in the answer. See comparison rules below. May be [].
+                {
+                  "vs_entity": string,       // the entity being compared against, name verbatim from the answer
+                  "on_aspect": string,       // canonical snake_case aspect: "price", "speed", "support_quality", "ease_of_use", etc.
+                  "winner": "this|other"     // who the answer says wins THIS aspect — this entity or the other
+                }
               ]
             }
           ],
@@ -196,6 +203,25 @@ public class SignalExtractor
             Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
             Unverifiable -- speculative or future-tense ("will likely IPO next year")
         - When the answer asserts nothing factual about an entity, return [].
+
+        Comparison rules (mention.comparisons):
+        - One row per (this entity, vs_entity, on_aspect) tuple where the
+          answer DIRECTLY compares the two on that specific dimension.
+            "X is faster than Y"            -> 1 row: vs=Y, aspect=speed, winner=this
+            "Y has better support than X"   -> 1 row on X mention: vs=Y, aspect=support_quality, winner=other
+            "X and Y are similar on price"  -> 0 rows (no winner)
+            "X is generally better"         -> 0 rows (no aspect)
+        - Aspect MUST be snake_case from a small canonical set when possible:
+          price, speed, performance, ease_of_use, support_quality, depth_of_coverage,
+          accuracy, scalability, integrations, customization, reliability, security,
+          pricing_transparency, mobile_experience, customer_base, brand_recognition.
+          Use free-text (still snake_case) when none of these fit.
+        - winner: "this" when THIS entity wins the aspect, "other" when the
+          vs_entity wins. NEVER emit a row for a tie or ambiguous winner.
+        - vs_entity is the EXACT name from the answer (preserve casing). The
+          aggregator normalizes downstream.
+        - Skip self-comparisons (this entity vs itself).
+        - Empty list when nothing comparative.
 
         Risk-flag rules (mention.risk_flags):
         - One row per distinct concern / criticism / warning the answer
@@ -339,10 +365,10 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates, attributes, claims, riskFlags) = BuildMentions(root, answer.Id, answer.AnswerText, context);
+            var (mentions, candidates, attributes, claims, riskFlags, comparisons) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
             var recommendations = BuildAnswerRecommendations(root, answer.Id);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags, comparisons);
         }
         catch (Exception ex)
         {
@@ -463,7 +489,7 @@ public class SignalExtractor
         };
     }
 
-    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags) BuildMentions(
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags, List<MentionComparison> Comparisons) BuildMentions(
         JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
@@ -471,9 +497,10 @@ public class SignalExtractor
         var attributes = new List<MentionAttribute>();
         var claims = new List<FactualClaim>();
         var riskFlags = new List<MentionRiskFlag>();
+        var comparisons = new List<MentionComparison>();
         if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
-            return (mentions, candidates, attributes, claims, riskFlags);
+            return (mentions, candidates, attributes, claims, riskFlags, comparisons);
         }
 
         var now = DateTime.UtcNow;
@@ -522,6 +549,7 @@ public class SignalExtractor
                 attributes.AddRange(BuildAttributes(m, mention.Id, now));
                 claims.AddRange(BuildFactualClaims(m, mention.Id, now));
                 riskFlags.AddRange(BuildRiskFlags(m, mention.Id, now));
+                comparisons.AddRange(BuildComparisons(m, mention.Id, normalized, now));
             }
             else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
             {
@@ -541,7 +569,7 @@ public class SignalExtractor
                 });
             }
         }
-        return (mentions, candidates, attributes, claims, riskFlags);
+        return (mentions, candidates, attributes, claims, riskFlags, comparisons);
     }
 
     private static IEnumerable<DraftCitation> BuildDraftCitations(
@@ -831,6 +859,48 @@ public class SignalExtractor
                 Severity = ParseEnum<RiskSeverity>(r, "severity", RiskSeverity.Low),
                 EvidenceSnippet = Truncate(
                     TryGetNullableString(r, "evidence_snippet") ?? string.Empty, 500),
+                CreatedAt = now,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Reads the comparisons array from a mention's JSON element and turns
+    /// each row into a draft <see cref="MentionComparison"/>. Drops rows
+    /// with missing vs_entity, missing on_aspect, or self-comparisons
+    /// (vs_entity normalizes to the same key as this mention).
+    /// </summary>
+    private static IEnumerable<MentionComparison> BuildComparisons(
+        JsonElement mention, Guid mentionId, string thisMentionNormalized, DateTime now)
+    {
+        if (!mention.TryGetProperty("comparisons", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var c in arr.EnumerateArray())
+        {
+            var vs = TryGetNullableString(c, "vs_entity");
+            var aspect = TryGetNullableString(c, "on_aspect");
+            if (string.IsNullOrWhiteSpace(vs) || string.IsNullOrWhiteSpace(aspect)) continue;
+            var vsNormalized = Normalize(vs);
+            if (string.IsNullOrEmpty(vsNormalized)) continue;
+            // Skip self-comparisons — the rules block in the prompt asks the
+            // LLM to skip these but a stale model could still emit them.
+            if (vsNormalized.Equals(thisMentionNormalized, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var winner = TryGetNullableString(c, "winner")?.Trim().ToLowerInvariant();
+            if (winner != "this" && winner != "other") continue;
+
+            yield return new MentionComparison
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                VsEntityName = Truncate(vs.Trim(), 500),
+                VsEntityNormalized = vsNormalized,
+                OnAspect = Truncate(NormalizeFlagType(aspect), 100),
+                WinnerIsThisMention = winner == "this",
+                EvidenceSnippet = string.Empty,
                 CreatedAt = now,
             };
         }

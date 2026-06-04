@@ -88,6 +88,14 @@ public class MetricAggregator
                 .Where(f => mentionIds.Contains(f.MentionId))
                 .ToListAsync(cancellationToken);
 
+        // Phase 4 item 15: head-to-head comparisons attached to mentions in
+        // this scan. Brand-scope rollup counts wins/losses on brand mentions.
+        var allComparisons = mentionIds.Count == 0
+            ? new List<MentionComparison>()
+            : await _db.MentionComparisons.AsNoTracking()
+                .Where(c => mentionIds.Contains(c.MentionId))
+                .ToListAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
@@ -245,6 +253,46 @@ public class MetricAggregator
             var count = grp.Sum(x => brandRiskFlagByAnswer[x.Context.AIAnswerId].Count());
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
                 MetricNames.BrandRiskFlagCount, count, now));
+        }
+
+        // Phase 4 item 15: per-scope brand comparison wins/losses.
+        var brandComparisons = allComparisons
+            .Where(c => brandMentionIds.Contains(c.MentionId))
+            .ToList();
+        var brandComparisonByAnswer = brandComparisons
+            .Join(mentions, c => c.MentionId, m => m.Id, (c, m) => (Comparison: c, AnswerId: m.AIAnswerId))
+            .ToLookup(x => x.AnswerId, x => x.Comparison);
+
+        int Wins(IEnumerable<MentionComparison> set) => set.Count(c => c.WinnerIsThisMention);
+        int Losses(IEnumerable<MentionComparison> set) => set.Count(c => !c.WinnerIsThisMention);
+
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandWinningComparisonCount, Wins(brandComparisons), now));
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandLosingComparisonCount, Losses(brandComparisons), now));
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            var scoped = grp.SelectMany(c => brandComparisonByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandWinningComparisonCount, Wins(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandLosingComparisonCount, Losses(scoped), now));
+        }
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            var scoped = grp.SelectMany(c => brandComparisonByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandWinningComparisonCount, Wins(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandLosingComparisonCount, Losses(scoped), now));
+        }
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            var scoped = grp.SelectMany(x => brandComparisonByAnswer[x.Context.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandWinningComparisonCount, Wins(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandLosingComparisonCount, Losses(scoped), now));
         }
 
         // Phase 4 item 6: per-scope brand recommendation metrics. Same loop

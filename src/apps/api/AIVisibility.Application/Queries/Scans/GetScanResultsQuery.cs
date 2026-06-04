@@ -114,6 +114,16 @@ public sealed record CoreMetricsDto(
     /// </summary>
     int BrandRiskFlagCount,
     /// <summary>
+    /// Head-to-head comparisons the brand wins on the named aspect
+    /// (Phase 4 item 15).
+    /// </summary>
+    int BrandWinningComparisonCount,
+    /// <summary>
+    /// Head-to-head comparisons the brand loses on the named aspect.
+    /// Wins minus losses is the directed comparative-framing signal.
+    /// </summary>
+    int BrandLosingComparisonCount,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).
