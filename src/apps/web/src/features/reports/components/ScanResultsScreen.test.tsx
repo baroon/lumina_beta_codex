@@ -97,6 +97,8 @@ function makeResults(overrides: Partial<ScanResultsDto> = {}): ScanResultsDto {
       brandLosingComparisonCount: 1,
       brandRecommendedForCount: 4,
       brandWithCaveatsCount: 2,
+      brandTopicRecommendedCount: 2,
+      brandTopicNotRecommendedCount: 1,
       brandMentionRateMomentum: 0.05,
       brandShareOfVoiceMomentum: null,
       brandAbsenceRateMomentum: -0.1,

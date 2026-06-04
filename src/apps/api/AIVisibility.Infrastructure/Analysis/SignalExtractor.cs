@@ -97,7 +97,14 @@ public class SignalExtractor
                 }
               ],
               "recommended_for": [string],   // scenarios / audiences / use-cases the answer endorses THIS entity FOR. See recommendation-context rules. May be [].
-              "with_caveats": [string]       // limitations / caveats the answer attaches to THIS entity. See recommendation-context rules. May be [].
+              "with_caveats": [string],      // limitations / caveats the answer attaches to THIS entity. See recommendation-context rules. May be [].
+              "topic_recommendations": [     // structured per-topic recommendation rows. See topic-recommendation rules. May be [].
+                {
+                  "topic": string,           // named topic, e.g. "breaking news", "investigative analysis"
+                  "is_recommended": bool,    // does the answer recommend THIS entity for THIS topic?
+                  "strength": "Strong|Moderate|Weak|NotRecommended|Unknown"
+                }
+              ]
             }
           ],
           "citations": [
@@ -205,6 +212,26 @@ public class SignalExtractor
             Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
             Unverifiable -- speculative or future-tense ("will likely IPO next year")
         - When the answer asserts nothing factual about an entity, return [].
+
+        Topic-recommendation rules (mention.topic_recommendations):
+        - One row per (this entity, topic) tuple where the answer either
+          recommends OR explicitly DOES NOT recommend the entity for that
+          named topic. The point is to capture "Recommended for breaking
+          news, NOT recommended for investigative analysis" — TWO rows for
+          the same mention, with different topic + is_recommended values.
+        - topic = short noun phrase from the answer (preserve casing). The
+          extractor downstream lowercases for grouping.
+        - is_recommended = true when the answer endorses entity for topic;
+          false when it explicitly disqualifies. Tied / ambiguous → skip row.
+        - strength: same Strong|Moderate|Weak|NotRecommended|Unknown ladder
+          as the top-level brand_recommendation_strength. NotRecommended is
+          the natural value when is_recommended=false; Unknown is the safe
+          default.
+        - DO NOT emit a row that simply restates the top-level
+          recommended/not-recommended without naming a specific topic. The
+          unstructured recommended_for / with_caveats lists already cover
+          that.
+        - Empty list when the answer doesn't make per-topic distinctions.
 
         Recommendation-context rules (mention.recommended_for, mention.with_caveats):
         - recommended_for captures scenarios / audiences / use-cases the
@@ -391,10 +418,10 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts) = BuildMentions(root, answer.Id, answer.AnswerText, context);
+            var (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts, topicRecommendations) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
             var recommendations = BuildAnswerRecommendations(root, answer.Id);
-            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags, comparisons, recommendationContexts);
+            return new SignalExtractionResult(signal, mentions, candidates, drafts, attributes, claims, recommendations, riskFlags, comparisons, recommendationContexts, topicRecommendations);
         }
         catch (Exception ex)
         {
@@ -515,7 +542,7 @@ public class SignalExtractor
         };
     }
 
-    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags, List<MentionComparison> Comparisons, List<MentionRecommendationContext> RecommendationContexts) BuildMentions(
+    private (List<Mention> Mentions, List<MentionCandidate> Candidates, List<MentionAttribute> Attributes, List<FactualClaim> Claims, List<MentionRiskFlag> RiskFlags, List<MentionComparison> Comparisons, List<MentionRecommendationContext> RecommendationContexts, List<MentionTopicRecommendation> TopicRecommendations) BuildMentions(
         JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
@@ -525,9 +552,10 @@ public class SignalExtractor
         var riskFlags = new List<MentionRiskFlag>();
         var comparisons = new List<MentionComparison>();
         var recommendationContexts = new List<MentionRecommendationContext>();
+        var topicRecommendations = new List<MentionTopicRecommendation>();
         if (!root.TryGetProperty("mentions", out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
-            return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts);
+            return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts, topicRecommendations);
         }
 
         var now = DateTime.UtcNow;
@@ -578,6 +606,7 @@ public class SignalExtractor
                 riskFlags.AddRange(BuildRiskFlags(m, mention.Id, now));
                 comparisons.AddRange(BuildComparisons(m, mention.Id, normalized, now));
                 recommendationContexts.AddRange(BuildRecommendationContexts(m, mention.Id, now));
+                topicRecommendations.AddRange(BuildTopicRecommendations(m, mention.Id, now));
             }
             else if (entityType is MentionEntityType.Competitor or MentionEntityType.Product)
             {
@@ -597,7 +626,7 @@ public class SignalExtractor
                 });
             }
         }
-        return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts);
+        return (mentions, candidates, attributes, claims, riskFlags, comparisons, recommendationContexts, topicRecommendations);
     }
 
     private static IEnumerable<DraftCitation> BuildDraftCitations(
@@ -887,6 +916,40 @@ public class SignalExtractor
                 Severity = ParseEnum<RiskSeverity>(r, "severity", RiskSeverity.Low),
                 EvidenceSnippet = Truncate(
                     TryGetNullableString(r, "evidence_snippet") ?? string.Empty, 500),
+                CreatedAt = now,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Reads the topic_recommendations array from a mention's JSON element
+    /// and turns each row into a <see cref="MentionTopicRecommendation"/>.
+    /// Rows missing topic name are skipped. Strength defaults to Unknown
+    /// when omitted or unparseable.
+    /// </summary>
+    private static IEnumerable<MentionTopicRecommendation> BuildTopicRecommendations(
+        JsonElement mention, Guid mentionId, DateTime now)
+    {
+        if (!mention.TryGetProperty("topic_recommendations", out var arr)
+            || arr.ValueKind != JsonValueKind.Array)
+        {
+            yield break;
+        }
+        foreach (var r in arr.EnumerateArray())
+        {
+            var topic = TryGetNullableString(r, "topic");
+            if (string.IsNullOrWhiteSpace(topic)) continue;
+            var normalized = Normalize(topic);
+            if (string.IsNullOrEmpty(normalized)) continue;
+
+            yield return new MentionTopicRecommendation
+            {
+                Id = Guid.NewGuid(),
+                MentionId = mentionId,
+                TopicName = Truncate(topic.Trim(), 300),
+                TopicNormalized = Truncate(normalized, 300),
+                IsRecommended = TryGetBoolean(r, "is_recommended") ?? false,
+                Strength = ParseEnum<RecommendationStrength>(r, "strength", RecommendationStrength.Unknown),
                 CreatedAt = now,
             };
         }

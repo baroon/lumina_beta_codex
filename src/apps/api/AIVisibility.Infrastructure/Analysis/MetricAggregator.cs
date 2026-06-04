@@ -104,6 +104,13 @@ public class MetricAggregator
                 .Where(c => mentionIds.Contains(c.MentionId))
                 .ToListAsync(cancellationToken);
 
+        // Phase 4 item 13: per-topic recommendation triples on mentions.
+        var allTopicRecs = mentionIds.Count == 0
+            ? new List<MentionTopicRecommendation>()
+            : await _db.MentionTopicRecommendations.AsNoTracking()
+                .Where(t => mentionIds.Contains(t.MentionId))
+                .ToListAsync(cancellationToken);
+
         var now = DateTime.UtcNow;
         var rows = new List<ScanMetric>();
 
@@ -342,6 +349,45 @@ public class MetricAggregator
                 MetricNames.BrandRecommendedForCount, RecFor(scoped), now));
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
                 MetricNames.BrandWithCaveatsCount, WithCaveats(scoped), now));
+        }
+
+        // Phase 4 item 13: per-scope brand topic-recommendation counts.
+        var brandTopicRecs = allTopicRecs
+            .Where(t => brandMentionIds.Contains(t.MentionId))
+            .ToList();
+        var brandTopicRecByAnswer = brandTopicRecs
+            .Join(mentions, t => t.MentionId, m => m.Id, (t, m) => (Rec: t, AnswerId: m.AIAnswerId))
+            .ToLookup(x => x.AnswerId, x => x.Rec);
+        int Yes(IEnumerable<MentionTopicRecommendation> set) => set.Count(t => t.IsRecommended);
+        int No(IEnumerable<MentionTopicRecommendation> set) => set.Count(t => !t.IsRecommended);
+
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandTopicRecommendedCount, Yes(brandTopicRecs), now));
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.BrandTopicNotRecommendedCount, No(brandTopicRecs), now));
+        foreach (var grp in contexts.GroupBy(c => c.PlatformId))
+        {
+            var scoped = grp.SelectMany(c => brandTopicRecByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandTopicRecommendedCount, Yes(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Platform, grp.Key,
+                MetricNames.BrandTopicNotRecommendedCount, No(scoped), now));
+        }
+        foreach (var grp in contexts.GroupBy(c => c.LensId))
+        {
+            var scoped = grp.SelectMany(c => brandTopicRecByAnswer[c.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandTopicRecommendedCount, Yes(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Lens, grp.Key,
+                MetricNames.BrandTopicNotRecommendedCount, No(scoped), now));
+        }
+        foreach (var grp in topicGroupsForAttrs)
+        {
+            var scoped = grp.SelectMany(x => brandTopicRecByAnswer[x.Context.AIAnswerId]).ToList();
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandTopicRecommendedCount, Yes(scoped), now));
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Topic, grp.Key,
+                MetricNames.BrandTopicNotRecommendedCount, No(scoped), now));
         }
 
         // Phase 4 item 6: per-scope brand recommendation metrics. Same loop

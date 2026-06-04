@@ -46,6 +46,7 @@ public interface IAppDbContext
     DbSet<MentionRiskFlag> MentionRiskFlags { get; }
     DbSet<MentionComparison> MentionComparisons { get; }
     DbSet<MentionRecommendationContext> MentionRecommendationContexts { get; }
+    DbSet<MentionTopicRecommendation> MentionTopicRecommendations { get; }
     DbSet<Citation> Citations { get; }
     DbSet<ScanMetric> ScanMetrics { get; }
     DbSet<Source> Sources { get; }

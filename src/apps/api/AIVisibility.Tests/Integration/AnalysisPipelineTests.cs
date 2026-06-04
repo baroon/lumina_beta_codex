@@ -466,22 +466,24 @@ public class AnalysisPipelineTests
         //      (always emit at non-Competitor scopes; values 0 here)
         //   +2 BrandRecommendedForCount + BrandWithCaveatsCount
         //      (always emit at non-Competitor scopes; values 0 here)
-        // = +19 per non-Competitor scope that has answers; the fixture has
-        // 1 Platform group + 1 Lens group + 0 Topic groups so 29 each at
+        //   +2 BrandTopicRecommendedCount + BrandTopicNotRecommendedCount
+        //      (always emit at non-Competitor scopes; values 0 here)
+        // = +21 per non-Competitor scope that has answers; the fixture has
+        // 1 Platform group + 1 Lens group + 0 Topic groups so 31 each at
         // Platform and Lens.
         // Overall additionally gets +1 DistinctCoMentionedBrandCount (1
-        // competitor co-mentioned with brand in this fixture), so 30.
+        // competitor co-mentioned with brand in this fixture), so 32.
         //
         // Competitor scope: 5 metrics — MentionCount + RecommendationCount
         // + CoMentionedWithBrandCount (Acme co-mentioned with brand once)
         // + CompetitorShareOfVoice (Acme 1 mention / 2 brand+competitor = 0.5)
         // + CompetitorRecommendationShare (Acme 0 recs / 1 total rec = 0.0).
-        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(30);
-        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(29);
-        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(29);
+        metrics.Where(m => m.Scope == ScanMetricScope.Overall).Should().HaveCount(32);
+        metrics.Where(m => m.Scope == ScanMetricScope.Platform).Should().HaveCount(31);
+        metrics.Where(m => m.Scope == ScanMetricScope.Lens).Should().HaveCount(31);
         metrics.Where(m => m.Scope == ScanMetricScope.Competitor).Should().HaveCount(5);
         metrics.Where(m => m.Scope == ScanMetricScope.Topic).Should().BeEmpty();
-        metrics.Should().HaveCount(93);
+        metrics.Should().HaveCount(99);
 
         // The four classification counts MUST sum to CitationCount — the
         // invariant added in the UnknownCitationCount fix.

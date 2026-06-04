@@ -357,6 +357,10 @@ export interface CoreMetricsDto {
   brandRecommendedForCount: number;
   /** With caveats count attached to brand mentions. */
   brandWithCaveatsCount: number;
+  /** Per-topic rows where the brand IS recommended for the topic. */
+  brandTopicRecommendedCount: number;
+  /** Per-topic rows where the brand is explicitly NOT recommended. */
+  brandTopicNotRecommendedCount: number;
   /** Change in BrandMentionRate vs previous scan. Null on first scan. */
   brandMentionRateMomentum: number | null;
   /** Change in BrandShareOfVoice vs previous scan. Null on first scan. */

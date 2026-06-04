@@ -63,7 +63,13 @@ public sealed record SignalExtractionResult(
     /// expansion, item #2). One row per "Recommended for X" or
     /// "With caveats about Y" entry the answer attached to this entity.
     /// </summary>
-    IReadOnlyList<MentionRecommendationContext> RecommendationContexts);
+    IReadOnlyList<MentionRecommendationContext> RecommendationContexts,
+    /// <summary>
+    /// Per-topic recommendation triples (Phase 4 measurement-model
+    /// expansion, item #13). Captures "Recommended for X, not for Y" as
+    /// distinct structured rows rather than free-text caveats.
+    /// </summary>
+    IReadOnlyList<MentionTopicRecommendation> TopicRecommendations);
 
 /// <summary>
 /// LLM-reported citation enriched with the v1 URL-domain classifier's

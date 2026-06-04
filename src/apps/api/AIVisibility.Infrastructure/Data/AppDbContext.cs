@@ -49,6 +49,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<MentionRiskFlag> MentionRiskFlags => Set<MentionRiskFlag>();
     public DbSet<MentionComparison> MentionComparisons => Set<MentionComparison>();
     public DbSet<MentionRecommendationContext> MentionRecommendationContexts => Set<MentionRecommendationContext>();
+    public DbSet<MentionTopicRecommendation> MentionTopicRecommendations => Set<MentionTopicRecommendation>();
     public DbSet<Citation> Citations => Set<Citation>();
     public DbSet<ScanMetric> ScanMetrics => Set<ScanMetric>();
     public DbSet<Source> Sources => Set<Source>();

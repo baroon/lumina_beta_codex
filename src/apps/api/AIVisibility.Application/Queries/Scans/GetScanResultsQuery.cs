@@ -134,6 +134,16 @@ public sealed record CoreMetricsDto(
     /// </summary>
     int BrandWithCaveatsCount,
     /// <summary>
+    /// Count of per-topic rows where the brand IS recommended for the
+    /// named topic (Phase 4 item 13).
+    /// </summary>
+    int BrandTopicRecommendedCount,
+    /// <summary>
+    /// Count of per-topic rows where the brand is explicitly NOT
+    /// recommended for the named topic.
+    /// </summary>
+    int BrandTopicNotRecommendedCount,
+    /// <summary>
     /// Change in BrandMentionRate vs the previous completed scan (current -
     /// previous). Null when this is the tracker's first scan. Range
     /// [-1.0, +1.0]. Phase 4 measurement-model expansion (item 20).

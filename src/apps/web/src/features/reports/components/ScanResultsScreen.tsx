@@ -220,6 +220,10 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           value={`${metrics.brandRecommendedForCount} / ${metrics.brandWithCaveatsCount}`}
         />
         <MetricTile
+          label={m.brandTopicRecommendations}
+          value={`${metrics.brandTopicRecommendedCount} / ${metrics.brandTopicNotRecommendedCount}`}
+        />
+        <MetricTile
           label={m.averageBrandRank}
           value={formatRankWithUniverse(
             metrics.averageBrandRank,

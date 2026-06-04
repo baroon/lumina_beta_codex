@@ -176,6 +176,23 @@ public static class MetricNames
     /// </summary>
     public const string BrandWithCaveatsCount = "BrandWithCaveatsCount";
 
+    /// <summary>
+    /// Count of <c>MentionTopicRecommendation</c> rows where the brand is
+    /// recommended for the named topic (Phase 4 measurement-model expansion,
+    /// item 13). Captures "Recommended for X" as a structured, aggregable
+    /// signal. Always emitted at non-Competitor scopes.
+    /// </summary>
+    public const string BrandTopicRecommendedCount = "BrandTopicRecommendedCount";
+
+    /// <summary>
+    /// Count of <c>MentionTopicRecommendation</c> rows where the brand is
+    /// explicitly NOT recommended for the named topic. The companion to
+    /// <see cref="BrandTopicRecommendedCount"/> — the recommended-vs-not
+    /// per-topic ratio is a visibility quality indicator beyond raw
+    /// recommendation rate.
+    /// </summary>
+    public const string BrandTopicNotRecommendedCount = "BrandTopicNotRecommendedCount";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>
