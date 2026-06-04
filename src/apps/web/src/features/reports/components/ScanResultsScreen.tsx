@@ -198,7 +198,13 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           value={formatRate(metrics.brandAbsenceRate)}
           subValue={formatMomentum(metrics.brandAbsenceRateMomentum)}
         />
-        <MetricTile label={m.averageBrandRank} value={formatRank(metrics.averageBrandRank)} />
+        <MetricTile
+          label={m.averageBrandRank}
+          value={formatRankWithUniverse(
+            metrics.averageBrandRank,
+            metrics.averageBrandRankUniverseSize,
+          )}
+        />
         <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
         <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />
         <MetricTile
@@ -511,6 +517,15 @@ function formatRate(value: number | null): string {
 function formatRank(value: number | null): string {
   if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
   return value.toFixed(1);
+}
+
+// Show rank with the average universe denominator when available so "rank 3"
+// reads as "3 of ~7" — the latter is far more interpretable. The ~ signals
+// the universe is an average across answers, not a hard number.
+function formatRankWithUniverse(rank: number | null, universe: number | null): string {
+  const r = formatRank(rank);
+  if (rank == null || universe == null) return r;
+  return `${r} of ~${universe.toFixed(0)}`;
 }
 
 // Recommendation score is signed [-1, +1]; show explicit sign + 2 decimals so

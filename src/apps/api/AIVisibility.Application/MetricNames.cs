@@ -101,6 +101,15 @@ public static class MetricNames
     /// </summary>
     public const string BrandAbsenceRate = "BrandAbsenceRate";
 
+    /// <summary>
+    /// Average rank-universe size across answers where the brand was ranked
+    /// AND the LLM reported a universe size. Companion to
+    /// <see cref="AverageBrandRank"/> — gives the rank a denominator
+    /// (rank 3 of ~5 vs rank 3 of ~50 read very differently). Skipped (no
+    /// row) when no ranked answers reported a universe size.
+    /// </summary>
+    public const string AverageBrandRankUniverseSize = "AverageBrandRankUniverseSize";
+
     // -- Cross-scan momentum (Phase 4 measurement-model expansion, item 20) --
 
     /// <summary>

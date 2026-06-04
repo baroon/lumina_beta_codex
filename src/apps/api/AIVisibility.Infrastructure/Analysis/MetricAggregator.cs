@@ -407,6 +407,21 @@ public class MetricAggregator
             var avg = ranked.Average(c => (double)c.Signal.BrandRank!.Value);
             yield return MetricRow(scanRunId, scope, scopeId, MetricNames.AverageBrandRank,
                 avg, now);
+
+            // Companion: average rank universe size across ranked answers that
+            // also reported a universe (the LLM sometimes ranks without naming
+            // the full list — those answers contribute to AverageBrandRank but
+            // not here). Lets the FE render "rank 3 of ~7" instead of bare 3.
+            var ranksWithUniverse = ranked
+                .Where(c => c.Signal.BrandRankUniverseSize.HasValue)
+                .ToList();
+            if (ranksWithUniverse.Count > 0)
+            {
+                yield return MetricRow(scanRunId, scope, scopeId,
+                    MetricNames.AverageBrandRankUniverseSize,
+                    ranksWithUniverse.Average(c => (double)c.Signal.BrandRankUniverseSize!.Value),
+                    now);
+            }
         }
 
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.CompetitorMentionCount,

@@ -333,6 +333,8 @@ export interface CoreMetricsDto {
   averageBrandRank: number | null;
   /** Lead share — fraction of answers where the brand was first-named by position. Null when no mentions in scope. */
   brandFirstMentionRate: number | null;
+  /** Average ranked-list size the brand was ranked against. Null when no rank universe captured. */
+  averageBrandRankUniverseSize: number | null;
   /** Mean recommendation score in [-1, +1]. Null when no answers in scope had the brand mentioned. */
   brandRecommendationScore: number | null;
   /** Brand's share of all recommendations in the scan. Null when nobody was recommended. */

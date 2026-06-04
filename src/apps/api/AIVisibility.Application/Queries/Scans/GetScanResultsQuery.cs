@@ -63,6 +63,13 @@ public sealed record CoreMetricsDto(
     /// </summary>
     double? BrandFirstMentionRate,
     /// <summary>
+    /// Average size of the ranked list the brand was ranked against
+    /// (Phase 4 measurement-model expansion, item 3). Companion to
+    /// AverageBrandRank — lets the FE show "rank 3 of ~7". Null when
+    /// no ranked answers in scope reported a universe size.
+    /// </summary>
+    double? AverageBrandRankUniverseSize,
+    /// <summary>
     /// Mean recommendation score (Phase 4 measurement-model expansion),
     /// range [-1.0, +1.0]. Null when no answers in scope had the brand
     /// mentioned — same denominator-zero pattern as BrandShareOfVoice.

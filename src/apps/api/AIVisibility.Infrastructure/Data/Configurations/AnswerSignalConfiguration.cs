@@ -16,6 +16,7 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
         builder.Property(s => s.BrandMentioned).HasColumnName("brand_mentioned");
         builder.Property(s => s.BrandRecommended).HasColumnName("brand_recommended");
         builder.Property(s => s.BrandRank).HasColumnName("brand_rank");
+        builder.Property(s => s.BrandRankUniverseSize).HasColumnName("brand_rank_universe_size");
         builder.Property(s => s.BrandSentiment).HasColumnName("brand_sentiment")
             .HasConversion<string>().HasMaxLength(50);
         builder.Property(s => s.BrandSentimentScore).HasColumnName("brand_sentiment_score")

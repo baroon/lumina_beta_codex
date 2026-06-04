@@ -40,6 +40,7 @@ public class SignalExtractor
             "brand_mentioned": bool,
             "brand_recommended": bool,
             "brand_rank": int|null,          // 1-based rank in any ranked list; null otherwise
+            "brand_rank_universe_size": int|null, // total entries in that ranked list; null when brand_rank is null
             "brand_sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
             "brand_sentiment_score": number, // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
             "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
@@ -116,6 +117,18 @@ public class SignalExtractor
             "The top three are: Acme, Beta, Charlie"    -> brand_rank = null (brand not in list)
             "Lumina, Acme, and Beta are all good"       -> brand_rank = null (not ordered)
         - When answer_has_ranking=false, brand_rank MUST be null.
+
+        Rank-universe rules (brand_rank_universe_size):
+        - When brand_rank is set, brand_rank_universe_size MUST be the total
+          number of entries in that ranked list — the denominator that gives
+          the rank meaning ("3 of 5" reads very differently from "3 of 50").
+        - Count distinct ranked entries only (skip duplicates / parenthetical
+          aliases). If the answer says "Top 5 are: A, B, C, D, E", the
+          universe size is 5 regardless of how many are paraphrased later.
+        - When brand_rank is null, brand_rank_universe_size MUST also be null.
+        - If the answer ranks the brand but doesn't enumerate the full list
+          (e.g. "Lumina is ranked 3rd on AlternativeTo.net"), set
+          brand_rank_universe_size to null — don't guess.
 
         Top-recommended-entity rules (top_recommended_entity):
         - When the answer endorses ONE entity as the clear top pick (above all
@@ -207,6 +220,7 @@ public class SignalExtractor
         - Absence is NOT negative. When brand_mentioned=false, ALL of the following MUST hold:
             brand_recommended = false
             brand_rank = null
+            brand_rank_universe_size = null
             brand_sentiment = "Unknown"
             brand_sentiment_score = 0
             brand_recommendation_strength = "Unknown"
@@ -342,6 +356,11 @@ public class SignalExtractor
             ? ReadRecommendationScore(s, "brand_recommendation_score", brandStrength)
             : 0.0;
         var brandRank = brandMentioned ? TryGetNullableInt(s, "brand_rank") : null;
+        // Universe size is null when the brand isn't ranked (no denominator
+        // without a numerator). Also null when the LLM didn't emit it.
+        var brandRankUniverseSize = brandRank.HasValue
+            ? TryGetNullableInt(s, "brand_rank_universe_size")
+            : null;
         var brandRecommended = brandMentioned && (TryGetBoolean(s, "brand_recommended") ?? false);
 
         return new AnswerSignal
@@ -351,6 +370,7 @@ public class SignalExtractor
             BrandMentioned = brandMentioned,
             BrandRecommended = brandRecommended,
             BrandRank = brandRank,
+            BrandRankUniverseSize = brandRankUniverseSize,
             BrandSentiment = brandSentiment,
             BrandSentimentScore = brandSentimentScore,
             BrandRecommendationStrength = brandStrength,

@@ -20,6 +20,14 @@ public class AnswerSignal
     public bool BrandRecommended { get; set; }
     /// <summary>1-based position in any ranked list in the answer; null when no list or not ranked.</summary>
     public int? BrandRank { get; set; }
+    /// <summary>
+    /// Size of the ranked universe — total entries in the list the brand was
+    /// ranked against. Phase 4 measurement-model expansion (item 3): rank 3
+    /// of 5 reads very differently from rank 3 of 50. Null when
+    /// <see cref="BrandRank"/> is null, or when the LLM didn't report a
+    /// universe size (some answers rank without naming the full list).
+    /// </summary>
+    public int? BrandRankUniverseSize { get; set; }
     public Sentiment BrandSentiment { get; set; } = Sentiment.Unknown;
 
     /// <summary>
