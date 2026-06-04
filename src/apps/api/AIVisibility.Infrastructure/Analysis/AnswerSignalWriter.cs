@@ -41,6 +41,7 @@ public class AnswerSignalWriter : IAnswerSignalWriter
         _db.AnswerSignals.Add(result.Signal);
         foreach (var m in result.Mentions) _db.Mentions.Add(m);
         foreach (var c in result.Candidates) _db.MentionCandidates.Add(c);
+        AddMentionPairs(result.Mentions);
 
         if (result.Citations.Count == 0)
         {
@@ -200,6 +201,42 @@ public class AnswerSignalWriter : IAnswerSignalWriter
 
     private static string SourceKey(DraftCitation d) =>
         d.NormalizedDomain ?? $"name:{d.NormalizedSourceName}";
+
+    /// <summary>
+    /// Generates all unordered MentionPair rows from this answer's mentions
+    /// and queues them on the DbContext. Canonical ordering — the pair with
+    /// the smaller MentionId by Guid comparison goes in MentionAId — so a
+    /// pair is recorded once, not twice. Skips when fewer than 2 mentions
+    /// (nothing to pair) and when a single mention pairs with itself
+    /// (e.g. brand mentioned twice in the same answer would otherwise
+    /// produce a self-pair — meaningless).
+    /// </summary>
+    private void AddMentionPairs(IReadOnlyList<Mention> mentions)
+    {
+        if (mentions.Count < 2) return;
+        var now = DateTime.UtcNow;
+        for (var i = 0; i < mentions.Count; i++)
+        {
+            for (var j = i + 1; j < mentions.Count; j++)
+            {
+                var a = mentions[i];
+                var b = mentions[j];
+                // Same entity in the same answer (e.g. brand named as both
+                // Brand and Product) — not a meaningful co-mention.
+                if (a.EntityId == b.EntityId && a.EntityType == b.EntityType) continue;
+
+                var (left, right) = a.Id.CompareTo(b.Id) < 0 ? (a, b) : (b, a);
+                _db.MentionPairs.Add(new MentionPair
+                {
+                    Id = Guid.NewGuid(),
+                    AIAnswerId = left.AIAnswerId,
+                    MentionAId = left.Id,
+                    MentionBId = right.Id,
+                    CreatedAt = now,
+                });
+            }
+        }
+    }
 
     private async Task RunLlmClassifierAsync(
         List<(BrandSourceClassification Row, DraftCitation Sample)> pending,

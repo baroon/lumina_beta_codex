@@ -49,6 +49,8 @@ const fixture: ScanTopicsDto = {
       citationCount: 8,
       ownedCitationShare: 0.25,
       dominantSentiment: "Positive",
+      ownershipScore: 0.5,
+      ownershipBand: "Contested",
     },
   ],
 };

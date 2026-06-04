@@ -29,4 +29,17 @@ public sealed record TopicListItemDto(
     /// <summary>Owned citations / total citations within this topic, [0..1]. Null when CitationCount=0.</summary>
     double? OwnedCitationShare,
     /// <summary>Mode of BrandSentimentDistribution for this topic — the most-observed sentiment value. Null when the topic has no signals.</summary>
-    string? DominantSentiment);
+    string? DominantSentiment,
+    /// <summary>
+    /// Topic ownership: <c>BrandMentionRate ?? 0</c>. Score is in [0..1] —
+    /// "of the answers to prompts on this topic, what fraction mention us?"
+    /// Defaults to 0 (band = Lost) when no data, so the FE can sort + group
+    /// without a null guard.
+    /// </summary>
+    double OwnershipScore,
+    /// <summary>
+    /// Banded ownership for display + sort: <c>Owned</c> (score ≥ 0.66),
+    /// <c>Contested</c> (0.33–0.66), <c>Lost</c> (&lt; 0.33). String rather
+    /// than enum to keep the FE display flexible.
+    /// </summary>
+    string OwnershipBand);

@@ -15,6 +15,8 @@ function topic(overrides: Partial<TopicListItemDto> = {}): TopicListItemDto {
     citationCount: 8,
     ownedCitationShare: 0.25,
     dominantSentiment: "Positive",
+    ownershipScore: 0.5,
+    ownershipBand: "Contested",
     ...overrides,
   };
 }
@@ -68,5 +70,39 @@ describe("TopicsTable", () => {
     render(<TopicsTable topics={[topic()]} onSelectTopic={onSelectTopic} />);
     await userEvent.click(screen.getByRole("button", { name: "Sustainability" }));
     expect(onSelectTopic).toHaveBeenCalledWith("t1");
+  });
+
+  it("renders ownership band labels + score percentage", () => {
+    render(
+      <TopicsTable
+        topics={[
+          topic({
+            topicId: "a",
+            topicName: "Owned topic",
+            ownershipBand: "Owned",
+            ownershipScore: 0.9,
+          }),
+          topic({
+            topicId: "b",
+            topicName: "Contested topic",
+            ownershipBand: "Contested",
+            ownershipScore: 0.5,
+          }),
+          topic({
+            topicId: "c",
+            topicName: "Lost topic",
+            ownershipBand: "Lost",
+            ownershipScore: 0.1,
+          }),
+        ]}
+        onSelectTopic={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Owned")).toBeInTheDocument();
+    expect(screen.getByText("Contested")).toBeInTheDocument();
+    expect(screen.getByText("Lost")).toBeInTheDocument();
+    expect(screen.getByText("90%")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(screen.getByText("10%")).toBeInTheDocument();
   });
 });

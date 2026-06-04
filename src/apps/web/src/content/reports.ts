@@ -367,6 +367,7 @@ export const REPORTS_COPY = {
     table: {
       headers: {
         topic: "Topic",
+        ownership: "Ownership",
         mentionRate: "Mention rate",
         recommendationRate: "Rec. rate",
         shareOfVoice: "Share of voice",
@@ -375,6 +376,11 @@ export const REPORTS_COPY = {
         ownedShare: "Owned share",
         sentiment: "Sentiment",
       },
+      ownership: {
+        Owned: "Owned",
+        Contested: "Contested",
+        Lost: "Lost",
+      } as Record<string, string>,
       empty: "No topic metrics available for this scan yet.",
       noData: "—",
     },

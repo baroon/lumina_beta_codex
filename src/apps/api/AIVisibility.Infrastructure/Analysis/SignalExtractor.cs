@@ -41,6 +41,7 @@ public class SignalExtractor
             "brand_recommended": bool,
             "brand_rank": int|null,          // 1-based rank in any ranked list; null otherwise
             "brand_sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
+            "brand_sentiment_score": number, // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
             "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
             "top_recommended_entity": string|null,
             "answer_has_ranking": bool,
@@ -55,6 +56,7 @@ public class SignalExtractor
               "is_recommended": bool,
               "recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
               "sentiment": "Positive|Neutral|Negative|Mixed|Unknown",
+              "sentiment_score": number,     // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
               "evidence_snippet": string,    // ≤500 chars; quoted sentence(s) from the answer
               "confidence_score": number     // 0.0-1.0
             }
@@ -113,11 +115,28 @@ public class SignalExtractor
           entity MUST be the tracked brand's name — those two fields cannot
           disagree.
 
+        Sentiment-score rules (brand_sentiment_score, mention.sentiment_score):
+        - Score is a fine-grained reading of the enum on a continuous -1.0..+1.0 axis.
+        - Sign matches the enum: Positive enums score >0, Negative enums score <0,
+          Neutral / Mixed / Unknown enums score near 0.
+        - Magnitude reflects intensity:
+            +0.9  "X is the gold standard / unequivocally the best"
+            +0.6  "X is widely regarded as a strong choice"
+            +0.3  "X is solid, with some caveats"
+             0.0  Neutral / Mixed / Unknown
+            -0.3  "X has notable weaknesses"
+            -0.6  "X is generally not recommended"
+            -0.9  "X has serious problems / actively harmful"
+        - Mixed enums sit near 0: a balanced "great at A, weak at B" answer should
+          score within roughly [-0.2, +0.2]; pick the sign by which side dominates.
+        - Score MUST be in [-1.0, +1.0]. Out-of-range values will be clamped.
+
         Rules:
         - Absence is NOT negative. When brand_mentioned=false, ALL of the following MUST hold:
             brand_recommended = false
             brand_rank = null
             brand_sentiment = "Unknown"
+            brand_sentiment_score = 0
             brand_recommendation_strength = "Unknown"
             top_recommended_entity = null (unless the answer explicitly names another top entity)
           Do NOT emit "Negative" or "NotRecommended" just because the brand isn't mentioned —
@@ -168,7 +187,7 @@ public class SignalExtractor
         try
         {
             var drafts = BuildDraftCitations(root, answer.Id, context).ToList();
-            var (mentions, candidates) = BuildMentions(root, answer.Id, context);
+            var (mentions, candidates) = BuildMentions(root, answer.Id, answer.AnswerText, context);
             var signal = BuildSignal(root, answer.Id, drafts);
             return new SignalExtractionResult(signal, mentions, candidates, drafts);
         }
@@ -240,6 +259,9 @@ public class SignalExtractor
         var brandSentiment = brandMentioned
             ? ParseEnum<Sentiment>(s, "brand_sentiment", Sentiment.Unknown)
             : Sentiment.Unknown;
+        var brandSentimentScore = brandMentioned
+            ? ReadSentimentScore(s, "brand_sentiment_score", brandSentiment)
+            : 0.0;
         var brandStrength = brandMentioned
             ? ParseEnum<RecommendationStrength>(s, "brand_recommendation_strength", RecommendationStrength.Unknown)
             : RecommendationStrength.Unknown;
@@ -254,6 +276,7 @@ public class SignalExtractor
             BrandRecommended = brandRecommended,
             BrandRank = brandRank,
             BrandSentiment = brandSentiment,
+            BrandSentimentScore = brandSentimentScore,
             BrandRecommendationStrength = brandStrength,
             TopRecommendedEntity = TryGetNullableString(s, "top_recommended_entity"),
             AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
@@ -275,7 +298,7 @@ public class SignalExtractor
     }
 
     private (List<Mention> Mentions, List<MentionCandidate> Candidates) BuildMentions(
-        JsonElement root, Guid aiAnswerId, SignalExtractionContext context)
+        JsonElement root, Guid aiAnswerId, string answerText, SignalExtractionContext context)
     {
         var mentions = new List<Mention>();
         var candidates = new List<MentionCandidate>();
@@ -300,6 +323,10 @@ public class SignalExtractor
 
             if (resolved is not null)
             {
+                var (mentionCount, firstPosition) = ComputeProminence(
+                    entityType, resolved.Value, normalized, answerText, context);
+                var sentiment = ParseEnum<Sentiment>(m, "sentiment", Sentiment.Unknown);
+                var sentimentScore = ReadSentimentScore(m, "sentiment_score", sentiment);
                 mentions.Add(new Mention
                 {
                     Id = Guid.NewGuid(),
@@ -310,9 +337,12 @@ public class SignalExtractor
                     IsRecommended = TryGetBoolean(m, "is_recommended") ?? false,
                     RecommendationStrength = ParseEnum<RecommendationStrength>(
                         m, "recommendation_strength", RecommendationStrength.Unknown),
-                    Sentiment = ParseEnum<Sentiment>(m, "sentiment", Sentiment.Unknown),
+                    Sentiment = sentiment,
+                    SentimentScore = sentimentScore,
                     ConfidenceScore = TryGetDouble(m, "confidence_score") ?? 0.5,
                     EvidenceSnippet = evidence,
+                    MentionCount = mentionCount,
+                    FirstMentionPosition = firstPosition,
                     CreatedAt = now,
                 });
             }
@@ -439,6 +469,82 @@ public class SignalExtractor
         return brand.Aliases.Any(a => Normalize(a) == normalizedName) ? brand.Id : null;
     }
 
+    /// <summary>
+    /// Deterministic prominence: count case-insensitive occurrences of the
+    /// entity's canonical name in the answer text, and the normalized
+    /// position (0..1) of the first occurrence. Falls back to the LLM's
+    /// reported name when the canonical name isn't found, and finally to
+    /// `(1, 0.5)` when nothing matches — the Mention exists because the
+    /// LLM extracted it, so 0 is never the right answer for `MentionCount`.
+    /// </summary>
+    private static (int Count, double Position) ComputeProminence(
+        MentionEntityType entityType, Guid entityId, string normalizedFromLlm,
+        string answerText, SignalExtractionContext context)
+    {
+        if (string.IsNullOrEmpty(answerText))
+        {
+            return (1, 0.5);
+        }
+
+        var canonicalName = ResolveCanonicalName(entityType, entityId, context);
+        var (count, firstOffset) = FindOccurrences(answerText, canonicalName);
+        if (count == 0)
+        {
+            // LLM paraphrased — search for whatever name the LLM reported.
+            (count, firstOffset) = FindOccurrences(answerText, normalizedFromLlm);
+        }
+        if (count == 0)
+        {
+            return (1, 0.5);
+        }
+
+        var position = (double)firstOffset / Math.Max(answerText.Length, 1);
+        return (count, Math.Clamp(position, 0.0, 1.0));
+    }
+
+    /// <summary>
+    /// Pulls the canonical (display) name from the extraction context for a
+    /// resolved entity. Used as the primary search term for prominence
+    /// computation — more reliable than the LLM's paraphrase.
+    /// </summary>
+    private static string ResolveCanonicalName(
+        MentionEntityType entityType, Guid entityId, SignalExtractionContext context)
+    {
+        return entityType switch
+        {
+            MentionEntityType.Brand =>
+                context.Brand.Id == entityId ? context.Brand.Name : string.Empty,
+            MentionEntityType.Competitor =>
+                context.TrackedCompetitors.FirstOrDefault(c => c.Id == entityId)?.Name ?? string.Empty,
+            MentionEntityType.Product =>
+                context.TrackedProducts.FirstOrDefault(p => p.Id == entityId)?.Name ?? string.Empty,
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>
+    /// Counts non-overlapping case-insensitive occurrences of `needle` in
+    /// `text` and returns the offset of the first one. Returns `(0, -1)`
+    /// when `needle` is empty or doesn't appear.
+    /// </summary>
+    private static (int Count, int FirstOffset) FindOccurrences(string text, string needle)
+    {
+        if (string.IsNullOrEmpty(needle) || string.IsNullOrEmpty(text))
+        {
+            return (0, -1);
+        }
+        var count = 0;
+        var firstOffset = -1;
+        var idx = 0;
+        while ((idx = text.IndexOf(needle, idx, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            count++;
+            if (firstOffset < 0) firstOffset = idx;
+            idx += needle.Length;
+        }
+        return (count, firstOffset);
+    }
+
     private static string Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
@@ -473,6 +579,29 @@ public class SignalExtractor
     private static double? TryGetDouble(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
             ? v.GetDouble() : null;
+
+    /// <summary>
+    /// Reads the numeric sentiment_score (or brand_sentiment_score) from the
+    /// LLM's JSON output, clamped to [-1.0, +1.0]. When the LLM omits the
+    /// field, derives a score from the enum so callers always get a usable
+    /// number — Positive→+0.75, Negative→-0.75, others→0.0. Slice-2 of the
+    /// measurement-model expansion: numeric sentiment alongside the legacy
+    /// enum.
+    /// </summary>
+    private static double ReadSentimentScore(JsonElement parent, string name, Sentiment fallbackEnum)
+    {
+        var raw = TryGetDouble(parent, name);
+        if (raw is not null)
+        {
+            return Math.Clamp(raw.Value, -1.0, 1.0);
+        }
+        return fallbackEnum switch
+        {
+            Sentiment.Positive => 0.75,
+            Sentiment.Negative => -0.75,
+            _ => 0.0,
+        };
+    }
 
     private static bool? TryGetBoolean(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var v) && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False)

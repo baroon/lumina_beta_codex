@@ -3,6 +3,7 @@ using System;
 using AIVisibility.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIVisibility.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604082913_AddSentimentScore")]
+    partial class AddSentimentScore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -944,43 +947,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasIndex("ClaimedEntityType", "NormalizedName");
 
                     b.ToTable("mention_candidates", (string)null);
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionPair", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AIAnswerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ai_answer_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("MentionAId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("mention_a_id");
-
-                    b.Property<Guid>("MentionBId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("mention_b_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AIAnswerId");
-
-                    b.HasIndex("MentionAId");
-
-                    b.HasIndex("MentionBId");
-
-                    b.HasIndex("AIAnswerId", "MentionAId", "MentionBId")
-                        .IsUnique();
-
-                    b.ToTable("mention_pairs", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Product", b =>
@@ -2200,33 +2166,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("AIAnswer");
-                });
-
-            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionPair", b =>
-                {
-                    b.HasOne("AIVisibility.Domain.Entities.AIAnswer", "AIAnswer")
-                        .WithMany()
-                        .HasForeignKey("AIAnswerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AIVisibility.Domain.Entities.Mention", "MentionA")
-                        .WithMany()
-                        .HasForeignKey("MentionAId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AIVisibility.Domain.Entities.Mention", "MentionB")
-                        .WithMany()
-                        .HasForeignKey("MentionBId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("AIAnswer");
-
-                    b.Navigation("MentionA");
-
-                    b.Navigation("MentionB");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Product", b =>

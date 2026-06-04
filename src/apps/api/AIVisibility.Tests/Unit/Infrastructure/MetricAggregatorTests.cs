@@ -673,11 +673,19 @@ public class MetricAggregatorTests
         rows.Where(r => r.Scope == ScanMetricScope.Lens && r.ScopeId == lensA && r.MetricName == MetricNames.BrandSentimentDistribution)
             .Should().HaveCount(2);
 
-        // Competitor scope still emits only the existing 2 metrics — the new
-        // 3 don't fit per-competitor semantics, so don't bleed in.
+        // Competitor scope emits its per-competitor metrics: MentionCount,
+        // RecommendationCount (existing) + CoMentionedWithBrandCount (added
+        // with the co-mention slice). The 3 Slice-(c) aggregates (SoV /
+        // SentimentDist / TopCited) remain scan/brand-centric and do not
+        // bleed in here.
         rows.Where(r => r.Scope == ScanMetricScope.Competitor && r.ScopeId == competitorId)
             .Select(r => r.MetricName)
-            .Should().BeEquivalentTo(new[] { MetricNames.MentionCount, MetricNames.RecommendationCount });
+            .Should().BeEquivalentTo(new[]
+            {
+                MetricNames.MentionCount,
+                MetricNames.RecommendationCount,
+                MetricNames.CoMentionedWithBrandCount,
+            });
     }
 
     [Fact]

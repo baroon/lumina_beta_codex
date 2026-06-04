@@ -18,6 +18,8 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
         builder.Property(s => s.BrandRank).HasColumnName("brand_rank");
         builder.Property(s => s.BrandSentiment).HasColumnName("brand_sentiment")
             .HasConversion<string>().HasMaxLength(50);
+        builder.Property(s => s.BrandSentimentScore).HasColumnName("brand_sentiment_score")
+            .HasDefaultValue(0.0);
         builder.Property(s => s.BrandRecommendationStrength).HasColumnName("brand_recommendation_strength")
             .HasConversion<string>().HasMaxLength(50);
         builder.Property(s => s.TopRecommendedEntity).HasColumnName("top_recommended_entity")

@@ -49,6 +49,10 @@ public class MetricAggregator
         var citations = await _db.Citations.AsNoTracking()
             .Where(c => answerIds.Contains(c.AIAnswerId))
             .ToListAsync(cancellationToken);
+        var pairs = await _db.MentionPairs.AsNoTracking()
+            .Where(p => answerIds.Contains(p.AIAnswerId))
+            .Select(p => new { p.AIAnswerId, p.MentionAId, p.MentionBId })
+            .ToListAsync(cancellationToken);
 
         // Phase 4 Slice 0: citation classification + source display name moved
         // off the citation row onto Source + BrandSourceClassification. Load
@@ -90,8 +94,16 @@ public class MetricAggregator
                 grp.Select(x => x.Context).ToList(), mentions, citations, citationLookup, now);
         }
 
-        // Competitor scope — per-tracked-competitor MentionCount + RecommendationCount.
-        // Only emitted for competitors that actually had at least one mention.
+        // Co-mention map: competitorId → distinct AIAnswerIds where this
+        // competitor co-occurred with our brand. Built once from the pairs
+        // + mentions tables so every competitor's Competitor-scope rollup
+        // can read it in O(1).
+        var coMentionsByCompetitor = BuildBrandCoMentionMap(pairs, mentions, brandId);
+
+        // Competitor scope — per-tracked-competitor MentionCount + RecommendationCount
+        // + CoMentionedWithBrandCount. Only emitted for competitors that
+        // actually had at least one mention; the co-mention count is 0 when
+        // they appeared but never alongside our brand.
         foreach (var grp in mentions
             .Where(m => m.EntityType == MentionEntityType.Competitor)
             .GroupBy(m => m.EntityId))
@@ -100,9 +112,62 @@ public class MetricAggregator
                 MetricNames.MentionCount, grp.Count(), now));
             rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
                 MetricNames.RecommendationCount, grp.Count(m => m.IsRecommended), now));
+            var coCount = coMentionsByCompetitor.TryGetValue(grp.Key, out var set) ? set.Count : 0;
+            rows.Add(MetricRow(scanRunId, ScanMetricScope.Competitor, grp.Key,
+                MetricNames.CoMentionedWithBrandCount, coCount, now));
         }
 
+        // Overall scope — distinct competitors that ever co-appeared with us.
+        // Counts only entries with at least one co-mention; emitted always
+        // (zero is a legitimate signal: "AI never paired us with anyone").
+        var distinctCoMentioned = coMentionsByCompetitor.Count(kv => kv.Value.Count > 0);
+        rows.Add(MetricRow(scanRunId, ScanMetricScope.Overall, null,
+            MetricNames.DistinctCoMentionedBrandCount, distinctCoMentioned, now));
+
         return rows;
+    }
+
+    /// <summary>
+    /// Walks the MentionPair table for the scan and builds a map from each
+    /// tracked competitor's entity_id to the set of distinct AIAnswer ids
+    /// where that competitor was paired with our tracked brand. Uses the
+    /// pair's mention ids to join back to the resolved EntityType +
+    /// EntityId on Mention.
+    /// </summary>
+    private static Dictionary<Guid, HashSet<Guid>> BuildBrandCoMentionMap(
+        IReadOnlyList<dynamic> pairs, List<Mention> mentions, Guid brandId)
+    {
+        var mentionLookup = mentions.ToDictionary(m => m.Id, m => m);
+        var result = new Dictionary<Guid, HashSet<Guid>>();
+        foreach (var p in pairs)
+        {
+            if (!mentionLookup.TryGetValue((Guid)p.MentionAId, out var a)) continue;
+            if (!mentionLookup.TryGetValue((Guid)p.MentionBId, out var b)) continue;
+
+            // We only care about pairs where one side is the tracked brand
+            // and the other is a tracked competitor. Pure competitor↔competitor
+            // or competitor↔product pairs are interesting for later slices.
+            Mention? competitor = null;
+            if (a.EntityType == MentionEntityType.Brand && a.EntityId == brandId
+                && b.EntityType == MentionEntityType.Competitor)
+            {
+                competitor = b;
+            }
+            else if (b.EntityType == MentionEntityType.Brand && b.EntityId == brandId
+                && a.EntityType == MentionEntityType.Competitor)
+            {
+                competitor = a;
+            }
+            if (competitor is null) continue;
+
+            if (!result.TryGetValue(competitor.EntityId, out var set))
+            {
+                set = new HashSet<Guid>();
+                result[competitor.EntityId] = set;
+            }
+            set.Add((Guid)p.AIAnswerId);
+        }
+        return result;
     }
 
     private static void EmitGrouped(
@@ -154,6 +219,20 @@ public class MetricAggregator
         yield return MetricRow(scanRunId, scope, scopeId, MetricNames.ProductMentionCount,
             mentions.Count(m => m.EntityType == MentionEntityType.Product), now);
 
+        // Brand prominence — count of total brand-name appearances + mean
+        // first-mention position. The count complements BrandMentionRate
+        // (binary "did the brand appear?") with "how many times in total."
+        // The position is only meaningful when the brand was mentioned at
+        // all; skip when there are no brand mentions in scope.
+        var brandMentions = mentions.Where(m => m.EntityType == MentionEntityType.Brand).ToList();
+        yield return MetricRow(scanRunId, scope, scopeId, MetricNames.BrandMentionCount,
+            brandMentions.Sum(m => m.MentionCount), now);
+        if (brandMentions.Count > 0)
+        {
+            yield return MetricRow(scanRunId, scope, scopeId, MetricNames.BrandFirstMentionPosition,
+                brandMentions.Average(m => m.FirstMentionPosition), now);
+        }
+
         // Phase 4 Slice 0: citation classification lookup via
         // BrandSourceClassification. Bucket the 12-value SourceType taxonomy
         // back into the 4 reporting buckets the DTO surface still uses.
@@ -189,6 +268,7 @@ public class MetricAggregator
         {
             foreach (var row in BuildShareOfVoice(scanRunId, scope, scopeId, mentions, now)) yield return row;
             foreach (var row in BuildSentimentDistribution(scanRunId, scope, scopeId, contexts, now)) yield return row;
+            foreach (var row in BuildSentimentScore(scanRunId, scope, scopeId, contexts, now)) yield return row;
             foreach (var row in BuildTopCitedSources(scanRunId, scope, scopeId, citations, citationLookup, now)) yield return row;
         }
     }
@@ -205,6 +285,23 @@ public class MetricAggregator
         if (denom == 0) yield break;
         yield return MetricRow(scanRunId, scope, scopeId,
             MetricNames.BrandShareOfVoice, (double)brand / denom, now);
+    }
+
+    /// <summary>
+    /// Mean BrandSentimentScore across signals where the brand was
+    /// mentioned. Skipped when no signals in scope had the brand mentioned
+    /// (denominator-zero — reporting treats absent as no-data, parallel to
+    /// the BrandShareOfVoice / BrandFirstMentionPosition pattern).
+    /// </summary>
+    private static IEnumerable<ScanMetric> BuildSentimentScore(
+        Guid scanRunId, ScanMetricScope scope, Guid? scopeId,
+        List<AnswerContext> contexts, DateTime now)
+    {
+        var mentioned = contexts.Where(c => c.Signal.BrandMentioned).ToList();
+        if (mentioned.Count == 0) yield break;
+        var avg = mentioned.Average(c => c.Signal.BrandSentimentScore);
+        yield return MetricRow(scanRunId, scope, scopeId,
+            MetricNames.BrandSentimentScore, avg, now);
     }
 
     private static IEnumerable<ScanMetric> BuildSentimentDistribution(

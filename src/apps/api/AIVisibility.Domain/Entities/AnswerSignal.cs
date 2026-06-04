@@ -21,6 +21,18 @@ public class AnswerSignal
     /// <summary>1-based position in any ranked list in the answer; null when no list or not ranked.</summary>
     public int? BrandRank { get; set; }
     public Sentiment BrandSentiment { get; set; } = Sentiment.Unknown;
+
+    /// <summary>
+    /// Numeric brand sentiment for this answer, range [-1.0, +1.0].
+    /// -1.0 = strongly negative, 0.0 = neutral, +1.0 = strongly positive.
+    /// Populated by the extractor LLM alongside <see cref="BrandSentiment"/>;
+    /// when the LLM omits the score, derived from the enum
+    /// (Positive→+0.75, Negative→-0.75, others→0). D13 absence coercion:
+    /// when <see cref="BrandMentioned"/> is false, forced to 0 (same path
+    /// the enum takes to Unknown).
+    /// </summary>
+    public double BrandSentimentScore { get; set; }
+
     public RecommendationStrength BrandRecommendationStrength { get; set; } = RecommendationStrength.Unknown;
     public string? TopRecommendedEntity { get; set; }
 

@@ -31,6 +31,34 @@ public static class MetricNames
     /// <summary>Total Mention rows where entity_type = Product.</summary>
     public const string ProductMentionCount = "ProductMentionCount";
 
+    /// <summary>
+    /// Sum of <c>Mention.MentionCount</c> for the tracked Brand across the
+    /// scope's mentions. Distinct from <see cref="BrandMentionRate"/> which
+    /// is binary "did the brand appear in this answer?"; this metric
+    /// captures "how many times in total." Always emitted (zero when the
+    /// brand wasn't mentioned in scope).
+    /// </summary>
+    public const string BrandMentionCount = "BrandMentionCount";
+
+    /// <summary>
+    /// Mean of <c>Mention.FirstMentionPosition</c> across the scope's brand
+    /// mentions. 0.0 = appears at the very start of every answer, 1.0 =
+    /// appears at the very end. Lower is more prominent. Omitted (no row
+    /// emitted) when the brand has no mentions in scope — same
+    /// denominator-zero pattern as <see cref="BrandShareOfVoice"/>.
+    /// </summary>
+    public const string BrandFirstMentionPosition = "BrandFirstMentionPosition";
+
+    /// <summary>
+    /// Mean of <c>AnswerSignal.BrandSentimentScore</c> across signals where
+    /// the brand was mentioned. Range [-1.0, +1.0] — finer-grained
+    /// companion to <see cref="BrandSentimentDistribution"/>. Omitted (no
+    /// row emitted) when no signals in scope had the brand mentioned —
+    /// same denominator-zero pattern as <see cref="BrandShareOfVoice"/>;
+    /// reporting consumers should treat absent-metric as "no data."
+    /// </summary>
+    public const string BrandSentimentScore = "BrandSentimentScore";
+
     // -- Per-competitor metrics (Competitor scope only — scope_id = competitor.id) --
 
     /// <summary>Mentions targeting this tracked competitor.</summary>
@@ -38,6 +66,28 @@ public static class MetricNames
 
     /// <summary>Mentions targeting this tracked competitor with is_recommended=true.</summary>
     public const string RecommendationCount = "RecommendationCount";
+
+    /// <summary>
+    /// Distinct AIAnswers in which BOTH the tracked brand and this competitor
+    /// were mentioned (Phase 4 measurement-model expansion, co-mention slice).
+    /// Different from <see cref="MentionCount"/> which counts the competitor's
+    /// raw mentions regardless of whether the brand also appeared.
+    /// "Co-mention" tells you the competitor shares the conversation with us;
+    /// a competitor with many mentions but zero co-mentions is in a separate
+    /// conversation entirely. Always emitted (0 when no co-mentions in scope).
+    /// </summary>
+    public const string CoMentionedWithBrandCount = "CoMentionedWithBrandCount";
+
+    // -- Co-mention breadth (Overall scope only) --
+
+    /// <summary>
+    /// Count of distinct tracked competitors that appeared in at least one
+    /// answer alongside the tracked brand (Phase 4 measurement-model
+    /// expansion). The breadth of the competitive landscape the AI sees
+    /// for us: a brand mentioned alongside 1 competitor lives in a tight
+    /// pairwise comparison; alongside 8 is in a broader market view.
+    /// </summary>
+    public const string DistinctCoMentionedBrandCount = "DistinctCoMentionedBrandCount";
 
     // -- Citation counts (Overall / Platform / Lens / Topic scopes) --
 

@@ -50,14 +50,27 @@ public class GetScanTopicsQueryHandler : IRequestHandler<GetScanTopicsQuery, Sca
             .Select(g => BuildRow(g.Key, g.ToList(), topicNames))
             .Where(r => r is not null)
             .Select(r => r!)
-            // Default sort: citation count desc as a meaningful "where are
-            // sources showing up" ranking, then topic name for ties.
-            .OrderByDescending(r => r.CitationCount)
+            // Default sort: ownership score desc so the user lands first on
+            // topics they own. Tie-breakers: citation count desc, then
+            // topic name asc.
+            .OrderByDescending(r => r.OwnershipScore)
+            .ThenByDescending(r => r.CitationCount)
             .ThenBy(r => r.TopicName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new ScanTopicsDto(request.ScanRunId, rows);
     }
+
+    /// <summary>
+    /// Categorise the ownership score into 3 display bands. Equal-width
+    /// thresholds: 0.66+ is owned, 0.33–0.66 contested, &lt; 0.33 lost.
+    /// </summary>
+    private static string BandFor(double score) => score switch
+    {
+        >= 0.66 => "Owned",
+        >= 0.33 => "Contested",
+        _ => "Lost",
+    };
 
     private static TopicListItemDto? BuildRow(Guid topicId, List<ScanMetric> rows, IReadOnlyDictionary<Guid, string> topicNames)
     {
@@ -84,16 +97,20 @@ public class GetScanTopicsQueryHandler : IRequestHandler<GetScanTopicsQuery, Sca
             .Select(r => ReadSentimentValue(r.MetadataJson!))
             .FirstOrDefault(s => s is not null);
 
+        var brandMentionRate = Single(MetricNames.BrandMentionRate);
+        var ownershipScore = brandMentionRate ?? 0.0;
         return new TopicListItemDto(
             TopicId: topicId,
             TopicName: topicName,
-            BrandMentionRate: Single(MetricNames.BrandMentionRate),
+            BrandMentionRate: brandMentionRate,
             BrandRecommendationRate: Single(MetricNames.BrandRecommendationRate),
             BrandShareOfVoice: Single(MetricNames.BrandShareOfVoice),
             AverageBrandRank: Single(MetricNames.AverageBrandRank),
             CitationCount: citationCount,
             OwnedCitationShare: ownedShare,
-            DominantSentiment: sentimentMode);
+            DominantSentiment: sentimentMode,
+            OwnershipScore: ownershipScore,
+            OwnershipBand: BandFor(ownershipScore));
     }
 
     private static string? ReadSentimentValue(string metadataJson)

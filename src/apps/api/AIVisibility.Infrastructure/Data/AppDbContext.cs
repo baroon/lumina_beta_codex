@@ -41,6 +41,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<AnalysisJob> AnalysisJobs => Set<AnalysisJob>();
     public DbSet<AnswerSignal> AnswerSignals => Set<AnswerSignal>();
     public DbSet<Mention> Mentions => Set<Mention>();
+    public DbSet<MentionPair> MentionPairs => Set<MentionPair>();
     public DbSet<MentionCandidate> MentionCandidates => Set<MentionCandidate>();
     public DbSet<Citation> Citations => Set<Citation>();
     public DbSet<ScanMetric> ScanMetrics => Set<ScanMetric>();

@@ -96,10 +96,13 @@ public class GetScanTopicsQueryHandlerTests
         topicA.OwnedCitationShare.Should().BeApproximately(2.0 / 8.0, 1e-9);
         // Mode of {Positive: 5, Neutral: 2} = Positive
         topicA.DominantSentiment.Should().Be("Positive");
+        // BrandMentionRate=0.5 → OwnershipScore=0.5 → Contested band.
+        topicA.OwnershipScore.Should().BeApproximately(0.5, 1e-9);
+        topicA.OwnershipBand.Should().Be("Contested");
     }
 
     [Fact]
-    public async Task SortsByCitationCountDescThenName()
+    public async Task SortsByOwnershipScoreDesc_ThenCitationCountDesc_ThenName()
     {
         using var ctx = NewContext();
         var seed = SeedTwoTopics(ctx);
@@ -107,8 +110,76 @@ public class GetScanTopicsQueryHandlerTests
 
         var result = await sut.Handle(new GetScanTopicsQuery(seed.ScanRunId), CancellationToken.None);
 
-        // Sustainability (8 citations) before Urban Design (3).
+        // Sustainability (mention rate 0.5) before Urban Design (0.1).
         result!.Topics.Select(t => t.TopicName).Should().ContainInOrder("Sustainability", "Urban Design");
+    }
+
+    [Theory]
+    [InlineData(0.95, "Owned")]
+    [InlineData(0.66, "Owned")]
+    [InlineData(0.65, "Contested")]
+    [InlineData(0.50, "Contested")]
+    [InlineData(0.33, "Contested")]
+    [InlineData(0.32, "Lost")]
+    [InlineData(0.00, "Lost")]
+    public async Task OwnershipBand_Tiers_AtThresholds(double mentionRate, string expectedBand)
+    {
+        using var ctx = NewContext();
+        var brand = new Brand { Id = Guid.NewGuid(), Name = "B" };
+        var tracker = new TrackerConfiguration
+        {
+            Id = Guid.NewGuid(), BrandId = brand.Id, Brand = brand, Name = "T",
+            Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow,
+        };
+        var scan = new ScanRun
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, TrackerConfiguration = tracker,
+            TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed, StartedAt = DateTime.UtcNow,
+        };
+        var topic = new Topic { Id = Guid.NewGuid(), BrandId = brand.Id, Name = "T1", Confidence = 0.9 };
+        ctx.Brands.Add(brand); ctx.TrackerConfigurations.Add(tracker); ctx.ScanRuns.Add(scan); ctx.Topics.Add(topic);
+        AddMetric(ctx, scan.Id, topic.Id, MetricNames.BrandMentionRate, mentionRate);
+        AddMetric(ctx, scan.Id, topic.Id, MetricNames.CitationCount, 1);
+        AddMetric(ctx, scan.Id, topic.Id, MetricNames.OwnedCitationCount, 0);
+        ctx.SaveChanges();
+
+        var sut = new GetScanTopicsQueryHandler(ctx);
+        var result = await sut.Handle(new GetScanTopicsQuery(scan.Id), CancellationToken.None);
+
+        result!.Topics.Single().OwnershipBand.Should().Be(expectedBand);
+        result.Topics.Single().OwnershipScore.Should().BeApproximately(mentionRate, 1e-9);
+    }
+
+    [Fact]
+    public async Task OwnershipScore_FallsBackToZero_WhenBrandMentionRateMetricIsMissing()
+    {
+        // Some topic-scope metric sets won't include BrandMentionRate (e.g.
+        // edge cases or future scopes). Score should default to 0 → Lost
+        // band, not throw or surface null.
+        using var ctx = NewContext();
+        var brand = new Brand { Id = Guid.NewGuid(), Name = "B" };
+        var tracker = new TrackerConfiguration
+        {
+            Id = Guid.NewGuid(), BrandId = brand.Id, Brand = brand, Name = "T",
+            Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow,
+        };
+        var scan = new ScanRun
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, TrackerConfiguration = tracker,
+            TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed, StartedAt = DateTime.UtcNow,
+        };
+        var topic = new Topic { Id = Guid.NewGuid(), BrandId = brand.Id, Name = "T1", Confidence = 0.9 };
+        ctx.Brands.Add(brand); ctx.TrackerConfigurations.Add(tracker); ctx.ScanRuns.Add(scan); ctx.Topics.Add(topic);
+        AddMetric(ctx, scan.Id, topic.Id, MetricNames.CitationCount, 1);
+        ctx.SaveChanges();
+
+        var sut = new GetScanTopicsQueryHandler(ctx);
+        var result = await sut.Handle(new GetScanTopicsQuery(scan.Id), CancellationToken.None);
+
+        var row = result!.Topics.Single();
+        row.BrandMentionRate.Should().BeNull();
+        row.OwnershipScore.Should().Be(0.0);
+        row.OwnershipBand.Should().Be("Lost");
     }
 
     [Fact]

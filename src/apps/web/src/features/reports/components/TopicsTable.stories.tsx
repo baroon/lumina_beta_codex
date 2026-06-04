@@ -13,6 +13,8 @@ const topics: TopicListItemDto[] = [
     citationCount: 12,
     ownedCitationShare: 0.25,
     dominantSentiment: "Positive",
+    ownershipScore: 0.45,
+    ownershipBand: "Contested",
   },
   {
     topicId: "t2",
@@ -24,6 +26,8 @@ const topics: TopicListItemDto[] = [
     citationCount: 4,
     ownedCitationShare: 0.0,
     dominantSentiment: "Neutral",
+    ownershipScore: 0.1,
+    ownershipBand: "Lost",
   },
   {
     topicId: "t3",
@@ -35,6 +39,8 @@ const topics: TopicListItemDto[] = [
     citationCount: 0,
     ownedCitationShare: null,
     dominantSentiment: null,
+    ownershipScore: 0.0,
+    ownershipBand: "Lost",
   },
 ];
 

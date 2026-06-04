@@ -35,6 +35,9 @@ export function TopicsTable({ topics, onSelectTopic }: TopicsTableProps) {
             <th scope="col" className="px-4 py-3 text-left font-medium">
               {copy.headers.topic}
             </th>
+            <th scope="col" className="px-4 py-3 text-left font-medium">
+              {copy.headers.ownership}
+            </th>
             <th scope="col" className="px-4 py-3 text-right font-medium">
               {copy.headers.mentionRate}
             </th>
@@ -77,6 +80,7 @@ export function TopicsTable({ topics, onSelectTopic }: TopicsTableProps) {
                   {t.topicName}
                 </button>
               </td>
+              <OwnershipCell band={t.ownershipBand} score={t.ownershipScore} />
               <RateCell value={t.brandMentionRate} />
               <RateCell value={t.brandRecommendationRate} />
               <RateCell value={t.brandShareOfVoice} />
@@ -133,6 +137,47 @@ function NumberCell({ value, digits }: NumberCellProps) {
       {value === null ? REPORTS_COPY.topics.table.noData : value.toFixed(digits)}
     </td>
   );
+}
+
+interface OwnershipCellProps {
+  band: string;
+  score: number;
+}
+/**
+ * Ownership column — colored badge with the band label + the raw
+ * score as percentage sub-text. "Owned" wins green, "Contested"
+ * amber, "Lost" red. Falls through to a neutral badge for unknown
+ * future bands so the FE doesn't crash if the BE adds more.
+ */
+function OwnershipCell({ band, score }: OwnershipCellProps) {
+  const label = REPORTS_COPY.topics.table.ownership[band] ?? band;
+  return (
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Badge variant={ownershipVariant(band)} className="text-xs">
+          {label}
+        </Badge>
+        <span className="text-xs tabular-nums text-neutral-500">
+          {`${(score * 100).toFixed(0)}%`}
+        </span>
+      </div>
+    </td>
+  );
+}
+
+function ownershipVariant(
+  band: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (band) {
+    case "Owned":
+      return "success";
+    case "Contested":
+      return "warning";
+    case "Lost":
+      return "destructive";
+    default:
+      return "secondary";
+  }
 }
 
 function sentimentVariant(

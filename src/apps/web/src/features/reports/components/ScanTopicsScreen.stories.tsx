@@ -16,6 +16,8 @@ const fixture: ScanTopicsDto = {
       citationCount: 12,
       ownedCitationShare: 0.25,
       dominantSentiment: "Positive",
+      ownershipScore: 0.45,
+      ownershipBand: "Contested",
     },
     {
       topicId: "t2",
@@ -27,6 +29,8 @@ const fixture: ScanTopicsDto = {
       citationCount: 4,
       ownedCitationShare: 0.0,
       dominantSentiment: "Neutral",
+      ownershipScore: 0.1,
+      ownershipBand: "Lost",
     },
   ],
 };

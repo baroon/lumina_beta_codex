@@ -513,6 +513,10 @@ export interface TopicListItemDto {
   ownedCitationShare: number | null;
   /** Most-observed sentiment value (mode of BrandSentimentDistribution). Null when topic has no signals. */
   dominantSentiment: string | null;
+  /** Topic ownership score [0..1] — fraction of answers on this topic that mention the brand. Defaults to 0 when missing. */
+  ownershipScore: number;
+  /** Banded ownership for display: 'Owned' (>=0.66), 'Contested' (0.33-0.66), 'Lost' (<0.33). */
+  ownershipBand: string;
 }
 
 export interface ScanTopicDetailDto {
