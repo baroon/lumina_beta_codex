@@ -4,6 +4,7 @@ using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Analysis;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace AIVisibility.Infrastructure.Scanning;
@@ -11,27 +12,27 @@ namespace AIVisibility.Infrastructure.Scanning;
 public class ScanExecutor : IScanExecutor
 {
     private readonly IAppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IScanProvider _provider;
     private readonly IBackgroundJobClient _jobs;
     private readonly SignalExtractor _extractor;
-    private readonly IAnswerSignalWriter _writer;
     private readonly ISignalExtractionContextFactory _contextFactory;
     private readonly ILogger<ScanExecutor> _logger;
 
     public ScanExecutor(
         IAppDbContext db,
+        IServiceScopeFactory scopeFactory,
         IScanProvider provider,
         IBackgroundJobClient jobs,
         SignalExtractor extractor,
-        IAnswerSignalWriter writer,
         ISignalExtractionContextFactory contextFactory,
         ILogger<ScanExecutor> logger)
     {
         _db = db;
+        _scopeFactory = scopeFactory;
         _provider = provider;
         _jobs = jobs;
         _extractor = extractor;
-        _writer = writer;
         _contextFactory = contextFactory;
         _logger = logger;
     }
@@ -61,73 +62,37 @@ public class ScanExecutor : IScanExecutor
             .Where(p => promptRuns.Select(r => r.AIPlatformId).Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, p => p.Code, cancellationToken);
 
+        // Lever 1 from docs/07-deferred-future-work.md: parallel across
+        // platforms within each prompt. Each provider has its own rate-limit
+        // bucket so fanning the platform iterations out compounds no risk.
+        // We wait between prompts so we never run more than N=platforms
+        // concurrent calls at once — that's Lever 3 territory and needs a
+        // per-provider RPM bucket.
+        var byPrompt = promptRuns.GroupBy(p => p.PromptId).ToList();
+
+        // SemaphoreSlim serializes the writer's Source dedup section so two
+        // concurrent platform tasks within a scan can't race to insert the
+        // same canonical Source row (e.g. both answers cite wikipedia.org —
+        // the writer queries-then-adds, which races without this lock). The
+        // LLM calls (the slow part) stay parallel; only the ~50ms writer
+        // call serializes.
+        using var writerLock = new SemaphoreSlim(1, 1);
         var completed = 0;
         var failed = 0;
-        foreach (var pr in promptRuns)
+
+        foreach (var group in byPrompt)
         {
-            pr.Status = PromptRunStatus.Running;
-            pr.StartedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-
-            var text = promptText.GetValueOrDefault(pr.PromptId, string.Empty);
-            var code = platformCode.GetValueOrDefault(pr.AIPlatformId, string.Empty);
-            AIAnswer? savedAnswer = null;
-            try
-            {
-                var answer = await _provider.GetAnswerAsync(code, text, cancellationToken);
-                if (answer.Success)
-                {
-                    savedAnswer = new AIAnswer
-                    {
-                        Id = Guid.NewGuid(),
-                        PromptRunId = pr.Id,
-                        AnswerText = answer.Text,
-                        RawResponse = answer.RawResponse,
-                        CreatedAt = DateTime.UtcNow,
-                    };
-                    _db.AIAnswers.Add(savedAnswer);
-                    pr.Status = PromptRunStatus.Completed;
-                    completed++;
-                }
-                else
-                {
-                    pr.Status = PromptRunStatus.Failed;
-                    pr.ErrorMessage = answer.Error;
-                    failed++;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Scan check {PromptRunId} failed", pr.Id);
-                pr.Status = PromptRunStatus.Failed;
-                pr.ErrorMessage = ex.Message;
-                failed++;
-            }
-
-            pr.CompletedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-
-            // Per-answer extraction. Runs inline so the live counters on the
-            // scan-progress screen tick up as the scan progresses. Per-answer
-            // failures are isolated (D3) — one bad extraction doesn't fail
-            // the whole scan or stop subsequent prompt-runs.
-            if (savedAnswer is not null)
-            {
-                try
-                {
-                    var result = await _extractor.ExtractAsync(savedAnswer, context, cancellationToken);
-                    if (result is not null)
-                    {
-                        await _writer.WriteAsync(result, context, cancellationToken);
-                    }
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    _logger.LogWarning(ex,
-                        "Per-answer extraction threw for AIAnswer {AIAnswerId}; continuing.",
-                        savedAnswer.Id);
-                }
-            }
+            var text = promptText.GetValueOrDefault(group.Key, string.Empty);
+            var tasks = group.Select(pr => ExecuteOneAsync(
+                pr.Id,
+                text,
+                platformCode.GetValueOrDefault(pr.AIPlatformId, string.Empty),
+                context,
+                writerLock,
+                cancellationToken)).ToList();
+            var results = await Task.WhenAll(tasks);
+            completed += results.Count(r => r);
+            failed += results.Count(r => !r);
         }
 
         run.CompletedCount = completed;
@@ -155,5 +120,96 @@ public class ScanExecutor : IScanExecutor
 
         _jobs.Enqueue<IMetricAggregationJob>(
             j => j.AggregateAsync(analysisJob.Id, CancellationToken.None));
+    }
+
+    /// <summary>
+    /// One (prompt, platform) iteration in its own DI scope so the DbContext
+    /// + writer don't collide with concurrent siblings. Returns true on
+    /// success (answer saved + extraction attempted), false on failure.
+    /// Per-answer extraction failures (D3) stay isolated — they log + skip
+    /// the writer rather than propagate.
+    /// </summary>
+    private async Task<bool> ExecuteOneAsync(
+        Guid promptRunId,
+        string promptText,
+        string platformCode,
+        SignalExtractionContext context,
+        SemaphoreSlim writerLock,
+        CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var scopedDb = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+        var scopedWriter = scope.ServiceProvider.GetRequiredService<IAnswerSignalWriter>();
+
+        var pr = await scopedDb.PromptRuns.FirstOrDefaultAsync(p => p.Id == promptRunId, ct);
+        if (pr == null) return false;
+        pr.Status = PromptRunStatus.Running;
+        pr.StartedAt = DateTime.UtcNow;
+        await scopedDb.SaveChangesAsync(ct);
+
+        AIAnswer? savedAnswer = null;
+        var success = false;
+        try
+        {
+            var answer = await _provider.GetAnswerAsync(platformCode, promptText, ct);
+            if (answer.Success)
+            {
+                savedAnswer = new AIAnswer
+                {
+                    Id = Guid.NewGuid(),
+                    PromptRunId = pr.Id,
+                    AnswerText = answer.Text,
+                    RawResponse = answer.RawResponse,
+                    CreatedAt = DateTime.UtcNow,
+                };
+                scopedDb.AIAnswers.Add(savedAnswer);
+                pr.Status = PromptRunStatus.Completed;
+                success = true;
+            }
+            else
+            {
+                pr.Status = PromptRunStatus.Failed;
+                pr.ErrorMessage = answer.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Scan check {PromptRunId} failed", pr.Id);
+            pr.Status = PromptRunStatus.Failed;
+            pr.ErrorMessage = ex.Message;
+        }
+
+        pr.CompletedAt = DateTime.UtcNow;
+        await scopedDb.SaveChangesAsync(ct);
+
+        if (savedAnswer is not null)
+        {
+            try
+            {
+                var result = await _extractor.ExtractAsync(savedAnswer, context, ct);
+                if (result is not null)
+                {
+                    // Serialize the writer per scan so source dedup is race-free.
+                    // Cheap (~50ms per call); no measurable impact on the parallel
+                    // speedup that comes from concurrent LLM calls.
+                    await writerLock.WaitAsync(ct);
+                    try
+                    {
+                        await scopedWriter.WriteAsync(result, context, ct);
+                    }
+                    finally
+                    {
+                        writerLock.Release();
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Per-answer extraction threw for AIAnswer {AIAnswerId}; continuing.",
+                    savedAnswer.Id);
+            }
+        }
+        return success;
     }
 }

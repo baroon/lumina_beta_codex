@@ -126,15 +126,18 @@ public class ScanExecutorTests
         IAnswerSignalWriter? writer = null,
         SignalExtractor? extractor = null,
         ISignalExtractionContextFactory? contextFactory = null,
-        Guid? brandId = null) =>
-        new(
+        Guid? brandId = null)
+    {
+        var resolvedWriter = writer ?? Mock.Of<IAnswerSignalWriter>();
+        return new ScanExecutor(
             ctx,
+            new FakeServiceScopeFactory(ctx, resolvedWriter),
             provider,
             jobs ?? NewJobs().Object,
             extractor ?? StubExtractor(),
-            writer ?? Mock.Of<IAnswerSignalWriter>(),
             contextFactory ?? StubContextFactory(brandId ?? Guid.NewGuid()),
             new Mock<ILogger<ScanExecutor>>().Object);
+    }
 
     [Fact]
     public async Task Execute_StoresAnswer_AndCompletes()
@@ -284,6 +287,95 @@ public class ScanExecutorTests
                     && (Guid)job.Args[0] == analysisJob.Id),
                 It.IsAny<EnqueuedState>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task Execute_RunsPlatformsConcurrently_WithinEachPrompt()
+    {
+        // Lever 1 — parallel across platforms within each prompt. Provider
+        // GetAnswerAsync waits on a TaskCompletionSource gate; with N=4
+        // platforms we should see 4 concurrent calls before any returns.
+        // Sequential execution would peak at 1 concurrent call.
+        using var ctx = NewContext();
+        var (runId, brandId) = SeedMultiPlatform(ctx, platformCount: 4);
+
+        var maxConcurrent = 0;
+        var current = 0;
+        var lockObj = new object();
+        var releaseAll = new TaskCompletionSource<bool>();
+        // Once we see 4 concurrent in-flight calls, release everyone.
+        var sawFour = new TaskCompletionSource<bool>();
+
+        var provider = new Mock<IScanProvider>();
+        provider
+            .Setup(p => p.GetAnswerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(async (string _, string __, CancellationToken ct) =>
+            {
+                lock (lockObj)
+                {
+                    current++;
+                    if (current > maxConcurrent) maxConcurrent = current;
+                    if (current >= 4) sawFour.TrySetResult(true);
+                }
+                // Wait until the test signals release — proves the calls are
+                // overlapping rather than serially returning.
+                await releaseAll.Task.WaitAsync(ct);
+                lock (lockObj) { current--; }
+                return new ScanAnswer(true, "answer", null, "raw");
+            });
+
+        // Release everyone as soon as we see 4 concurrent.
+        _ = sawFour.Task.ContinueWith(_ => releaseAll.TrySetResult(true));
+
+        await Executor(ctx, provider.Object, brandId: brandId)
+            .ExecuteAsync(runId, new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+
+        maxConcurrent.Should().Be(4);
+        (await ctx.ScanRuns.FindAsync(runId))!.CompletedCount.Should().Be(4);
+    }
+
+    /// <summary>
+    /// One prompt with <paramref name="platformCount"/> PromptRuns (one per
+    /// platform) — the per-prompt fan-out shape the parallel slice targets.
+    /// </summary>
+    private static (Guid RunId, Guid BrandId) SeedMultiPlatform(AppDbContext ctx, int platformCount)
+    {
+        var brand = new Brand { Id = Guid.NewGuid(), Name = "Acme", WebsiteUrl = "https://acme.io" };
+        var tracker = new TrackerConfiguration
+        {
+            Id = Guid.NewGuid(), BrandId = brand.Id, Brand = brand, Name = "T",
+            PromptAllocation = 30, Cadence = Cadence.Daily, Status = TrackerStatus.Active,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        var prompt = new Prompt
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, PromptText = "What is best?",
+            LensId = Guid.NewGuid(), Status = PromptStatus.Active, Source = PromptSource.Generated,
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        var run = new ScanRun
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id,
+            TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Pending,
+            PromptCount = 1, PlatformCount = platformCount, ScanCheckCount = platformCount,
+            StartedAt = DateTime.UtcNow,
+        };
+        ctx.Brands.Add(brand);
+        ctx.TrackerConfigurations.Add(tracker);
+        ctx.Prompts.Add(prompt);
+        ctx.ScanRuns.Add(run);
+        for (var i = 0; i < platformCount; i++)
+        {
+            var platform = new AIPlatform { Id = Guid.NewGuid(), Code = $"p{i}", Name = $"P{i}", DisplayOrder = i };
+            ctx.AIPlatforms.Add(platform);
+            ctx.PromptRuns.Add(new PromptRun
+            {
+                Id = Guid.NewGuid(), ScanRunId = run.Id, PromptId = prompt.Id,
+                AIPlatformId = platform.Id, Status = PromptRunStatus.Pending,
+            });
+        }
+        ctx.SaveChanges();
+        return (run.Id, brand.Id);
     }
 
     private const string MinimalEnvelope = """
