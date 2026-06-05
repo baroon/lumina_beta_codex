@@ -122,6 +122,10 @@ public class PromptReviewHandlersTests
             new RemovePromptCommand(tracker.Id, p1),
             CancellationToken.None);
 
+        // Soft-archive stays during the review loop so
+        // GeneratePromptsCommandHandler can read the archived row as a
+        // "do not resurface" marker on re-generate. ConfirmPromptsCommand
+        // sweeps these once the review loop ends.
         var archived = await ctx.Prompts.FindAsync(p1);
         archived!.Status.Should().Be(PromptStatus.Archived);
         archived.ArchivedAt.Should().NotBeNull();
@@ -145,6 +149,74 @@ public class PromptReviewHandlersTests
         result.ActivatedCount.Should().Be(2);
         (await ctx.Prompts.Where(p => p.TrackerConfigurationId == tracker.Id).ToListAsync())
             .Should().OnlyContain(p => p.Status == PromptStatus.Active);
+    }
+
+    [Fact]
+    public async Task Confirm_HardDeletesArchivedPromptsWithoutHistory()
+    {
+        // The user's complaint was "Archived rows sit alongside Active after
+        // confirm". RemovePromptCommand soft-archives during the review loop
+        // so regenerate can exclude removed prompts; at Confirm time the
+        // marker has served its purpose and we sweep the no-history archived
+        // rows out (with the five M:N rows cascading via EF convention).
+        using var ctx = NewContext();
+        var (tracker, p1, _) = Seed(ctx);
+        await new RemovePromptCommandHandler(ctx).Handle(
+            new RemovePromptCommand(tracker.Id, p1),
+            CancellationToken.None);
+        // Sanity — the row is archived after Remove.
+        (await ctx.Prompts.FindAsync(p1))!.Status.Should().Be(PromptStatus.Archived);
+        // And the M:N row is still attached.
+        (await ctx.PromptTopics.AnyAsync(pt => pt.PromptId == p1)).Should().BeTrue();
+
+        await new ConfirmPromptsCommandHandler(ctx).Handle(
+            new ConfirmPromptsCommand(tracker.Id),
+            CancellationToken.None);
+
+        // The archived row + its M:N rows are gone after confirm.
+        (await ctx.Prompts.FindAsync(p1)).Should().BeNull();
+        (await ctx.PromptTopics.AnyAsync(pt => pt.PromptId == p1)).Should().BeFalse();
+        // The remaining Draft prompt is now Active.
+        var remaining = await ctx.Prompts.Where(p => p.TrackerConfigurationId == tracker.Id).ToListAsync();
+        remaining.Should().OnlyContain(p => p.Status == PromptStatus.Active);
+    }
+
+    [Fact]
+    public async Task Confirm_KeepsArchivedPromptsWithHistory()
+    {
+        // Once a PromptRun row references the prompt we must keep the
+        // archived row so Mention / Citation history stays attributable —
+        // sweeping it would orphan downstream rows.
+        using var ctx = NewContext();
+        var (tracker, p1, _) = Seed(ctx);
+        await new RemovePromptCommandHandler(ctx).Handle(
+            new RemovePromptCommand(tracker.Id, p1),
+            CancellationToken.None);
+        var scan = new ScanRun
+        {
+            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id,
+            TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed,
+            StartedAt = DateTime.UtcNow,
+        };
+        ctx.ScanRuns.Add(scan);
+        var platform = new AIPlatform { Id = Guid.NewGuid(), Code = "ChatGpt", Name = "ChatGPT" };
+        ctx.AIPlatforms.Add(platform);
+        ctx.PromptRuns.Add(new PromptRun
+        {
+            Id = Guid.NewGuid(), ScanRunId = scan.Id, PromptId = p1,
+            AIPlatformId = platform.Id, Status = PromptRunStatus.Completed,
+            StartedAt = DateTime.UtcNow,
+        });
+        await ctx.SaveChangesAsync();
+
+        await new ConfirmPromptsCommandHandler(ctx).Handle(
+            new ConfirmPromptsCommand(tracker.Id),
+            CancellationToken.None);
+
+        // Archived row stays.
+        var archived = await ctx.Prompts.FindAsync(p1);
+        archived.Should().NotBeNull();
+        archived!.Status.Should().Be(PromptStatus.Archived);
     }
 
     [Fact]

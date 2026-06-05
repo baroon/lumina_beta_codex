@@ -22,6 +22,13 @@ public class RemovePromptCommandHandler : IRequestHandler<RemovePromptCommand, U
                 cancellationToken)
             ?? throw new InvalidOperationException($"Prompt {request.PromptId} not found.");
 
+        // Soft-archive even when there's no PromptRun history yet: the archived
+        // row acts as a "don't resurface" marker that
+        // GeneratePromptsCommandHandler reads when the user re-runs generation
+        // in the review loop. ConfirmPromptsCommandHandler hard-deletes those
+        // no-history archived rows at confirm time so the final tracker has
+        // no Archived ghosts sitting alongside the Active ones (deferred-work
+        // doc item, surface complaint is "Archived rows after confirm").
         prompt.Status = PromptStatus.Archived;
         prompt.ArchivedAt = DateTime.UtcNow;
         prompt.UpdatedAt = DateTime.UtcNow;
