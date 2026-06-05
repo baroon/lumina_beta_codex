@@ -1,70 +1,102 @@
 using AIVisibility.Application.Commands.Brands;
-using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
+using AIVisibility.Infrastructure.Data;
 using FluentAssertions;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.States;
-using Moq;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 
 namespace AIVisibility.Tests.Unit.Application;
 
 public class CreateBrandCommandHandlerTests
 {
-    private readonly Mock<IAppDbContext> _dbMock;
-    private readonly Mock<IBackgroundJobClient> _jobClientMock;
-    private readonly CreateBrandCommandHandler _handler;
-
-    public CreateBrandCommandHandlerTests()
-    {
-        _dbMock = new Mock<IAppDbContext>();
-        _jobClientMock = new Mock<IBackgroundJobClient>();
-
-        var brandsDbSet = CreateMockDbSet(new List<Brand>());
-        var runsDbSet = CreateMockDbSet(new List<DiscoveryRun>());
-
-        _dbMock.Setup(x => x.Brands).Returns(brandsDbSet.Object);
-        _dbMock.Setup(x => x.DiscoveryRuns).Returns(runsDbSet.Object);
-        _dbMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
-
-        _handler = new CreateBrandCommandHandler(_dbMock.Object, _jobClientMock.Object);
-    }
+    private static AppDbContext NewContext() =>
+        new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options);
 
     [Fact]
     public async Task Handle_ShouldCreateBrandAndDiscoveryRun()
     {
+        using var ctx = NewContext();
+        var jobClient = new Mock<IBackgroundJobClient>();
+        var handler = new CreateBrandCommandHandler(ctx, jobClient.Object);
         var command = new CreateBrandCommand("Test Brand", "https://example.com", Guid.NewGuid());
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await handler.Handle(command, CancellationToken.None);
 
         result.BrandId.Should().NotBeEmpty();
         result.DiscoveryRunId.Should().NotBeEmpty();
-        _dbMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        ctx.Brands.Should().ContainSingle(b => b.Id == result.BrandId && b.Name == "Test Brand");
+        ctx.DiscoveryRuns.Should().ContainSingle(r => r.Id == result.DiscoveryRunId && r.BrandId == result.BrandId);
     }
 
     [Fact]
     public async Task Handle_ShouldEnqueueHangfireJob()
     {
+        using var ctx = NewContext();
+        var jobClient = new Mock<IBackgroundJobClient>();
+        var handler = new CreateBrandCommandHandler(ctx, jobClient.Object);
         var command = new CreateBrandCommand("Test Brand", "https://example.com", Guid.NewGuid());
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        _jobClientMock.Verify(x => x.Create(
-            It.IsAny<Job>(),
-            It.IsAny<IState>()), Times.Once);
+        jobClient.Verify(x => x.Create(It.IsAny<Job>(), It.IsAny<IState>()), Times.Once);
     }
 
-    private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> list) where T : class
+    [Fact]
+    public async Task Handle_ReusesExistingBrand_WhenSameWorkspaceAndCaseInsensitiveNameMatch()
     {
-        var queryable = list.AsQueryable();
-        var dbSet = new Mock<DbSet<T>>();
-        dbSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
-        dbSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
-        dbSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-        dbSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
-        dbSet.Setup(d => d.Add(It.IsAny<T>())).Callback<T>(list.Add);
-        return dbSet;
+        // The case-insensitive unique index in the DB would otherwise reject a
+        // second "nostri" against "Nostri" — the handler upserts so the user-
+        // facing flow returns the existing brand's id and still enqueues a
+        // fresh discovery run.
+        using var ctx = NewContext();
+        var workspaceId = Guid.NewGuid();
+        var existing = new Brand
+        {
+            Id = Guid.NewGuid(), WorkspaceId = workspaceId, Name = "Nostri",
+            WebsiteUrl = "https://nostri.example", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        ctx.Brands.Add(existing);
+        await ctx.SaveChangesAsync();
+
+        var jobClient = new Mock<IBackgroundJobClient>();
+        var handler = new CreateBrandCommandHandler(ctx, jobClient.Object);
+        var result = await handler.Handle(
+            new CreateBrandCommand("nostri", "https://nostri.example", workspaceId),
+            CancellationToken.None);
+
+        result.BrandId.Should().Be(existing.Id);
+        ctx.Brands.Should().ContainSingle(b => b.WorkspaceId == workspaceId);
+        ctx.DiscoveryRuns.Should().ContainSingle(r => r.BrandId == existing.Id);
+        jobClient.Verify(x => x.Create(It.IsAny<Job>(), It.IsAny<IState>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_CreatesSeparateBrands_WhenSameNameInDifferentWorkspaces()
+    {
+        // Defense-in-depth check that the case-insensitive lookup is workspace-
+        // scoped — two different workspaces can both have a "Nostri" brand.
+        using var ctx = NewContext();
+        var existing = new Brand
+        {
+            Id = Guid.NewGuid(), WorkspaceId = Guid.NewGuid(), Name = "Nostri",
+            WebsiteUrl = "https://nostri.example", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        ctx.Brands.Add(existing);
+        await ctx.SaveChangesAsync();
+
+        var jobClient = new Mock<IBackgroundJobClient>();
+        var handler = new CreateBrandCommandHandler(ctx, jobClient.Object);
+        var result = await handler.Handle(
+            new CreateBrandCommand("Nostri", "https://nostri.example", Guid.NewGuid()),
+            CancellationToken.None);
+
+        result.BrandId.Should().NotBe(existing.Id);
+        ctx.Brands.Should().HaveCount(2);
     }
 }
