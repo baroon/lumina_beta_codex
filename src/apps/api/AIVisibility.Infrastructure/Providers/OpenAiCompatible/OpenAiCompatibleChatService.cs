@@ -1,13 +1,18 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using AIVisibility.Application.Interfaces;
+using AIVisibility.Infrastructure.Providers.OpenAi;
 using Microsoft.Extensions.Logging;
 
 namespace AIVisibility.Infrastructure.Providers.OpenAiCompatible;
 
 /// <summary>
 /// Base for providers that expose an OpenAI-compatible /chat/completions endpoint (Grok, Perplexity,
-/// and a configurable Copilot endpoint). Returns an empty string when unconfigured or on error.
+/// and a configurable Copilot endpoint). Builds the same ProviderCompletionEnvelope shape as
+/// OpenAiService — usage parsing is shared via OpenAiService.ReadOpenAiUsage since these providers
+/// follow OpenAI's prompt_tokens / completion_tokens / total_tokens contract.
 /// </summary>
 public abstract class OpenAiCompatibleChatService
 {
@@ -28,17 +33,22 @@ public abstract class OpenAiCompatibleChatService
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseUrl);
 
-    public async Task<string> ChatCompletionAsync(
+    public async Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 1024,
         double temperature = 0.7,
         CancellationToken cancellationToken = default)
     {
+        var startedAt = DateTime.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(ApiKey) || string.IsNullOrWhiteSpace(BaseUrl))
         {
             _logger.LogWarning("{Provider} not configured (missing API key or base URL), skipping call", ProviderName);
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                ProviderName, Model, startedAt, DateTime.UtcNow,
+                $"{ProviderName} not configured (missing API key or base URL)");
         }
 
         try
@@ -64,23 +74,47 @@ public abstract class OpenAiCompatibleChatService
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning("{Provider} API returned {StatusCode}: {Error}", ProviderName, response.StatusCode, errorBody);
-                return string.Empty;
+                return ProviderCompletionEnvelope.Failure(
+                    ProviderName, Model, startedAt, DateTime.UtcNow,
+                    $"HTTP {(int)response.StatusCode}: {errorBody}");
             }
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+            stopwatch.Stop();
+
+            string text = string.Empty;
+            string? finishReason = null;
             if (json.TryGetProperty("choices", out var choices)
                 && choices.ValueKind == JsonValueKind.Array
                 && choices.GetArrayLength() > 0)
             {
-                return choices[0].GetProperty("message").GetProperty("content").GetString() ?? string.Empty;
+                var choice = choices[0];
+                text = choice.GetProperty("message").GetProperty("content").GetString() ?? string.Empty;
+                if (choice.TryGetProperty("finish_reason", out var fr))
+                    finishReason = fr.GetString();
             }
 
-            return string.Empty;
+            var model = json.TryGetProperty("model", out var m) ? m.GetString() ?? Model : Model;
+            var (promptTokens, completionTokens, totalTokens) = OpenAiService.ReadOpenAiUsage(json);
+
+            return new ProviderCompletionEnvelope(
+                Provider: ProviderName,
+                Model: model,
+                StartedAt: startedAt,
+                CompletedAt: DateTime.UtcNow,
+                LatencyMs: (int)stopwatch.ElapsedMilliseconds,
+                Text: text,
+                FinishReason: finishReason,
+                PromptTokens: promptTokens,
+                CompletionTokens: completionTokens,
+                TotalTokens: totalTokens,
+                Error: null);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "{Provider} chat completion failed", ProviderName);
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                ProviderName, Model, startedAt, DateTime.UtcNow, ex.Message);
         }
     }
 }

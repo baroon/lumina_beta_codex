@@ -1,5 +1,6 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Infrastructure.Prompts;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -24,7 +25,7 @@ public class OpenAiPromptGeneratorTests
                 It.IsAny<int>(),
                 It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static PromptTemplateInput Template(Guid checkId, string text) =>
         new(Guid.NewGuid(), checkId, text);
@@ -107,7 +108,7 @@ public class OpenAiPromptGeneratorTests
                 It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
             .Callback<string, string, int, double, CancellationToken>((_, user, _, _, _) => captured = user)
-            .ReturnsAsync("[{\"prompt\":\"x\"}]");
+            .ReturnsAsync(TestEnvelope.Of("[{\"prompt\":\"x\"}]"));
 
         var ctx = new PromptGenerationContext(
             "Acme",

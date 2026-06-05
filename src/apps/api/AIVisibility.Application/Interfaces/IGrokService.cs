@@ -3,7 +3,7 @@ namespace AIVisibility.Application.Interfaces;
 /// <summary>xAI Grok chat completion. Returns an empty string when no API key is configured.</summary>
 public interface IGrokService
 {
-    Task<string> ChatCompletionAsync(
+    Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 1024,

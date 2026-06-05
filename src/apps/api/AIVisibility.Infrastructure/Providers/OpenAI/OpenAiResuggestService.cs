@@ -69,7 +69,7 @@ public class OpenAiResuggestService : IResuggestService
         try
         {
             var prompt = BuildCompetitorPrompt(context);
-            var response = await _openAi.ChatCompletionAsync(CompetitorSystem, prompt, 1024, 0.3, ct);
+            var response = (await _openAi.ChatCompletionAsync(CompetitorSystem, prompt, 1024, 0.3, ct)).Text;
 
             if (string.IsNullOrWhiteSpace(response))
                 return new List<Competitor>();
@@ -185,7 +185,7 @@ public class OpenAiResuggestService : IResuggestService
         try
         {
             var prompt = BuildTopicPrompt(context);
-            var response = await _openAi.ChatCompletionAsync(TopicSystem, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(TopicSystem, prompt, 512, 0.5, ct)).Text;
 
             if (string.IsNullOrWhiteSpace(response))
                 return new List<Topic>();
@@ -272,7 +272,7 @@ public class OpenAiResuggestService : IResuggestService
         var prompt = BuildLensPrompt(ctx, "Suggest 4 products or services this brand likely offers. Include a type for each.");
         try
         {
-            var response = await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct)).Text;
             if (string.IsNullOrWhiteSpace(response))
                 return new LensRegenerateResult(new List<LensCandidate>());
 
@@ -351,7 +351,7 @@ public class OpenAiResuggestService : IResuggestService
         var prompt = BuildTopicPrompt(ctx);
         try
         {
-            var response = await _openAi.ChatCompletionAsync(TopicSystem, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(TopicSystem, prompt, 512, 0.5, ct)).Text;
             if (string.IsNullOrWhiteSpace(response))
                 return new LensRegenerateResult(new List<LensCandidate>());
 
@@ -384,7 +384,7 @@ public class OpenAiResuggestService : IResuggestService
         try
         {
             var prompt = BuildCompetitorPrompt(ctx);
-            var response = await _openAi.ChatCompletionAsync(CompetitorSystem, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(CompetitorSystem, prompt, 512, 0.5, ct)).Text;
             if (string.IsNullOrWhiteSpace(response))
                 return new LensRegenerateResult(new List<LensCandidate>());
 
@@ -434,7 +434,7 @@ public class OpenAiResuggestService : IResuggestService
         var prompt = BuildLensPrompt(ctx, "Suggest 4 trust signals this brand likely has or should highlight. Include a type field for each.");
         try
         {
-            var response = await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct)).Text;
             if (string.IsNullOrWhiteSpace(response))
                 return new LensRegenerateResult(new List<LensCandidate>());
 
@@ -469,7 +469,7 @@ public class OpenAiResuggestService : IResuggestService
     {
         try
         {
-            var response = await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct);
+            var response = (await _openAi.ChatCompletionAsync(system, prompt, 512, 0.5, ct)).Text;
             if (string.IsNullOrWhiteSpace(response))
                 return new LensRegenerateResult(new List<LensCandidate>());
 

@@ -138,7 +138,7 @@ public class OpenAiPromptGenerator : IPromptGenerator
         try
         {
             var user = BuildUserPrompt(ctx, checkName, checkDescription, examples, count);
-            var response = await _openAi.ChatCompletionAsync(SystemPrompt, user, 1200, 0.9, ct);
+            var response = (await _openAi.ChatCompletionAsync(SystemPrompt, user, 1200, 0.9, ct)).Text;
             if (string.IsNullOrWhiteSpace(response)) return new List<RawPrompt>();
 
             var json = ExtractJson(response);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AIVisibility.Application.Interfaces;
@@ -24,17 +25,21 @@ public class ClaudeService : IClaudeService
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_config.ApiKey);
 
-    public async Task<string> ChatCompletionAsync(
+    public async Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 1024,
         double temperature = 0.7,
         CancellationToken cancellationToken = default)
     {
+        var startedAt = DateTime.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(_config.ApiKey))
         {
             _logger.LogWarning("Anthropic API key not configured, skipping Claude call");
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                "Anthropic", _config.Model, startedAt, DateTime.UtcNow, "Anthropic API key not configured");
         }
 
         try
@@ -57,23 +62,55 @@ public class ClaudeService : IClaudeService
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning("Anthropic API returned {StatusCode}: {Error}", response.StatusCode, errorBody);
-                return string.Empty;
+                return ProviderCompletionEnvelope.Failure(
+                    "Anthropic", _config.Model, startedAt, DateTime.UtcNow,
+                    $"HTTP {(int)response.StatusCode}: {errorBody}");
             }
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+            stopwatch.Stop();
+
+            // Anthropic returns content as an array of blocks (text, tool_use, etc.).
+            // We only read text blocks; first one wins for legacy parity.
+            var text = string.Empty;
             if (json.TryGetProperty("content", out var content)
                 && content.ValueKind == JsonValueKind.Array
                 && content.GetArrayLength() > 0)
             {
-                return content[0].GetProperty("text").GetString() ?? string.Empty;
+                text = content[0].GetProperty("text").GetString() ?? string.Empty;
             }
 
-            return string.Empty;
+            var stopReason = json.TryGetProperty("stop_reason", out var sr) ? sr.GetString() : null;
+            var model = json.TryGetProperty("model", out var m) ? m.GetString() ?? _config.Model : _config.Model;
+            // Anthropic usage shape: { input_tokens, output_tokens } — no aggregate field.
+            int? promptTokens = null, completionTokens = null;
+            if (json.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
+            {
+                if (usage.TryGetProperty("input_tokens", out var pt) && pt.ValueKind == JsonValueKind.Number)
+                    promptTokens = pt.GetInt32();
+                if (usage.TryGetProperty("output_tokens", out var ct) && ct.ValueKind == JsonValueKind.Number)
+                    completionTokens = ct.GetInt32();
+            }
+            var totalTokens = (promptTokens ?? 0) + (completionTokens ?? 0);
+
+            return new ProviderCompletionEnvelope(
+                Provider: "Anthropic",
+                Model: model,
+                StartedAt: startedAt,
+                CompletedAt: DateTime.UtcNow,
+                LatencyMs: (int)stopwatch.ElapsedMilliseconds,
+                Text: text,
+                FinishReason: stopReason,
+                PromptTokens: promptTokens,
+                CompletionTokens: completionTokens,
+                TotalTokens: totalTokens > 0 ? totalTokens : null,
+                Error: null);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Claude chat completion failed");
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                "Anthropic", _config.Model, startedAt, DateTime.UtcNow, ex.Message);
         }
     }
 }

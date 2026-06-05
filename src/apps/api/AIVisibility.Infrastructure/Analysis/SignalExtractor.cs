@@ -389,12 +389,12 @@ public class SignalExtractor
     {
         var userPrompt = BuildUserPrompt(answer, context);
 
-        var raw = await _openAi.ChatCompletionAsync(
+        var raw = (await _openAi.ChatCompletionAsync(
             SystemPrompt,
             userPrompt,
             maxTokens: 2048,
             temperature: 0.1,
-            ct: cancellationToken);
+            ct: cancellationToken)).Text;
 
         if (string.IsNullOrWhiteSpace(raw))
         {

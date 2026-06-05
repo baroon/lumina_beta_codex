@@ -2,7 +2,7 @@ namespace AIVisibility.Application.Interfaces;
 
 public interface IOpenAiService
 {
-    Task<string> ChatCompletionAsync(
+    Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 2048,

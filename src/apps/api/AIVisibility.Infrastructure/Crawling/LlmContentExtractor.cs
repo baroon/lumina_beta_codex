@@ -172,7 +172,7 @@ public class LlmContentExtractor : IContentExtractor
         try
         {
             var userPrompt = BuildBrandAnalysisPrompt(brand, pages, pageTexts);
-            var response = await _openAi.ChatCompletionAsync(BrandAnalysisSystem, userPrompt, 1024, 0.3, ct);
+            var response = (await _openAi.ChatCompletionAsync(BrandAnalysisSystem, userPrompt, 1024, 0.3, ct)).Text;
 
             if (string.IsNullOrWhiteSpace(response))
                 return heuristicProfile;
@@ -331,7 +331,7 @@ public class LlmContentExtractor : IContentExtractor
         try
         {
             var userPrompt = BuildEntityExtractionPrompt(brand, profile, pages, pageTexts);
-            var response = await _openAi.ChatCompletionAsync(EntityExtractionSystem, userPrompt, 1024, 0.3, ct);
+            var response = (await _openAi.ChatCompletionAsync(EntityExtractionSystem, userPrompt, 1024, 0.3, ct)).Text;
 
             if (string.IsNullOrWhiteSpace(response))
                 return (baseline.Products, baseline.Audiences, baseline.Markets, baseline.TrustSignals);

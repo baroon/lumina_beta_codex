@@ -2,6 +2,7 @@ using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Analysis;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -33,7 +34,7 @@ public class SignalExtractorTests
                 It.IsAny<int>(),
                 It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(llmResponse);
+            .ReturnsAsync(TestEnvelope.Of(llmResponse));
         return (new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object), openAi);
     }
 

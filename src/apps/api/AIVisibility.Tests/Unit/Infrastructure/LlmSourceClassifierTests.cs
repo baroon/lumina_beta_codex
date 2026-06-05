@@ -1,6 +1,7 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Analysis;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -23,7 +24,7 @@ public class LlmSourceClassifierTests
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(llmResponse);
+            .ReturnsAsync(TestEnvelope.Of(llmResponse));
         var sut = new LlmSourceClassifier(openAi.Object, new Mock<ILogger<LlmSourceClassifier>>().Object);
         return (sut, openAi);
     }

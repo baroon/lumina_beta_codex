@@ -4,6 +4,7 @@ using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Analysis;
 using AIVisibility.Infrastructure.Data;
 using AIVisibility.Infrastructure.Scanning;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Hangfire;
 using Hangfire.Common;
@@ -102,7 +103,7 @@ public class ScanExecutorTests
         openAi
             .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(string.Empty);
+            .ReturnsAsync(TestEnvelope.Of(string.Empty));
         return new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
     }
 
@@ -190,7 +191,7 @@ public class ScanExecutorTests
         openAi
             .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(MinimalEnvelope);
+            .ReturnsAsync(TestEnvelope.Of(MinimalEnvelope));
         var extractor = new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
 
         var writer = new Mock<IAnswerSignalWriter>();
@@ -228,7 +229,7 @@ public class ScanExecutorTests
         openAi
             .Setup(s => s.ChatCompletionAsync(It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(MinimalEnvelope);
+            .ReturnsAsync(TestEnvelope.Of(MinimalEnvelope));
         var extractor = new SignalExtractor(openAi.Object, new Mock<ILogger<SignalExtractor>>().Object);
 
         var writer = new Mock<IAnswerSignalWriter>();

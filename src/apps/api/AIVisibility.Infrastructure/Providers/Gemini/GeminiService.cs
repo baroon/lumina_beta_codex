@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AIVisibility.Application.Interfaces;
@@ -24,17 +25,21 @@ public class GeminiService : IGeminiService
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_config.ApiKey);
 
-    public async Task<string> ChatCompletionAsync(
+    public async Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 1024,
         double temperature = 0.7,
         CancellationToken cancellationToken = default)
     {
+        var startedAt = DateTime.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(_config.ApiKey))
         {
             _logger.LogWarning("Gemini API key not configured, skipping Gemini call");
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                "Gemini", _config.Model, startedAt, DateTime.UtcNow, "Gemini API key not configured");
         }
 
         try
@@ -54,25 +59,61 @@ public class GeminiService : IGeminiService
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
                 _logger.LogWarning("Gemini API returned {StatusCode}: {Error}", response.StatusCode, errorBody);
-                return string.Empty;
+                return ProviderCompletionEnvelope.Failure(
+                    "Gemini", _config.Model, startedAt, DateTime.UtcNow,
+                    $"HTTP {(int)response.StatusCode}: {errorBody}");
             }
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+            stopwatch.Stop();
+
+            string text = string.Empty;
+            string? finishReason = null;
             if (json.TryGetProperty("candidates", out var candidates)
                 && candidates.ValueKind == JsonValueKind.Array
                 && candidates.GetArrayLength() > 0)
             {
-                var parts = candidates[0].GetProperty("content").GetProperty("parts");
-                if (parts.ValueKind == JsonValueKind.Array && parts.GetArrayLength() > 0)
-                    return parts[0].GetProperty("text").GetString() ?? string.Empty;
+                var candidate = candidates[0];
+                if (candidate.TryGetProperty("content", out var content)
+                    && content.TryGetProperty("parts", out var parts)
+                    && parts.ValueKind == JsonValueKind.Array
+                    && parts.GetArrayLength() > 0)
+                {
+                    text = parts[0].GetProperty("text").GetString() ?? string.Empty;
+                }
+                if (candidate.TryGetProperty("finishReason", out var fr))
+                    finishReason = fr.GetString();
             }
 
-            return string.Empty;
+            // Gemini usage shape: usageMetadata { promptTokenCount, candidatesTokenCount, totalTokenCount }.
+            int? promptTokens = null, completionTokens = null, totalTokens = null;
+            if (json.TryGetProperty("usageMetadata", out var usage) && usage.ValueKind == JsonValueKind.Object)
+            {
+                int? Read(string name) =>
+                    usage.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : null;
+                promptTokens = Read("promptTokenCount");
+                completionTokens = Read("candidatesTokenCount");
+                totalTokens = Read("totalTokenCount");
+            }
+
+            return new ProviderCompletionEnvelope(
+                Provider: "Gemini",
+                Model: _config.Model,
+                StartedAt: startedAt,
+                CompletedAt: DateTime.UtcNow,
+                LatencyMs: (int)stopwatch.ElapsedMilliseconds,
+                Text: text,
+                FinishReason: finishReason,
+                PromptTokens: promptTokens,
+                CompletionTokens: completionTokens,
+                TotalTokens: totalTokens,
+                Error: null);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Gemini generation failed");
-            return string.Empty;
+            return ProviderCompletionEnvelope.Failure(
+                "Gemini", _config.Model, startedAt, DateTime.UtcNow, ex.Message);
         }
     }
 }

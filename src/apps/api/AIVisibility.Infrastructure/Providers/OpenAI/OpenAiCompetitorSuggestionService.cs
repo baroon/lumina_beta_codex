@@ -66,8 +66,8 @@ public class OpenAiCompetitorSuggestionService : ICompetitorSuggestionService
         try
         {
             var userPrompt = BuildCompetitorDiscoveryPrompt(brandName, industry, category);
-            var response = await _openAi.ChatCompletionAsync(
-                CompetitorDiscoverySystem, userPrompt, 1024, 0.3, cancellationToken);
+            var response = (await _openAi.ChatCompletionAsync(
+                CompetitorDiscoverySystem, userPrompt, 1024, 0.3, cancellationToken)).Text;
 
             if (string.IsNullOrWhiteSpace(response))
             {

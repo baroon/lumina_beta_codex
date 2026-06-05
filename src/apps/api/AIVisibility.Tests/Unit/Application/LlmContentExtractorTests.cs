@@ -2,6 +2,7 @@ using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Crawling;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -48,12 +49,12 @@ public class LlmContentExtractorTests
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.Is<string>(s => s.Contains("brand analyst")),
             It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("{\"description\":\"A marketing analytics SaaS platform.\",\"industry\":\"Technology\",\"category\":\"SaaS\",\"positioning\":\"Leader\",\"confidence\":90}");
+            .ReturnsAsync(TestEnvelope.Of("{\"description\":\"A marketing analytics SaaS platform.\",\"industry\":\"Technology\",\"category\":\"SaaS\",\"positioning\":\"Leader\",\"confidence\":90}"));
 
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.Is<string>(s => s.Contains("business analyst")),
             It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("{\"products\":[{\"name\":\"Analytics\",\"type\":\"Product\",\"confidence\":80}],\"audiences\":[{\"name\":\"Marketers\",\"confidence\":75}],\"markets\":[{\"name\":\"United States\",\"type\":\"Country\",\"countryCode\":\"US\",\"confidence\":70}],\"trustSignals\":[{\"name\":\"SOC2\",\"type\":\"CertificationsAndAccreditations\",\"confidence\":85}]}");
+            .ReturnsAsync(TestEnvelope.Of("{\"products\":[{\"name\":\"Analytics\",\"type\":\"Product\",\"confidence\":80}],\"audiences\":[{\"name\":\"Marketers\",\"confidence\":75}],\"markets\":[{\"name\":\"United States\",\"type\":\"Country\",\"countryCode\":\"US\",\"confidence\":70}],\"trustSignals\":[{\"name\":\"SOC2\",\"type\":\"CertificationsAndAccreditations\",\"confidence\":85}]}"));
 
         var result = await CreateExtractor().ExtractCandidatesAsync(NewBrand(), pages);
 
@@ -86,7 +87,7 @@ public class LlmContentExtractorTests
 
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("");
+            .ReturnsAsync(TestEnvelope.Of(""));
 
         var result = await CreateExtractor().ExtractCandidatesAsync(NewBrand(), pages);
 

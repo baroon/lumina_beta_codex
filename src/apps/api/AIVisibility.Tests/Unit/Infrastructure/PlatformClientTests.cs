@@ -1,5 +1,6 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Infrastructure.Scanning;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Moq;
 
@@ -11,37 +12,37 @@ public class PlatformClientTests
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static void SetupClaude(Mock<IClaudeService> m, string response) =>
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static void SetupGemini(Mock<IGeminiService> m, string response) =>
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static void SetupGrok(Mock<IGrokService> m, string response) =>
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static void SetupPerplexity(Mock<IPerplexityService> m, string response) =>
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private static void SetupCopilot(Mock<ICopilotService> m, string response) =>
         m.Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     [Fact]
     public void OpenAi_Handles_OnlyChatGptCodes()

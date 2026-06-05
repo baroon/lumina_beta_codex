@@ -19,10 +19,8 @@ public class PerplexityPlatformClient : IPlatformClient
 
     public async Task<ScanAnswer> GetAnswerAsync(string prompt, CancellationToken cancellationToken = default)
     {
-        var response =
+        var env =
             await _perplexity.ChatCompletionAsync(ScanSystemPrompt.Value, prompt, 1024, 0.7, cancellationToken);
-        return string.IsNullOrWhiteSpace(response)
-            ? new ScanAnswer(false, string.Empty, "No response from Perplexity (check the API key).")
-            : new ScanAnswer(true, response.Trim(), null, response);
+        return PlatformClientEnvelope.BuildScanAnswer(env, "Perplexity");
     }
 }

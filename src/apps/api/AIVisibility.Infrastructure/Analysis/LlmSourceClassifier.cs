@@ -75,12 +75,12 @@ public class LlmSourceClassifier : ISourceClassifier
 
         var userPrompt = BuildUserPrompt(request);
 
-        var raw = await _openAi.ChatCompletionAsync(
+        var raw = (await _openAi.ChatCompletionAsync(
             SystemPrompt,
             userPrompt,
             maxTokens: 256,
             temperature: 0.1,
-            ct: cancellationToken);
+            ct: cancellationToken)).Text;
 
         if (string.IsNullOrWhiteSpace(raw))
         {

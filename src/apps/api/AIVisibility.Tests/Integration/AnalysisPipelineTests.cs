@@ -4,6 +4,7 @@ using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Analysis;
 using AIVisibility.Infrastructure.Data;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -349,11 +350,11 @@ public class AnalysisPipelineTests
             .SetupSequence(s => s.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(answer0)
-            .ReturnsAsync(answer1)
-            .ReturnsAsync(answer2)
-            .ReturnsAsync(answer3)
-            .ReturnsAsync(answer4);
+            .ReturnsAsync(TestEnvelope.Of(answer0))
+            .ReturnsAsync(TestEnvelope.Of(answer1))
+            .ReturnsAsync(TestEnvelope.Of(answer2))
+            .ReturnsAsync(TestEnvelope.Of(answer3))
+            .ReturnsAsync(TestEnvelope.Of(answer4));
 
         var pipe = BuildPipeline(ctx, openAi.Object);
 
@@ -591,7 +592,7 @@ public class AnalysisPipelineTests
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(answer);
+            .ReturnsAsync(TestEnvelope.Of(answer));
 
         var classifier = new Mock<ISourceClassifier>();
         // Verdict: any rule-based-Unknown source we see is "Reference".
@@ -666,7 +667,7 @@ public class AnalysisPipelineTests
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(answer);
+            .ReturnsAsync(TestEnvelope.Of(answer));
 
         var classifier = new Mock<ISourceClassifier>();
         classifier.Setup(c => c.ClassifyAsync(
@@ -717,7 +718,7 @@ public class AnalysisPipelineTests
                 It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<int>(), It.IsAny<double>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(answer);
+            .ReturnsAsync(TestEnvelope.Of(answer));
 
         var classifier = new Mock<ISourceClassifier>();
         classifier.Setup(c => c.ClassifyAsync(

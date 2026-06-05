@@ -1,5 +1,6 @@
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Infrastructure.Providers.OpenAi;
+using AIVisibility.Tests.TestHelpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,18 +21,18 @@ public class OpenAiResuggestServiceTests
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.Is<string>(s => s.Contains("identify competitors")),
             It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private void SetupTopics(string response) =>
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.Is<string>(s => s.Contains("suggest industry topics")),
             It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     private void SetupAny(string response) =>
         _openAi.Setup(o => o.ChatCompletionAsync(
             It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+            .ReturnsAsync(TestEnvelope.Of(response));
 
     [Fact]
     public async Task ResuggestAsync_ParsesCompetitorsAndTopics()
@@ -161,7 +162,7 @@ public class OpenAiResuggestServiceTests
             .Setup(o => o.ChatCompletionAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<double>(), It.IsAny<CancellationToken>()))
             .Callback<string, string, int, double, CancellationToken>((_, prompt, _, _, _) => captured = prompt)
-            .ReturnsAsync("[]");
+            .ReturnsAsync(TestEnvelope.Of("[]"));
 
         var ctx = new ResuggestContext(
             "Test Brand", "Tech", "SaaS",

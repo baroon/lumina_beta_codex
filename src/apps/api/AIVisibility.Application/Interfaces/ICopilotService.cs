@@ -6,7 +6,7 @@ namespace AIVisibility.Application.Interfaces;
 /// </summary>
 public interface ICopilotService
 {
-    Task<string> ChatCompletionAsync(
+    Task<ProviderCompletionEnvelope> ChatCompletionAsync(
         string systemPrompt,
         string userPrompt,
         int maxTokens = 1024,
