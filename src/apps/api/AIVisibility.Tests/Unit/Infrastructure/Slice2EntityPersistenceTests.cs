@@ -105,13 +105,11 @@ public class Slice2EntityPersistenceTests
             BrandRank = 2,
             BrandSentiment = Sentiment.Positive,
             BrandRecommendationStrength = RecommendationStrength.Strong,
-            TopRecommendedEntity = "Acme",
             AnswerHasRanking = true,
             AnswerHasComparison = false,
             AnswerHasCitations = true,
             OwnedSourceCount = 1,
             CompetitorSourceCount = 2,
-            ThirdPartySourceCount = 3,
             ConfidenceScore = 0.87,
             CreatedAt = DateTime.UtcNow,
         };
@@ -124,10 +122,8 @@ public class Slice2EntityPersistenceTests
         reloaded.BrandRank.Should().Be(2);
         reloaded.BrandSentiment.Should().Be(Sentiment.Positive);
         reloaded.BrandRecommendationStrength.Should().Be(RecommendationStrength.Strong);
-        reloaded.TopRecommendedEntity.Should().Be("Acme");
         reloaded.OwnedSourceCount.Should().Be(1);
         reloaded.CompetitorSourceCount.Should().Be(2);
-        reloaded.ThirdPartySourceCount.Should().Be(3);
         reloaded.ConfidenceScore.Should().BeApproximately(0.87, 1e-9);
     }
 

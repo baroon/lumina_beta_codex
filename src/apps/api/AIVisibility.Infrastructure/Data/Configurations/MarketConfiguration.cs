@@ -17,6 +17,8 @@ public class MarketConfiguration : IEntityTypeConfiguration<Market>
         builder.Property(m => m.Confidence).HasColumnName("confidence");
         builder.Property(m => m.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(m => m.DiscoveryRunId).HasColumnName("discovery_run_id");
+        builder.Property(m => m.CreatedAt).HasColumnName("created_at");
+        builder.Property(m => m.UpdatedAt).HasColumnName("updated_at");
 
         builder.HasIndex(m => m.BrandId);
     }

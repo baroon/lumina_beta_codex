@@ -12,6 +12,10 @@ public class BrandProfile
     public string? Positioning { get; set; }
     public double Confidence { get; set; }
     public CandidateSource Source { get; set; }
+    public Guid DiscoveryRunId { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public Brand Brand { get; set; } = null!;
+    public DiscoveryRun DiscoveryRun { get; set; } = null!;
 }

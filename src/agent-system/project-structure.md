@@ -739,7 +739,7 @@ The ESLint config (`apps/web/eslint.config.js`) enforces architectural boundarie
 
 | Rule Group                | Scope                                                | What it prevents                                                                  |
 | ------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Deprecated path ban       | All files                                            | Imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/` |
+| Banned path guard         | All files                                            | Imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/` |
 | Atom boundary             | `components/atoms/**`                                | Imports from molecules, organisms, data-display, charts, features, api, hooks     |
 | Molecule boundary         | `components/molecules/**`                            | Imports from organisms, features, api                                             |
 | Organism boundary         | `components/organisms/**`                            | Imports from features, api                                                        |
@@ -750,7 +750,7 @@ The ESLint config (`apps/web/eslint.config.js`) enforces architectural boundarie
 pnpm lint:web       # run ESLint on the web app
 ```
 
-**Important:** ESLint flat config replaces `no-restricted-imports` when multiple config objects match the same file. Each layer-specific rule group includes the deprecated path patterns alongside its boundary patterns.
+**Important:** ESLint flat config replaces `no-restricted-imports` when multiple config objects match the same file. Each layer-specific rule group includes the banned path patterns alongside its boundary patterns.
 
 ### Layer 3: Manifest sync validation
 
@@ -760,7 +760,7 @@ pnpm lint:web       # run ESLint on the web app
 | ------------------------ | -------- | --------------------------------------------------------------------------------------------- |
 | `MISSING_MANIFEST_ENTRY` | ERROR    | `.tsx` file in atoms/molecules/organisms/data-display/charts exists but has no manifest entry |
 | `ORPHAN_MANIFEST_ENTRY`  | ERROR    | Manifest entry with `status: "implemented"` points to non-existent file                       |
-| `DEPRECATED_DIRECTORY`   | ERROR    | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
+| `BANNED_DIRECTORY`       | ERROR    | Any `.tsx` file exists in `components/ui/`, `components/layout/`, `components/feedback/`      |
 | `MISSING_STORY_FILE`     | ERROR    | Shared component `.tsx` has no matching `.stories.tsx` in the same directory                   |
 | `MISSING_TEST_FILE`      | WARN     | Component `.tsx` (shared or feature) has no matching `.test.tsx` in the same directory. Required for all components per convention; currently non-blocking, to become blocking once frontend coverage is complete. |
 

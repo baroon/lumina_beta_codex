@@ -2,19 +2,16 @@ namespace AIVisibility.Domain.Enums;
 
 /// <summary>
 /// Provenance of a <see cref="Entities.BrandSourceClassification"/> row —
-/// what produced the classification, used downstream for trust + audit
-/// (ADR-003 §BrandSourceClassification).
+/// what produced the classification. Used downstream for trust + audit and
+/// to decide whether a re-classification pass is allowed to overwrite the
+/// row (user verdicts are immutable to auto-classifiers).
 /// </summary>
 public enum ClassificationSource
 {
-    /// <summary>Code-level rule (e.g. URL-domain match against brand or tracked competitors).</summary>
+    /// <summary>URL-domain match against the tracked brand or a tracked competitor — written by the deterministic first pass.</summary>
     RuleBased,
-    /// <summary>Static known-domain table (e.g. Reddit→UGC, Wikipedia→Reference).</summary>
-    KnownDomainList,
-    /// <summary>LLM classified the source from context.</summary>
+    /// <summary>LLM source classifier picked a SourceType from the answer's context — written by the post-extraction classification pass and is the primary provenance for non-Owned/Competitor sources.</summary>
     LLMClassified,
-    /// <summary>User confirmed an existing classification.</summary>
-    UserConfirmed,
-    /// <summary>User overrode the automatic classification.</summary>
+    /// <summary>User overrode the auto-classifier verdict from the reporting UI. Locks the row against future auto-classifier sweeps.</summary>
     UserCorrected,
 }

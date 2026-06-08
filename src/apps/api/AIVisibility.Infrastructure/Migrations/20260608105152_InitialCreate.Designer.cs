@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIVisibility.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260527070013_AddSlice2Entities")]
-    partial class AddSlice2Entities
+    [Migration("20260608105152_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -46,6 +46,7 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnName("prompt_run_id");
 
                     b.Property<string>("RawResponse")
+                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("raw_response");
 
@@ -161,6 +162,12 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("aggregate_completed_at");
 
+                    b.Property<int>("AggregateRetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("aggregate_retry_count");
+
                     b.Property<DateTime?>("AggregateStartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("aggregate_started_at");
@@ -202,6 +209,46 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("analysis_jobs", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.AnswerRecommendation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AIAnswerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ai_answer_id");
+
+                    b.Property<string>("ClaimedName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("claimed_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AIAnswerId");
+
+                    b.HasIndex("NormalizedName");
+
+                    b.ToTable("answer_recommendations", (string)null);
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.AnswerSignal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -212,6 +259,12 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<Guid>("AIAnswerId")
                         .HasColumnType("uuid")
                         .HasColumnName("ai_answer_id");
+
+                    b.Property<double>("AnswerCertainty")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.5)
+                        .HasColumnName("answer_certainty");
 
                     b.Property<bool>("AnswerHasCitations")
                         .HasColumnType("boolean")
@@ -233,6 +286,16 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("brand_rank");
 
+                    b.Property<int?>("BrandRankUniverseSize")
+                        .HasColumnType("integer")
+                        .HasColumnName("brand_rank_universe_size");
+
+                    b.Property<double>("BrandRecommendationScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("brand_recommendation_score");
+
                     b.Property<string>("BrandRecommendationStrength")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -249,6 +312,12 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("brand_sentiment");
 
+                    b.Property<double>("BrandSentimentScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("brand_sentiment_score");
+
                     b.Property<int>("CompetitorSourceCount")
                         .HasColumnType("integer")
                         .HasColumnName("competitor_source_count");
@@ -264,15 +333,6 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<int>("OwnedSourceCount")
                         .HasColumnType("integer")
                         .HasColumnName("owned_source_count");
-
-                    b.Property<int>("ThirdPartySourceCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("third_party_source_count");
-
-                    b.Property<string>("TopRecommendedEntity")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("top_recommended_entity");
 
                     b.HasKey("Id");
 
@@ -297,6 +357,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -317,6 +381,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -388,6 +456,14 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DiscoveryRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("discovery_run_id");
+
                     b.Property<string>("Industry")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -409,12 +485,83 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BrandId")
                         .IsUnique();
 
+                    b.HasIndex("DiscoveryRunId");
+
                     b.ToTable("brand_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.BrandSourceClassification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("brand_id");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confidence_score");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ProvenanceSource")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provenance_source");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source_type");
+
+                    b.Property<Guid?>("SourceUrlId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_url_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId");
+
+                    b.HasIndex("SourceId");
+
+                    b.HasIndex("SourceType");
+
+                    b.HasIndex("SourceUrlId");
+
+                    b.HasIndex("BrandId", "SourceId")
+                        .IsUnique();
+
+                    b.ToTable("brand_source_classifications", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Citation", b =>
@@ -428,17 +575,20 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("ai_answer_id");
 
+                    b.Property<int?>("CitationPosition")
+                        .HasColumnType("integer")
+                        .HasColumnName("citation_position");
+
+                    b.Property<string>("CitationText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("citation_text");
+
                     b.Property<string>("CitationType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("citation_type");
-
-                    b.Property<string>("Classification")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("classification");
 
                     b.Property<double>("ConfidenceScore")
                         .HasColumnType("double precision")
@@ -448,35 +598,21 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("NormalizedDomain")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("normalized_domain");
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
 
-                    b.Property<string>("NormalizedSourceName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("normalized_source_name");
-
-                    b.Property<string>("SourceName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("source_name");
-
-                    b.Property<string>("Url")
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)")
-                        .HasColumnName("url");
+                    b.Property<Guid?>("SourceUrlId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_url_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("AIAnswerId");
 
-                    b.HasIndex("Classification");
+                    b.HasIndex("SourceId");
 
-                    b.HasIndex("NormalizedSourceName");
+                    b.HasIndex("SourceUrlId");
 
                     b.ToTable("citations", (string)null);
                 });
@@ -495,6 +631,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -521,6 +661,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -617,6 +761,74 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasIndex("BrandId");
 
                     b.ToTable("discovery_runs", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.FactualClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AssertedValue")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("asserted_value");
+
+                    b.Property<string>("ClaimText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("claim_text");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confidence_score");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EvidenceSnippet")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidence_snippet");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.Property<string>("ReviewStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Pending")
+                        .HasColumnName("review_status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Verifiability")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("verifiability");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MentionId");
+
+                    b.HasIndex("ReviewStatus");
+
+                    b.HasIndex("Subject");
+
+                    b.ToTable("factual_claims", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Lens", b =>
@@ -725,6 +937,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(10)")
                         .HasColumnName("country_code");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<Guid>("DiscoveryRunId")
                         .HasColumnType("uuid")
                         .HasColumnName("discovery_run_id");
@@ -740,6 +956,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -785,15 +1005,33 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("evidence_snippet");
 
+                    b.Property<double>("FirstMentionPosition")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.5)
+                        .HasColumnName("first_mention_position");
+
                     b.Property<bool>("IsRecommended")
                         .HasColumnType("boolean")
                         .HasColumnName("is_recommended");
+
+                    b.Property<int>("MentionCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("mention_count");
 
                     b.Property<string>("NormalizedName")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("normalized_name");
+
+                    b.Property<double>("RecommendationScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("recommendation_score");
 
                     b.Property<string>("RecommendationStrength")
                         .IsRequired()
@@ -807,6 +1045,12 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("sentiment");
 
+                    b.Property<double>("SentimentScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("sentiment_score");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AIAnswerId");
@@ -817,6 +1061,52 @@ namespace AIVisibility.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("chk_entity_id_not_null", "entity_id IS NOT NULL");
                         });
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionAttribute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double>("ConfidenceScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confidence_score");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EvidenceSnippet")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidence_snippet");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Polarity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("polarity");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MentionId");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("mention_attributes", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.MentionCandidate", b =>
@@ -871,6 +1161,221 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("mention_candidates", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionComparison", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EvidenceSnippet")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidence_snippet");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.Property<string>("OnAspect")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("on_aspect");
+
+                    b.Property<string>("VsEntityName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("vs_entity_name");
+
+                    b.Property<string>("VsEntityNormalized")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("vs_entity_normalized");
+
+                    b.Property<bool>("WinnerIsThisMention")
+                        .HasColumnType("boolean")
+                        .HasColumnName("winner_is_this_mention");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MentionId");
+
+                    b.HasIndex("OnAspect");
+
+                    b.HasIndex("VsEntityNormalized");
+
+                    b.ToTable("mention_comparisons", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionPair", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AIAnswerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ai_answer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MentionAId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_a_id");
+
+                    b.Property<Guid>("MentionBId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_b_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AIAnswerId");
+
+                    b.HasIndex("MentionAId");
+
+                    b.HasIndex("MentionBId");
+
+                    b.HasIndex("AIAnswerId", "MentionAId", "MentionBId")
+                        .IsUnique();
+
+                    b.ToTable("mention_pairs", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionRecommendationContext", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContextType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("context_type");
+
+                    b.Property<string>("ContextValue")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("context_value");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MentionId");
+
+                    b.HasIndex("ContextType", "ContextValue");
+
+                    b.ToTable("mention_recommendation_contexts", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionRiskFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EvidenceSnippet")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidence_snippet");
+
+                    b.Property<string>("FlagType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("flag_type");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("severity");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlagType");
+
+                    b.HasIndex("MentionId");
+
+                    b.ToTable("mention_risk_flags", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionTopicRecommendation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsRecommended")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_recommended");
+
+                    b.Property<Guid>("MentionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mention_id");
+
+                    b.Property<string>("Strength")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("strength");
+
+                    b.Property<string>("TopicName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("topic_name");
+
+                    b.Property<string>("TopicNormalized")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("topic_normalized");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MentionId");
+
+                    b.HasIndex("TopicNormalized");
+
+                    b.ToTable("mention_topic_recommendations", (string)null);
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -885,6 +1390,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -912,6 +1421,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -1108,6 +1621,10 @@ namespace AIVisibility.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AIPlatformId");
+
+                    b.HasIndex("PromptId");
+
                     b.HasIndex("ScanRunId");
 
                     b.HasIndex("Status");
@@ -1295,6 +1812,60 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("prompt_topics", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.ScanMetric", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("metric_name");
+
+                    b.Property<double>("MetricValue")
+                        .HasColumnType("double precision")
+                        .HasColumnName("metric_value");
+
+                    b.Property<Guid>("ScanRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scan_run_id");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("scope");
+
+                    b.Property<Guid?>("ScopeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScanRunId");
+
+                    b.HasIndex("Scope", "ScopeId");
+
+                    b.HasIndex("ScanRunId", "Scope", "MetricName")
+                        .HasDatabaseName("IX_scan_metrics_lookup");
+
+                    b.ToTable("scan_metrics", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_scan_metrics_scope_id_nullability", "(scope = 'Overall') = (scope_id IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.ScanRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1355,6 +1926,129 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("scan_runs", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.Source", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("AuthorityScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("authority_score");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Domain")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("domain");
+
+                    b.Property<string>("NormalizedDomain")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("normalized_domain");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("SourceName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("source_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedDomain");
+
+                    b.HasIndex("SourceName");
+
+                    b.ToTable("sources", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.SourceTypeReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("source_types", (string)null);
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.SourceUrl", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("NormalizedUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("normalized_url");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedUrl")
+                        .IsUnique();
+
+                    b.HasIndex("SourceId");
+
+                    b.ToTable("source_urls", (string)null);
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.Topic", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1369,6 +2063,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<Guid>("DiscoveryRunId")
                         .HasColumnType("uuid")
@@ -1385,6 +2083,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -1615,6 +2317,66 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.ToTable("tracker_topics", (string)null);
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrendPoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("captured_at");
+
+                    b.Property<string>("CategoricalValue")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("categorical_value");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("MetricName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("metric_name");
+
+                    b.Property<double?>("NumericValue")
+                        .HasColumnType("double precision")
+                        .HasColumnName("numeric_value");
+
+                    b.Property<Guid>("ScanRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scan_run_id");
+
+                    b.Property<Guid>("TrackerConfigurationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tracker_configuration_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScanRunId");
+
+                    b.HasIndex("TrackerConfigurationId", "CapturedAt");
+
+                    b.HasIndex("TrackerConfigurationId", "ScanRunId", "EntityType", "EntityId", "MetricName")
+                        .IsUnique();
+
+                    b.ToTable("trend_points", (string)null);
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrustSignal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1629,6 +2391,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -1656,6 +2422,10 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.HasKey("Id");
 
@@ -1686,6 +2456,17 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ScanRun");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.AnswerRecommendation", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.AIAnswer", "AIAnswer")
+                        .WithMany()
+                        .HasForeignKey("AIAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AIAnswer");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.AnswerSignal", b =>
@@ -1726,7 +2507,41 @@ namespace AIVisibility.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AIVisibility.Domain.Entities.DiscoveryRun", "DiscoveryRun")
+                        .WithMany()
+                        .HasForeignKey("DiscoveryRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Brand");
+
+                    b.Navigation("DiscoveryRun");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.BrandSourceClassification", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.Source", "Source")
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.SourceUrl", "SourceUrlNav")
+                        .WithMany()
+                        .HasForeignKey("SourceUrlId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Brand");
+
+                    b.Navigation("Source");
+
+                    b.Navigation("SourceUrlNav");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Citation", b =>
@@ -1737,7 +2552,22 @@ namespace AIVisibility.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AIVisibility.Domain.Entities.Source", "Source")
+                        .WithMany()
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.SourceUrl", "SourceUrl")
+                        .WithMany()
+                        .HasForeignKey("SourceUrlId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("AIAnswer");
+
+                    b.Navigation("Source");
+
+                    b.Navigation("SourceUrl");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Competitor", b =>
@@ -1781,6 +2611,17 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("Brand");
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.FactualClaim", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.Market", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.Brand", "Brand")
@@ -1811,6 +2652,17 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("AIAnswer");
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionAttribute", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.MentionCandidate", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.AIAnswer", "AIAnswer")
@@ -1820,6 +2672,77 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("AIAnswer");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionComparison", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionPair", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.AIAnswer", "AIAnswer")
+                        .WithMany()
+                        .HasForeignKey("AIAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "MentionA")
+                        .WithMany()
+                        .HasForeignKey("MentionAId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "MentionB")
+                        .WithMany()
+                        .HasForeignKey("MentionBId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AIAnswer");
+
+                    b.Navigation("MentionA");
+
+                    b.Navigation("MentionB");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionRecommendationContext", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionRiskFlag", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.MentionTopicRecommendation", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Mention", "Mention")
+                        .WithMany()
+                        .HasForeignKey("MentionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mention");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Product", b =>
@@ -1898,11 +2821,27 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptRun", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.AIPlatform", "AIPlatform")
+                        .WithMany()
+                        .HasForeignKey("AIPlatformId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
+                        .WithMany()
+                        .HasForeignKey("PromptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.ScanRun", "ScanRun")
                         .WithMany("PromptRuns")
                         .HasForeignKey("ScanRunId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AIPlatform");
+
+                    b.Navigation("Prompt");
 
                     b.Navigation("ScanRun");
                 });
@@ -1918,6 +2857,17 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("Prompt");
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.ScanMetric", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.ScanRun", "ScanRun")
+                        .WithMany()
+                        .HasForeignKey("ScanRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScanRun");
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.ScanRun", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
@@ -1927,6 +2877,17 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("TrackerConfiguration");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.SourceUrl", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.Source", "Source")
+                        .WithMany("Urls")
+                        .HasForeignKey("SourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Source");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Topic", b =>
@@ -2036,6 +2997,25 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.Navigation("TrackerConfiguration");
                 });
 
+            modelBuilder.Entity("AIVisibility.Domain.Entities.TrendPoint", b =>
+                {
+                    b.HasOne("AIVisibility.Domain.Entities.ScanRun", "ScanRun")
+                        .WithMany()
+                        .HasForeignKey("ScanRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
+                        .WithMany()
+                        .HasForeignKey("TrackerConfigurationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScanRun");
+
+                    b.Navigation("TrackerConfiguration");
+                });
+
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrustSignal", b =>
                 {
                     b.HasOne("AIVisibility.Domain.Entities.Brand", "Brand")
@@ -2112,6 +3092,11 @@ namespace AIVisibility.Infrastructure.Migrations
             modelBuilder.Entity("AIVisibility.Domain.Entities.ScanRun", b =>
                 {
                     b.Navigation("PromptRuns");
+                });
+
+            modelBuilder.Entity("AIVisibility.Domain.Entities.Source", b =>
+                {
+                    b.Navigation("Urls");
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerConfiguration", b =>

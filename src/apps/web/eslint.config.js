@@ -23,24 +23,25 @@ const FEATURES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Deprecated path patterns — included in every layer-specific rule group
-// ESLint 10 patterns use `group` (array) instead of `name` (string)
+// Banned path patterns — directories that are not part of the architecture.
+// Included in every layer-specific rule group so any file gets the warning.
+// ESLint 10 patterns use `group` (array) instead of `name` (string).
 // ---------------------------------------------------------------------------
-const DEPRECATED_PATH_PATTERNS = [
+const BANNED_PATH_PATTERNS = [
   {
     group: ["@/components/ui/*"],
     message:
-      "Deprecated: @/components/ui/ has been replaced by @/components/atoms/. Update your import.",
+      "@/components/ui/ is not part of the architecture — import from @/components/atoms/ instead.",
   },
   {
     group: ["@/components/layout/*"],
     message:
-      "Deprecated: @/components/layout/ has been replaced by @/components/organisms/. Update your import.",
+      "@/components/layout/ is not part of the architecture — import from @/components/organisms/ instead.",
   },
   {
     group: ["@/components/feedback/*"],
     message:
-      "Deprecated: @/components/feedback/ has been replaced by @/components/atoms/ or @/components/molecules/. Update your import.",
+      "@/components/feedback/ is not part of the architecture — import from @/components/atoms/ or @/components/molecules/ instead.",
   },
 ];
 
@@ -48,15 +49,15 @@ const DEPRECATED_PATH_PATTERNS = [
 // Helper: build no-restricted-imports rule value
 // ---------------------------------------------------------------------------
 function restrictedImports(...extraPatterns) {
-  return ["error", { patterns: [...DEPRECATED_PATH_PATTERNS, ...extraPatterns] }];
+  return ["error", { patterns: [...BANNED_PATH_PATTERNS, ...extraPatterns] }];
 }
 
 // ---------------------------------------------------------------------------
 // Layer boundary configs
 // ---------------------------------------------------------------------------
 
-// Rule Group A — Deprecated path ban (global, for files not matched by more specific rules)
-const deprecatedPathBan = {
+// Rule Group A — Banned path guard (global, for files not matched by more specific rules)
+const bannedPathGuard = {
   files: ["**/*.{ts,tsx}"],
   rules: {
     "no-restricted-imports": restrictedImports(),
@@ -197,7 +198,7 @@ export default tseslint.config(
     },
   },
   // Layer boundary rules
-  deprecatedPathBan,
+  bannedPathGuard,
   atomBoundary,
   moleculeBoundary,
   organismBoundary,

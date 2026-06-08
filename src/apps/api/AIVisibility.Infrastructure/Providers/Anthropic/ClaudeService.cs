@@ -71,7 +71,8 @@ public class ClaudeService : IClaudeService
             stopwatch.Stop();
 
             // Anthropic returns content as an array of blocks (text, tool_use, etc.).
-            // We only read text blocks; first one wins for legacy parity.
+            // We use the first text block — Claude's chat-completion responses are
+            // single-text-block in practice; tool_use blocks aren't requested.
             var text = string.Empty;
             if (json.TryGetProperty("content", out var content)
                 && content.ValueKind == JsonValueKind.Array

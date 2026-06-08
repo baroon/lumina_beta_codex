@@ -1,13 +1,10 @@
 namespace AIVisibility.Domain.Entities;
 
 /// <summary>
-/// One entry in the ordered list of entities the AI recommended in an answer
-/// (Phase 4 measurement-model expansion, item 6). The existing
-/// <c>TopRecommendedEntity</c> field on <see cref="AnswerSignal"/> only
-/// captured the LLM's single top pick — losing information when the answer
-/// recommended multiple entities ("Top picks: X, Y, Z"). This table captures
-/// the full ordered list so per-position aggregates (rank-1-of-recommendations,
-/// average brand recommendation position) become computable.
+/// One entry in the ordered list of entities the AI recommended in an answer.
+/// Captures the full ordered list so per-position aggregates
+/// (rank-1-of-recommendations, average brand recommendation position) are
+/// computable.
 ///
 /// Created by <c>SignalExtractor</c> per answer. Append-only (D16). Names
 /// stored verbatim from the LLM plus a normalized form for grouping; no FK

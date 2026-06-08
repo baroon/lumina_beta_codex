@@ -43,6 +43,13 @@ public class MetricAggregationJob : IMetricAggregationJob
         var job = await _db.AnalysisJobs.FirstOrDefaultAsync(j => j.Id == analysisJobId, cancellationToken)
             ?? throw new InvalidOperationException($"AnalysisJob {analysisJobId} not found.");
 
+        // If AggregateStartedAt is already populated, a previous attempt
+        // started and either threw before completing or was abandoned mid-flight.
+        // Hangfire's automatic retry has invoked us again — record it.
+        if (job.AggregateStartedAt is not null)
+        {
+            job.AggregateRetryCount++;
+        }
         job.AggregateStartedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 

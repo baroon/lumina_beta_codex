@@ -75,27 +75,35 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "brand_profiles",
+                name: "source_types",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    brand_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    short_description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    industry = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    category = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    positioning = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
-                    confidence = table.Column<double>(type: "double precision", nullable: false),
-                    source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
+                    code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    display_order = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_brand_profiles", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_brand_profiles_brands_brand_id",
-                        column: x => x.brand_id,
-                        principalTable: "brands",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                    table.PrimaryKey("PK_source_types", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "sources",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    domain = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    normalized_domain = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    authority_score = table.Column<double>(type: "double precision", nullable: true),
+                    published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_sources", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -150,6 +158,28 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "source_urls",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    normalized_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_source_urls", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_source_urls_sources_source_id",
+                        column: x => x.source_id,
+                        principalTable: "sources",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "audiences",
                 columns: table => new
                 {
@@ -159,7 +189,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -179,6 +211,39 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "brand_profiles",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    brand_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    short_description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    industry = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    category = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    positioning = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    confidence = table.Column<double>(type: "double precision", nullable: false),
+                    source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_brand_profiles", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_brand_profiles_brands_brand_id",
+                        column: x => x.brand_id,
+                        principalTable: "brands",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_brand_profiles_discovery_runs_discovery_run_id",
+                        column: x => x.discovery_run_id,
+                        principalTable: "discovery_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "competitors",
                 columns: table => new
                 {
@@ -189,7 +254,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -242,7 +309,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     country_code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -272,7 +341,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     product_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -300,7 +371,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -330,7 +403,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -536,6 +611,44 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "brand_source_classifications",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    brand_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_url_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    provenance_source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_brand_source_classifications", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_brand_source_classifications_brands_brand_id",
+                        column: x => x.brand_id,
+                        principalTable: "brands",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_brand_source_classifications_source_urls_source_url_id",
+                        column: x => x.source_url_id,
+                        principalTable: "source_urls",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_brand_source_classifications_sources_source_id",
+                        column: x => x.source_id,
+                        principalTable: "sources",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "prompt_audiences",
                 columns: table => new
                 {
@@ -631,6 +744,32 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "analysis_jobs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scan_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    extract_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    extract_completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    aggregate_started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    aggregate_completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    aggregate_retry_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    error_message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_analysis_jobs", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_analysis_jobs_scan_runs_scan_run_id",
+                        column: x => x.scan_run_id,
+                        principalTable: "scan_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "prompt_runs",
                 columns: table => new
                 {
@@ -647,9 +786,78 @@ namespace AIVisibility.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_prompt_runs", x => x.id);
                     table.ForeignKey(
+                        name: "FK_prompt_runs_ai_platforms_ai_platform_id",
+                        column: x => x.ai_platform_id,
+                        principalTable: "ai_platforms",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_prompt_runs_prompts_prompt_id",
+                        column: x => x.prompt_id,
+                        principalTable: "prompts",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_prompt_runs_scan_runs_scan_run_id",
                         column: x => x.scan_run_id,
                         principalTable: "scan_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "scan_metrics",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scan_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scope = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    scope_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    metric_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    metric_value = table.Column<double>(type: "double precision", nullable: false),
+                    metadata_json = table.Column<string>(type: "jsonb", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_scan_metrics", x => x.id);
+                    table.CheckConstraint("chk_scan_metrics_scope_id_nullability", "(scope = 'Overall') = (scope_id IS NULL)");
+                    table.ForeignKey(
+                        name: "FK_scan_metrics_scan_runs_scan_run_id",
+                        column: x => x.scan_run_id,
+                        principalTable: "scan_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "trend_points",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scan_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entity_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    entity_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    metric_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    numeric_value = table.Column<double>(type: "double precision", nullable: true),
+                    categorical_value = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    captured_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_trend_points", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_trend_points_scan_runs_scan_run_id",
+                        column: x => x.scan_run_id,
+                        principalTable: "scan_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_trend_points_tracker_configurations_tracker_configuration_id",
+                        column: x => x.tracker_configuration_id,
+                        principalTable: "tracker_configurations",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -661,7 +869,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_run_id = table.Column<Guid>(type: "uuid", nullable: false),
                     answer_text = table.Column<string>(type: "text", nullable: false),
-                    raw_response = table.Column<string>(type: "text", nullable: true),
+                    raw_response = table.Column<string>(type: "text", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -671,6 +879,327 @@ namespace AIVisibility.Infrastructure.Migrations
                         name: "FK_ai_answers_prompt_runs_prompt_run_id",
                         column: x => x.prompt_run_id,
                         principalTable: "prompt_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "answer_recommendations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    claimed_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    normalized_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    position = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_answer_recommendations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_answer_recommendations_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "answer_signals",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    brand_mentioned = table.Column<bool>(type: "boolean", nullable: false),
+                    brand_recommended = table.Column<bool>(type: "boolean", nullable: false),
+                    brand_rank = table.Column<int>(type: "integer", nullable: true),
+                    brand_rank_universe_size = table.Column<int>(type: "integer", nullable: true),
+                    brand_sentiment = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    brand_sentiment_score = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.0),
+                    brand_recommendation_strength = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    brand_recommendation_score = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.0),
+                    answer_certainty = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.5),
+                    answer_has_ranking = table.Column<bool>(type: "boolean", nullable: false),
+                    answer_has_comparison = table.Column<bool>(type: "boolean", nullable: false),
+                    answer_has_citations = table.Column<bool>(type: "boolean", nullable: false),
+                    owned_source_count = table.Column<int>(type: "integer", nullable: false),
+                    competitor_source_count = table.Column<int>(type: "integer", nullable: false),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_answer_signals", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_answer_signals_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "citations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    source_url_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    citation_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    citation_position = table.Column<int>(type: "integer", nullable: true),
+                    citation_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_citations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_citations_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_citations_source_urls_source_url_id",
+                        column: x => x.source_url_id,
+                        principalTable: "source_urls",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_citations_sources_source_id",
+                        column: x => x.source_id,
+                        principalTable: "sources",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_candidates",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    claimed_entity_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    claimed_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    normalized_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_candidates", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_candidates_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mentions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entity_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    entity_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    normalized_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_recommended = table.Column<bool>(type: "boolean", nullable: false),
+                    recommendation_strength = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    recommendation_score = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.0),
+                    sentiment = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    sentiment_score = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.0),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    mention_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    first_mention_position = table.Column<double>(type: "double precision", nullable: false, defaultValue: 0.5),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mentions", x => x.id);
+                    table.CheckConstraint("chk_entity_id_not_null", "entity_id IS NOT NULL");
+                    table.ForeignKey(
+                        name: "FK_mentions_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "factual_claims",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    claim_text = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    subject = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    asserted_value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    verifiability = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    review_status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false, defaultValue: "Pending"),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_factual_claims", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_factual_claims_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_attributes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    polarity = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    confidence_score = table.Column<double>(type: "double precision", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_attributes", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_attributes_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_comparisons",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    vs_entity_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    vs_entity_normalized = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    on_aspect = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    winner_is_this_mention = table.Column<bool>(type: "boolean", nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_comparisons", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_comparisons_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_pairs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ai_answer_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_a_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_b_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_pairs", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_pairs_ai_answers_ai_answer_id",
+                        column: x => x.ai_answer_id,
+                        principalTable: "ai_answers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_mention_pairs_mentions_mention_a_id",
+                        column: x => x.mention_a_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_mention_pairs_mentions_mention_b_id",
+                        column: x => x.mention_b_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_recommendation_contexts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    context_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    context_value = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_recommendation_contexts", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_recommendation_contexts_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_risk_flags",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    flag_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    severity = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    evidence_snippet = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_risk_flags", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_risk_flags_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "mention_topic_recommendations",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    mention_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    topic_name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    topic_normalized = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    is_recommended = table.Column<bool>(type: "boolean", nullable: false),
+                    strength = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_mention_topic_recommendations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_mention_topic_recommendations_mentions_mention_id",
+                        column: x => x.mention_id,
+                        principalTable: "mentions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -740,6 +1269,33 @@ namespace AIVisibility.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_analysis_jobs_scan_run_id",
+                table: "analysis_jobs",
+                column: "scan_run_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_analysis_jobs_status",
+                table: "analysis_jobs",
+                column: "status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_answer_recommendations_ai_answer_id",
+                table: "answer_recommendations",
+                column: "ai_answer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_answer_recommendations_normalized_name",
+                table: "answer_recommendations",
+                column: "normalized_name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_answer_signals_ai_answer_id",
+                table: "answer_signals",
+                column: "ai_answer_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_audiences_brand_id",
                 table: "audiences",
                 column: "brand_id");
@@ -754,6 +1310,52 @@ namespace AIVisibility.Infrastructure.Migrations
                 table: "brand_profiles",
                 column: "brand_id",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_profiles_discovery_run_id",
+                table: "brand_profiles",
+                column: "discovery_run_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_source_classifications_brand_id",
+                table: "brand_source_classifications",
+                column: "brand_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_source_classifications_brand_id_source_id",
+                table: "brand_source_classifications",
+                columns: new[] { "brand_id", "source_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_source_classifications_source_id",
+                table: "brand_source_classifications",
+                column: "source_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_source_classifications_source_type",
+                table: "brand_source_classifications",
+                column: "source_type");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_brand_source_classifications_source_url_id",
+                table: "brand_source_classifications",
+                column: "source_url_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_citations_ai_answer_id",
+                table: "citations",
+                column: "ai_answer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_citations_source_id",
+                table: "citations",
+                column: "source_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_citations_source_url_id",
+                table: "citations",
+                column: "source_url_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_competitors_brand_id",
@@ -776,6 +1378,21 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "brand_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_factual_claims_mention_id",
+                table: "factual_claims",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_factual_claims_review_status",
+                table: "factual_claims",
+                column: "review_status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_factual_claims_subject",
+                table: "factual_claims",
+                column: "subject");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_lenses_code",
                 table: "lenses",
                 column: "code",
@@ -790,6 +1407,102 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_markets_discovery_run_id",
                 table: "markets",
                 column: "discovery_run_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_attributes_mention_id",
+                table: "mention_attributes",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_attributes_name",
+                table: "mention_attributes",
+                column: "name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_candidates_ai_answer_id",
+                table: "mention_candidates",
+                column: "ai_answer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_candidates_claimed_entity_type_normalized_name",
+                table: "mention_candidates",
+                columns: new[] { "claimed_entity_type", "normalized_name" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_comparisons_mention_id",
+                table: "mention_comparisons",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_comparisons_on_aspect",
+                table: "mention_comparisons",
+                column: "on_aspect");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_comparisons_vs_entity_normalized",
+                table: "mention_comparisons",
+                column: "vs_entity_normalized");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_pairs_ai_answer_id",
+                table: "mention_pairs",
+                column: "ai_answer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_pairs_ai_answer_id_mention_a_id_mention_b_id",
+                table: "mention_pairs",
+                columns: new[] { "ai_answer_id", "mention_a_id", "mention_b_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_pairs_mention_a_id",
+                table: "mention_pairs",
+                column: "mention_a_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_pairs_mention_b_id",
+                table: "mention_pairs",
+                column: "mention_b_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_recommendation_contexts_context_type_context_value",
+                table: "mention_recommendation_contexts",
+                columns: new[] { "context_type", "context_value" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_recommendation_contexts_mention_id",
+                table: "mention_recommendation_contexts",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_risk_flags_flag_type",
+                table: "mention_risk_flags",
+                column: "flag_type");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_risk_flags_mention_id",
+                table: "mention_risk_flags",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_topic_recommendations_mention_id",
+                table: "mention_topic_recommendations",
+                column: "mention_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mention_topic_recommendations_topic_normalized",
+                table: "mention_topic_recommendations",
+                column: "topic_normalized");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mentions_ai_answer_id",
+                table: "mentions",
+                column: "ai_answer_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_mentions_entity_type_entity_id",
+                table: "mentions",
+                columns: new[] { "entity_type", "entity_id" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_products_brand_id",
@@ -819,6 +1532,16 @@ namespace AIVisibility.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_prompt_products_prompt_id",
                 table: "prompt_products",
+                column: "prompt_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prompt_runs_ai_platform_id",
+                table: "prompt_runs",
+                column: "ai_platform_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prompt_runs_prompt_id",
+                table: "prompt_runs",
                 column: "prompt_id");
 
             migrationBuilder.CreateIndex(
@@ -852,6 +1575,21 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "tracker_configuration_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_scan_metrics_lookup",
+                table: "scan_metrics",
+                columns: new[] { "scan_run_id", "scope", "metric_name" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_scan_metrics_scan_run_id",
+                table: "scan_metrics",
+                column: "scan_run_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_scan_metrics_scope_scope_id",
+                table: "scan_metrics",
+                columns: new[] { "scope", "scope_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_scan_runs_status",
                 table: "scan_runs",
                 column: "status");
@@ -860,6 +1598,33 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_scan_runs_tracker_configuration_id",
                 table: "scan_runs",
                 column: "tracker_configuration_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_source_types_code",
+                table: "source_types",
+                column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_source_urls_normalized_url",
+                table: "source_urls",
+                column: "normalized_url",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_source_urls_source_id",
+                table: "source_urls",
+                column: "source_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_sources_normalized_domain",
+                table: "sources",
+                column: "normalized_domain");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_sources_source_name",
+                table: "sources",
+                column: "source_name");
 
             migrationBuilder.CreateIndex(
                 name: "IX_topics_brand_id",
@@ -912,6 +1677,22 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "tracker_configuration_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_trend_points_scan_run_id",
+                table: "trend_points",
+                column: "scan_run_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trend_points_tracker_configuration_id_captured_at",
+                table: "trend_points",
+                columns: new[] { "tracker_configuration_id", "captured_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trend_points_tracker_configuration_id_scan_run_id_entity_ty~",
+                table: "trend_points",
+                columns: new[] { "tracker_configuration_id", "scan_run_id", "entity_type", "entity_id", "metric_name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_trust_signals_brand_id",
                 table: "trust_signals",
                 column: "brand_id");
@@ -926,10 +1707,13 @@ namespace AIVisibility.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ai_answers");
+                name: "analysis_jobs");
 
             migrationBuilder.DropTable(
-                name: "ai_platforms");
+                name: "answer_recommendations");
+
+            migrationBuilder.DropTable(
+                name: "answer_signals");
 
             migrationBuilder.DropTable(
                 name: "audiences");
@@ -938,16 +1722,46 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "brand_profiles");
 
             migrationBuilder.DropTable(
+                name: "brand_source_classifications");
+
+            migrationBuilder.DropTable(
+                name: "citations");
+
+            migrationBuilder.DropTable(
                 name: "competitors");
 
             migrationBuilder.DropTable(
                 name: "crawled_pages");
 
             migrationBuilder.DropTable(
+                name: "factual_claims");
+
+            migrationBuilder.DropTable(
                 name: "lenses");
 
             migrationBuilder.DropTable(
                 name: "markets");
+
+            migrationBuilder.DropTable(
+                name: "mention_attributes");
+
+            migrationBuilder.DropTable(
+                name: "mention_candidates");
+
+            migrationBuilder.DropTable(
+                name: "mention_comparisons");
+
+            migrationBuilder.DropTable(
+                name: "mention_pairs");
+
+            migrationBuilder.DropTable(
+                name: "mention_recommendation_contexts");
+
+            migrationBuilder.DropTable(
+                name: "mention_risk_flags");
+
+            migrationBuilder.DropTable(
+                name: "mention_topic_recommendations");
 
             migrationBuilder.DropTable(
                 name: "products");
@@ -969,6 +1783,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "prompt_topics");
+
+            migrationBuilder.DropTable(
+                name: "scan_metrics");
+
+            migrationBuilder.DropTable(
+                name: "source_types");
 
             migrationBuilder.DropTable(
                 name: "topics");
@@ -995,16 +1815,34 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_topics");
 
             migrationBuilder.DropTable(
+                name: "trend_points");
+
+            migrationBuilder.DropTable(
                 name: "trust_signals");
+
+            migrationBuilder.DropTable(
+                name: "source_urls");
+
+            migrationBuilder.DropTable(
+                name: "mentions");
+
+            migrationBuilder.DropTable(
+                name: "discovery_runs");
+
+            migrationBuilder.DropTable(
+                name: "sources");
+
+            migrationBuilder.DropTable(
+                name: "ai_answers");
 
             migrationBuilder.DropTable(
                 name: "prompt_runs");
 
             migrationBuilder.DropTable(
-                name: "prompts");
+                name: "ai_platforms");
 
             migrationBuilder.DropTable(
-                name: "discovery_runs");
+                name: "prompts");
 
             migrationBuilder.DropTable(
                 name: "scan_runs");

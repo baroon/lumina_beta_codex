@@ -9,7 +9,7 @@ public class AIAnswer
     public Guid Id { get; set; }
     public Guid PromptRunId { get; set; }
     public string AnswerText { get; set; } = string.Empty;
-    public string? RawResponse { get; set; }
+    public string RawResponse { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 
     public PromptRun PromptRun { get; set; } = null!;

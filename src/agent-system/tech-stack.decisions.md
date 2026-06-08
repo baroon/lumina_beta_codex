@@ -2007,8 +2007,8 @@ public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
 | Layer | Tool                           | What it catches                                                                             |
 | ----- | ------------------------------ | ------------------------------------------------------------------------------------------- |
 | 1     | Prettier                       | Inconsistent formatting (auto-fixed)                                                        |
-| 2     | ESLint `no-restricted-imports` | Layer boundary violations, deprecated path imports, cross-feature imports                   |
-| 3     | `manifest-sync-lite.mjs`       | Missing manifest entries, orphaned entries, deprecated dirs, missing stories (ERROR), missing tests (WARN) |
+| 2     | ESLint `no-restricted-imports` | Layer boundary violations, banned path imports, cross-feature imports                       |
+| 3     | `manifest-sync-lite.mjs`       | Missing manifest entries, orphaned entries, banned dirs, missing stories (ERROR), missing tests (WARN) |
 | 4     | Husky + lint-staged            | Orchestrates layers 1-3 on staged files only                                                |
 
 **Config files (workspace root `src/`):**
@@ -2021,7 +2021,7 @@ public class TrackersApiTests : IClassFixture<LuminaWebApplicationFactory>
 
 **ESLint boundary rule groups (in `apps/web/eslint.config.js`):**
 
-- **Deprecated path ban** (all files): blocks `@/components/ui/*`, `@/components/layout/*`, `@/components/feedback/*`
+- **Banned path guard** (all files): blocks `@/components/ui/*`, `@/components/layout/*`, `@/components/feedback/*`
 - **Atom boundary**: atoms cannot import molecules, organisms, data-display, charts, features, api, hooks
 - **Molecule boundary**: molecules cannot import organisms, features, api
 - **Organism boundary**: organisms cannot import features, api

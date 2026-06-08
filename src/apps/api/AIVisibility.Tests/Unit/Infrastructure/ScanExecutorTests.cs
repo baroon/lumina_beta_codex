@@ -384,7 +384,6 @@ public class ScanExecutorTests
             "brand_mentioned": true, "brand_recommended": true,
             "brand_rank": 1, "brand_sentiment": "Positive",
             "brand_recommendation_strength": "Strong",
-            "top_recommended_entity": "Acme",
             "answer_has_ranking": true, "answer_has_comparison": false,
             "answer_has_citations": false, "confidence_score": 0.9
           },

@@ -45,7 +45,6 @@ public class SignalExtractor
             "brand_sentiment_score": number, // -1.0..+1.0; finer-grained than the enum. See sentiment-score rules below.
             "brand_recommendation_strength": "Strong|Moderate|Weak|NotRecommended|Unknown",
             "brand_recommendation_score": number, // -1.0..+1.0; finer-grained than the strength enum. See recommendation-score rules below.
-            "top_recommended_entity": string|null,
             "recommended_entities": [string],  // ordered top-first; full list of recommended entities (any type — brand/competitor/product/other), see rules below
             "answer_has_ranking": bool,
             "answer_has_comparison": bool,
@@ -93,7 +92,8 @@ public class SignalExtractor
                 {
                   "vs_entity": string,       // the entity being compared against, name verbatim from the answer
                   "on_aspect": string,       // canonical snake_case aspect: "price", "speed", "support_quality", "ease_of_use", etc.
-                  "winner": "this|other"     // who the answer says wins THIS aspect — this entity or the other
+                  "winner": "this|other",    // who the answer says wins THIS aspect — this entity or the other
+                  "evidence_snippet": string // ≤500 chars; the quoted prose that supports the comparison
                 }
               ],
               "recommended_for": [string],   // scenarios / audiences / use-cases the answer endorses THIS entity FOR. See recommendation-context rules. May be [].
@@ -169,26 +169,6 @@ public class SignalExtractor
             them in the order the answer named them.
           - Empty list (not null) when the answer recommends nothing.
         - Length cap: 20 entries. Truncate longer lists; rare in practice.
-        - The first element of this list (if any) is the same as
-          top_recommended_entity. Both fields MUST be consistent.
-
-        Top-recommended-entity rules (top_recommended_entity):
-        - When the answer endorses ONE entity as the clear top pick (above all
-          others mentioned), top_recommended_entity MUST be that entity's name
-          exactly as written — regardless of whether it's the tracked brand or
-          a competitor.
-        - When the answer treats multiple entities as roughly equal options
-          (e.g. "X, Y, and Z are all strong choices") OR doesn't endorse any
-          single entity, top_recommended_entity MUST be null.
-        - Examples:
-            "I'd recommend Acme as the best option"     -> "Acme"
-            "Lumina is my #1 choice"                    -> "Lumina"
-            "Acme leads the pack, with Beta close behind" -> "Acme"
-            "There are several good options: X, Y, Z"   -> null
-            "It depends on your needs"                  -> null
-        - If brand_rank=1 (the tracked brand is ranked #1), top_recommended_
-          entity MUST be the tracked brand's name — those two fields cannot
-          disagree.
 
         Factual-claim rules (mention.factual_claims):
         - Extract check-able facts the answer asserts ABOUT this entity. Things you
@@ -196,20 +176,32 @@ public class SignalExtractor
           founding year, parent company, ownership, headquarters, leadership,
           product category, key features, pricing tier, awards, partnerships,
           headcount, subscribers/users, languages supported.
-        - Skip: opinions, recommendations, sentiment, comparative framing, generic
-          praise. Those are captured by sentiment + attributes; mixing them in
-          here pollutes the fact-check inbox.
+        - Comparative claims about an inherent property DO count. "X has a larger
+          readership than Y" -> subject=audience_size, asserted_value="larger than Y",
+          verifiability=Subjective. "X is older than Y" -> subject=founding_year,
+          asserted_value="older than Y", verifiability=Subjective. "X is owned
+          by ParentCo" -> subject=parent_company, asserted_value="ParentCo",
+          verifiability=Verifiable. Bias toward EXTRACTING when in doubt — a
+          weak claim that later turns out to be opinion is cheap to discard; a
+          missed factual assertion is invisible to the trust-monitoring view.
+        - Skip ONLY pure opinion/recommendation/sentiment with no factual core
+          ("X is great", "Y is the best choice", "Z is reliable"). Generic
+          praise without any check-able property attached belongs in
+          attributes/sentiment, not here.
         - claim_text: the full claim as a self-contained sentence, ≤1000 chars.
         - subject: a short snake_case category for grouping. Use these when they
           fit; coin a new one only if none match:
             founding_year, parent_company, headquarters, leadership,
             product_category, product_feature, price, award, partnership,
-            ownership, headcount, audience_size, languages, distribution.
+            ownership, headcount, audience_size, languages, distribution,
+            reputation, editorial_focus.
         - asserted_value: the specific value being asserted, ≤500 chars
-          ("1975", "Living Media India", "New Delhi", "subscription model").
+          ("1975", "Living Media India", "New Delhi", "subscription model",
+          "larger than Outlook India", "well-established").
         - verifiability:
             Verifiable -- a public fact you could look up
-            Subjective -- opinion-shaped ("widely regarded as", "considered trusted")
+            Subjective -- opinion-shaped or comparative ("widely regarded as",
+                          "considered trusted", "larger than X")
             Unverifiable -- speculative or future-tense ("will likely IPO next year")
         - When the answer asserts nothing factual about an entity, return [].
 
@@ -259,18 +251,36 @@ public class SignalExtractor
 
         Comparison rules (mention.comparisons):
         - One row per (this entity, vs_entity, on_aspect) tuple where the
-          answer DIRECTLY compares the two on that specific dimension.
+          answer DIRECTLY compares the two on that specific dimension AND
+          declares a clear winner.
             "X is faster than Y"            -> 1 row: vs=Y, aspect=speed, winner=this
             "Y has better support than X"   -> 1 row on X mention: vs=Y, aspect=support_quality, winner=other
-            "X and Y are similar on price"  -> 0 rows (no winner)
-            "X is generally better"         -> 0 rows (no aspect)
+            "X and Y are similar on price"  -> 0 rows (tie — no winner)
+            "X is generally better"         -> 0 rows (no specific aspect)
+            "X has style A, Y has style B"  -> 0 rows (different ≠ better; tie unless answer declares a winner)
+        - Multi-dimension comparisons get MULTIPLE rows, one per aspect.
+          Answers that enumerate distinct labeled dimensions ("Editorial
+          Focus: ... Investigative Depth: ... Reputation: ... Style: ...")
+          produce one row per dimension on each entity's mention. Do NOT
+          collapse a 4-dimension comparison into a single generic aspect row;
+          each labeled dimension is its own (aspect, winner, evidence) triple.
         - Aspect MUST be snake_case from a small canonical set when possible:
           price, speed, performance, ease_of_use, support_quality, depth_of_coverage,
-          accuracy, scalability, integrations, customization, reliability, security,
-          pricing_transparency, mobile_experience, customer_base, brand_recognition.
+          investigative_depth, editorial_focus, editorial_independence, accuracy,
+          scalability, integrations, customization, reliability, security,
+          pricing_transparency, mobile_experience, customer_base, audience_size,
+          reputation, brand_recognition, content_style.
           Use free-text (still snake_case) when none of these fit.
         - winner: "this" when THIS entity wins the aspect, "other" when the
-          vs_entity wins. NEVER emit a row for a tie or ambiguous winner.
+          vs_entity wins. NEVER emit a row for a tie, ambiguous winner, or
+          "they are different on this aspect without one being better". The
+          answer must explicitly declare or strongly imply a winner. When
+          the answer describes two distinct approaches without ranking them
+          ("X is mainstream, Y is provocative"), emit ZERO rows for that
+          aspect — those belong in attributes, not comparisons.
+        - evidence_snippet: the quoted prose from the answer that supports
+          THIS particular (aspect, winner) call. ≤500 chars. Required for
+          every row — empty evidence is not acceptable.
         - vs_entity is the EXACT name from the answer (preserve casing). The
           aggregator normalizes downstream.
         - Skip self-comparisons (this entity vs itself).
@@ -308,9 +318,31 @@ public class SignalExtractor
           Positive overall can still carry Negative attributes ("reliable for analysis,
           BUT slow to break news" → "reliable for analysis" Positive, "breaking news"
           Negative). Capture the per-attribute stance, not the umbrella sentiment.
-        - name MUST be a short, lowercase, normalized phrase (≤80 chars) — drop articles,
-          collapse whitespace, no ending punctuation. "In-depth analysis" → "in-depth
-          analysis"; "It is trustworthy." → "trustworthy".
+        - Extract attributes for EVERY entity the answer characterizes — tracked
+          brand AND competitors AND products. Competitor mentions that the answer
+          describes in qualitative terms ("X has a stronger focus on Y", "X is
+          willing to tackle Z") get attribute rows on the X mention, just like
+          tracked-brand mentions do. Do not under-extract on Competitor mentions.
+        - Extract the underlying TRAIT, not the meta-perception about it. "This
+          affects perceptions of its trustworthiness" → attribute=trustworthiness
+          (NOT "perceptions of trustworthiness"), polarity=Negative. "X is widely
+          considered reliable" → attribute=reliability (NOT "widely considered
+          reliable"), polarity=Positive. Strip framing verbs (perceptions,
+          considered, regarded, viewed, seen as) and surface the trait itself.
+        - Prefer canonical short-noun forms over verbose variants so the same
+          trait aggregates across answers. "in-depth analysis" / "in-depth
+          reporting" / "in-depth coverage" all collapse to "depth" (or
+          "investigative depth" if that's the more specific reading).
+          Suggested canonical nouns when they fit:
+            depth, breadth, speed, freshness, accuracy, reliability,
+            trustworthiness, affordability, ease_of_use, customer_support,
+            integrations, scalability, security, brand_recognition,
+            editorial_independence, investigative_depth, audience_size.
+          Coin a new short noun (≤3 words) only when none of these fit. If
+          you find yourself writing a multi-word phrase, ask whether one of
+          the above already covers it.
+        - name MUST be a short, lowercase, normalized phrase (≤80 chars) — drop
+          articles, collapse whitespace, no ending punctuation.
         - evidence_snippet quotes the answer text that supports the attribute (≤500 chars).
         - Skip generic praise ("good", "great", "best") that doesn't name a specific quality —
           those are already captured by recommendation strength + sentiment.
@@ -369,16 +401,35 @@ public class SignalExtractor
             brand_sentiment_score = 0
             brand_recommendation_strength = "Unknown"
             brand_recommendation_score = 0
-            top_recommended_entity = null (unless the answer explicitly names another top entity)
           Do NOT emit "Negative" or "NotRecommended" just because the brand isn't mentioned —
           those values mean the brand was actively discussed in a negative or against-it way.
         - Mention only what is in the answer. Do not infer entities not present.
         - "Brand" entity_type is for the tracked brand only.
         - "Competitor" and "Product" entity_types should use the names exactly as the answer
           phrases them (even if they don't appear in the tracked list — the caller resolves them).
+        - Competitor vs Product disambiguation: an entity in the SAME CATEGORY as the tracked
+          brand is a Competitor, regardless of how the question is phrased. If the tracked
+          brand is a news magazine and the answer mentions another news magazine, the other
+          magazine is a Competitor — NOT a Product, even when the prompt asks about
+          subscriptions or "what to buy". "Product" is reserved for actual SKUs / individual
+          offerings sold by a company ("the iPhone", "Outlook India Premium subscription",
+          "their investigative reports newsletter"), not for entities in the same category
+          as the tracked brand. When unsure between Competitor and Product, choose Competitor
+          if the named entity is a recognizable company / publication / brand on its own.
         - Recommendation strength scale: Strong (top pick / unreserved), Moderate (with caveats),
           Weak (mentioned as an option), NotRecommended (the answer recommends against the entity),
           Unknown (entity not discussed, or strength cannot be inferred).
+        - NotRecommended requires the answer to EXPLICITLY recommend against the entity —
+          "avoid", "not recommended", "don't use", "fails at X", "the worst choice", or equivalent.
+          Losing a head-to-head comparison ("X is good for general use, but Y is better for
+          investigations") is NOT NotRecommended — that is a comparisons row on the X mention
+          (vs_entity=Y, on_aspect=investigations, winner=other) with strength=Weak or Moderate.
+          NotRecommended is reserved for active negative framing about the entity in isolation.
+        - NotRecommended strength implies Negative or Mixed sentiment, NOT Neutral. If you
+          emit NotRecommended, the same mention's sentiment MUST be Negative or Mixed (with
+          sentiment_score in the negative half). A Neutral-sentiment mention cannot carry
+          NotRecommended strength — downgrade to Weak instead, and record the comparative
+          framing in comparisons[].
         - If the answer has no citations or sources, return citations: [].
         """;
 
@@ -520,20 +571,14 @@ public class SignalExtractor
             BrandSentimentScore = brandSentimentScore,
             BrandRecommendationStrength = brandStrength,
             BrandRecommendationScore = brandRecommendationScore,
-            TopRecommendedEntity = TryGetNullableString(s, "top_recommended_entity"),
             AnswerHasRanking = s.GetProperty("answer_has_ranking").GetBoolean(),
             AnswerHasComparison = s.GetProperty("answer_has_comparison").GetBoolean(),
             AnswerHasCitations = s.GetProperty("answer_has_citations").GetBoolean(),
-            // Phase 4 Slice 0: v1 URL-domain classifier produces Owned /
-            // Competitor / Unknown only — "ThirdParty" was a v1 catch-all that
-            // doesn't exist in the 12-value SourceType taxonomy. "URL present
-            // but no match" → Unknown (per ADR-003), so ThirdPartySourceCount
-            // is always 0 here. The aggregator buckets the more specific
-            // SourceType values back into a ThirdParty reporting bucket once
-            // LLM/KnownDomainList classification lands.
+            // URL-domain classifier produces Owned / Competitor / Unknown.
+            // "URL present but no domain match" → Unknown (per ADR-003) —
+            // captured on the Citation rows themselves, not on this counter.
             OwnedSourceCount = citations.Count(c => c.ClassifiedAs == SourceType.Owned),
             CompetitorSourceCount = citations.Count(c => c.ClassifiedAs == SourceType.Competitor),
-            ThirdPartySourceCount = 0,
             ConfidenceScore = TryGetDouble(s, "confidence_score") ?? 0.5,
             // Clamp to [0,1] — the prompt asks for the range but a fragile
             // LLM might emit -0.1 or 1.5. Default 0.5 (neutral) when omitted.
@@ -810,9 +855,14 @@ public class SignalExtractor
     private static string Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-        var collapsed = string.Join(' ',
-            value.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return collapsed.Trim();
+        var tokens = value.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        // LLMs inconsistently prefix proper nouns with "The"/"A"/"An". Drop a single
+        // leading article so "The Times of India" and "Times of India" key to the same row.
+        if (tokens.Length > 1 && (tokens[0] == "the" || tokens[0] == "a" || tokens[0] == "an"))
+        {
+            tokens = tokens[1..];
+        }
+        return string.Join(' ', tokens).Trim();
     }
 
     private static string? NormalizeDomain(string? urlOrDomain)
@@ -1022,6 +1072,7 @@ public class SignalExtractor
             var winner = TryGetNullableString(c, "winner")?.Trim().ToLowerInvariant();
             if (winner != "this" && winner != "other") continue;
 
+            var evidence = TryGetNullableString(c, "evidence_snippet")?.Trim() ?? string.Empty;
             yield return new MentionComparison
             {
                 Id = Guid.NewGuid(),
@@ -1030,7 +1081,7 @@ public class SignalExtractor
                 VsEntityNormalized = vsNormalized,
                 OnAspect = Truncate(NormalizeFlagType(aspect), 100),
                 WinnerIsThisMention = winner == "this",
-                EvidenceSnippet = string.Empty,
+                EvidenceSnippet = Truncate(evidence, 500),
                 CreatedAt = now,
             };
         }
@@ -1115,8 +1166,10 @@ public class SignalExtractor
     /// from the LLM's JSON output, clamped to [-1.0, +1.0]. When the LLM
     /// omits the field, derives a score from the strength enum so callers
     /// always get a usable number — Strong→+0.9, Moderate→+0.5, Weak→+0.2,
-    /// NotRecommended→-0.7, Unknown→0.0. Measurement-model expansion item
-    /// #5: numeric recommendation strength alongside the legacy enum.
+    /// NotRecommended→-0.7, Unknown→0.0. The numeric score and the
+    /// <see cref="RecommendationStrength"/> enum are paired by design:
+    /// the score supports thresholding/trending, the enum supports
+    /// categorical filtering and the LLM's own classification step.
     /// </summary>
     private static double ReadRecommendationScore(
         JsonElement parent, string name, RecommendationStrength fallbackEnum)
@@ -1140,9 +1193,10 @@ public class SignalExtractor
     /// Reads the numeric sentiment_score (or brand_sentiment_score) from the
     /// LLM's JSON output, clamped to [-1.0, +1.0]. When the LLM omits the
     /// field, derives a score from the enum so callers always get a usable
-    /// number — Positive→+0.75, Negative→-0.75, others→0.0. Slice-2 of the
-    /// measurement-model expansion: numeric sentiment alongside the legacy
-    /// enum.
+    /// number — Positive→+0.75, Negative→-0.75, others→0.0. The numeric
+    /// score and the <see cref="Sentiment"/> enum are paired by design:
+    /// the score supports thresholding/trending, the enum supports
+    /// categorical filtering and the LLM's own classification step.
     /// </summary>
     private static double ReadSentimentScore(JsonElement parent, string name, Sentiment fallbackEnum)
     {

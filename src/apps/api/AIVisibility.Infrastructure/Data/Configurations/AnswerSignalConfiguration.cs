@@ -25,8 +25,6 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
             .HasConversion<string>().HasMaxLength(50);
         builder.Property(s => s.BrandRecommendationScore).HasColumnName("brand_recommendation_score")
             .HasDefaultValue(0.0);
-        builder.Property(s => s.TopRecommendedEntity).HasColumnName("top_recommended_entity")
-            .HasMaxLength(500);
 
         builder.Property(s => s.AnswerHasRanking).HasColumnName("answer_has_ranking");
         builder.Property(s => s.AnswerHasComparison).HasColumnName("answer_has_comparison");
@@ -34,7 +32,6 @@ public class AnswerSignalConfiguration : IEntityTypeConfiguration<AnswerSignal>
 
         builder.Property(s => s.OwnedSourceCount).HasColumnName("owned_source_count");
         builder.Property(s => s.CompetitorSourceCount).HasColumnName("competitor_source_count");
-        builder.Property(s => s.ThirdPartySourceCount).HasColumnName("third_party_source_count");
 
         builder.Property(s => s.ConfidenceScore).HasColumnName("confidence_score");
         builder.Property(s => s.AnswerCertainty).HasColumnName("answer_certainty")

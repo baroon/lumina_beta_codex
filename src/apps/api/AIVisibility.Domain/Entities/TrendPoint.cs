@@ -68,4 +68,7 @@ public class TrendPoint
     public DateTime CapturedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public TrackerConfiguration TrackerConfiguration { get; set; } = null!;
+    public ScanRun ScanRun { get; set; } = null!;
 }

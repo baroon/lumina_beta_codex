@@ -35,11 +35,22 @@ public class TrendPointConfiguration : IEntityTypeConfiguration<TrendPoint>
         builder.Property(t => t.CapturedAt).HasColumnName("captured_at");
         builder.Property(t => t.CreatedAt).HasColumnName("created_at");
 
+        // CASCADE from both anchors — deleting the parent tracker or scan
+        // wipes the cached trend points it produced. `entity_id` stays
+        // unconstrained (polymorphic target, same as Mention.EntityId).
+        builder.HasOne(t => t.TrackerConfiguration).WithMany().HasForeignKey(t => t.TrackerConfigurationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(t => t.ScanRun).WithMany().HasForeignKey(t => t.ScanRunId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Window-scan query — by tracker, sorted by captured_at.
         builder.HasIndex(t => new { t.TrackerConfigurationId, t.CapturedAt });
         // Uniqueness now includes entity — a scan writes one row per
         // (entity × metric) so the dashboard chart can render one series per
         // tracked brand/competitor.
         builder.HasIndex(t => new { t.TrackerConfigurationId, t.ScanRunId, t.EntityType, t.EntityId, t.MetricName }).IsUnique();
+        // FK index for the second non-prefix FK (the composite UNIQUE index
+        // above already covers `tracker_configuration_id` queries).
+        builder.HasIndex(t => t.ScanRunId);
     }
 }

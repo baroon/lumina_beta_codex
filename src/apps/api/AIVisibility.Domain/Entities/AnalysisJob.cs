@@ -24,6 +24,16 @@ public class AnalysisJob
     /// <summary>Set when the aggregate Hangfire job finishes successfully.</summary>
     public DateTime? AggregateCompletedAt { get; set; }
 
+    /// <summary>
+    /// Hangfire retry count for the aggregate stage. 0 = first attempt succeeded
+    /// or failed on first try with no retry budget. Incremented at the start of
+    /// each <c>MetricAggregationJob.AggregateAsync</c> call when
+    /// <see cref="AggregateStartedAt"/> is already populated from a prior attempt.
+    /// Capped by the <c>[AutomaticRetry(Attempts = N)]</c> policy on
+    /// <c>IMetricAggregationJob</c>; once exhausted, Status flips to Failed.
+    /// </summary>
+    public int AggregateRetryCount { get; set; }
+
     /// <summary>Stage class name + thrown exception message; populated when Status=Failed.</summary>
     public string? ErrorMessage { get; set; }
 

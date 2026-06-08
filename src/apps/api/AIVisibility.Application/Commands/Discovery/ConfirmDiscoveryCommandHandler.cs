@@ -64,13 +64,25 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
         _db.Competitors.RemoveRange(await _db.Competitors.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
         _db.TrustSignals.RemoveRange(await _db.TrustSignals.Where(x => x.BrandId == brand.Id).ToListAsync(cancellationToken));
 
+        var now = DateTime.UtcNow;
+
         if (request.BrandProfile is { } bp)
         {
             var profile = await _db.BrandProfiles.FirstOrDefaultAsync(x => x.BrandId == brand.Id, cancellationToken);
             if (profile is null)
             {
-                profile = new BrandProfile { Id = Guid.NewGuid(), BrandId = brand.Id };
+                profile = new BrandProfile
+                {
+                    Id = Guid.NewGuid(),
+                    BrandId = brand.Id,
+                    DiscoveryRunId = runId,
+                    CreatedAt = now,
+                };
                 _db.BrandProfiles.Add(profile);
+            }
+            else
+            {
+                profile.DiscoveryRunId = runId;
             }
             profile.ShortDescription = bp.ShortDescription;
             profile.Industry = bp.Industry;
@@ -78,6 +90,7 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
             profile.Positioning = bp.Positioning;
             profile.Confidence = bp.Confidence;
             profile.Source = ParseSource(bp.Source);
+            profile.UpdatedAt = now;
         }
 
         foreach (var p in request.Products)
@@ -91,6 +104,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = p.Confidence,
                 Source = ParseSource(p.Source),
                 ProductType = ParseEnum(Meta(p, "productType"), ProductType.Product),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         foreach (var a in request.Audiences)
@@ -103,6 +118,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Description = a.Description,
                 Confidence = a.Confidence,
                 Source = ParseSource(a.Source),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         foreach (var m in request.Markets)
@@ -115,6 +132,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = m.Confidence,
                 Source = ParseSource(m.Source),
                 CountryCode = Meta(m, "countryCode"),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         foreach (var t in request.Topics)
@@ -126,6 +145,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Name = t.Name,
                 Confidence = t.Confidence,
                 Source = ParseSource(t.Source),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         foreach (var c in request.Competitors)
@@ -139,6 +160,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = c.Confidence,
                 Source = ParseSource(c.Source),
                 Domain = Meta(c, "domain"),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         foreach (var ts in request.TrustSignals)
@@ -152,6 +175,8 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = ts.Confidence,
                 Source = ParseSource(ts.Source),
                 SignalType = ParseEnum(Meta(ts, "signalType"), TrustSignalType.TestimonialsAndReviews),
+                CreatedAt = now,
+                UpdatedAt = now,
             });
 
         latestRun.Status = DiscoveryStatus.Completed;

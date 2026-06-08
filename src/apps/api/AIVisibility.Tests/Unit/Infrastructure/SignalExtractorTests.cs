@@ -102,7 +102,6 @@ public class SignalExtractorTests
                 "brand_rank": 1,
                 "brand_sentiment": "Positive",
                 "brand_recommendation_strength": "Strong",
-                "top_recommended_entity": "Lumina",
                 "answer_has_ranking": true,
                 "answer_has_comparison": true,
                 "answer_has_citations": true,
@@ -155,16 +154,14 @@ public class SignalExtractorTests
 
         result.Citations.Should().HaveCount(4);
 
-        // Source counts come from classified draft citations (D11). Phase 4
-        // Slice 0: the v1 URL-domain classifier returns Owned/Competitor/Unknown
-        // only — Wikipedia + Trustpilot both fall to Unknown (URL not in
-        // tracked-brand or tracked-competitor lists), so ThirdPartySourceCount
-        // is always 0 in v1. The aggregator's bucket-back-to-ThirdParty kicks
-        // in once LLM/KnownDomainList classification produces specific values
-        // (Editorial, UGC, etc.).
+        // Source counts come from classified draft citations (D11). The
+        // URL-domain classifier returns Owned / Competitor / Unknown —
+        // Wikipedia and Trustpilot both fall to Unknown (URL not in
+        // tracked-brand or tracked-competitor lists). Only Owned and
+        // Competitor are surfaced as denormalized counters on the signal;
+        // the rest flow through Citation rows and richer aggregations.
         result.Signal.OwnedSourceCount.Should().Be(1);        // blog.lumina.io
         result.Signal.CompetitorSourceCount.Should().Be(1);   // acme.com
-        result.Signal.ThirdPartySourceCount.Should().Be(0);   // always 0 in v1
     }
 
     [Fact]
@@ -188,7 +185,6 @@ public class SignalExtractorTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": true, "confidence_score": 0.5
               },
@@ -232,7 +228,6 @@ public class SignalExtractorTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": false, "confidence_score": 0.5
               },
@@ -280,7 +275,6 @@ public class SignalExtractorTests
                 "brand_rank": 3,
                 "brand_sentiment": "Negative",
                 "brand_recommendation_strength": "NotRecommended",
-                "top_recommended_entity": "Other Brand",
                 "answer_has_ranking": true,
                 "answer_has_comparison": false,
                 "answer_has_citations": false,
@@ -310,7 +304,7 @@ public class SignalExtractorTests
         var fenced = "```json\n" + """
             { "answer_signal": { "brand_mentioned": false, "brand_recommended": false,
               "brand_rank": null, "brand_sentiment": "Unknown",
-              "brand_recommendation_strength": "Unknown", "top_recommended_entity": null,
+              "brand_recommendation_strength": "Unknown",
               "answer_has_ranking": false, "answer_has_comparison": false,
               "answer_has_citations": false, "confidence_score": 0.5 },
               "mentions": [], "citations": [] }

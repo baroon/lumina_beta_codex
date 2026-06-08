@@ -159,7 +159,7 @@ public class ScanExecutor : IScanExecutor
                     Id = Guid.NewGuid(),
                     PromptRunId = pr.Id,
                     AnswerText = answer.Text,
-                    RawResponse = answer.RawResponse,
+                    RawResponse = answer.RawResponse ?? string.Empty,
                     CreatedAt = DateTime.UtcNow,
                 };
                 scopedDb.AIAnswers.Add(savedAnswer);

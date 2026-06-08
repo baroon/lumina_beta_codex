@@ -1104,7 +1104,7 @@ manually -- the chain handles it. But knowing what they cover helps
 you understand why the chain sometimes blocks a change:
 
 > **Automated enforcement:** A subset of these checks (import boundaries,
-> deprecated path bans, formatting, manifest sync) are enforced automatically
+> banned path guards, formatting, manifest sync) are enforced automatically
 > by the pre-commit hook via Prettier, ESLint, and manifest-sync-lite.
 > Commits that violate these rules will be rejected at `git commit` time.
 > See `project-structure.md` § Pre-Commit Enforcement System for details.
@@ -1139,7 +1139,7 @@ escalating to human.
 | 5. Design tokens used                  | No         | Manual review                                                           |
 | 6. No direct fetch in components       | Yes        | ESLint `no-restricted-imports` (atom/molecule/organism boundary rules)  |
 | 7. Named exports only                  | No         | Manual review                                                           |
-| 8. File in correct location            | Partial    | ESLint deprecated path ban + manifest sync `DEPRECATED_DIRECTORY` check |
+| 8. File in correct location            | Partial    | ESLint banned path guard + manifest sync `BANNED_DIRECTORY` check       |
 | 9. Manifest entry exists               | Yes        | manifest-sync-lite `MISSING_MANIFEST_ENTRY` + `ORPHAN_MANIFEST_ENTRY`   |
 | 10. Test coverage adequate             | Partial    | manifest-sync-lite `MISSING_TEST_FILE` (WARN) — file existence only    |
 | 11. One story per variant              | Partial    | manifest-sync-lite `MISSING_STORY_FILE` (ERROR) — file existence only  |
@@ -1151,7 +1151,7 @@ Additionally, the pre-commit hook enforces:
 
 - **Formatting** via Prettier (auto-fixed on commit)
 - **Layer boundary rules** via ESLint (atoms cannot import molecules/organisms/features, molecules cannot import organisms/features, no cross-feature imports)
-- **Deprecated path bans** via ESLint (no imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/`)
+- **Banned path guards** via ESLint (no imports from `@/components/ui/`, `@/components/layout/`, `@/components/feedback/`)
 
 ---
 

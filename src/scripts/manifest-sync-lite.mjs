@@ -6,7 +6,7 @@
  * Five checks:
  *   MISSING_MANIFEST_ENTRY  — .tsx file in shared component dirs has no manifest entry
  *   ORPHAN_MANIFEST_ENTRY   — manifest entry with status:"implemented" points to missing file
- *   DEPRECATED_DIRECTORY    — .tsx file exists in deprecated directories (ui/, layout/, feedback/)
+ *   BANNED_DIRECTORY        — .tsx file exists in a banned directory (ui/, layout/, feedback/)
  *   MISSING_STORY_FILE      — shared component .tsx has no matching .stories.tsx (ERROR)
  *   MISSING_TEST_FILE       — shared component .tsx has no matching .test.tsx (WARN, non-blocking)
  *
@@ -37,8 +37,9 @@ const SHARED_COMPONENT_DIRS = [
   "src/components/charts",
 ];
 
-// Deprecated directories that should not contain .tsx files
-const DEPRECATED_DIRS = ["src/components/ui", "src/components/layout", "src/components/feedback"];
+// Banned directories — not part of the architecture; .tsx files here are
+// flagged so a contributor doesn't accidentally re-introduce these paths.
+const BANNED_DIRS = ["src/components/ui", "src/components/layout", "src/components/feedback"];
 
 const isStaged = process.argv.includes("--staged");
 
@@ -163,24 +164,24 @@ function checkOrphanManifestEntries(manifest) {
   return errors;
 }
 
-function checkDeprecatedDirectories(filesToCheck) {
+function checkBannedDirectories(filesToCheck) {
   const errors = [];
 
   let tsxFiles;
   if (filesToCheck) {
-    // --staged mode: only check staged files in deprecated dirs
-    tsxFiles = filesToCheck.filter((f) => DEPRECATED_DIRS.some((dir) => f.startsWith(dir + "/")));
+    // --staged mode: only check staged files in banned dirs
+    tsxFiles = filesToCheck.filter((f) => BANNED_DIRS.some((dir) => f.startsWith(dir + "/")));
     tsxFiles = tsxFiles.filter((f) => f.endsWith(".tsx"));
   } else {
-    // Full scan: collect from deprecated dirs
-    tsxFiles = DEPRECATED_DIRS.flatMap(collectTsxFiles);
+    // Full scan: collect from banned dirs
+    tsxFiles = BANNED_DIRS.flatMap(collectTsxFiles);
   }
 
   for (const file of tsxFiles) {
     errors.push({
-      check: "DEPRECATED_DIRECTORY",
+      check: "BANNED_DIRECTORY",
       file,
-      message: `File in deprecated directory: ${file}. Migrate to atoms/, molecules/, or organisms/.`,
+      message: `File in banned directory: ${file}. Move to atoms/, molecules/, or organisms/.`,
     });
   }
 
@@ -260,7 +261,7 @@ function main() {
   const allErrors = [
     ...checkMissingManifestEntries(manifest, stagedFiles),
     ...checkOrphanManifestEntries(manifest),
-    ...checkDeprecatedDirectories(stagedFiles),
+    ...checkBannedDirectories(stagedFiles),
     ...checkMissingStoryFiles(stagedFiles),
   ];
 

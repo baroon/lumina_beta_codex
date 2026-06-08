@@ -18,7 +18,14 @@ public class BrandProfileConfiguration : IEntityTypeConfiguration<BrandProfile>
         builder.Property(bp => bp.Positioning).HasColumnName("positioning").HasMaxLength(2000);
         builder.Property(bp => bp.Confidence).HasColumnName("confidence");
         builder.Property(bp => bp.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
+        builder.Property(bp => bp.DiscoveryRunId).HasColumnName("discovery_run_id");
+        builder.Property(bp => bp.CreatedAt).HasColumnName("created_at");
+        builder.Property(bp => bp.UpdatedAt).HasColumnName("updated_at");
+
+        builder.HasOne(bp => bp.DiscoveryRun).WithMany().HasForeignKey(bp => bp.DiscoveryRunId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(bp => bp.BrandId).IsUnique();
+        builder.HasIndex(bp => bp.DiscoveryRunId);
     }
 }

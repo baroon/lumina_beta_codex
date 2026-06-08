@@ -67,8 +67,6 @@ public class AnswerSignal
     /// </summary>
     public double AnswerCertainty { get; set; } = 0.5;
 
-    public string? TopRecommendedEntity { get; set; }
-
     // Answer-shape flags from the LLM
     public bool AnswerHasRanking { get; set; }
     public bool AnswerHasComparison { get; set; }
@@ -77,7 +75,6 @@ public class AnswerSignal
     // Source-cited counts — populated by citation post-processing in Slice 3.
     public int OwnedSourceCount { get; set; }
     public int CompetitorSourceCount { get; set; }
-    public int ThirdPartySourceCount { get; set; }
 
     public double ConfidenceScore { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -19,6 +19,8 @@ public class AnalysisJobConfiguration : IEntityTypeConfiguration<AnalysisJob>
         builder.Property(j => j.ExtractCompletedAt).HasColumnName("extract_completed_at");
         builder.Property(j => j.AggregateStartedAt).HasColumnName("aggregate_started_at");
         builder.Property(j => j.AggregateCompletedAt).HasColumnName("aggregate_completed_at");
+        builder.Property(j => j.AggregateRetryCount).HasColumnName("aggregate_retry_count")
+            .HasDefaultValue(0);
 
         builder.Property(j => j.ErrorMessage).HasColumnName("error_message").HasMaxLength(2000);
         builder.Property(j => j.CreatedAt).HasColumnName("created_at");

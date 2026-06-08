@@ -15,5 +15,7 @@ public class PromptRun
     public string? ErrorMessage { get; set; }
 
     public ScanRun ScanRun { get; set; } = null!;
+    public Prompt Prompt { get; set; } = null!;
+    public AIPlatform AIPlatform { get; set; } = null!;
     public AIAnswer? Answer { get; set; }
 }

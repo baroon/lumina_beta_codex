@@ -17,6 +17,8 @@ public class AudienceConfiguration : IEntityTypeConfiguration<Audience>
         builder.Property(a => a.Confidence).HasColumnName("confidence");
         builder.Property(a => a.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(a => a.DiscoveryRunId).HasColumnName("discovery_run_id");
+        builder.Property(a => a.CreatedAt).HasColumnName("created_at");
+        builder.Property(a => a.UpdatedAt).HasColumnName("updated_at");
 
         builder.HasIndex(a => a.BrandId);
     }

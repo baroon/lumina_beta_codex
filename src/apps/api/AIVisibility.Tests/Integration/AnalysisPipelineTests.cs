@@ -272,7 +272,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": true, "brand_recommended": true,
                 "brand_rank": 1, "brand_sentiment": "Positive",
                 "brand_recommendation_strength": "Strong",
-                "top_recommended_entity": "Lumina",
                 "answer_has_ranking": true, "answer_has_comparison": false,
                 "answer_has_citations": true, "confidence_score": 0.9
               },
@@ -297,7 +296,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": false, "brand_recommended": true,
                 "brand_rank": 4, "brand_sentiment": "Negative",
                 "brand_recommendation_strength": "NotRecommended",
-                "top_recommended_entity": "Acme",
                 "answer_has_ranking": true, "answer_has_comparison": true,
                 "answer_has_citations": false, "confidence_score": 0.8
               },
@@ -311,7 +309,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": false, "confidence_score": 0.7
               },
@@ -329,7 +326,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": false, "confidence_score": 0.7
               },
@@ -389,14 +385,12 @@ public class AnalysisPipelineTests
         absenceSignal.BrandRecommended.Should().BeFalse();
 
         // -- Source counts on answer #0's signal match its classified citations.
-        //    Phase 4 Slice 0: v1 classifier returns Owned/Competitor/Unknown only,
-        //    so the Wikipedia citation lands in Unknown (the aggregator buckets
-        //    that back to UnknownCitationCount). ThirdPartySourceCount on the
-        //    signal is always 0 in v1.
+        //    URL-domain classifier returns Owned / Competitor / Unknown only,
+        //    so the Wikipedia citation lands in Unknown (the aggregator
+        //    surfaces that as UnknownCitationCount on its own rollup).
         var citedSignal = signals.Single(s => s.AIAnswerId == fx.Answers[0].Id);
         citedSignal.OwnedSourceCount.Should().Be(1);
         citedSignal.CompetitorSourceCount.Should().Be(1);
-        citedSignal.ThirdPartySourceCount.Should().Be(0);
 
         // -- Mention: tracked entities resolve to mentions, with correct EntityId. --
         var mentions = await ctx.Mentions.AsNoTracking().ToListAsync();
@@ -575,7 +569,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": true, "brand_recommended": true,
                 "brand_rank": 1, "brand_sentiment": "Positive",
                 "brand_recommendation_strength": "Strong",
-                "top_recommended_entity": "Lumina",
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": true, "confidence_score": 0.9
               },
@@ -652,7 +645,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": true, "confidence_score": 0.5
               },
@@ -703,7 +695,6 @@ public class AnalysisPipelineTests
                 "brand_mentioned": false, "brand_recommended": false,
                 "brand_rank": null, "brand_sentiment": "Unknown",
                 "brand_recommendation_strength": "Unknown",
-                "top_recommended_entity": null,
                 "answer_has_ranking": false, "answer_has_comparison": false,
                 "answer_has_citations": true, "confidence_score": 0.5
               },

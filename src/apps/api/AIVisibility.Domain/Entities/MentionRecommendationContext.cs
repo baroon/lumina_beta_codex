@@ -3,12 +3,14 @@ using AIVisibility.Domain.Enums;
 namespace AIVisibility.Domain.Entities;
 
 /// <summary>
-/// Structured context for an entity recommendation in an answer (Phase 4
-/// measurement-model expansion, item 2). The legacy <c>IsRecommended</c>
-/// boolean collapsed "Recommended for current affairs only" and "Strongly
-/// recommended overall" into the same value; this table captures the
-/// scenario/use-case granularity ("RecommendedFor") plus the limitations
-/// the AI flagged ("WithCaveats") as ordered rows.
+/// Structured context for an entity recommendation in an answer. Captures
+/// the scenario/use-case granularity ("RecommendedFor": "investigative
+/// journalism", "small teams") plus the limitations the AI flagged
+/// ("WithCaveats": "not for breaking news", "expensive at scale") as
+/// ordered rows. Sits alongside <see cref="Mention.IsRecommended"/>
+/// (the overall yes/no for the mention) — the boolean answers "did the
+/// answer recommend this entity at all"; this table answers "for what
+/// and with what caveats."
 ///
 /// One row per (mention, context_type, value) triple. Append-only (D16).
 /// Cascade-deleted with the parent Mention.

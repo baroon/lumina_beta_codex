@@ -37,9 +37,12 @@ public class CreateTrackerCommandHandlerTests
         {
             Id = Guid.NewGuid(),
             BrandId = brand.Id,
+            DiscoveryRunId = run.Id,
             Category = category,
             Confidence = 0.9,
             Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         });
         if (market != null)
         {

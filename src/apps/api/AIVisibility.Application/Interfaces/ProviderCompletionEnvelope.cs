@@ -1,21 +1,19 @@
 namespace AIVisibility.Application.Interfaces;
 
 /// <summary>
-/// Full provider response envelope returned by every LLM service call
-/// (ADR-002 §15 follow-through: <c>ai_answers.raw_response</c> was a string
-/// placeholder; this record is what now flows through every chat-completion
-/// boundary so timing, token usage, and finish reason become first-class
-/// observability data).
+/// Full provider response envelope returned by every LLM service call.
+/// Flows through every chat-completion boundary so timing, token usage,
+/// and finish reason are first-class observability data (persisted into
+/// <c>ai_answers.raw_response</c>).
 ///
-/// <see cref="Text"/> is the body — every caller that used to read the
-/// returned <c>string</c> now reads this. The rest of the fields are
+/// <see cref="Text"/> is the body callers read. The rest of the fields are
 /// best-effort: providers vary on what they expose, so populate what's
 /// available and leave the rest null rather than guessing.
 ///
 /// On failure (HTTP non-2xx, transport exception, empty response), the
 /// service still returns an envelope with <see cref="Text"/> empty and
-/// <see cref="Error"/> populated — callers can treat <c>string.IsNullOrEmpty(Text)</c>
-/// as "no answer" same as the legacy contract.
+/// <see cref="Error"/> populated — callers treat
+/// <c>string.IsNullOrEmpty(Text)</c> as "no answer."
 /// </summary>
 public sealed record ProviderCompletionEnvelope(
     string Provider,

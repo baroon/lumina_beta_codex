@@ -50,9 +50,12 @@ public class GetTrackerSetupPreviewQueryHandlerTests
         {
             Id = Guid.NewGuid(),
             BrandId = brand.Id,
+            DiscoveryRunId = run.Id,
             Category = "SaaS",
             Confidence = 0.9,
             Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
         });
         ctx.Markets.Add(new Market
         {

@@ -13,7 +13,7 @@ public class AIAnswerConfiguration : IEntityTypeConfiguration<AIAnswer>
         builder.Property(a => a.Id).HasColumnName("id");
         builder.Property(a => a.PromptRunId).HasColumnName("prompt_run_id");
         builder.Property(a => a.AnswerText).HasColumnName("answer_text");
-        builder.Property(a => a.RawResponse).HasColumnName("raw_response");
+        builder.Property(a => a.RawResponse).HasColumnName("raw_response").IsRequired();
         builder.Property(a => a.CreatedAt).HasColumnName("created_at");
 
         builder.HasIndex(a => a.PromptRunId).IsUnique();

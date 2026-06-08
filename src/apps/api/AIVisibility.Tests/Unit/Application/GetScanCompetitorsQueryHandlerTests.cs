@@ -111,8 +111,9 @@ public class GetScanCompetitorsQueryHandlerTests
     [Fact]
     public async Task ShareOfVoice_IsNull_WhenMetricRowMissing()
     {
-        // Sanity: if the aggregator did not emit a CompetitorShareOfVoice row
-        // (legacy data, partial recompute), the handler surfaces it as null
+        // Sanity: if the aggregator hasn't emitted a CompetitorShareOfVoice
+        // row yet (in-progress scan, or aggregator skipped the metric for a
+        // competitor with no mentions), the handler surfaces it as null
         // rather than zero — same semantics as the other rate fields.
         using var ctx = NewContext();
         var brand = new Brand { Id = Guid.NewGuid(), Name = "B" };
