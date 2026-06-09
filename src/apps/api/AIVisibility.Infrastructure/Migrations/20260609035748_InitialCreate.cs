@@ -2083,6 +2083,77 @@ namespace AIVisibility.Infrastructure.Migrations
             migrationBuilder.Sql(
                 "ALTER TABLE scan_metrics ADD CONSTRAINT chk_scan_metrics_scope_enum " +
                 "CHECK (scope IN ('Overall','Platform','Topic','Lens','Competitor'))");
+
+            // Sweep: numeric-range CHECKs missed by the initial confidence pass.
+            // Counts/ranks/positions can never be negative; signed sentiment +
+            // recommendation scores are clamped to [-1, +1] per the entity
+            // doc-comments; remaining confidence_score columns are [0, 1].
+
+            // Non-negative counters.
+            migrationBuilder.Sql(
+                "ALTER TABLE analysis_jobs ADD CONSTRAINT chk_analysis_jobs_aggregate_retry_count_nonneg " +
+                "CHECK (aggregate_retry_count >= 0)");
+            migrationBuilder.Sql(
+                "ALTER TABLE discovery_runs ADD CONSTRAINT chk_discovery_runs_pages_crawled_nonneg " +
+                "CHECK (pages_crawled >= 0)");
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_source_counts_nonneg " +
+                "CHECK (owned_source_count >= 0 AND competitor_source_count >= 0)");
+            migrationBuilder.Sql(
+                "ALTER TABLE scan_runs ADD CONSTRAINT chk_scan_runs_counts_nonneg " +
+                "CHECK (prompt_count >= 0 AND platform_count >= 0 AND scan_check_count >= 0 " +
+                "AND completed_count >= 0 AND failed_count >= 0)");
+
+            // 1-based ranks / positions when present.
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_rank_positive " +
+                "CHECK (brand_rank IS NULL OR brand_rank >= 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_rank_universe_size_positive " +
+                "CHECK (brand_rank_universe_size IS NULL OR brand_rank_universe_size >= 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE citations ADD CONSTRAINT chk_citations_position_positive " +
+                "CHECK (citation_position IS NULL OR citation_position >= 1)");
+
+            // [0, 1] confidence scores.
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_answer_certainty_range " +
+                "CHECK (answer_certainty BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_source_classifications ADD CONSTRAINT chk_brand_source_classifications_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE citations ADD CONSTRAINT chk_citations_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE factual_claims ADD CONSTRAINT chk_factual_claims_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_attributes ADD CONSTRAINT chk_mention_attributes_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_candidates ADD CONSTRAINT chk_mention_candidates_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_confidence_score_range " +
+                "CHECK (confidence_score BETWEEN 0 AND 1)");
+
+            // [-1, +1] signed sentiment and recommendation scores.
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_sentiment_score_range " +
+                "CHECK (brand_sentiment_score BETWEEN -1 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_recommendation_score_range " +
+                "CHECK (brand_recommendation_score BETWEEN -1 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_sentiment_score_range " +
+                "CHECK (sentiment_score BETWEEN -1 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_recommendation_score_range " +
+                "CHECK (recommendation_score BETWEEN -1 AND 1)");
         }
 
         /// <inheritdoc />
