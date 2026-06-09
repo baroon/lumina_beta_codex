@@ -9,10 +9,14 @@ public class TrackerCompetitorConfiguration : IEntityTypeConfiguration<TrackerCo
     public void Configure(EntityTypeBuilder<TrackerCompetitor> builder)
     {
         builder.ToTable("tracker_competitors");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.TrackerConfigurationId, x.CompetitorId });
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(x => x.CompetitorId).HasColumnName("competitor_id");
-        builder.HasIndex(x => x.TrackerConfigurationId);
+        builder.HasIndex(x => x.CompetitorId);
+
+        builder.HasOne<Competitor>()
+            .WithMany()
+            .HasForeignKey(x => x.CompetitorId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

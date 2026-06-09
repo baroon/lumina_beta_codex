@@ -9,10 +9,14 @@ public class PromptAudienceConfiguration : IEntityTypeConfiguration<PromptAudien
     public void Configure(EntityTypeBuilder<PromptAudience> builder)
     {
         builder.ToTable("prompt_audiences");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.PromptId, x.AudienceId });
         builder.Property(x => x.PromptId).HasColumnName("prompt_id");
         builder.Property(x => x.AudienceId).HasColumnName("audience_id");
-        builder.HasIndex(x => x.PromptId);
+        builder.HasIndex(x => x.AudienceId);
+
+        builder.HasOne<Audience>()
+            .WithMany()
+            .HasForeignKey(x => x.AudienceId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

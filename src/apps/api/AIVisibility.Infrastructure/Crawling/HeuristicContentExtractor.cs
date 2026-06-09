@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using AIVisibility.Application.Interfaces;
 using AIVisibility.Domain.Entities;
@@ -76,8 +75,7 @@ public class HeuristicContentExtractor : IContentExtractor
             if (category != PageCategory.Product && category != PageCategory.Pricing && category != PageCategory.Homepage)
                 continue;
 
-            var headings = ParseHeadings(page.HeadingsJson);
-            foreach (var heading in headings.Where(h => h.Tag == "h2" || h.Tag == "h3"))
+            foreach (var heading in page.Headings.Where(h => h.Tag == "h2" || h.Tag == "h3"))
             {
                 var name = heading.Text.Trim();
                 if (name.Length < 3 || name.Length > 100 || seen.Contains(name)) continue;
@@ -206,7 +204,7 @@ public class HeuristicContentExtractor : IContentExtractor
         {
             var textToScan = string.Join(" ", new[] { page.MetaDescription, page.Title }
                 .Where(t => !string.IsNullOrWhiteSpace(t)));
-            var headingTexts = ParseHeadings(page.HeadingsJson).Select(h => h.Text);
+            var headingTexts = page.Headings.Select(h => h.Text);
             textToScan += " " + string.Join(" ", headingTexts);
 
             foreach (var (symbol, cm) in currencyMarkets)
@@ -266,7 +264,6 @@ public class HeuristicContentExtractor : IContentExtractor
             }
 
             // Check heading text for trust signal keywords
-            var headings = ParseHeadings(page.HeadingsJson);
             var headingKeywords = new Dictionary<string, TrustSignalType>
             {
                 ["testimonial"] = TrustSignalType.TestimonialsAndReviews,
@@ -280,7 +277,7 @@ public class HeuristicContentExtractor : IContentExtractor
                 ["endorsement"] = TrustSignalType.ExpertEndorsements
             };
 
-            foreach (var heading in headings)
+            foreach (var heading in page.Headings)
             {
                 var lowerText = heading.Text.ToLowerInvariant();
                 foreach (var (keyword, signalType) in headingKeywords)
@@ -308,26 +305,13 @@ public class HeuristicContentExtractor : IContentExtractor
     private static List<string> GetAllHeadingTexts(List<CrawledPage> pages)
     {
         return pages
-            .SelectMany(p => ParseHeadings(p.HeadingsJson))
+            .SelectMany(p => p.Headings)
             .Where(h => h.Tag == "h1")
             .Select(h => h.Text)
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .Distinct()
             .ToList();
     }
-
-    private static List<(string Tag, string Text)> ParseHeadings(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return new List<(string, string)>();
-        try
-        {
-            var headings = JsonSerializer.Deserialize<List<HeadingEntry>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<HeadingEntry>();
-            return headings.Select(h => (h.tag ?? "h2", h.text ?? "")).ToList();
-        }
-        catch { return new List<(string, string)>(); }
-    }
-
-    private record HeadingEntry(string? tag, string? text);
 
     private static bool IsGenericHeading(string text)
     {

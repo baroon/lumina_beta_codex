@@ -9,11 +9,21 @@ public class TrackerPlatformConfiguration : IEntityTypeConfiguration<TrackerPlat
     public void Configure(EntityTypeBuilder<TrackerPlatform> builder)
     {
         builder.ToTable("tracker_platforms");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.TrackerConfigurationId, x.AIPlatformId });
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(x => x.AIPlatformId).HasColumnName("ai_platform_id");
-        builder.HasOne(x => x.TrackerConfiguration).WithMany().HasForeignKey(x => x.TrackerConfigurationId);
-        builder.HasIndex(x => x.TrackerConfigurationId);
+        builder.HasIndex(x => x.AIPlatformId);
+
+        // TrackerConfiguration has no `Platforms` collection — so the owner-side
+        // relationship must be declared explicitly.
+        builder.HasOne(x => x.TrackerConfiguration)
+            .WithMany()
+            .HasForeignKey(x => x.TrackerConfigurationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<AIPlatform>()
+            .WithMany()
+            .HasForeignKey(x => x.AIPlatformId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

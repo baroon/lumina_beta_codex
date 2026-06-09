@@ -44,7 +44,6 @@ public class ConfigureTrackerScheduleCommandHandler
         {
             _db.TrackerPlatforms.Add(new TrackerPlatform
             {
-                Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 AIPlatformId = id,
             });

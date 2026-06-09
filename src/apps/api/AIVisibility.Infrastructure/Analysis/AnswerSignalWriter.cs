@@ -114,7 +114,6 @@ public class AnswerSignalWriter : IAnswerSignalWriter
             {
                 Id = Guid.NewGuid(),
                 SourceName = sample.SourceName,
-                Domain = sample.NormalizedDomain,
                 NormalizedDomain = sample.NormalizedDomain,
                 // Phase 4 item 16: resolve curated authority at write time so
                 // downstream aggregations can read it directly off the Source.
@@ -204,6 +203,7 @@ public class AnswerSignalWriter : IAnswerSignalWriter
                 SourceId = sourceIdByKey[SourceKey(draft)],
                 SourceUrlId = draft.NormalizedUrl is null ? null : sourceUrlIdByNormalized[draft.NormalizedUrl],
                 CitationType = draft.CitationType,
+                EvidenceSnippet = draft.EvidenceSnippet,
                 ConfidenceScore = draft.ConfidenceScore,
                 CreatedAt = now,
             });

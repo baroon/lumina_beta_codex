@@ -52,15 +52,15 @@ public class GetScanResultsQueryHandlerTests
 
         ctx.TrackerPlatforms.Add(new TrackerPlatform
         {
-            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, AIPlatformId = platform.Id,
+            TrackerConfigurationId = tracker.Id, AIPlatformId = platform.Id,
         });
         ctx.TrackerCompetitors.Add(new TrackerCompetitor
         {
-            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, CompetitorId = trackedComp.Id,
+            TrackerConfigurationId = tracker.Id, CompetitorId = trackedComp.Id,
         });
         ctx.TrackerCompetitors.Add(new TrackerCompetitor
         {
-            Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, CompetitorId = untouchedComp.Id,
+            TrackerConfigurationId = tracker.Id, CompetitorId = untouchedComp.Id,
         });
 
         var scan = new ScanRun

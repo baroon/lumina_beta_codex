@@ -14,11 +14,16 @@ public class DiscoveryRunConfiguration : IEntityTypeConfiguration<DiscoveryRun>
         builder.Property(d => d.BrandId).HasColumnName("brand_id");
         builder.Property(d => d.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(50);
         builder.Property(d => d.StartedAt).HasColumnName("started_at");
+        builder.Property(d => d.ExtractedAt).HasColumnName("extracted_at");
+        builder.Property(d => d.ConfirmedAt).HasColumnName("confirmed_at");
         builder.Property(d => d.CompletedAt).HasColumnName("completed_at");
         builder.Property(d => d.PagesCrawled).HasColumnName("pages_crawled");
         builder.Property(d => d.Error).HasColumnName("error").HasMaxLength(4000);
 
-        builder.HasIndex(d => d.BrandId);
+        // One discovery run per brand. Re-discovery is delete-then-insert
+        // (see CreateBrandCommandHandler) so the brand only ever has the
+        // current run on record; cascade wipes the prior run's outputs.
+        builder.HasIndex(d => d.BrandId).IsUnique();
         builder.HasMany(d => d.CrawledPages).WithOne(cp => cp.DiscoveryRun).HasForeignKey(cp => cp.DiscoveryRunId);
         builder.HasMany(d => d.Products).WithOne(p => p.DiscoveryRun).HasForeignKey(p => p.DiscoveryRunId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(d => d.Audiences).WithOne(a => a.DiscoveryRun).HasForeignKey(a => a.DiscoveryRunId).OnDelete(DeleteBehavior.Cascade);

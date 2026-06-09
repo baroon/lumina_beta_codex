@@ -102,7 +102,7 @@ public class GetScanSourcesQueryHandler : IRequestHandler<GetScanSourcesQuery, S
                 return new SourceListItemDto(
                     SourceId: sourceId,
                     SourceName: source.SourceName,
-                    Domain: source.Domain,
+                    Domain: source.NormalizedDomain,
                     NormalizedDomain: source.NormalizedDomain,
                     SourceType: classification?.SourceType.ToString() ?? "Unknown",
                     Status: classification?.Status.ToString() ?? "Unknown",

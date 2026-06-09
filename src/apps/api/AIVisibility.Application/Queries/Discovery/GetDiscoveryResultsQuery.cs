@@ -32,4 +32,5 @@ public record CandidateDto(
     string? Description,
     double Confidence,
     string Source,
-    Dictionary<string, object?> Metadata);
+    Dictionary<string, object?> Metadata,
+    List<string>? Aliases = null);

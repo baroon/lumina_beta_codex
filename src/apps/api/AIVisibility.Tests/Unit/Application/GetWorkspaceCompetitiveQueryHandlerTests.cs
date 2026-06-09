@@ -66,9 +66,9 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         ctx.Brands.AddRange(acme, beta);
         ctx.TrackerConfigurations.AddRange(acmeTracker, betaTracker);
         ctx.Competitors.AddRange(indeedForAcme, glassdoor);
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, CompetitorId = sharedId });
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, CompetitorId = glassdoor.Id });
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = betaTracker.Id, CompetitorId = sharedId });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = acmeTracker.Id, CompetitorId = sharedId });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = acmeTracker.Id, CompetitorId = glassdoor.Id });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = betaTracker.Id, CompetitorId = sharedId });
 
         var platform = new AIPlatform { Id = Guid.NewGuid(), Code = "openai", Name = "ChatGPT" };
         var lens = new Lens { Id = Guid.NewGuid(), Code = "x", Name = "x" };
@@ -108,8 +108,8 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
             ctx.Mentions.Add(NewMention(betaAnswer.Id, MentionEntityType.Competitor, sharedId, i < 2));
 
         // Citations: Acme answer cites Trustpilot x3 + Wikipedia x1, Beta answer cites Trustpilot x1.
-        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", Domain = "trustpilot.com", NormalizedDomain = "trustpilot.com", CreatedAt = now };
-        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", Domain = "en.wikipedia.org", NormalizedDomain = "en.wikipedia.org", CreatedAt = now };
+        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", NormalizedDomain = "trustpilot.com", CreatedAt = now };
+        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", NormalizedDomain = "en.wikipedia.org", CreatedAt = now };
         ctx.Sources.AddRange(trustpilot, wikipedia);
         ctx.BrandSourceClassifications.Add(new BrandSourceClassification { Id = Guid.NewGuid(), BrandId = acme.Id, SourceId = trustpilot.Id, SourceType = SourceType.Editorial, ConfidenceScore = 0.9, ProvenanceSource = ClassificationSource.LLMClassified, Status = ClassificationStatus.Active, CreatedAt = now, UpdatedAt = now });
         ctx.BrandSourceClassifications.Add(new BrandSourceClassification { Id = Guid.NewGuid(), BrandId = acme.Id, SourceId = wikipedia.Id, SourceType = SourceType.Reference, ConfidenceScore = 0.9, ProvenanceSource = ClassificationSource.LLMClassified, Status = ClassificationStatus.Active, CreatedAt = now, UpdatedAt = now });

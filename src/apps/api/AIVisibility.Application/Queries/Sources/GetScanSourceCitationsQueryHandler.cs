@@ -76,7 +76,7 @@ public class GetScanSourceCitationsQueryHandler
             ScanRunId: scan.Id,
             SourceId: source.Id,
             SourceName: source.SourceName,
-            Domain: source.Domain,
+            Domain: source.NormalizedDomain,
             Citations: citationDtos);
     }
 

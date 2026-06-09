@@ -9,10 +9,14 @@ public class TrackerProductConfiguration : IEntityTypeConfiguration<TrackerProdu
     public void Configure(EntityTypeBuilder<TrackerProduct> builder)
     {
         builder.ToTable("tracker_products");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.TrackerConfigurationId, x.ProductId });
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(x => x.ProductId).HasColumnName("product_id");
-        builder.HasIndex(x => x.TrackerConfigurationId);
+        builder.HasIndex(x => x.ProductId);
+
+        builder.HasOne<Product>()
+            .WithMany()
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

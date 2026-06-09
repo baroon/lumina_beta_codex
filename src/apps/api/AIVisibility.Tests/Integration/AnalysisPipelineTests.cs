@@ -128,20 +128,17 @@ public class AnalysisPipelineTests
         ctx.Competitors.Add(beta);
         ctx.TrackerCompetitors.Add(new TrackerCompetitor
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             CompetitorId = acme.Id,
         });
         ctx.TrackerCompetitors.Add(new TrackerCompetitor
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             CompetitorId = beta.Id,
         });
         ctx.Products.Add(pro);
         ctx.TrackerProducts.Add(new TrackerProduct
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             ProductId = pro.Id,
         });

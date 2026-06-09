@@ -9,10 +9,14 @@ public class PromptCompetitorConfiguration : IEntityTypeConfiguration<PromptComp
     public void Configure(EntityTypeBuilder<PromptCompetitor> builder)
     {
         builder.ToTable("prompt_competitors");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.PromptId, x.CompetitorId });
         builder.Property(x => x.PromptId).HasColumnName("prompt_id");
         builder.Property(x => x.CompetitorId).HasColumnName("competitor_id");
-        builder.HasIndex(x => x.PromptId);
+        builder.HasIndex(x => x.CompetitorId);
+
+        builder.HasOne<Competitor>()
+            .WithMany()
+            .HasForeignKey(x => x.CompetitorId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -35,8 +35,19 @@ public class CreateBrandCommandHandler : IRequestHandler<CreateBrandCommand, Cre
             .FirstOrDefaultAsync(cancellationToken);
         if (existing != null)
         {
-            // Enqueue a fresh discovery run against the existing brand so the
-            // caller's "re-discover this brand" intent still triggers work.
+            // discovery_runs has a UNIQUE index on (brand_id), so re-discovery
+            // is delete-then-insert: dropping the prior run cascades through
+            // brand_profile, audiences, competitors, markets, products, topics,
+            // trust_signals, and crawled_pages, leaving the Brand and any
+            // downstream tracker/scan history intact. A fresh run starts from
+            // a clean discovery state.
+            var priorRun = await _db.DiscoveryRuns.FirstOrDefaultAsync(
+                r => r.BrandId == existing.Id, cancellationToken);
+            if (priorRun is not null)
+            {
+                _db.DiscoveryRuns.Remove(priorRun);
+                await _db.SaveChangesAsync(cancellationToken);
+            }
             var rerun = new DiscoveryRun
             {
                 Id = Guid.NewGuid(),

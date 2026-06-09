@@ -43,7 +43,7 @@ public class AddCustomPromptCommandHandler : IRequestHandler<AddCustomPromptComm
             CreatedAt = now,
             UpdatedAt = now,
             Topics = request.PrimaryTopicId.HasValue
-                ? new List<PromptTopic> { new() { Id = Guid.NewGuid(), TopicId = request.PrimaryTopicId.Value } }
+                ? new List<PromptTopic> { new() { TopicId = request.PrimaryTopicId.Value } }
                 : new List<PromptTopic>(),
         });
         await _db.SaveChangesAsync(cancellationToken);

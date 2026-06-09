@@ -37,9 +37,7 @@ public class LlmContentExtractorTests
                 Url = "https://example.com/",
                 Title = "Example",
                 MetaDescription = "Example builds software",
-                HeadingsJson = "[]",
                 ExtractedTextBlobRef = "blob1",
-                StatusCode = 200
             }
         };
 
@@ -80,8 +78,6 @@ public class LlmContentExtractorTests
                 Url = "https://example.com/",
                 Title = "Example",
                 MetaDescription = "Example builds software for marketing teams",
-                HeadingsJson = "[]",
-                StatusCode = 200
             }
         };
 

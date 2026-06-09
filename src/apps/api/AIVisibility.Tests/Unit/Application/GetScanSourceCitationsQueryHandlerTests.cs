@@ -31,7 +31,7 @@ public class GetScanSourceCitationsQueryHandlerTests
         var prompt = new Prompt { Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, PromptText = "What are the best landscape architecture firms?", LensId = lens.Id, Status = PromptStatus.Active, Source = PromptSource.Generated, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
         var run = new PromptRun { Id = Guid.NewGuid(), ScanRunId = scan.Id, PromptId = prompt.Id, AIPlatformId = platform.Id, Status = PromptRunStatus.Completed, StartedAt = DateTime.UtcNow };
         var answer = new AIAnswer { Id = Guid.NewGuid(), PromptRunId = run.Id, AnswerText = new string('a', 800), CreatedAt = DateTime.UtcNow };
-        var source = new Source { Id = Guid.NewGuid(), SourceName = "ASLA", Domain = "asla.org", NormalizedDomain = "asla.org", CreatedAt = DateTime.UtcNow };
+        var source = new Source { Id = Guid.NewGuid(), SourceName = "ASLA", NormalizedDomain = "asla.org", CreatedAt = DateTime.UtcNow };
         var sourceUrl = new SourceUrl { Id = Guid.NewGuid(), SourceId = source.Id, Url = "https://asla.org/page", NormalizedUrl = "https://asla.org/page", CreatedAt = DateTime.UtcNow };
         ctx.Brands.Add(brand);
         ctx.TrackerConfigurations.Add(tracker);

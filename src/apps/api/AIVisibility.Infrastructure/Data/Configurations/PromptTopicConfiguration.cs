@@ -9,10 +9,14 @@ public class PromptTopicConfiguration : IEntityTypeConfiguration<PromptTopic>
     public void Configure(EntityTypeBuilder<PromptTopic> builder)
     {
         builder.ToTable("prompt_topics");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.PromptId, x.TopicId });
         builder.Property(x => x.PromptId).HasColumnName("prompt_id");
         builder.Property(x => x.TopicId).HasColumnName("topic_id");
-        builder.HasIndex(x => x.PromptId);
+        builder.HasIndex(x => x.TopicId);
+
+        builder.HasOne<Topic>()
+            .WithMany()
+            .HasForeignKey(x => x.TopicId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

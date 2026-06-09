@@ -14,16 +14,14 @@ public class SourceConfiguration : IEntityTypeConfiguration<Source>
 
         builder.Property(s => s.SourceName).HasColumnName("source_name")
             .HasMaxLength(500).IsRequired();
-        builder.Property(s => s.Domain).HasColumnName("domain").HasMaxLength(500);
         builder.Property(s => s.NormalizedDomain).HasColumnName("normalized_domain").HasMaxLength(500);
         builder.Property(s => s.AuthorityScore).HasColumnName("authority_score");
         builder.Property(s => s.PublishedAt).HasColumnName("published_at");
         builder.Property(s => s.CreatedAt).HasColumnName("created_at");
 
-        // Dedup index: a Source is unique by (normalized_domain, source_name)
-        // when the domain is set, or by source_name alone for mentioned-source
-        // citations without a URL.
-        builder.HasIndex(s => s.NormalizedDomain);
-        builder.HasIndex(s => s.SourceName);
+        // Dedup is enforced by two partial UNIQUE indexes declared via raw
+        // SQL in the migration: one on normalized_domain (when present),
+        // one on LOWER(source_name) (when domain is null). EF Core can't
+        // express partial / function-based indexes fluently.
     }
 }

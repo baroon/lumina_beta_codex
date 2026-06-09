@@ -112,7 +112,7 @@ public class MetricAggregatorTests
                 {
                     ctx.PromptTopics.Add(new PromptTopic
                     {
-                        Id = Guid.NewGuid(), PromptId = prompt.Id, TopicId = topicId,
+                        PromptId = prompt.Id, TopicId = topicId,
                     });
                 }
                 promptCache[key] = prompt;

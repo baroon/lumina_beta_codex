@@ -13,9 +13,10 @@ public class LensConfiguration : IEntityTypeConfiguration<Lens>
         builder.Property(v => v.Id).HasColumnName("id");
         builder.Property(v => v.Code).HasColumnName("code").HasMaxLength(100).IsRequired();
         builder.Property(v => v.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
-        builder.Property(v => v.Description).HasColumnName("description").HasMaxLength(1000);
+        builder.Property(v => v.Description).HasColumnName("description").HasMaxLength(1000).IsRequired();
         builder.Property(v => v.DisplayOrder).HasColumnName("display_order");
         builder.HasIndex(v => v.Code).IsUnique();
+        builder.HasIndex(v => v.DisplayOrder).IsUnique();
 
         // V1 Visibility Lenses (ADR-001) — static seed data.
         builder.HasData(

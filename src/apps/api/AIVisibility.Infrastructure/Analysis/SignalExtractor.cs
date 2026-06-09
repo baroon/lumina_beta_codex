@@ -111,6 +111,7 @@ public class SignalExtractor
             {
               "source_name": string,         // e.g. "Trustpilot", "G2", "Acme blog"
               "url": string|null,            // see citation rules below for when null is allowed
+              "evidence_snippet": string,    // ≤500 chars; surrounding prose that supports the citation
               "confidence_score": number     // 0.0-1.0
             }
           ]
@@ -128,6 +129,12 @@ public class SignalExtractor
           downstream from the URL host, so omitting a URL that exists in the
           answer turns useful classification signal into Unknown — only emit
           null when there really is no URL in the source text.
+        - evidence_snippet: the sentence(s) from the answer that surround
+          the citation and explain why it was cited. ≤500 chars. Quote the
+          prose verbatim. For "According to Trustpilot, Acme has 4.2 stars",
+          the evidence_snippet is "According to Trustpilot, Acme has 4.2
+          stars." (not just the source name). Empty string when the answer
+          gives no usable context.
 
         Rank rules (brand_rank, answer_has_ranking):
         - answer_has_ranking=true means the answer presents a ranked or ordered
@@ -702,6 +709,7 @@ public class SignalExtractor
             var normalizedUrl = hasUrl ? NormalizeUrl(url!) : null;
 
             var classified = ClassifyCitation(normalizedDomain, brandDomain, competitorDomains);
+            var evidence = TryGetNullableString(c, "evidence_snippet")?.Trim();
 
             yield return new DraftCitation(
                 AIAnswerId: aiAnswerId,
@@ -712,7 +720,8 @@ public class SignalExtractor
                 NormalizedUrl: normalizedUrl,
                 CitationType: hasUrl ? CitationType.ExplicitUrl : CitationType.MentionedSource,
                 ClassifiedAs: classified,
-                ConfidenceScore: TryGetDouble(c, "confidence_score") ?? 0.5);
+                ConfidenceScore: TryGetDouble(c, "confidence_score") ?? 0.5,
+                EvidenceSnippet: string.IsNullOrEmpty(evidence) ? null : Truncate(evidence, 500));
         }
     }
 
@@ -762,8 +771,7 @@ public class SignalExtractor
         return entityType switch
         {
             MentionEntityType.Brand => ResolveBrand(normalizedName, context.Brand),
-            MentionEntityType.Competitor => context.TrackedCompetitors
-                .FirstOrDefault(c => Normalize(c.Name) == normalizedName)?.Id,
+            MentionEntityType.Competitor => ResolveCompetitor(normalizedName, context.TrackedCompetitors),
             MentionEntityType.Product => context.TrackedProducts
                 .FirstOrDefault(p => Normalize(p.Name) == normalizedName)?.Id,
             _ => null,
@@ -774,6 +782,17 @@ public class SignalExtractor
     {
         if (Normalize(brand.Name) == normalizedName) return brand.Id;
         return brand.Aliases.Any(a => Normalize(a) == normalizedName) ? brand.Id : null;
+    }
+
+    private static Guid? ResolveCompetitor(
+        string normalizedName, IReadOnlyList<Competitor> trackedCompetitors)
+    {
+        foreach (var c in trackedCompetitors)
+        {
+            if (Normalize(c.Name) == normalizedName) return c.Id;
+            if (c.Aliases.Any(a => Normalize(a) == normalizedName)) return c.Id;
+        }
+        return null;
     }
 
     /// <summary>

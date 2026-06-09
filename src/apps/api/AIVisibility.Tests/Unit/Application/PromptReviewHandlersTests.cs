@@ -63,7 +63,7 @@ public class PromptReviewHandlersTests
             Source = PromptSource.Generated,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Topics = new List<PromptTopic> { new() { Id = Guid.NewGuid(), TopicId = topic.Id } },
+            Topics = new List<PromptTopic> { new() { TopicId = topic.Id } },
         };
         var p2 = new Prompt
         {
@@ -288,7 +288,6 @@ public class PromptReviewHandlersTests
         ctx.TrackerConfigurations.Add(tracker);
         ctx.TrackerLenses.Add(new TrackerLens
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             LensId = check.Id,
         });

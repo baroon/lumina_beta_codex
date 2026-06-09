@@ -93,4 +93,6 @@ public sealed record DraftCitation(
     CitationType CitationType,
     /// <summary>v1 classifier verdict — Owned / Competitor (domain match) or Unknown (no match).</summary>
     SourceType ClassifiedAs,
-    double ConfidenceScore);
+    double ConfidenceScore,
+    /// <summary>Optional prose context from the answer that supports the citation. ≤500 chars; null when omitted.</summary>
+    string? EvidenceSnippet = null);

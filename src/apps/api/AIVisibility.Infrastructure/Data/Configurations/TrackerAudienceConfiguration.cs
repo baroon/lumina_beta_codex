@@ -9,10 +9,14 @@ public class TrackerAudienceConfiguration : IEntityTypeConfiguration<TrackerAudi
     public void Configure(EntityTypeBuilder<TrackerAudience> builder)
     {
         builder.ToTable("tracker_audiences");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.TrackerConfigurationId, x.AudienceId });
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(x => x.AudienceId).HasColumnName("audience_id");
-        builder.HasIndex(x => x.TrackerConfigurationId);
+        builder.HasIndex(x => x.AudienceId);
+
+        builder.HasOne<Audience>()
+            .WithMany()
+            .HasForeignKey(x => x.AudienceId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

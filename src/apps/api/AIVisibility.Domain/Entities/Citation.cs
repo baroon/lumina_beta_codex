@@ -32,6 +32,15 @@ public class Citation
     /// <summary>Optional verbatim citation text from the answer (e.g. the markdown link text).</summary>
     public string? CitationText { get; set; }
 
+    /// <summary>
+    /// Optional surrounding prose the LLM read to make the citation call.
+    /// Lets reports answer "why was this cited?" without joining
+    /// <see cref="AIAnswer.AnswerText"/> and seeking to
+    /// <see cref="CitationPosition"/>. ≤500 chars; null when the LLM
+    /// doesn't emit it.
+    /// </summary>
+    public string? EvidenceSnippet { get; set; }
+
     public double ConfidenceScore { get; set; }
     public DateTime CreatedAt { get; set; }
 

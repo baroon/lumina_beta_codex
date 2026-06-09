@@ -46,7 +46,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 t.LensId,
                 t.TemplateText,
                 checkById.TryGetValue(t.LensId, out var c) ? c.Name : string.Empty,
-                checkById.TryGetValue(t.LensId, out var d) ? d.Description ?? string.Empty : string.Empty))
+                checkById.TryGetValue(t.LensId, out var d) ? d.Description : string.Empty))
             .ToList();
 
         var topicIds = await _db.TrackerTopics
@@ -167,18 +167,18 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
                 Source = PromptSource.Generated,
                 CreatedAt = now,
                 UpdatedAt = now,
-                Topics = g.TopicIds.Select(id => new PromptTopic { Id = Guid.NewGuid(), TopicId = id }).ToList(),
+                Topics = g.TopicIds.Select(id => new PromptTopic { TopicId = id }).ToList(),
                 Competitors = g.CompetitorIds
-                    .Select(id => new PromptCompetitor { Id = Guid.NewGuid(), CompetitorId = id })
+                    .Select(id => new PromptCompetitor { CompetitorId = id })
                     .ToList(),
                 Products = g.ProductIds
-                    .Select(id => new PromptProduct { Id = Guid.NewGuid(), ProductId = id })
+                    .Select(id => new PromptProduct { ProductId = id })
                     .ToList(),
                 Audiences = g.AudienceIds
-                    .Select(id => new PromptAudience { Id = Guid.NewGuid(), AudienceId = id })
+                    .Select(id => new PromptAudience { AudienceId = id })
                     .ToList(),
                 Markets = g.MarketIds
-                    .Select(id => new PromptMarket { Id = Guid.NewGuid(), MarketId = id })
+                    .Select(id => new PromptMarket { MarketId = id })
                     .ToList(),
             });
         }

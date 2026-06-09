@@ -68,7 +68,6 @@ public class RunScanCommandHandlerTests
             ctx.AIPlatforms.Add(p);
             ctx.TrackerPlatforms.Add(new TrackerPlatform
             {
-                Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 AIPlatformId = p.Id,
             });

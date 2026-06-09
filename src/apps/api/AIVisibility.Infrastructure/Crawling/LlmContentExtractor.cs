@@ -137,9 +137,8 @@ public class LlmContentExtractor : IContentExtractor
             if (!string.IsNullOrWhiteSpace(primaryPage.MetaDescription))
                 parts.Add($"Meta description: {primaryPage.MetaDescription}");
 
-            var headings = ParseHeadings(primaryPage.HeadingsJson);
-            var h1s = headings.Where(h => h.Tag == "h1").Select(h => h.Text).ToList();
-            var h2s = headings.Where(h => h.Tag == "h2").Select(h => h.Text).ToList();
+            var h1s = primaryPage.Headings.Where(h => h.Tag == "h1").Select(h => h.Text).ToList();
+            var h2s = primaryPage.Headings.Where(h => h.Tag == "h2").Select(h => h.Text).ToList();
             if (h1s.Count > 0) parts.Add($"H1 headings: {string.Join(", ", h1s)}");
             if (h2s.Count > 0) parts.Add($"H2 headings: {string.Join(", ", h2s)}");
 
@@ -220,7 +219,7 @@ public class LlmContentExtractor : IContentExtractor
         Return JSON only:
         {
           "products": [
-            {"name": "Product Name", "description": "Brief description", "type": "Product|Service|Feature|Solution|Tool|Resource", "confidence": 85}
+            {"name": "Product Name", "aliases": ["Short Form", "Marketing Name"], "description": "Brief description", "type": "Product|Service|Feature|Solution|Tool|Resource", "confidence": 85}
           ],
           "audiences": [
             {"name": "Audience Name", "description": "Brief description", "confidence": 80}
@@ -235,6 +234,9 @@ public class LlmContentExtractor : IContentExtractor
 
         Guidelines:
         - Products: Include actual products/services/features. Return your top 4, ranked by relevance. Be specific, not generic.
+          For each product, set "aliases" to 0-3 alternate names the product is commonly known by ("also known as"): short forms ("PS" for "Photoshop"),
+          marketing names that differ from the technical name, or omitted brand prefix ("Photoshop" when the brand is "Adobe Photoshop").
+          Do not include the canonical name itself. Omit or use [] if no clear alternates exist.
         - Audiences: Include distinct customer segments. Return your top 4, ranked by relevance. Use descriptive names like "Small Business Owners" not just "businesses".
         - Markets: Identify geographic markets where the brand operates. Look for these signals:
           * Physical addresses, phone numbers with country codes, office locations
@@ -299,9 +301,8 @@ public class LlmContentExtractor : IContentExtractor
             if (!string.IsNullOrWhiteSpace(page.MetaDescription))
                 parts.Add($"Meta: {page.MetaDescription}");
 
-            var headings = ParseHeadings(page.HeadingsJson);
-            if (headings.Count > 0)
-                parts.Add($"Headings: {string.Join(", ", headings.Select(h => h.Text))}");
+            if (page.Headings.Count > 0)
+                parts.Add($"Headings: {string.Join(", ", page.Headings.Select(h => h.Text))}");
 
             if (pageTexts.TryGetValue(page.Url, out var text))
                 parts.Add(Truncate(text, 1500));
@@ -371,12 +372,24 @@ public class LlmContentExtractor : IContentExtractor
             {
                 Id = Guid.NewGuid(),
                 Name = d.Name!,
+                Aliases = CleanAliases(d.Aliases, d.Name!),
                 Description = d.Description,
                 ProductType = ParseEnum(d.Type, ProductType.Product),
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
             })
             .Take(4)
+            .ToList();
+    }
+
+    private static List<string> CleanAliases(List<string>? raw, string canonicalName)
+    {
+        if (raw is null || raw.Count == 0) return new List<string>();
+        return raw
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a.Trim())
+            .Where(a => a.Length > 0 && !string.Equals(a, canonicalName, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(a => a.ToLowerInvariant())
             .ToList();
     }
 
@@ -406,12 +419,19 @@ public class LlmContentExtractor : IContentExtractor
             {
                 Id = Guid.NewGuid(),
                 Name = d.Name!,
-                CountryCode = d.CountryCode,
+                CountryCode = NormalizeCountryCode(d.CountryCode),
                 Confidence = Math.Clamp(d.Confidence / 100.0, 0.0, 1.0),
                 Source = CandidateSource.LLMSuggested,
             })
             .Take(4)
             .ToList();
+    }
+
+    private static string? NormalizeCountryCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim().ToUpperInvariant();
+        return trimmed.Length == 2 && trimmed.All(char.IsLetter) ? trimmed : null;
     }
 
     private static List<TrustSignal> MapTrustSignals(List<TrustSignalDto>? dtos)
@@ -438,7 +458,7 @@ public class LlmContentExtractor : IContentExtractor
         List<MarketDto>? Markets,
         List<TrustSignalDto>? TrustSignals);
 
-    private record ProductDto(string? Name, string? Description, string? Type, int Confidence);
+    private record ProductDto(string? Name, List<string>? Aliases, string? Description, string? Type, int Confidence);
     private record AudienceDto(string? Name, string? Description, int Confidence);
     private record MarketDto(string? Name, string? CountryCode, int Confidence);
     private record TrustSignalDto(string? Name, string? Description, string? Type, int Confidence);
@@ -446,20 +466,6 @@ public class LlmContentExtractor : IContentExtractor
     #endregion
 
     #region Helpers
-
-    private static List<(string Tag, string Text)> ParseHeadings(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json)) return new List<(string, string)>();
-        try
-        {
-            var headings = JsonSerializer.Deserialize<List<HeadingEntry>>(json, JsonOptions);
-            return headings?.Select(h => (h.Tag ?? "h2", h.Text ?? "")).ToList()
-                   ?? new List<(string, string)>();
-        }
-        catch { return new List<(string, string)>(); }
-    }
-
-    private record HeadingEntry(string? Tag, string? Text);
 
     private static string Truncate(string text, int maxLength)
     {

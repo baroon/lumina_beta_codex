@@ -28,7 +28,23 @@ public class PromptConfiguration : IEntityTypeConfiguration<Prompt>
         builder.HasMany(p => p.Audiences).WithOne(x => x.Prompt).HasForeignKey(x => x.PromptId);
         builder.HasMany(p => p.Markets).WithOne(x => x.Prompt).HasForeignKey(x => x.PromptId);
 
-        builder.HasIndex(p => p.TrackerConfigurationId);
-        builder.HasIndex(p => p.Status);
+        // No-nav FK to lenses: prompts must reference a real lens; lenses are
+        // seed reference data so Restrict (not Cascade) — accidental lens
+        // deletion shouldn't wipe live prompts.
+        builder.HasOne<Lens>()
+            .WithMany()
+            .HasForeignKey(p => p.LensId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // No-nav FK to prompt_templates: optional reference; SetNull preserves
+        // the prompt (still valid content) but drops the lineage if the
+        // template is removed.
+        builder.HasOne<PromptTemplate>()
+            .WithMany()
+            .HasForeignKey(p => p.PromptTemplateId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(p => new { p.TrackerConfigurationId, p.Status })
+            .HasDatabaseName("IX_prompts_tracker_status");
     }
 }

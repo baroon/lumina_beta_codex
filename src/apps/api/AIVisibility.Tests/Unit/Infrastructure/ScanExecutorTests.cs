@@ -22,6 +22,14 @@ public class ScanExecutorTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options);
 
+    private static (AppDbContext Ctx, Func<IAppDbContext> Factory) NewSharedContext()
+    {
+        var name = Guid.NewGuid().ToString();
+        DbContextOptions<AppDbContext> Options() => new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: name).Options;
+        return (new AppDbContext(Options()), () => new AppDbContext(Options()));
+    }
+
     private static (Guid RunId, Guid PromptRunId, Guid BrandId) Seed(AppDbContext ctx)
     {
         var brand = new Brand
@@ -296,7 +304,10 @@ public class ScanExecutorTests
         // GetAnswerAsync waits on a TaskCompletionSource gate; with N=4
         // platforms we should see 4 concurrent calls before any returns.
         // Sequential execution would peak at 1 concurrent call.
-        using var ctx = NewContext();
+        // Each parallel scope gets its own DbContext sharing the InMemory DB,
+        // matching production DI scoping.
+        var (ctx, scopedDbFactory) = NewSharedContext();
+        using var ctxDispose = ctx;
         var (runId, brandId) = SeedMultiPlatform(ctx, platformCount: 4);
 
         var maxConcurrent = 0;
@@ -327,8 +338,15 @@ public class ScanExecutorTests
         // Release everyone as soon as we see 4 concurrent.
         _ = sawFour.Task.ContinueWith(_ => releaseAll.TrySetResult(true));
 
-        await Executor(ctx, provider.Object, brandId: brandId)
-            .ExecuteAsync(runId, new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
+        var executor = new ScanExecutor(
+            ctx,
+            new FakeServiceScopeFactory(scopedDbFactory, Mock.Of<IAnswerSignalWriter>()),
+            provider.Object,
+            NewJobs().Object,
+            StubExtractor(),
+            StubContextFactory(brandId),
+            new Mock<ILogger<ScanExecutor>>().Object);
+        await executor.ExecuteAsync(runId, new CancellationTokenSource(TimeSpan.FromSeconds(10)).Token);
 
         maxConcurrent.Should().Be(4);
         (await ctx.ScanRuns.FindAsync(runId))!.CompletedCount.Should().Be(4);

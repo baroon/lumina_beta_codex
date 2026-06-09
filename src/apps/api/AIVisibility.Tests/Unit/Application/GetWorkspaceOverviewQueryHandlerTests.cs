@@ -73,9 +73,9 @@ public class GetWorkspaceOverviewQueryHandlerTests
         ctx.TrackerConfigurations.Add(betaTracker);
         ctx.Competitors.Add(indeedForAcme);
         ctx.Competitors.Add(glassdoor);
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, CompetitorId = sharedId });
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, CompetitorId = glassdoor.Id });
-        ctx.TrackerCompetitors.Add(new TrackerCompetitor { Id = Guid.NewGuid(), TrackerConfigurationId = betaTracker.Id, CompetitorId = sharedId });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = acmeTracker.Id, CompetitorId = sharedId });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = acmeTracker.Id, CompetitorId = glassdoor.Id });
+        ctx.TrackerCompetitors.Add(new TrackerCompetitor { TrackerConfigurationId = betaTracker.Id, CompetitorId = sharedId });
 
         // 2 scans per tracker: 14d ago and 1d ago. Each gets a prompt-run / answer.
         var now = DateTime.UtcNow;

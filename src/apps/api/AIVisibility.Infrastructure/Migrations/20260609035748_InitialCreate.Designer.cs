@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AIVisibility.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260608105152_InitialCreate")]
+    [Migration("20260609035748_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -598,6 +598,11 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("EvidenceSnippet")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("evidence_snippet");
+
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid")
                         .HasColumnName("source_id");
@@ -623,6 +628,11 @@ namespace AIVisibility.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("Aliases")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("aliases");
 
                     b.Property<Guid>("BrandId")
                         .HasColumnType("uuid")
@@ -686,12 +696,17 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("discovery_run_id");
 
+                    b.Property<DateTime>("CrawledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("crawled_at");
+
                     b.Property<string>("ExtractedTextBlobRef")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("extracted_text_blob_ref");
 
-                    b.Property<string>("HeadingsJson")
+                    b.Property<string>("Headings")
+                        .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("headings");
 
@@ -699,10 +714,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("meta_description");
-
-                    b.Property<int>("StatusCode")
-                        .HasColumnType("integer")
-                        .HasColumnName("status_code");
 
                     b.Property<string>("Title")
                         .HasMaxLength(500)
@@ -718,6 +729,10 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DiscoveryRunId");
+
+                    b.HasIndex("DiscoveryRunId", "Url")
+                        .IsUnique()
+                        .HasDatabaseName("ix_crawled_pages_run_url");
 
                     b.ToTable("crawled_pages", (string)null);
                 });
@@ -737,10 +752,18 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completed_at");
 
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
                     b.Property<string>("Error")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("error");
+
+                    b.Property<DateTime?>("ExtractedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("extracted_at");
 
                     b.Property<int>("PagesCrawled")
                         .HasColumnType("integer")
@@ -758,7 +781,8 @@ namespace AIVisibility.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BrandId");
+                    b.HasIndex("BrandId")
+                        .IsUnique();
 
                     b.ToTable("discovery_runs", (string)null);
                 });
@@ -845,6 +869,7 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnName("code");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
@@ -862,6 +887,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("DisplayOrder")
                         .IsUnique();
 
                     b.ToTable("lenses", (string)null);
@@ -933,8 +961,8 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnName("confidence");
 
                     b.Property<string>("CountryCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
                         .HasColumnName("country_code");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1387,6 +1415,11 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("brand_id");
 
+                    b.Property<string>("Aliases")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("aliases");
+
                     b.Property<double>("Confidence")
                         .HasColumnType("double precision")
                         .HasColumnName("confidence");
@@ -1486,97 +1519,80 @@ namespace AIVisibility.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("LensId");
 
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("PromptTemplateId");
+
+                    b.HasIndex("TrackerConfigurationId", "Status")
+                        .HasDatabaseName("IX_prompts_tracker_status");
 
                     b.ToTable("prompts", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptAudience", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("PromptId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("prompt_id");
 
                     b.Property<Guid>("AudienceId")
                         .HasColumnType("uuid")
                         .HasColumnName("audience_id");
 
-                    b.Property<Guid>("PromptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("prompt_id");
+                    b.HasKey("PromptId", "AudienceId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("PromptId");
+                    b.HasIndex("AudienceId");
 
                     b.ToTable("prompt_audiences", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptCompetitor", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("PromptId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("prompt_id");
 
                     b.Property<Guid>("CompetitorId")
                         .HasColumnType("uuid")
                         .HasColumnName("competitor_id");
 
-                    b.Property<Guid>("PromptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("prompt_id");
+                    b.HasKey("PromptId", "CompetitorId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("PromptId");
+                    b.HasIndex("CompetitorId");
 
                     b.ToTable("prompt_competitors", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptMarket", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("PromptId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("prompt_id");
 
                     b.Property<Guid>("MarketId")
                         .HasColumnType("uuid")
                         .HasColumnName("market_id");
 
-                    b.Property<Guid>("PromptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("prompt_id");
+                    b.HasKey("PromptId", "MarketId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("PromptId");
+                    b.HasIndex("MarketId");
 
                     b.ToTable("prompt_markets", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptProduct", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("PromptId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("prompt_id");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid")
                         .HasColumnName("product_id");
 
-                    b.Property<Guid>("PromptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("prompt_id");
+                    b.HasKey("PromptId", "ProductId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("PromptId");
+                    b.HasIndex("ProductId");
 
                     b.ToTable("prompt_products", (string)null);
                 });
@@ -1792,11 +1808,6 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptTopic", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
                     b.Property<Guid>("PromptId")
                         .HasColumnType("uuid")
                         .HasColumnName("prompt_id");
@@ -1805,9 +1816,9 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("topic_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("PromptId", "TopicId");
 
-                    b.HasIndex("PromptId");
+                    b.HasIndex("TopicId");
 
                     b.ToTable("prompt_topics", (string)null);
                 });
@@ -1941,11 +1952,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Domain")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("domain");
-
                     b.Property<string>("NormalizedDomain")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -1962,10 +1968,6 @@ namespace AIVisibility.Infrastructure.Migrations
                         .HasColumnName("source_name");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("NormalizedDomain");
-
-                    b.HasIndex("SourceName");
 
                     b.ToTable("sources", (string)null);
                 });
@@ -2005,6 +2007,104 @@ namespace AIVisibility.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("source_types", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000001"),
+                            Code = "Owned",
+                            Description = "The brand's own website, documentation, or properties.",
+                            DisplayOrder = 1,
+                            Name = "Owned"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000002"),
+                            Code = "Competitor",
+                            Description = "A tracked competitor's website or properties.",
+                            DisplayOrder = 2,
+                            Name = "Competitor"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000003"),
+                            Code = "Corporate",
+                            Description = "Other company or business websites that aren't the brand or a tracked competitor.",
+                            DisplayOrder = 3,
+                            Name = "Corporate"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000004"),
+                            Code = "UGC",
+                            Description = "Forums, Q&A sites, and community platforms such as Reddit, Quora, and Stack Exchange.",
+                            DisplayOrder = 4,
+                            Name = "User-Generated Content"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000005"),
+                            Code = "Editorial",
+                            Description = "News organizations, magazines, and journalism sites.",
+                            DisplayOrder = 5,
+                            Name = "Editorial"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000006"),
+                            Code = "ReviewSite",
+                            Description = "Dedicated review aggregators and rating platforms such as G2, Capterra, and Trustpilot.",
+                            DisplayOrder = 6,
+                            Name = "Review Site"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000007"),
+                            Code = "Social",
+                            Description = "Social media platforms such as LinkedIn, Twitter/X, and Facebook.",
+                            DisplayOrder = 7,
+                            Name = "Social"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000008"),
+                            Code = "Institutional",
+                            Description = "Universities, government, and non-profit organizations (.edu, .gov, NGOs).",
+                            DisplayOrder = 8,
+                            Name = "Institutional"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000009"),
+                            Code = "Reference",
+                            Description = "Encyclopedias, knowledge bases, and glossaries such as Wikipedia and MDN.",
+                            DisplayOrder = 9,
+                            Name = "Reference"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000010"),
+                            Code = "Marketplace",
+                            Description = "E-commerce platforms and product listing services such as Amazon and app stores.",
+                            DisplayOrder = 10,
+                            Name = "Marketplace"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000011"),
+                            Code = "Other",
+                            Description = "Sources that don't fit any of the more specific categories.",
+                            DisplayOrder = 11,
+                            Name = "Other"
+                        },
+                        new
+                        {
+                            Id = new Guid("d0000000-0000-0000-0000-000000000012"),
+                            Code = "Unknown",
+                            Description = "Source type could not be determined by the classifier.",
+                            DisplayOrder = 12,
+                            Name = "Unknown"
+                        });
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.SourceUrl", b =>
@@ -2099,44 +2199,34 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerAudience", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("AudienceId")
                         .HasColumnType("uuid")
                         .HasColumnName("audience_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "AudienceId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("AudienceId");
 
                     b.ToTable("tracker_audiences", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerCompetitor", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("CompetitorId")
                         .HasColumnType("uuid")
                         .HasColumnName("competitor_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "CompetitorId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("CompetitorId");
 
                     b.ToTable("tracker_competitors", (string)null);
                 });
@@ -2209,110 +2299,85 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerLens", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("LensId")
                         .HasColumnType("uuid")
                         .HasColumnName("lens_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "LensId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("LensId");
 
                     b.ToTable("tracker_lenses", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerMarket", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("MarketId")
                         .HasColumnType("uuid")
                         .HasColumnName("market_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "MarketId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("MarketId");
 
                     b.ToTable("tracker_markets", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerPlatform", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("AIPlatformId")
                         .HasColumnType("uuid")
                         .HasColumnName("ai_platform_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "AIPlatformId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("AIPlatformId");
 
                     b.ToTable("tracker_platforms", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerProduct", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid")
                         .HasColumnName("product_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "ProductId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("ProductId");
 
                     b.ToTable("tracker_products", (string)null);
                 });
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerTopic", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("TrackerConfigurationId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id");
+                        .HasColumnName("tracker_configuration_id");
 
                     b.Property<Guid>("TopicId")
                         .HasColumnType("uuid")
                         .HasColumnName("topic_id");
 
-                    b.Property<Guid>("TrackerConfigurationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tracker_configuration_id");
+                    b.HasKey("TrackerConfigurationId", "TopicId");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("TrackerConfigurationId");
+                    b.HasIndex("TopicId");
 
                     b.ToTable("tracker_topics", (string)null);
                 });
@@ -2766,6 +2831,17 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.Prompt", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Lens", null)
+                        .WithMany()
+                        .HasForeignKey("LensId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.PromptTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("PromptTemplateId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany()
                         .HasForeignKey("TrackerConfigurationId")
@@ -2777,6 +2853,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptAudience", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Audience", null)
+                        .WithMany()
+                        .HasForeignKey("AudienceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
                         .WithMany("Audiences")
                         .HasForeignKey("PromptId")
@@ -2788,6 +2870,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptCompetitor", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Competitor", null)
+                        .WithMany()
+                        .HasForeignKey("CompetitorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
                         .WithMany("Competitors")
                         .HasForeignKey("PromptId")
@@ -2799,6 +2887,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptMarket", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Market", null)
+                        .WithMany()
+                        .HasForeignKey("MarketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
                         .WithMany("Markets")
                         .HasForeignKey("PromptId")
@@ -2810,6 +2904,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.PromptProduct", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
                         .WithMany("Products")
                         .HasForeignKey("PromptId")
@@ -2851,6 +2951,12 @@ namespace AIVisibility.Infrastructure.Migrations
                     b.HasOne("AIVisibility.Domain.Entities.Prompt", "Prompt")
                         .WithMany("Topics")
                         .HasForeignKey("PromptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AIVisibility.Domain.Entities.Topic", null)
+                        .WithMany()
+                        .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2911,6 +3017,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerAudience", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Audience", null)
+                        .WithMany()
+                        .HasForeignKey("AudienceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Audiences")
                         .HasForeignKey("TrackerConfigurationId")
@@ -2922,6 +3034,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerCompetitor", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Competitor", null)
+                        .WithMany()
+                        .HasForeignKey("CompetitorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Competitors")
                         .HasForeignKey("TrackerConfigurationId")
@@ -2944,6 +3062,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerLens", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Lens", null)
+                        .WithMany()
+                        .HasForeignKey("LensId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Lenses")
                         .HasForeignKey("TrackerConfigurationId")
@@ -2955,6 +3079,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerMarket", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Market", null)
+                        .WithMany()
+                        .HasForeignKey("MarketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Markets")
                         .HasForeignKey("TrackerConfigurationId")
@@ -2966,6 +3096,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerPlatform", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.AIPlatform", null)
+                        .WithMany()
+                        .HasForeignKey("AIPlatformId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany()
                         .HasForeignKey("TrackerConfigurationId")
@@ -2977,6 +3113,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerProduct", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Products")
                         .HasForeignKey("TrackerConfigurationId")
@@ -2988,6 +3130,12 @@ namespace AIVisibility.Infrastructure.Migrations
 
             modelBuilder.Entity("AIVisibility.Domain.Entities.TrackerTopic", b =>
                 {
+                    b.HasOne("AIVisibility.Domain.Entities.Topic", null)
+                        .WithMany()
+                        .HasForeignKey("TopicId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("AIVisibility.Domain.Entities.TrackerConfiguration", "TrackerConfiguration")
                         .WithMany("Topics")
                         .HasForeignKey("TrackerConfigurationId")

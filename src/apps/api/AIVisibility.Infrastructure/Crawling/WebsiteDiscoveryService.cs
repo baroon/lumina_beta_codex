@@ -64,8 +64,8 @@ public class WebsiteDiscoveryService : IWebsiteDiscoveryService
                     Url = current.Url,
                     Title = document.Title,
                     MetaDescription = document.QuerySelector("meta[name='description']")?.GetAttribute("content"),
-                    HeadingsJson = ExtractHeadingsJson(document),
-                    StatusCode = (int)response.StatusCode
+                    Headings = ExtractHeadings(document),
+                    CrawledAt = DateTime.UtcNow,
                 };
 
                 // Store extracted text in blob storage
@@ -139,14 +139,12 @@ public class WebsiteDiscoveryService : IWebsiteDiscoveryService
         catch { return url.ToLowerInvariant(); }
     }
 
-    private static string ExtractHeadingsJson(IDocument document)
+    private static List<Heading> ExtractHeadings(IDocument document)
     {
-        var headings = document.QuerySelectorAll("h1, h2, h3, h4")
-            .Select(h => new { Tag = h.TagName.ToLower(), Text = h.TextContent.Trim() })
+        return document.QuerySelectorAll("h1, h2, h3, h4")
+            .Select(h => new Heading(h.TagName.ToLower(), h.TextContent.Trim()))
             .Where(h => !string.IsNullOrWhiteSpace(h.Text))
             .Take(50)
             .ToList();
-
-        return System.Text.Json.JsonSerializer.Serialize(headings);
     }
 }

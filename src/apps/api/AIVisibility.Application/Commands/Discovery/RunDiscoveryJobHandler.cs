@@ -78,9 +78,9 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                 "Preparing competitive analysis...", step: 5, totalSteps: 5, cancellationToken: cancellationToken);
             await Task.Delay(3000, cancellationToken);
 
-            // Complete
+            // Extraction done — back-end work complete; wait for user confirm.
             run.Status = DiscoveryStatus.AwaitingConfirmation;
-            run.CompletedAt = DateTime.UtcNow;
+            run.ExtractedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
             await _notifier.NotifyProgressAsync(brandId, DiscoveryStatus.AwaitingConfirmation, crawlResult.TotalPagesCrawled,
                 "Discovery complete", step: 5, totalSteps: 5, cancellationToken: cancellationToken);
@@ -114,7 +114,7 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
                     extraction.BrandProfile.Source.ToString())
                 : null,
             extraction.Products.Select(p => ToCandidate(p.Id, p.Name, p.Description, p.Confidence, p.Source,
-                new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString() })).ToList(),
+                new Dictionary<string, object?> { ["productType"] = p.ProductType.ToString() }, p.Aliases)).ToList(),
             extraction.Audiences.Select(a => ToCandidate(a.Id, a.Name, a.Description, a.Confidence, a.Source,
                 new Dictionary<string, object?>())).ToList(),
             extraction.Markets.Select(m => ToCandidate(m.Id, m.Name, null, m.Confidence, m.Source,
@@ -128,6 +128,6 @@ public class RunDiscoveryJobHandler : IRunDiscoveryJobHandler
     }
 
     private static CandidateDto ToCandidate(Guid id, string name, string? description, double confidence,
-        CandidateSource source, Dictionary<string, object?> metadata)
-        => new(id, name, description, confidence, source.ToString(), metadata);
+        CandidateSource source, Dictionary<string, object?> metadata, List<string>? aliases = null)
+        => new(id, name, description, confidence, source.ToString(), metadata, aliases);
 }

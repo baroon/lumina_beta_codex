@@ -42,7 +42,8 @@ public class ResuggestCommandHandler : IRequestHandler<ResuggestCommand, Resugge
                 Metadata: new Dictionary<string, object?>
                 {
                     ["domain"] = c.Domain
-                }
+                },
+                Aliases: c.Aliases
             )).ToList(),
             Topics: result.Topics.Select(t => new ResuggestCandidateDto(
                 Name: t.Name,

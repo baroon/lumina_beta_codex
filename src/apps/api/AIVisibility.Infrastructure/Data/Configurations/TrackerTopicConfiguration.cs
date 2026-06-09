@@ -9,10 +9,14 @@ public class TrackerTopicConfiguration : IEntityTypeConfiguration<TrackerTopic>
     public void Configure(EntityTypeBuilder<TrackerTopic> builder)
     {
         builder.ToTable("tracker_topics");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.TrackerConfigurationId, x.TopicId });
         builder.Property(x => x.TrackerConfigurationId).HasColumnName("tracker_configuration_id");
         builder.Property(x => x.TopicId).HasColumnName("topic_id");
-        builder.HasIndex(x => x.TrackerConfigurationId);
+        builder.HasIndex(x => x.TopicId);
+
+        builder.HasOne<Topic>()
+            .WithMany()
+            .HasForeignKey(x => x.TopicId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

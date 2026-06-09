@@ -51,15 +51,15 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
             Status = TrackerStatus.Draft,
             CreatedAt = now,
             UpdatedAt = now,
-            Topics = topics.Select(t => new TrackerTopic { Id = Guid.NewGuid(), TopicId = t.Id }).ToList(),
+            Topics = topics.Select(t => new TrackerTopic { TopicId = t.Id }).ToList(),
             Competitors = competitors
-                .Select(c => new TrackerCompetitor { Id = Guid.NewGuid(), CompetitorId = c.Id })
+                .Select(c => new TrackerCompetitor { CompetitorId = c.Id })
                 .ToList(),
-            Products = products.Select(p => new TrackerProduct { Id = Guid.NewGuid(), ProductId = p.Id }).ToList(),
-            Audiences = audiences.Select(a => new TrackerAudience { Id = Guid.NewGuid(), AudienceId = a.Id }).ToList(),
-            Markets = markets.Select(m => new TrackerMarket { Id = Guid.NewGuid(), MarketId = m.Id }).ToList(),
+            Products = products.Select(p => new TrackerProduct { ProductId = p.Id }).ToList(),
+            Audiences = audiences.Select(a => new TrackerAudience { AudienceId = a.Id }).ToList(),
+            Markets = markets.Select(m => new TrackerMarket { MarketId = m.Id }).ToList(),
             Lenses = checks
-                .Select(vc => new TrackerLens { Id = Guid.NewGuid(), LensId = vc.Id })
+                .Select(vc => new TrackerLens { LensId = vc.Id })
                 .ToList(),
         };
 

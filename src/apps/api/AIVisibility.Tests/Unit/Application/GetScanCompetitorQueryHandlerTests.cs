@@ -37,8 +37,8 @@ public class GetScanCompetitorQueryHandlerTests
         var platform = new AIPlatform { Id = Guid.NewGuid(), Code = "openai", Name = "OpenAI" };
         var prompt = new Prompt { Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, PromptText = "p", LensId = Guid.NewGuid(), Status = PromptStatus.Active, Source = PromptSource.Generated, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 
-        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", Domain = "trustpilot.com", NormalizedDomain = "trustpilot.com", CreatedAt = DateTime.UtcNow };
-        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", Domain = "en.wikipedia.org", NormalizedDomain = "en.wikipedia.org", CreatedAt = DateTime.UtcNow };
+        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", NormalizedDomain = "trustpilot.com", CreatedAt = DateTime.UtcNow };
+        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", NormalizedDomain = "en.wikipedia.org", CreatedAt = DateTime.UtcNow };
 
         ctx.Brands.Add(brand); ctx.TrackerConfigurations.Add(tracker); ctx.ScanRuns.Add(scan);
         ctx.Competitors.Add(acme); ctx.AIPlatforms.Add(platform); ctx.Prompts.Add(prompt);

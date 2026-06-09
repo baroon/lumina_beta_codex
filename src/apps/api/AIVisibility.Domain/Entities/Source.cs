@@ -10,7 +10,9 @@ namespace AIVisibility.Domain.Entities;
 ///
 /// Created lazily by <c>SignalExtractor</c> during signal extraction.
 /// Deduped by <see cref="NormalizedDomain"/> when a URL is present, by
-/// <see cref="SourceName"/> otherwise (mentioned-source case).
+/// <see cref="SourceName"/> otherwise (mentioned-source case). DB-level
+/// partial UNIQUE indexes enforce the dedup invariant against concurrent
+/// writers.
 /// </summary>
 public class Source
 {
@@ -19,10 +21,7 @@ public class Source
     /// <summary>Display name (as reported by the LLM, before normalization).</summary>
     public string SourceName { get; set; } = string.Empty;
 
-    /// <summary>Optional raw domain (e.g. "blog.acme.com"); null for mentioned-source citations without URL.</summary>
-    public string? Domain { get; set; }
-
-    /// <summary>Canonical domain (lowercase, "www." stripped) used for dedup + classification.</summary>
+    /// <summary>Canonical domain (lowercase, "www." stripped) used for dedup + classification. Null for mentioned-source citations without URL.</summary>
     public string? NormalizedDomain { get; set; }
 
     /// <summary>

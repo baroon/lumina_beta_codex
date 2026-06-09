@@ -116,25 +116,21 @@ public class GeneratePromptsCommandHandlerTests
         ctx.TrackerLenses.AddRange(
             new TrackerLens
             {
-                Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 LensId = check1.Id,
             },
             new TrackerLens
             {
-                Id = Guid.NewGuid(),
                 TrackerConfigurationId = tracker.Id,
                 LensId = check2.Id,
             });
         ctx.TrackerTopics.Add(new TrackerTopic
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             TopicId = topic.Id,
         });
         ctx.TrackerCompetitors.Add(new TrackerCompetitor
         {
-            Id = Guid.NewGuid(),
             TrackerConfigurationId = tracker.Id,
             CompetitorId = competitor.Id,
         });

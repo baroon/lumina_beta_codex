@@ -40,7 +40,7 @@ public class GetScanTopicQueryHandlerTests
         var openai = new AIPlatform { Id = Guid.NewGuid(), Code = "openai", Name = "OpenAI" };
         var claude = new AIPlatform { Id = Guid.NewGuid(), Code = "claude", Name = "Claude" };
         var prompt = new Prompt { Id = Guid.NewGuid(), TrackerConfigurationId = tracker.Id, PromptText = "p", LensId = lens.Id, Status = PromptStatus.Active, Source = PromptSource.Generated, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-        var promptTopic = new PromptTopic { Id = Guid.NewGuid(), PromptId = prompt.Id, TopicId = topic.Id };
+        var promptTopic = new PromptTopic { PromptId = prompt.Id, TopicId = topic.Id };
         ctx.Brands.Add(brand);
         ctx.TrackerConfigurations.Add(tracker);
         ctx.ScanRuns.Add(scan);

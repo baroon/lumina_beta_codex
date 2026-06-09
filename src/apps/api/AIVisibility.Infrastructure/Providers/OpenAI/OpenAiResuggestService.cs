@@ -53,7 +53,8 @@ public class OpenAiResuggestService : IResuggestService
         If competitors are already confirmed, treat them as a signal for the competitive landscape — suggest others at a similar scale and in a similar space. Do not repeat any confirmed competitors.
 
         Return up to 4 competitors as a JSON array of objects with:
-        - "name": string
+        - "name": string                              — the canonical competitor name
+        - "aliases": [string]                         — 1-3 alternate names by which the competitor is commonly known in this region/market ("also known as"). Include short forms ("TOI" for "The Times of India"), localized variants, and any abbreviations or branded sub-products that point at the same entity. Empty list if no meaningful variants exist.
         - "domain": their website domain (e.g., example.com)
         - "description": short reason they compete
         - "regionFit": "high" | "medium" | "low"
@@ -84,6 +85,7 @@ public class OpenAiResuggestService : IResuggestService
                 {
                     Id = Guid.NewGuid(),
                     Name = s.Name!,
+                    Aliases = CleanAliases(s.Aliases, s.Name!),
                     Domain = s.Domain,
                     Description = BuildCompetitorDescription(s),
                     Confidence = Math.Clamp(s.Confidence, 0.0, 1.0),
@@ -97,6 +99,20 @@ public class OpenAiResuggestService : IResuggestService
             _logger.LogError(ex, "Resuggest: competitor suggestion failed");
             return new List<Competitor>();
         }
+    }
+
+    // Defensive cleanup — trim, dedup case-insensitively, drop the canonical
+    // name (LLMs sometimes echo it back in the aliases list), drop empties.
+    private static List<string> CleanAliases(List<string>? raw, string canonicalName)
+    {
+        if (raw is null || raw.Count == 0) return new List<string>();
+        var canonicalLower = canonicalName.Trim().ToLowerInvariant();
+        return raw
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Select(a => a.Trim())
+            .Where(a => a.Length > 0 && !string.Equals(a, canonicalName, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(a => a.ToLowerInvariant())
+            .ToList();
     }
 
     private static string BuildCompetitorPrompt(ResuggestContext ctx)
@@ -150,6 +166,7 @@ public class OpenAiResuggestService : IResuggestService
 
     private record CompetitorDto(
         string? Name,
+        List<string>? Aliases,
         string? Domain,
         string? Description,
         string? RegionFit,
@@ -399,7 +416,8 @@ public class OpenAiResuggestService : IResuggestService
                     Description: BuildCompetitorDescription(s),
                     Confidence: Math.Clamp(s.Confidence, 0.0, 1.0),
                     Source: "LLMSuggested",
-                    Metadata: new Dictionary<string, object?> { ["domain"] = s.Domain }))
+                    Metadata: new Dictionary<string, object?> { ["domain"] = s.Domain },
+                    Aliases: CleanAliases(s.Aliases, s.Name!)))
                 .Take(4)
                 .ToList();
 

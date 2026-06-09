@@ -69,7 +69,7 @@ public class RunDiscoveryJobHandlerTests
         using var ctx = NewContext();
         var (brand, run) = Seed(ctx);
 
-        var page = new CrawledPage { Id = Guid.NewGuid(), Url = "https://test.com/", StatusCode = 200 };
+        var page = new CrawledPage { Id = Guid.NewGuid(), Url = "https://test.com/" };
         _crawl.Setup(c => c.CrawlWebsiteAsync(brand.WebsiteUrl, run.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CrawlResult(new List<CrawledPage> { page }, 1));
 

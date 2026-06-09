@@ -79,8 +79,8 @@ public class GetScanSourcesQueryHandlerTests
         //   trustpilot — cited 3 times (OpenAI + OpenAI + Claude → 2 platforms)
         //   wikipedia  — cited 1 time  (Claude only)
         //   orphan     — cited 1 time, but has no BrandSourceClassification row
-        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", Domain = "trustpilot.com", NormalizedDomain = "trustpilot.com", CreatedAt = DateTime.UtcNow };
-        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", Domain = "en.wikipedia.org", NormalizedDomain = "en.wikipedia.org", CreatedAt = DateTime.UtcNow };
+        var trustpilot = new Source { Id = Guid.NewGuid(), SourceName = "Trustpilot", NormalizedDomain = "trustpilot.com", CreatedAt = DateTime.UtcNow };
+        var wikipedia = new Source { Id = Guid.NewGuid(), SourceName = "Wikipedia", NormalizedDomain = "en.wikipedia.org", CreatedAt = DateTime.UtcNow };
         var orphan = new Source { Id = Guid.NewGuid(), SourceName = "Orphan", CreatedAt = DateTime.UtcNow };
         ctx.Sources.Add(trustpilot);
         ctx.Sources.Add(wikipedia);

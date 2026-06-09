@@ -18,7 +18,8 @@ public record ConfirmCandidateInput(
     string? Description,
     double Confidence,
     string Source,
-    Dictionary<string, string>? Metadata);
+    Dictionary<string, string>? Metadata,
+    List<string>? Aliases = null);
 
 public record ConfirmBrandProfileInput(
     string? ShortDescription,

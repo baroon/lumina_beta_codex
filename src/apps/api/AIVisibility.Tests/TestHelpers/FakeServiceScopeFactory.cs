@@ -5,22 +5,23 @@ namespace AIVisibility.Tests.TestHelpers;
 
 /// <summary>
 /// Test stand-in for <see cref="IServiceScopeFactory"/>. Every
-/// <c>CreateScope</c> call returns a scope whose <c>ServiceProvider</c>
-/// resolves <see cref="IAppDbContext"/> and <see cref="IAnswerSignalWriter"/>
-/// to the same instances the test owns — so the in-memory DbContext is
-/// shared across the parallel platform fan-out without overlapping
-/// (the EF Core in-memory provider does not handle real concurrent
-/// SaveChangesAsync calls, which is fine because the tests don't actually
-/// race the work, they just exercise the new parallel code path).
+/// <c>CreateScope</c> call resolves <see cref="IAppDbContext"/> via the
+/// supplied factory so each call to <c>ExecuteOneAsync</c> can get its own
+/// DbContext (matching production DI scoping) while still sharing the
+/// underlying InMemory database. The two-arg overload returns the same
+/// singleton for tests that don't exercise parallelism.
 /// </summary>
 internal sealed class FakeServiceScopeFactory : IServiceScopeFactory, IServiceProvider, IServiceScope
 {
-    private readonly IAppDbContext _db;
+    private readonly Func<IAppDbContext> _dbFactory;
     private readonly IAnswerSignalWriter _writer;
 
     public FakeServiceScopeFactory(IAppDbContext db, IAnswerSignalWriter writer)
+        : this(() => db, writer) { }
+
+    public FakeServiceScopeFactory(Func<IAppDbContext> dbFactory, IAnswerSignalWriter writer)
     {
-        _db = db;
+        _dbFactory = dbFactory;
         _writer = writer;
     }
 
@@ -30,7 +31,7 @@ internal sealed class FakeServiceScopeFactory : IServiceScopeFactory, IServicePr
 
     public object? GetService(Type serviceType)
     {
-        if (serviceType == typeof(IAppDbContext)) return _db;
+        if (serviceType == typeof(IAppDbContext)) return _dbFactory();
         if (serviceType == typeof(IAnswerSignalWriter)) return _writer;
         return null;
     }

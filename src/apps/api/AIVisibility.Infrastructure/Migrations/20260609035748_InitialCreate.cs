@@ -52,7 +52,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     display_order = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -95,7 +95,6 @@ namespace AIVisibility.Infrastructure.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     source_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    domain = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     normalized_domain = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     authority_score = table.Column<double>(type: "double precision", nullable: true),
                     published_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -114,6 +113,8 @@ namespace AIVisibility.Infrastructure.Migrations
                     brand_id = table.Column<Guid>(type: "uuid", nullable: false),
                     status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     started_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    extracted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    confirmed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     pages_crawled = table.Column<int>(type: "integer", nullable: false),
                     error = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true)
@@ -250,6 +251,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     brand_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    aliases = table.Column<string>(type: "jsonb", nullable: false),
                     domain = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
@@ -284,9 +286,9 @@ namespace AIVisibility.Infrastructure.Migrations
                     url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: false),
                     title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     meta_description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    headings = table.Column<string>(type: "jsonb", nullable: true),
+                    headings = table.Column<string>(type: "jsonb", nullable: false),
                     extracted_text_blob_ref = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    status_code = table.Column<int>(type: "integer", nullable: false)
+                    crawled_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -306,7 +308,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     brand_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
-                    country_code = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: true),
+                    country_code = table.Column<string>(type: "character varying(2)", maxLength: 2, nullable: true),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -337,6 +339,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     brand_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    aliases = table.Column<string>(type: "jsonb", nullable: false),
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     product_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     confidence = table.Column<double>(type: "double precision", nullable: false),
@@ -443,6 +446,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_prompts", x => x.id);
                     table.ForeignKey(
+                        name: "FK_prompts_lenses_lens_id",
+                        column: x => x.lens_id,
+                        principalTable: "lenses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_prompts_prompt_templates_prompt_template_id",
+                        column: x => x.prompt_template_id,
+                        principalTable: "prompt_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_prompts_tracker_configurations_tracker_configuration_id",
                         column: x => x.tracker_configuration_id,
                         principalTable: "tracker_configurations",
@@ -481,13 +496,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_audiences",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     audience_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_audiences", x => x.id);
+                    table.PrimaryKey("PK_tracker_audiences", x => new { x.tracker_configuration_id, x.audience_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_audiences_audiences_audience_id",
+                        column: x => x.audience_id,
+                        principalTable: "audiences",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_audiences_tracker_configurations_tracker_configurat~",
                         column: x => x.tracker_configuration_id,
@@ -500,13 +520,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_competitors",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     competitor_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_competitors", x => x.id);
+                    table.PrimaryKey("PK_tracker_competitors", x => new { x.tracker_configuration_id, x.competitor_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_competitors_competitors_competitor_id",
+                        column: x => x.competitor_id,
+                        principalTable: "competitors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_competitors_tracker_configurations_tracker_configur~",
                         column: x => x.tracker_configuration_id,
@@ -519,13 +544,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_lenses",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     lens_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_lenses", x => x.id);
+                    table.PrimaryKey("PK_tracker_lenses", x => new { x.tracker_configuration_id, x.lens_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_lenses_lenses_lens_id",
+                        column: x => x.lens_id,
+                        principalTable: "lenses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_lenses_tracker_configurations_tracker_configuration~",
                         column: x => x.tracker_configuration_id,
@@ -538,13 +568,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_markets",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     market_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_markets", x => x.id);
+                    table.PrimaryKey("PK_tracker_markets", x => new { x.tracker_configuration_id, x.market_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_markets_markets_market_id",
+                        column: x => x.market_id,
+                        principalTable: "markets",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_markets_tracker_configurations_tracker_configuratio~",
                         column: x => x.tracker_configuration_id,
@@ -557,13 +592,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_platforms",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     ai_platform_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_platforms", x => x.id);
+                    table.PrimaryKey("PK_tracker_platforms", x => new { x.tracker_configuration_id, x.ai_platform_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_platforms_ai_platforms_ai_platform_id",
+                        column: x => x.ai_platform_id,
+                        principalTable: "ai_platforms",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_platforms_tracker_configurations_tracker_configurat~",
                         column: x => x.tracker_configuration_id,
@@ -576,13 +616,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_products",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     product_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_products", x => x.id);
+                    table.PrimaryKey("PK_tracker_products", x => new { x.tracker_configuration_id, x.product_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_products_products_product_id",
+                        column: x => x.product_id,
+                        principalTable: "products",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_products_tracker_configurations_tracker_configurati~",
                         column: x => x.tracker_configuration_id,
@@ -595,13 +640,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "tracker_topics",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     tracker_configuration_id = table.Column<Guid>(type: "uuid", nullable: false),
                     topic_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tracker_topics", x => x.id);
+                    table.PrimaryKey("PK_tracker_topics", x => new { x.tracker_configuration_id, x.topic_id });
+                    table.ForeignKey(
+                        name: "FK_tracker_topics_topics_topic_id",
+                        column: x => x.topic_id,
+                        principalTable: "topics",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_tracker_topics_tracker_configurations_tracker_configuration~",
                         column: x => x.tracker_configuration_id,
@@ -652,13 +702,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "prompt_audiences",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_id = table.Column<Guid>(type: "uuid", nullable: false),
                     audience_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_prompt_audiences", x => x.id);
+                    table.PrimaryKey("PK_prompt_audiences", x => new { x.prompt_id, x.audience_id });
+                    table.ForeignKey(
+                        name: "FK_prompt_audiences_audiences_audience_id",
+                        column: x => x.audience_id,
+                        principalTable: "audiences",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_prompt_audiences_prompts_prompt_id",
                         column: x => x.prompt_id,
@@ -671,13 +726,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "prompt_competitors",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_id = table.Column<Guid>(type: "uuid", nullable: false),
                     competitor_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_prompt_competitors", x => x.id);
+                    table.PrimaryKey("PK_prompt_competitors", x => new { x.prompt_id, x.competitor_id });
+                    table.ForeignKey(
+                        name: "FK_prompt_competitors_competitors_competitor_id",
+                        column: x => x.competitor_id,
+                        principalTable: "competitors",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_prompt_competitors_prompts_prompt_id",
                         column: x => x.prompt_id,
@@ -690,13 +750,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "prompt_markets",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_id = table.Column<Guid>(type: "uuid", nullable: false),
                     market_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_prompt_markets", x => x.id);
+                    table.PrimaryKey("PK_prompt_markets", x => new { x.prompt_id, x.market_id });
+                    table.ForeignKey(
+                        name: "FK_prompt_markets_markets_market_id",
+                        column: x => x.market_id,
+                        principalTable: "markets",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_prompt_markets_prompts_prompt_id",
                         column: x => x.prompt_id,
@@ -709,13 +774,18 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "prompt_products",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_id = table.Column<Guid>(type: "uuid", nullable: false),
                     product_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_prompt_products", x => x.id);
+                    table.PrimaryKey("PK_prompt_products", x => new { x.prompt_id, x.product_id });
+                    table.ForeignKey(
+                        name: "FK_prompt_products_products_product_id",
+                        column: x => x.product_id,
+                        principalTable: "products",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_prompt_products_prompts_prompt_id",
                         column: x => x.prompt_id,
@@ -728,17 +798,22 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "prompt_topics",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
                     prompt_id = table.Column<Guid>(type: "uuid", nullable: false),
                     topic_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_prompt_topics", x => x.id);
+                    table.PrimaryKey("PK_prompt_topics", x => new { x.prompt_id, x.topic_id });
                     table.ForeignKey(
                         name: "FK_prompt_topics_prompts_prompt_id",
                         column: x => x.prompt_id,
                         principalTable: "prompts",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_prompt_topics_topics_topic_id",
+                        column: x => x.topic_id,
+                        principalTable: "topics",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -950,6 +1025,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     citation_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     citation_position = table.Column<int>(type: "integer", nullable: true),
                     citation_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    evidence_snippet = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     confidence_score = table.Column<double>(type: "double precision", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -1219,6 +1295,25 @@ namespace AIVisibility.Infrastructure.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "source_types",
+                columns: new[] { "id", "code", "description", "display_order", "name" },
+                values: new object[,]
+                {
+                    { new Guid("d0000000-0000-0000-0000-000000000001"), "Owned", "The brand's own website, documentation, or properties.", 1, "Owned" },
+                    { new Guid("d0000000-0000-0000-0000-000000000002"), "Competitor", "A tracked competitor's website or properties.", 2, "Competitor" },
+                    { new Guid("d0000000-0000-0000-0000-000000000003"), "Corporate", "Other company or business websites that aren't the brand or a tracked competitor.", 3, "Corporate" },
+                    { new Guid("d0000000-0000-0000-0000-000000000004"), "UGC", "Forums, Q&A sites, and community platforms such as Reddit, Quora, and Stack Exchange.", 4, "User-Generated Content" },
+                    { new Guid("d0000000-0000-0000-0000-000000000005"), "Editorial", "News organizations, magazines, and journalism sites.", 5, "Editorial" },
+                    { new Guid("d0000000-0000-0000-0000-000000000006"), "ReviewSite", "Dedicated review aggregators and rating platforms such as G2, Capterra, and Trustpilot.", 6, "Review Site" },
+                    { new Guid("d0000000-0000-0000-0000-000000000007"), "Social", "Social media platforms such as LinkedIn, Twitter/X, and Facebook.", 7, "Social" },
+                    { new Guid("d0000000-0000-0000-0000-000000000008"), "Institutional", "Universities, government, and non-profit organizations (.edu, .gov, NGOs).", 8, "Institutional" },
+                    { new Guid("d0000000-0000-0000-0000-000000000009"), "Reference", "Encyclopedias, knowledge bases, and glossaries such as Wikipedia and MDN.", 9, "Reference" },
+                    { new Guid("d0000000-0000-0000-0000-000000000010"), "Marketplace", "E-commerce platforms and product listing services such as Amazon and app stores.", 10, "Marketplace" },
+                    { new Guid("d0000000-0000-0000-0000-000000000011"), "Other", "Sources that don't fit any of the more specific categories.", 11, "Other" },
+                    { new Guid("d0000000-0000-0000-0000-000000000012"), "Unknown", "Source type could not be determined by the classifier.", 12, "Unknown" }
+                });
+
+            migrationBuilder.InsertData(
                 table: "lenses",
                 columns: new[] { "id", "code", "description", "display_order", "name" },
                 values: new object[,]
@@ -1373,9 +1468,16 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "discovery_run_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_crawled_pages_run_url",
+                table: "crawled_pages",
+                columns: new[] { "discovery_run_id", "url" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_discovery_runs_brand_id",
                 table: "discovery_runs",
-                column: "brand_id");
+                column: "brand_id",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_factual_claims_mention_id",
@@ -1396,6 +1498,12 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_lenses_code",
                 table: "lenses",
                 column: "code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_lenses_display_order",
+                table: "lenses",
+                column: "display_order",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1515,24 +1623,24 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "discovery_run_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_audiences_prompt_id",
+                name: "IX_prompt_audiences_audience_id",
                 table: "prompt_audiences",
-                column: "prompt_id");
+                column: "audience_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_competitors_prompt_id",
+                name: "IX_prompt_competitors_competitor_id",
                 table: "prompt_competitors",
-                column: "prompt_id");
+                column: "competitor_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_markets_prompt_id",
+                name: "IX_prompt_markets_market_id",
                 table: "prompt_markets",
-                column: "prompt_id");
+                column: "market_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_products_prompt_id",
+                name: "IX_prompt_products_product_id",
                 table: "prompt_products",
-                column: "prompt_id");
+                column: "product_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_prompt_runs_ai_platform_id",
@@ -1560,19 +1668,24 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "lens_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompt_topics_prompt_id",
+                name: "IX_prompt_topics_topic_id",
                 table: "prompt_topics",
-                column: "prompt_id");
+                column: "topic_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompts_status",
+                name: "IX_prompts_lens_id",
                 table: "prompts",
-                column: "status");
+                column: "lens_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_prompts_tracker_configuration_id",
+                name: "IX_prompts_prompt_template_id",
                 table: "prompts",
-                column: "tracker_configuration_id");
+                column: "prompt_template_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_prompts_tracker_status",
+                table: "prompts",
+                columns: new[] { "tracker_configuration_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_scan_metrics_lookup",
@@ -1616,15 +1729,6 @@ namespace AIVisibility.Infrastructure.Migrations
                 table: "source_urls",
                 column: "source_id");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_sources_normalized_domain",
-                table: "sources",
-                column: "normalized_domain");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_sources_source_name",
-                table: "sources",
-                column: "source_name");
 
             migrationBuilder.CreateIndex(
                 name: "IX_topics_brand_id",
@@ -1637,14 +1741,14 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "discovery_run_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_audiences_tracker_configuration_id",
+                name: "IX_tracker_audiences_audience_id",
                 table: "tracker_audiences",
-                column: "tracker_configuration_id");
+                column: "audience_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_competitors_tracker_configuration_id",
+                name: "IX_tracker_competitors_competitor_id",
                 table: "tracker_competitors",
-                column: "tracker_configuration_id");
+                column: "competitor_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_tracker_configurations_brand_id",
@@ -1652,29 +1756,29 @@ namespace AIVisibility.Infrastructure.Migrations
                 column: "brand_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_lenses_tracker_configuration_id",
+                name: "IX_tracker_lenses_lens_id",
                 table: "tracker_lenses",
-                column: "tracker_configuration_id");
+                column: "lens_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_markets_tracker_configuration_id",
+                name: "IX_tracker_markets_market_id",
                 table: "tracker_markets",
-                column: "tracker_configuration_id");
+                column: "market_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_platforms_tracker_configuration_id",
+                name: "IX_tracker_platforms_ai_platform_id",
                 table: "tracker_platforms",
-                column: "tracker_configuration_id");
+                column: "ai_platform_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_products_tracker_configuration_id",
+                name: "IX_tracker_products_product_id",
                 table: "tracker_products",
-                column: "tracker_configuration_id");
+                column: "product_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_tracker_topics_tracker_configuration_id",
+                name: "IX_tracker_topics_topic_id",
                 table: "tracker_topics",
-                column: "tracker_configuration_id");
+                column: "topic_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_trend_points_scan_run_id",
@@ -1701,6 +1805,284 @@ namespace AIVisibility.Infrastructure.Migrations
                 name: "IX_trust_signals_discovery_run_id",
                 table: "trust_signals",
                 column: "discovery_run_id");
+
+            // Case-insensitive unique index on (workspace_id, LOWER(name)) so
+            // "Nostri", "nostri", and "NOSTRI" cannot co-exist in the same
+            // workspace. EF Core can't express function-based indexes
+            // fluently, so raw SQL is the only path here.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_brands_workspace_lower_name " +
+                "ON brands (workspace_id, LOWER(name))");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // competitors. Same shape as the brands index — catches dupes
+            // when the LLM emits two name-variants within a single
+            // discovery run.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_competitors_brand_lower_name " +
+                "ON competitors (brand_id, LOWER(name))");
+
+            // CHECK constraint enforcing the citations type/URL invariant:
+            // citation_type = 'ExplicitUrl' iff source_url_id IS NOT NULL.
+            // Prevents a mis-classified row from landing inconsistent state.
+            migrationBuilder.Sql(
+                "ALTER TABLE citations ADD CONSTRAINT chk_citations_type_url_consistency " +
+                "CHECK ((citation_type = 'ExplicitUrl') = (source_url_id IS NOT NULL))");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // markets — matches the brands/competitors pattern and prevents
+            // duplicate market rows under the same brand.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_markets_brand_lower_name " +
+                "ON markets (brand_id, LOWER(name))");
+
+            // Enforce ISO-3166 alpha-2 shape on country_code (uppercase,
+            // exactly two letters). NULL allowed for non-country markets
+            // like "Global" or "Europe".
+            migrationBuilder.Sql(
+                "ALTER TABLE markets ADD CONSTRAINT chk_markets_country_code_iso2 " +
+                "CHECK (country_code IS NULL OR country_code ~ '^[A-Z]{2}$')");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // products — matches the brands/competitors/markets pattern.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_products_brand_lower_name " +
+                "ON products (brand_id, LOWER(name))");
+
+            // CHECK constraint: prompt_allocation must be positive. Guards
+            // against a user/admin path setting it to 0 or negative, which
+            // would silently break prompt generation.
+            migrationBuilder.Sql(
+                "ALTER TABLE tracker_configurations ADD CONSTRAINT chk_tracker_configurations_prompt_allocation_positive " +
+                "CHECK (prompt_allocation > 0)");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // tracker_configurations — prevents two trackers under the same
+            // brand sharing a name.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_tracker_configurations_brand_lower_name " +
+                "ON tracker_configurations (brand_id, LOWER(name))");
+
+            // Partial index on next_run_at filtered to Active trackers so the
+            // scheduler's `WHERE status = 'Active' AND next_run_at <= now()`
+            // probe stays index-driven as tracker count grows.
+            migrationBuilder.Sql(
+                "CREATE INDEX ix_tracker_configurations_next_run_at_active " +
+                "ON tracker_configurations (next_run_at) WHERE status = 'Active'");
+
+            // Partial UNIQUE index on sources.normalized_domain when present —
+            // enforces the writer's dedup-by-domain invariant against
+            // concurrent inserts. Doubles as the lookup index for the
+            // "match by domain" path in AnswerSignalWriter.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_sources_normalized_domain_unique " +
+                "ON sources (normalized_domain) WHERE normalized_domain IS NOT NULL");
+
+            // Partial UNIQUE index on LOWER(sources.source_name) when domain
+            // is absent — enforces dedup for mentioned-source citations
+            // without a URL. Function-based, so it also backs the
+            // LOWER(source_name) lookup in the writer.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_sources_lower_source_name_unique " +
+                "ON sources (LOWER(source_name)) WHERE normalized_domain IS NULL");
+
+            // CHECK constraint enforcing the curated authority score range
+            // (0-100, see Source.AuthorityScore doc-comment).
+            migrationBuilder.Sql(
+                "ALTER TABLE sources ADD CONSTRAINT chk_sources_authority_score_range " +
+                "CHECK (authority_score IS NULL OR authority_score BETWEEN 0 AND 100)");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // topics — matches the brands/competitors/markets/products
+            // pattern.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_topics_brand_lower_name " +
+                "ON topics (brand_id, LOWER(name))");
+
+            // Case-insensitive unique index on (brand_id, LOWER(name)) for
+            // trust_signals — final brand-scoped candidate to receive the
+            // pattern.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_trust_signals_brand_lower_name " +
+                "ON trust_signals (brand_id, LOWER(name))");
+
+            // CHECK constraint: trend_points must store at most one value
+            // (numeric OR categorical), never both. The entity doc-comment
+            // states "exactly one of those is non-null per row"; in practice
+            // properties allow both null when source data is sparse, but
+            // both non-null is a bug.
+            migrationBuilder.Sql(
+                "ALTER TABLE trend_points ADD CONSTRAINT chk_trend_points_value_exclusive " +
+                "CHECK (NOT (numeric_value IS NOT NULL AND categorical_value IS NOT NULL))");
+
+            // Sweep: confidence is a 0-1 fractional score across every
+            // discovery-candidate table. CHECK constraints catch off-by-100
+            // bugs (LLM emitting "85" instead of "0.85") at write time.
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_profiles ADD CONSTRAINT chk_brand_profiles_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE audiences ADD CONSTRAINT chk_audiences_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE markets ADD CONSTRAINT chk_markets_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE products ADD CONSTRAINT chk_products_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE topics ADD CONSTRAINT chk_topics_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE competitors ADD CONSTRAINT chk_competitors_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+            migrationBuilder.Sql(
+                "ALTER TABLE trust_signals ADD CONSTRAINT chk_trust_signals_confidence_range " +
+                "CHECK (confidence BETWEEN 0 AND 1)");
+
+            // Sweep: enum-stored-as-string CHECK constraints. Every column
+            // declared via EF's HasConversion<string>() pattern stores the
+            // C# enum's ToString() form. CHECKs codify the valid set at the
+            // DB level so raw-SQL writes / data-fixup scripts can't drift
+            // from the application's enum universe.
+
+            // CandidateSource: WebsiteCrawl, LLMSuggested, UserAdded.
+            // Applies to .source columns on every discovery-candidate table.
+            const string candidateSourceValues = "('WebsiteCrawl','LLMSuggested','UserAdded')";
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_profiles ADD CONSTRAINT chk_brand_profiles_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE audiences ADD CONSTRAINT chk_audiences_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE markets ADD CONSTRAINT chk_markets_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE products ADD CONSTRAINT chk_products_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE topics ADD CONSTRAINT chk_topics_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE competitors ADD CONSTRAINT chk_competitors_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE trust_signals ADD CONSTRAINT chk_trust_signals_source_enum " +
+                "CHECK (source IN " + candidateSourceValues + ")");
+
+            // Tracker lifecycle.
+            migrationBuilder.Sql(
+                "ALTER TABLE tracker_configurations ADD CONSTRAINT chk_tracker_configurations_cadence_enum " +
+                "CHECK (cadence IN ('OnDemand','Daily','Weekly'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE tracker_configurations ADD CONSTRAINT chk_tracker_configurations_status_enum " +
+                "CHECK (status IN ('Draft','Active','Paused','Archived'))");
+
+            // Prompt lifecycle.
+            migrationBuilder.Sql(
+                "ALTER TABLE prompts ADD CONSTRAINT chk_prompts_status_enum " +
+                "CHECK (status IN ('Draft','Active','Paused','Archived'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE prompts ADD CONSTRAINT chk_prompts_source_enum " +
+                "CHECK (source IN ('Generated','UserAdded'))");
+
+            // Domain-specific type enums.
+            migrationBuilder.Sql(
+                "ALTER TABLE products ADD CONSTRAINT chk_products_product_type_enum " +
+                "CHECK (product_type IN ('Product','Service','Feature','Solution','Tool','Resource'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE trust_signals ADD CONSTRAINT chk_trust_signals_signal_type_enum " +
+                "CHECK (signal_type IN ('AwardsAndRecognitions','CertificationsAndAccreditations'," +
+                "'PressAndMediaMentions','TestimonialsAndReviews','ExpertEndorsements'," +
+                "'CaseStudiesAndSuccessMetrics','ClientAndPartnerLogos'))");
+
+            // Citation + source classification.
+            migrationBuilder.Sql(
+                "ALTER TABLE citations ADD CONSTRAINT chk_citations_citation_type_enum " +
+                "CHECK (citation_type IN ('ExplicitUrl','MentionedSource'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_source_classifications ADD CONSTRAINT chk_brand_source_classifications_source_type_enum " +
+                "CHECK (source_type IN ('Owned','Competitor','Corporate','UGC','Editorial','ReviewSite'," +
+                "'Social','Institutional','Reference','Marketplace','Other','Unknown'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_source_classifications ADD CONSTRAINT chk_brand_source_classifications_provenance_source_enum " +
+                "CHECK (provenance_source IN ('RuleBased','LLMClassified','UserCorrected'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE brand_source_classifications ADD CONSTRAINT chk_brand_source_classifications_status_enum " +
+                "CHECK (status IN ('Active','UserCorrected','Unknown'))");
+
+            // Run / job lifecycle.
+            migrationBuilder.Sql(
+                "ALTER TABLE discovery_runs ADD CONSTRAINT chk_discovery_runs_status_enum " +
+                "CHECK (status IN ('Pending','Crawling','Extracting','AwaitingConfirmation','Completed','Failed'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE scan_runs ADD CONSTRAINT chk_scan_runs_trigger_type_enum " +
+                "CHECK (trigger_type IN ('Manual','Scheduled','Retry'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE scan_runs ADD CONSTRAINT chk_scan_runs_status_enum " +
+                "CHECK (status IN ('Pending','Running','Completed','Failed'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE prompt_runs ADD CONSTRAINT chk_prompt_runs_status_enum " +
+                "CHECK (status IN ('Pending','Running','Completed','Failed'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE analysis_jobs ADD CONSTRAINT chk_analysis_jobs_status_enum " +
+                "CHECK (status IN ('Queued','Running','Completed','Failed'))");
+
+            // Sentiment / strength values shared across answer_signals + mentions.
+            const string sentimentValues = "('Positive','Neutral','Negative','Mixed','Unknown')";
+            const string strengthValues = "('Strong','Moderate','Weak','NotRecommended','Unknown')";
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_sentiment_enum " +
+                "CHECK (brand_sentiment IN " + sentimentValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE answer_signals ADD CONSTRAINT chk_answer_signals_brand_recommendation_strength_enum " +
+                "CHECK (brand_recommendation_strength IN " + strengthValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_sentiment_enum " +
+                "CHECK (sentiment IN " + sentimentValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_recommendation_strength_enum " +
+                "CHECK (recommendation_strength IN " + strengthValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_topic_recommendations ADD CONSTRAINT chk_mention_topic_recommendations_strength_enum " +
+                "CHECK (strength IN " + strengthValues + ")");
+
+            // Polymorphic entity-type discriminators.
+            const string mentionEntityValues = "('Brand','Competitor','Product')";
+            migrationBuilder.Sql(
+                "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_entity_type_enum " +
+                "CHECK (entity_type IN " + mentionEntityValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_candidates ADD CONSTRAINT chk_mention_candidates_claimed_entity_type_enum " +
+                "CHECK (claimed_entity_type IN " + mentionEntityValues + ")");
+            migrationBuilder.Sql(
+                "ALTER TABLE trend_points ADD CONSTRAINT chk_trend_points_entity_type_enum " +
+                "CHECK (entity_type IN ('Brand','Competitor'))");
+
+            // Mention-side classifiers.
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_attributes ADD CONSTRAINT chk_mention_attributes_polarity_enum " +
+                "CHECK (polarity IN ('Positive','Neutral','Negative'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_recommendation_contexts ADD CONSTRAINT chk_mention_recommendation_contexts_context_type_enum " +
+                "CHECK (context_type IN ('RecommendedFor','WithCaveats'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE mention_risk_flags ADD CONSTRAINT chk_mention_risk_flags_severity_enum " +
+                "CHECK (severity IN ('Low','Medium','High'))");
+
+            // Factual claim review pipeline.
+            migrationBuilder.Sql(
+                "ALTER TABLE factual_claims ADD CONSTRAINT chk_factual_claims_verifiability_enum " +
+                "CHECK (verifiability IN ('Verifiable','Subjective','Unverifiable'))");
+            migrationBuilder.Sql(
+                "ALTER TABLE factual_claims ADD CONSTRAINT chk_factual_claims_review_status_enum " +
+                "CHECK (review_status IN ('Pending','Verified','Disputed'))");
+
+            // Scan metric scope.
+            migrationBuilder.Sql(
+                "ALTER TABLE scan_metrics ADD CONSTRAINT chk_scan_metrics_scope_enum " +
+                "CHECK (scope IN ('Overall','Platform','Topic','Lens','Competitor'))");
         }
 
         /// <inheritdoc />

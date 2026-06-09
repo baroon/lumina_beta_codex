@@ -9,10 +9,14 @@ public class PromptProductConfiguration : IEntityTypeConfiguration<PromptProduct
     public void Configure(EntityTypeBuilder<PromptProduct> builder)
     {
         builder.ToTable("prompt_products");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.PromptId, x.ProductId });
         builder.Property(x => x.PromptId).HasColumnName("prompt_id");
         builder.Property(x => x.ProductId).HasColumnName("product_id");
-        builder.HasIndex(x => x.PromptId);
+        builder.HasIndex(x => x.ProductId);
+
+        builder.HasOne<Product>()
+            .WithMany()
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

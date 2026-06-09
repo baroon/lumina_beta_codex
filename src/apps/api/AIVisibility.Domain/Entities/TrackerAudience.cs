@@ -2,7 +2,6 @@ namespace AIVisibility.Domain.Entities;
 
 public class TrackerAudience
 {
-    public Guid Id { get; set; }
     public Guid TrackerConfigurationId { get; set; }
     public Guid AudienceId { get; set; }
 

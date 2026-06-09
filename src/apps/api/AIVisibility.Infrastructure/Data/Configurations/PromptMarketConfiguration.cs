@@ -9,10 +9,14 @@ public class PromptMarketConfiguration : IEntityTypeConfiguration<PromptMarket>
     public void Configure(EntityTypeBuilder<PromptMarket> builder)
     {
         builder.ToTable("prompt_markets");
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).HasColumnName("id");
+        builder.HasKey(x => new { x.PromptId, x.MarketId });
         builder.Property(x => x.PromptId).HasColumnName("prompt_id");
         builder.Property(x => x.MarketId).HasColumnName("market_id");
-        builder.HasIndex(x => x.PromptId);
+        builder.HasIndex(x => x.MarketId);
+
+        builder.HasOne<Market>()
+            .WithMany()
+            .HasForeignKey(x => x.MarketId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

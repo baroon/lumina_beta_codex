@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using AIVisibility.Infrastructure.Crawling;
@@ -28,13 +27,12 @@ public class HeuristicContentExtractorTests
                 Url = "https://example.com/",
                 Title = "Test Brand - Leading SaaS Platform",
                 MetaDescription = "Test Brand is a leading software platform for marketing teams",
-                HeadingsJson = JsonSerializer.Serialize(new[]
+                Headings = new List<Heading>
                 {
-                    new { tag = "h1", text = "The All-in-One Marketing Platform" },
-                    new { tag = "h2", text = "Analytics Dashboard" },
-                    new { tag = "h2", text = "Campaign Manager" }
-                }),
-                StatusCode = 200
+                    new("h1", "The All-in-One Marketing Platform"),
+                    new("h2", "Analytics Dashboard"),
+                    new("h2", "Campaign Manager"),
+                },
             }
         };
 
@@ -63,14 +61,13 @@ public class HeuristicContentExtractorTests
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/products",
                 Title = "Our Products",
-                HeadingsJson = JsonSerializer.Serialize(new[]
+                Headings = new List<Heading>
                 {
-                    new { tag = "h1", text = "Our Products" },
-                    new { tag = "h2", text = "Enterprise Analytics" },
-                    new { tag = "h2", text = "Team Collaboration Suite" },
-                    new { tag = "h3", text = "Real-time Reporting Engine" }
-                }),
-                StatusCode = 200
+                    new("h1", "Our Products"),
+                    new("h2", "Enterprise Analytics"),
+                    new("h2", "Team Collaboration Suite"),
+                    new("h3", "Real-time Reporting Engine"),
+                },
             }
         };
 
@@ -98,16 +95,12 @@ public class HeuristicContentExtractorTests
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/testimonials",
                 Title = "Testimonials",
-                HeadingsJson = "[]",
-                StatusCode = 200
             },
             new()
             {
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/case-studies",
                 Title = "Case Studies",
-                HeadingsJson = "[]",
-                StatusCode = 200
             }
         };
 
@@ -137,8 +130,6 @@ public class HeuristicContentExtractorTests
                 Id = Guid.NewGuid(),
                 Url = "https://example.xyz/",
                 Title = "Test Brand",
-                HeadingsJson = "[]",
-                StatusCode = 200
             }
         };
 
@@ -167,12 +158,11 @@ public class HeuristicContentExtractorTests
                 Id = Guid.NewGuid(),
                 Url = "https://example.com/",
                 Title = "Test Brand",
-                HeadingsJson = JsonSerializer.Serialize(new[]
+                Headings = new List<Heading>
                 {
-                    new { tag = "h1", text = "Digital Marketing Automation" },
-                    new { tag = "h2", text = "Email Campaign Optimization" }
-                }),
-                StatusCode = 200
+                    new("h1", "Digital Marketing Automation"),
+                    new("h2", "Email Campaign Optimization"),
+                },
             }
         };
 

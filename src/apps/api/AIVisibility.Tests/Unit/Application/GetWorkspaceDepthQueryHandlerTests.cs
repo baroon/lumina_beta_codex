@@ -73,8 +73,8 @@ public class GetWorkspaceDepthQueryHandlerTests
         var acmePrompt = new Prompt { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, PromptText = "Best architecture firms in NYC?", LensId = lens.Id, Status = PromptStatus.Active, Source = PromptSource.Generated, CreatedAt = now, UpdatedAt = now };
         var betaPrompt = new Prompt { Id = Guid.NewGuid(), TrackerConfigurationId = betaTracker.Id, PromptText = "Top firms for healthcare architecture?", LensId = lens.Id, Status = PromptStatus.Active, Source = PromptSource.Generated, CreatedAt = now, UpdatedAt = now };
         ctx.Prompts.AddRange(acmePrompt, betaPrompt);
-        ctx.PromptTopics.Add(new PromptTopic { Id = Guid.NewGuid(), PromptId = acmePrompt.Id, TopicId = acmeArchitectureTopic.Id });
-        ctx.PromptTopics.Add(new PromptTopic { Id = Guid.NewGuid(), PromptId = betaPrompt.Id, TopicId = betaArchitectureTopic.Id });
+        ctx.PromptTopics.Add(new PromptTopic { PromptId = acmePrompt.Id, TopicId = acmeArchitectureTopic.Id });
+        ctx.PromptTopics.Add(new PromptTopic { PromptId = betaPrompt.Id, TopicId = betaArchitectureTopic.Id });
 
         var acmeScan = new ScanRun { Id = Guid.NewGuid(), TrackerConfigurationId = acmeTracker.Id, TrackerConfiguration = acmeTracker, TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed, StartedAt = now.AddDays(-2), CompletedAt = now.AddDays(-2) };
         var betaScan = new ScanRun { Id = Guid.NewGuid(), TrackerConfigurationId = betaTracker.Id, TrackerConfiguration = betaTracker, TriggerType = ScanTriggerType.Manual, Status = ScanRunStatus.Completed, StartedAt = now.AddDays(-1), CompletedAt = now.AddDays(-1) };

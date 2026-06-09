@@ -25,6 +25,7 @@ public class CitationConfiguration : IEntityTypeConfiguration<Citation>
             .HasConversion<string>().HasMaxLength(50);
         builder.Property(c => c.CitationPosition).HasColumnName("citation_position");
         builder.Property(c => c.CitationText).HasColumnName("citation_text").HasMaxLength(2000);
+        builder.Property(c => c.EvidenceSnippet).HasColumnName("evidence_snippet").HasMaxLength(500);
 
         builder.Property(c => c.ConfidenceScore).HasColumnName("confidence_score");
         builder.Property(c => c.CreatedAt).HasColumnName("created_at");

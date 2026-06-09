@@ -100,6 +100,11 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 BrandId = brand.Id,
                 DiscoveryRunId = runId,
                 Name = p.Name,
+                Aliases = (p.Aliases ?? new List<string>())
+                    .Select(a => a.Trim())
+                    .Where(a => a.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
                 Description = p.Description,
                 Confidence = p.Confidence,
                 Source = ParseSource(p.Source),
@@ -131,7 +136,7 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Name = m.Name,
                 Confidence = m.Confidence,
                 Source = ParseSource(m.Source),
-                CountryCode = Meta(m, "countryCode"),
+                CountryCode = NormalizeCountryCode(Meta(m, "countryCode")),
                 CreatedAt = now,
                 UpdatedAt = now,
             });
@@ -156,6 +161,11 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 BrandId = brand.Id,
                 DiscoveryRunId = runId,
                 Name = c.Name,
+                Aliases = (c.Aliases ?? new List<string>())
+                    .Select(a => a.Trim())
+                    .Where(a => a.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
                 Description = c.Description,
                 Confidence = c.Confidence,
                 Source = ParseSource(c.Source),
@@ -180,7 +190,9 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
             });
 
         latestRun.Status = DiscoveryStatus.Completed;
-        latestRun.CompletedAt = DateTime.UtcNow;
+        var confirmedNow = DateTime.UtcNow;
+        latestRun.ConfirmedAt = confirmedNow;
+        latestRun.CompletedAt = confirmedNow;
         brand.Aliases = (request.Aliases ?? new List<string>())
             .Select(a => a.Trim())
             .Where(a => a.Length > 0)
@@ -207,4 +219,11 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
 
     private static bool IsValidEnum<T>(string? value) where T : struct, Enum =>
         !string.IsNullOrWhiteSpace(value) && Enum.TryParse<T>(value, ignoreCase: true, out _);
+
+    private static string? NormalizeCountryCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim().ToUpperInvariant();
+        return trimmed.Length == 2 && trimmed.All(char.IsLetter) ? trimmed : null;
+    }
 }
