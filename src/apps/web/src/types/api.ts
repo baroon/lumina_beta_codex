@@ -231,6 +231,55 @@ export interface WorkspacePromptsDto {
   prompts: WorkspacePromptRowDto[];
 }
 
+/** Domain-level citation source row from GET /api/sources/domains. */
+export interface WorkspaceDomainRowDto {
+  sourceId: string;
+  sourceName: string;
+  /** Canonical domain (lowercase, "www." stripped). Null when the citation was a mentioned source without URL. */
+  normalizedDomain: string | null;
+  /** Dominant SourceType across the workspace's brand classifications. "Unknown" when no classification exists. */
+  sourceType: string;
+  /** Curated authority score, 0–100. Null when the domain isn't on the curated list. */
+  authorityScore: number | null;
+  /** Total citations across in-window scans. */
+  citationCount: number;
+  /** Distinct ScanRuns in window that cited this Source. */
+  retrievedInScans: number;
+  /** Most recent ScanRun.CompletedAt that cited this Source. ISO; null when no scans. */
+  lastSeenAt: string | null;
+}
+
+export interface WorkspaceDomainsDto {
+  workspaceId: string;
+  from: string | null;
+  to: string;
+  domains: WorkspaceDomainRowDto[];
+}
+
+/** URL-level citation source row from GET /api/sources/urls. */
+export interface WorkspaceUrlRowDto {
+  sourceUrlId: string;
+  url: string;
+  normalizedUrl: string;
+  /** Page title scraped at extraction time. Null when extraction couldn't pull one. */
+  title: string | null;
+  sourceId: string;
+  sourceName: string;
+  normalizedDomain: string | null;
+  /** Dominant SourceType across the workspace's brand classifications. "Unknown" when none exists. */
+  sourceType: string;
+  citationCount: number;
+  retrievedInScans: number;
+  lastSeenAt: string | null;
+}
+
+export interface WorkspaceUrlsDto {
+  workspaceId: string;
+  from: string | null;
+  to: string;
+  urls: WorkspaceUrlRowDto[];
+}
+
 export interface AddCustomPromptRequest {
   text: string;
   lensId: string;
