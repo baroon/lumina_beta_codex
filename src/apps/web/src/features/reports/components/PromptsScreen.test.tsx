@@ -34,6 +34,10 @@ function row(overrides: Partial<WorkspacePromptRowDto>): WorkspacePromptRowDto {
     scanCount: 3,
     lastScanAt: "2026-06-09T08:00:00Z",
     platformCodes: ["openai"],
+    visibilityRate: 0.5,
+    brandMentionCount: 4,
+    dominantSentiment: "Positive",
+    averageFirstMentionPosition: 0.35,
     ...overrides,
   };
 }
@@ -101,7 +105,7 @@ describe("PromptsScreen", () => {
     expect(screen.getByText(/no active prompts in scope yet/i)).toBeInTheDocument();
   });
 
-  it("renders one row per prompt with lens, topics, tracker, and last-scan", () => {
+  it("renders one row per prompt with lens, topics, tracker, and activity", () => {
     promptsState = {
       data: payload([
         row({
@@ -112,6 +116,7 @@ describe("PromptsScreen", () => {
           trackerName: "Acme · US",
           brandName: "Acme",
           scanCount: 3,
+          platformCodes: ["openai"],
         }),
       ]),
       isLoading: false,
@@ -124,7 +129,50 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("Resume builders")).toBeInTheDocument();
     expect(within(table).getByText("Acme")).toBeInTheDocument();
     expect(within(table).getByText("Acme · US")).toBeInTheDocument();
-    expect(within(table).getByText("3")).toBeInTheDocument();
+    expect(within(table).getByText(/3 scans · openai/)).toBeInTheDocument();
+  });
+
+  it("renders analytical columns (visibility, sentiment, mentions)", () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "p1",
+          visibilityRate: 0.75,
+          brandMentionCount: 6,
+          dominantSentiment: "Positive",
+          averageFirstMentionPosition: 0.22,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("75%")).toBeInTheDocument();
+    expect(within(table).getByText("pos 0.22")).toBeInTheDocument();
+    expect(within(table).getByText("Positive")).toBeInTheDocument();
+    expect(within(table).getByText("6")).toBeInTheDocument();
+  });
+
+  it("renders em-dash fallbacks when analytical columns are null", () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "p1",
+          visibilityRate: null,
+          brandMentionCount: 0,
+          dominantSentiment: null,
+          averageFirstMentionPosition: null,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    const table = screen.getByRole("table");
+    // Visibility, sentiment, and mentions all collapse to "—" when the
+    // prompt has no in-window answers.
+    expect(within(table).getAllByText("—").length).toBeGreaterThanOrEqual(3);
   });
 
   it("filters the table when the user types in the search input", async () => {

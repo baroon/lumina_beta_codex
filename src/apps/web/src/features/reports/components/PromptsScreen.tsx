@@ -13,11 +13,10 @@ import { cn } from "@/lib/utils";
 import type { WorkspacePromptRowDto } from "@/types/api";
 
 /**
- * Workspace-wide prompt inventory at /prompts. v1: lists every active
- * prompt across selected trackers with scan-count + last-scan + platform
- * coverage. Search filters by prompt text + lens name + topic name.
- * Analytical columns (visibility / sentiment / position / mention count)
- * land when the BE adds the heavier per-prompt aggregations.
+ * Workspace-wide prompt rollup at /prompts. Lists every active prompt
+ * across selected trackers with analytical columns (visibility, sentiment,
+ * mention count) alongside activity columns (last scan + platforms).
+ * Search filters by prompt text, lens, topic, tracker, or brand.
  */
 export function PromptsScreen() {
   const { scope } = useTrackerScope();
@@ -42,13 +41,13 @@ export function PromptsScreen() {
     <div className="space-y-5">
       <PageHeader
         title="Prompts"
-        description="Active prompts across the selected trackers, with scan activity and platform coverage."
+        description="Active prompts across the selected trackers, with visibility, sentiment, and scan activity."
       />
 
       <Card>
         <CardContent className="space-y-3 p-4">
           <SectionHeader
-            title="Prompt inventory"
+            title="Prompt rollup"
             meta={
               <span className="text-xs text-neutral-500">
                 {rows.length} of {prompts.data.prompts.length} prompts
@@ -110,9 +109,10 @@ function PromptsTable({ rows }: { rows: readonly WorkspacePromptRowDto[] }) {
             <Th>Prompt</Th>
             <Th>Lens · Topics</Th>
             <Th>Tracker</Th>
-            <Th className="text-right">Scans</Th>
-            <Th>Platforms</Th>
-            <Th>Last scan</Th>
+            <Th className="text-right">Visibility</Th>
+            <Th>Sentiment</Th>
+            <Th className="text-right">Mentions</Th>
+            <Th>Activity</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
@@ -152,29 +152,74 @@ function PromptRow({ row }: { row: WorkspacePromptRowDto }) {
           <span className="text-[10px] text-neutral-500">{row.trackerName}</span>
         </div>
       </Td>
-      <Td className="text-right tabular-nums">{row.scanCount}</Td>
-      <Td>
-        <div className="flex flex-wrap gap-1">
-          {row.platformCodes.length === 0 ? (
-            <span className="text-neutral-400">—</span>
-          ) : (
-            row.platformCodes.map((p) => (
-              <Badge key={p} variant="outline" className="text-[10px] lowercase">
-                {p}
-              </Badge>
-            ))
-          )}
-        </div>
+      <Td className="text-right tabular-nums">
+        <VisibilityCell rate={row.visibilityRate} avgPosition={row.averageFirstMentionPosition} />
       </Td>
       <Td>
-        {row.lastScanAt ? (
-          formatRelativeDate(row.lastScanAt)
+        {row.dominantSentiment ? (
+          <Badge variant={sentimentVariant(row.dominantSentiment)} className="text-[10px]">
+            {row.dominantSentiment}
+          </Badge>
         ) : (
-          <span className="text-neutral-400">never</span>
+          <span className="text-neutral-400">—</span>
         )}
+      </Td>
+      <Td className="text-right tabular-nums">
+        {row.brandMentionCount === 0 ? (
+          <span className="text-neutral-400">—</span>
+        ) : (
+          <span className="text-neutral-900">{row.brandMentionCount}</span>
+        )}
+      </Td>
+      <Td>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-neutral-700">
+            {row.lastScanAt ? (
+              formatRelativeDate(row.lastScanAt)
+            ) : (
+              <span className="text-neutral-400">never</span>
+            )}
+          </span>
+          <span className="text-[10px] text-neutral-500">
+            {row.scanCount} {row.scanCount === 1 ? "scan" : "scans"}
+            {row.platformCodes.length > 0 && ` · ${row.platformCodes.join(", ")}`}
+          </span>
+        </div>
       </Td>
     </tr>
   );
+}
+
+function VisibilityCell({
+  rate,
+  avgPosition,
+}: {
+  rate: number | null;
+  avgPosition: number | null;
+}) {
+  if (rate == null) return <span className="text-neutral-400">—</span>;
+  return (
+    <div className="flex flex-col items-end leading-tight">
+      <span className="text-neutral-900">{Math.round(rate * 100)}%</span>
+      {avgPosition != null && (
+        <span className="text-[10px] text-neutral-500">pos {avgPosition.toFixed(2)}</span>
+      )}
+    </div>
+  );
+}
+
+function sentimentVariant(
+  value: string,
+): "default" | "secondary" | "outline" | "success" | "warning" {
+  switch (value) {
+    case "Positive":
+      return "success";
+    case "Negative":
+    case "Mixed":
+      return "warning";
+    default:
+      return "secondary";
+  }
 }
 
 function Th({ children, className }: { children: React.ReactNode; className?: string }) {

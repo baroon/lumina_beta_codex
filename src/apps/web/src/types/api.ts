@@ -220,6 +220,18 @@ export interface WorkspacePromptRowDto {
   lastScanAt: string | null;
   /** Distinct platform codes the prompt ran on (e.g. "openai"). */
   platformCodes: string[];
+  /**
+   * Fraction of in-window AI answers to this prompt that contained at
+   * least one mention of the prompt's tracked brand, [0..1]. Null when
+   * there are no in-window answers (FE renders "—" rather than 0%).
+   */
+  visibilityRate: number | null;
+  /** Total tracked-brand mention occurrences across in-window answers. */
+  brandMentionCount: number;
+  /** Dominant Sentiment enum ("Positive" | "Neutral" | "Negative" | "Mixed" | "Unknown") across brand mentions; null when no mentions. */
+  dominantSentiment: string | null;
+  /** Average <c>FirstMentionPosition</c> [0..1]; lower = more prominent. Null when no mentions. */
+  averageFirstMentionPosition: number | null;
 }
 
 export interface WorkspacePromptsDto {

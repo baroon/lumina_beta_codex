@@ -34,7 +34,8 @@ public class GetWorkspacePromptsQueryHandlerTests
         Guid BetaId, Guid BetaTrackerId,
         Guid PromptAcmeActiveId, Guid PromptAcmeDraftId, Guid PromptBetaActiveId,
         Guid LensId, Guid TopicId,
-        Guid PlatformOpenAiId, Guid PlatformClaudeId);
+        Guid PlatformOpenAiId, Guid PlatformClaudeId,
+        Guid AcmeAnswerOpenAiId, Guid AcmeAnswerClaudeId, Guid BetaAnswerOpenAiId);
 
     /// <summary>
     /// Two tracked brands (Acme, Beta), one tracker each. Acme has two
@@ -106,13 +107,43 @@ public class GetWorkspacePromptsQueryHandlerTests
 
         var now = DateTime.UtcNow;
 
-        void SeedRun(Prompt p, AIPlatform platform, DateTime startedAt, DateTime completedAt, ScanRun scan)
+        PromptRun SeedRun(Prompt p, AIPlatform platform, DateTime startedAt, DateTime completedAt, ScanRun scan)
         {
-            ctx.PromptRuns.Add(new PromptRun
+            var run = new PromptRun
             {
                 Id = Guid.NewGuid(), ScanRunId = scan.Id, PromptId = p.Id,
                 AIPlatformId = platform.Id, Status = PromptRunStatus.Completed,
                 StartedAt = startedAt, CompletedAt = completedAt,
+            };
+            ctx.PromptRuns.Add(run);
+            return run;
+        }
+
+        AIAnswer SeedAnswer(PromptRun run, DateTime createdAt)
+        {
+            var answer = new AIAnswer
+            {
+                Id = Guid.NewGuid(), PromptRunId = run.Id,
+                AnswerText = string.Empty, RawResponse = string.Empty,
+                CreatedAt = createdAt,
+            };
+            ctx.AIAnswers.Add(answer);
+            return answer;
+        }
+
+        void SeedMention(AIAnswer answer, Guid brandId, Sentiment sentiment, int count, double position)
+        {
+            ctx.Mentions.Add(new Mention
+            {
+                Id = Guid.NewGuid(), AIAnswerId = answer.Id,
+                EntityType = MentionEntityType.Brand, EntityId = brandId,
+                NormalizedName = string.Empty, IsRecommended = false,
+                RecommendationStrength = RecommendationStrength.Unknown,
+                RecommendationScore = 0.0,
+                Sentiment = sentiment, SentimentScore = 0.0,
+                ConfidenceScore = 1.0, EvidenceSnippet = string.Empty,
+                MentionCount = count, FirstMentionPosition = position,
+                CreatedAt = DateTime.UtcNow,
             });
         }
 
@@ -124,9 +155,25 @@ public class GetWorkspacePromptsQueryHandlerTests
             StartedAt = now.AddDays(-1), CompletedAt = now.AddDays(-1).AddMinutes(5),
         };
         ctx.ScanRuns.Add(acmeScanRecent);
-        SeedRun(promptAcmeActive, openai, now.AddDays(-1), now.AddDays(-1).AddMinutes(5), acmeScanRecent);
-        SeedRun(promptAcmeActive, claude, now.AddDays(-1), now.AddDays(-1).AddMinutes(5), acmeScanRecent);
+        var acmeRunOpenAi = SeedRun(promptAcmeActive, openai, now.AddDays(-1), now.AddDays(-1).AddMinutes(5), acmeScanRecent);
+        var acmeRunClaude = SeedRun(promptAcmeActive, claude, now.AddDays(-1), now.AddDays(-1).AddMinutes(5), acmeScanRecent);
         SeedRun(promptAcmeDraft, openai, now.AddDays(-1), now.AddDays(-1).AddMinutes(5), acmeScanRecent);
+
+        // Answers + mentions for Acme. Two answers in window.
+        //   A1 (openai): Acme/Positive (count 1, pos 0.2) + Beta-brand/Negative
+        //                (count 5, pos 0.1) — the Beta mention is contamination
+        //                we expect the handler to filter out for Acme's row.
+        //   A2 (claude): Acme/Neutral  (count 2, pos 0.5)
+        // Both answers contain an Acme mention → visibility = 2/2 = 1.0.
+        // MentionCount = 1 + 2 = 3 (Beta excluded).
+        // Sentiment ties 1-1 between Positive/Neutral → enum-ordinal tie-break
+        // picks Positive (ordinal 0 < Neutral ordinal 1).
+        // AvgPosition = (0.2 + 0.5) / 2 = 0.35.
+        var acmeAnswerOpenAi = SeedAnswer(acmeRunOpenAi, now.AddDays(-1));
+        var acmeAnswerClaude = SeedAnswer(acmeRunClaude, now.AddDays(-1));
+        SeedMention(acmeAnswerOpenAi, acme.Id, Sentiment.Positive, count: 1, position: 0.2);
+        SeedMention(acmeAnswerOpenAi, beta.Id, Sentiment.Negative, count: 5, position: 0.1);
+        SeedMention(acmeAnswerClaude, acme.Id, Sentiment.Neutral, count: 2, position: 0.5);
 
         // Acme — old scan that lands outside the default 30-day test window.
         var acmeScanOld = new ScanRun
@@ -146,13 +193,20 @@ public class GetWorkspacePromptsQueryHandlerTests
             StartedAt = now.AddDays(-2), CompletedAt = now.AddDays(-2).AddMinutes(10),
         };
         ctx.ScanRuns.Add(betaScanRecent);
-        SeedRun(promptBetaActive, openai, now.AddDays(-2), now.AddDays(-2).AddMinutes(10), betaScanRecent);
+        var betaRunOpenAi = SeedRun(promptBetaActive, openai, now.AddDays(-2), now.AddDays(-2).AddMinutes(10), betaScanRecent);
+
+        // Beta: single in-window answer with one Beta-brand Neutral mention
+        // (count 2, pos 0.5). Visibility 1.0, mention count 2, sentiment
+        // "Neutral", avg pos 0.5.
+        var betaAnswerOpenAi = SeedAnswer(betaRunOpenAi, now.AddDays(-2));
+        SeedMention(betaAnswerOpenAi, beta.Id, Sentiment.Neutral, count: 2, position: 0.5);
 
         ctx.SaveChanges();
         return new Seed(
             acme.Id, acmeTracker.Id, beta.Id, betaTracker.Id,
             promptAcmeActive.Id, promptAcmeDraft.Id, promptBetaActive.Id,
-            lens.Id, topic.Id, openai.Id, claude.Id);
+            lens.Id, topic.Id, openai.Id, claude.Id,
+            acmeAnswerOpenAi.Id, acmeAnswerClaude.Id, betaAnswerOpenAi.Id);
     }
 
     [Fact]
@@ -256,6 +310,73 @@ public class GetWorkspacePromptsQueryHandlerTests
         beta.ScanCount.Should().Be(0);
         beta.LastScanAt.Should().BeNull();
         beta.PlatformCodes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ComputesAnalyticalColumns_FromInWindowAnswerMentions()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddDays(-30), null, null),
+            CancellationToken.None);
+
+        var acme = result.Prompts.Single(p => p.PromptId == seed.PromptAcmeActiveId);
+        // Both in-window answers contain an Acme mention → 2/2 = 1.0.
+        acme.VisibilityRate.Should().Be(1.0);
+        // Sum of MentionCount across Acme mentions (1 + 2). Beta mention
+        // on A1 is filtered out by the prompt-brand intersection.
+        acme.BrandMentionCount.Should().Be(3);
+        // 1 Positive + 1 Neutral → tie, broken by enum ordinal (Positive=0).
+        acme.DominantSentiment.Should().Be("Positive");
+        // (0.2 + 0.5) / 2.
+        acme.AverageFirstMentionPosition.Should().BeApproximately(0.35, 1e-9);
+
+        var beta = result.Prompts.Single(p => p.PromptId == seed.PromptBetaActiveId);
+        beta.VisibilityRate.Should().Be(1.0);
+        beta.BrandMentionCount.Should().Be(2);
+        beta.DominantSentiment.Should().Be("Neutral");
+        beta.AverageFirstMentionPosition.Should().BeApproximately(0.5, 1e-9);
+    }
+
+    [Fact]
+    public async Task AnalyticalColumns_AreNull_WhenNoAnswersInWindow()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        // 12-hour window drops Beta's -2d answer. The prompt still surfaces
+        // (Active), but visibility / sentiment / position become null and
+        // mention count 0 — the "—" fallback the FE renders.
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddHours(-12), null, null),
+            CancellationToken.None);
+
+        var beta = result.Prompts.Single(p => p.PromptId == seed.PromptBetaActiveId);
+        beta.VisibilityRate.Should().BeNull();
+        beta.BrandMentionCount.Should().Be(0);
+        beta.DominantSentiment.Should().BeNull();
+        beta.AverageFirstMentionPosition.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CrossBrandMention_OnSameAnswer_DoesNotContaminatePromptRow()
+    {
+        // Acme's openai answer contains a Beta-brand mention (count 5)
+        // alongside the Acme mention (count 1). Acme's row should reflect
+        // only the Acme mention (count 1 + Acme/claude's count 2 = 3).
+        // The contamination filter is what keeps BrandMentionCount at 3
+        // rather than 8.
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddDays(-30), null, null),
+            CancellationToken.None);
+
+        var acme = result.Prompts.Single(p => p.PromptId == seed.PromptAcmeActiveId);
+        acme.BrandMentionCount.Should().Be(3);
     }
 
     [Fact]
