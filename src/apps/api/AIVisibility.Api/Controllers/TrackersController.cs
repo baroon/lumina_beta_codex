@@ -29,12 +29,25 @@ public class TrackersController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(CreateTrackerResult), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(
         Guid brandId,
         [FromBody] CreateTrackerRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(new CreateTrackerCommand(brandId, request.Name), cancellationToken);
-        return CreatedAtAction(nameof(GetSetupPreview), new { brandId }, result);
+        try
+        {
+            var result = await _mediator.Send(new CreateTrackerCommand(brandId, request.Name), cancellationToken);
+            return CreatedAtAction(nameof(GetSetupPreview), new { brandId }, result);
+        }
+        catch (DuplicateTrackerNameException ex)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Duplicate tracker name",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
     }
 }

@@ -181,4 +181,45 @@ public class CreateTrackerCommandHandlerTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [Fact]
+    public async Task Handle_AppendsSuffix_WhenAutoNameCollides()
+    {
+        using var ctx = NewContext();
+        var brand = SeedBrandWithDiscovery(ctx);
+        var handler = new CreateTrackerCommandHandler(ctx);
+
+        // First create gets the base name.
+        var first = await handler.Handle(new CreateTrackerCommand(brand.Id), CancellationToken.None);
+        first.Name.Should().Be("United States SaaS Visibility Tracker");
+
+        // Second create on the same brand should disambiguate.
+        var second = await handler.Handle(new CreateTrackerCommand(brand.Id), CancellationToken.None);
+        second.Name.Should().Be("United States SaaS Visibility Tracker (2)");
+
+        // Third bumps to (3).
+        var third = await handler.Handle(new CreateTrackerCommand(brand.Id), CancellationToken.None);
+        third.Name.Should().Be("United States SaaS Visibility Tracker (3)");
+
+        // All three are persisted with IsNameUserEdited=false.
+        var trackers = await ctx.TrackerConfigurations.OrderBy(t => t.CreatedAt).ToListAsync();
+        trackers.Should().AllSatisfy(t => t.IsNameUserEdited.Should().BeFalse());
+    }
+
+    [Fact]
+    public async Task Handle_Throws_WhenUserNameCollides()
+    {
+        using var ctx = NewContext();
+        var brand = SeedBrandWithDiscovery(ctx);
+        var handler = new CreateTrackerCommandHandler(ctx);
+
+        await handler.Handle(new CreateTrackerCommand(brand.Id, "My Custom Tracker"), CancellationToken.None);
+
+        var act = () => handler.Handle(
+            new CreateTrackerCommand(brand.Id, "my custom tracker"),  // case-insensitive
+            CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<DuplicateTrackerNameException>();
+        ex.Which.TrackerName.Should().Be("my custom tracker");
+    }
 }

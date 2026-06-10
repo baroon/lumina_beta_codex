@@ -28,10 +28,18 @@ public class GetTrackerSetupPreviewQueryHandler
         var competitorCount = await _db.Competitors.CountAsync(c => c.BrandId == brand.Id, cancellationToken);
         var audienceCount = await _db.Audiences.CountAsync(a => a.BrandId == brand.Id, cancellationToken);
         var checkCount = await _db.Lenses.CountAsync(cancellationToken);
+        var existingNames = await _db.TrackerConfigurations
+            .Where(t => t.BrandId == brand.Id)
+            .Select(t => t.Name)
+            .ToListAsync(cancellationToken);
 
         var marketName = markets.FirstOrDefault()?.Name;
         var category = brand.BrandProfile?.Category;
-        var suggestedName = TrackerNaming.Generate(marketName, category, products.FirstOrDefault()?.Name);
+        var suggestedName = TrackerNaming.GenerateUnique(
+            marketName,
+            category,
+            products.FirstOrDefault()?.Name,
+            existingNames);
 
         return new TrackerSetupPreviewDto(
             brand.Id,

@@ -203,7 +203,7 @@ public class GetWorkspaceDepthQueryHandlerTests
         // citation total = 3 (Acme) + 2 (Beta) = 5; × Gemini = 1.
         var source = new Source
         {
-            Id = Guid.NewGuid(), SourceName = "X", Domain = "x.com",
+            Id = Guid.NewGuid(), SourceName = "X",
             NormalizedDomain = "x.com", CreatedAt = DateTime.UtcNow,
         };
         ctx.Sources.Add(source);

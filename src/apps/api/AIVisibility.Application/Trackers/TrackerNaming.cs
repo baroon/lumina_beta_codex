@@ -20,4 +20,30 @@ public static class TrackerNaming
             ? $"{market} Visibility Tracker"
             : $"{market} {descriptor} Visibility Tracker";
     }
+
+    /// <summary>
+    /// Disambiguates a generated name against the set of existing tracker
+    /// names on the same brand (case-insensitive, matching the
+    /// <c>UNIQUE (brand_id, LOWER(name))</c> DB constraint). Returns the base
+    /// name if it doesn't collide, otherwise appends "(2)", "(3)", … until a
+    /// free slot is found. Used by both the wizard preview and the create
+    /// handler so the suggested name and the persisted name stay in sync.
+    /// </summary>
+    public static string GenerateUnique(
+        string? marketName,
+        string? category,
+        string? productName,
+        IEnumerable<string> existingNames)
+    {
+        var baseName = Generate(marketName, category, productName);
+        var taken = new HashSet<string>(existingNames, StringComparer.OrdinalIgnoreCase);
+
+        if (!taken.Contains(baseName)) return baseName;
+
+        for (var n = 2; ; n++)
+        {
+            var candidate = $"{baseName} ({n})";
+            if (!taken.Contains(candidate)) return candidate;
+        }
+    }
 }

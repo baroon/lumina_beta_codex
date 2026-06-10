@@ -214,15 +214,14 @@ public class Slice2EntityPersistenceTests
     [Fact]
     public async Task Source_RoundTrips_WithDomain()
     {
-        // Phase 4 Slice 0 Source: per-(source_name, domain) dedup row. Cross-
-        // scan canonical row that Citation rows FK into.
+        // Phase 4 Slice 0 Source: per-(source_name, normalized_domain) dedup
+        // row. Cross-scan canonical row that Citation rows FK into.
         using var ctx = NewContext();
 
         var source = new Source
         {
             Id = Guid.NewGuid(),
             SourceName = "Acme Blog",
-            Domain = "blog.acme.com",
             NormalizedDomain = "acme.com",
             CreatedAt = DateTime.UtcNow,
         };
@@ -231,7 +230,6 @@ public class Slice2EntityPersistenceTests
 
         var reloaded = await ctx.Sources.AsNoTracking().FirstAsync(s => s.Id == source.Id);
         reloaded.SourceName.Should().Be("Acme Blog");
-        reloaded.Domain.Should().Be("blog.acme.com");
         reloaded.NormalizedDomain.Should().Be("acme.com");
     }
 
@@ -239,15 +237,14 @@ public class Slice2EntityPersistenceTests
     public async Task Source_AllowsNullDomain_ForMentionedSource()
     {
         // A "mentioned source" without URL ("according to Trustpilot") creates
-        // a Source row with Domain + NormalizedDomain both null. The job dedups
-        // those by lowercased SourceName instead.
+        // a Source row with NormalizedDomain null. The job dedups those by
+        // lowercased SourceName instead.
         using var ctx = NewContext();
 
         ctx.Sources.Add(new Source
         {
             Id = Guid.NewGuid(),
             SourceName = "Trustpilot",
-            Domain = null,
             NormalizedDomain = null,
             CreatedAt = DateTime.UtcNow,
         });
@@ -255,7 +252,6 @@ public class Slice2EntityPersistenceTests
 
         var reloaded = await ctx.Sources.AsNoTracking().FirstAsync();
         reloaded.SourceName.Should().Be("Trustpilot");
-        reloaded.Domain.Should().BeNull();
         reloaded.NormalizedDomain.Should().BeNull();
     }
 
@@ -267,7 +263,6 @@ public class Slice2EntityPersistenceTests
         {
             Id = Guid.NewGuid(),
             SourceName = "Acme Blog",
-            Domain = "blog.acme.com",
             NormalizedDomain = "acme.com",
             CreatedAt = DateTime.UtcNow,
         };
@@ -348,7 +343,6 @@ public class Slice2EntityPersistenceTests
         {
             Id = Guid.NewGuid(),
             SourceName = "Acme Blog",
-            Domain = "blog.acme.com",
             NormalizedDomain = "acme.com",
             CreatedAt = DateTime.UtcNow,
         };

@@ -4,6 +4,7 @@ using AIVisibility.Domain.Entities;
 using AIVisibility.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AIVisibility.Application.Commands.Trackers;
 
@@ -11,6 +12,15 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
 {
     /// <summary>Fixed prompt allocation for a new tracker (ADR-002 §7; default deferred there).</summary>
     public const int DefaultPromptAllocation = 30;
+
+    /// <summary>
+    /// Bound on race-driven retries of the auto-named create path. A retry
+    /// only happens when two concurrent creates queried the same set of
+    /// existing names and one of them lost the unique-index race; reloading
+    /// the names lets the next retry pick the next free suffix. Three is
+    /// plenty in practice — multi-tracker creates are user-initiated.
+    /// </summary>
+    private const int MaxAutoNameRetries = 3;
 
     private readonly IAppDbContext _db;
 
@@ -29,14 +39,34 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
         var audiences = await _db.Audiences.Where(a => a.BrandId == brand.Id).ToListAsync(cancellationToken);
         var checks = await _db.Lenses.ToListAsync(cancellationToken);
 
-        var generatedName = TrackerNaming.Generate(
-            markets.FirstOrDefault()?.Name,
-            brand.BrandProfile?.Category,
-            products.FirstOrDefault()?.Name);
-
         var requested = request.Name?.Trim();
-        var isNameUserEdited = !string.IsNullOrWhiteSpace(requested) && requested != generatedName;
-        var name = isNameUserEdited ? requested! : generatedName;
+        var existingNames = await _db.TrackerConfigurations
+            .Where(t => t.BrandId == brand.Id)
+            .Select(t => t.Name)
+            .ToListAsync(cancellationToken);
+
+        string name;
+        bool isNameUserEdited;
+        if (!string.IsNullOrWhiteSpace(requested))
+        {
+            if (existingNames.Any(n => string.Equals(n, requested, StringComparison.OrdinalIgnoreCase)))
+                throw new DuplicateTrackerNameException(requested);
+            var generatedComparable = TrackerNaming.Generate(
+                markets.FirstOrDefault()?.Name,
+                brand.BrandProfile?.Category,
+                products.FirstOrDefault()?.Name);
+            isNameUserEdited = requested != generatedComparable;
+            name = requested;
+        }
+        else
+        {
+            name = TrackerNaming.GenerateUnique(
+                markets.FirstOrDefault()?.Name,
+                brand.BrandProfile?.Category,
+                products.FirstOrDefault()?.Name,
+                existingNames);
+            isNameUserEdited = false;
+        }
 
         var now = DateTime.UtcNow;
         var tracker = new TrackerConfiguration
@@ -64,8 +94,36 @@ public class CreateTrackerCommandHandler : IRequestHandler<CreateTrackerCommand,
         };
 
         _db.TrackerConfigurations.Add(tracker);
-        await _db.SaveChangesAsync(cancellationToken);
 
-        return new CreateTrackerResult(tracker.Id, tracker.Name);
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+                return new CreateTrackerResult(tracker.Id, tracker.Name);
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                // A concurrent create grabbed the same suffix between our
+                // existing-names query and the insert. User-supplied names
+                // surface to the API layer; auto-named creates retry with a
+                // fresh suffix lookup.
+                if (isNameUserEdited || attempt >= MaxAutoNameRetries)
+                    throw new DuplicateTrackerNameException(tracker.Name);
+
+                existingNames = await _db.TrackerConfigurations
+                    .Where(t => t.BrandId == brand.Id)
+                    .Select(t => t.Name)
+                    .ToListAsync(cancellationToken);
+                tracker.Name = TrackerNaming.GenerateUnique(
+                    markets.FirstOrDefault()?.Name,
+                    brand.BrandProfile?.Category,
+                    products.FirstOrDefault()?.Name,
+                    existingNames);
+            }
+        }
     }
+
+    private static bool IsUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.UniqueViolation;
 }
