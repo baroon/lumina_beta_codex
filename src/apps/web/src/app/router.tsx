@@ -21,7 +21,6 @@ import { ScanTopicDetailPage } from "@/routes/scans/topic-detail";
 import { ScanCompetitorsPage } from "@/routes/scans/competitors";
 import { ScanCompetitorDetailPage } from "@/routes/scans/competitor-detail";
 import { ScanClaimsPage } from "@/routes/scans/claims";
-import { TrackerListPage } from "@/routes/trackers/list";
 import { OverviewPage } from "@/routes/overview";
 import { PromptsPage } from "@/routes/prompts";
 import { SourcesDomainsPage } from "@/routes/sources/domains";
@@ -158,12 +157,6 @@ const scanClaimsRoute = createRoute({
   component: ScanClaimsPage,
 });
 
-const trackerListRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/trackers",
-  component: TrackerListPage,
-});
-
 const overviewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/overview",
@@ -234,7 +227,6 @@ const routeTree = rootRoute.addChildren([
   scanCompetitorsRoute,
   scanCompetitorDetailRoute,
   scanClaimsRoute,
-  trackerListRoute,
   overviewRoute,
   promptsRoute,
   sourcesDomainsRoute,

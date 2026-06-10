@@ -1199,6 +1199,42 @@
           "notes": "Thin wrapper around `Breadcrumb` for the scan detail surfaces. Fetches the scan summary via `useScanResults` (React-Query-cached so it shares the cache entry with pages that already call it) and renders the canonical trail `Brands › {Brand} › {Tracker} › {currentLabel}`. Brand label links to `/brands/$id/profile`, tracker label links to `/brands/$id/trackers/$id`. While the summary loads the brand and tracker rows render skeleton segments so the trail keeps its layout. Used by ScanResultsScreen, ScanSourcesScreen, ScanTopicsScreen, ScanTopicDetailScreen, ScanCompetitorsScreen, ScanCompetitorDetailScreen, ScanClaimsScreen."
         },
         {
+          "name": "InsightsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/InsightsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "SectionHeader",
+            "Card",
+            "Badge",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview"
+          ],
+          "notes": "Workspace-wide Insights page (BETA) at /insights — templated narrative summary over `useWorkspaceOverview`'s topEntities + a sorted ranking table where tracked brands are highlighted with a 'You' badge and a soft primary background. Narrative covers position (e.g. 'Acme ranks #2 of 3 with 50% AI visibility — trailing Canva by 30 pp') and celebrates the case where a tracked brand leads. v1 uses templated copy; LLM-generated narrative lands in a follow-up. Respects the sidebar's TrackerSelector scope via useTrackerScope."
+        },
+        {
+          "name": "CompetitorsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CompetitorsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "SectionHeader",
+            "Card",
+            "Badge",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceCompetitive"
+          ],
+          "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` (already scope-aware after step 5) into one sortable table — columns: # · Entity · Mentions (with proportional bar) · Share of voice · Recommendation rate. Tracked brands highlighted with a 'You' badge + soft primary background; the rank-1 non-tracked-brand row gets a 'Leader' badge. Pure `mergeEntityRows` helper exported for unit testing. Scope follows the sidebar's TrackerSelector."
+        },
+        {
           "name": "ScanResultsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/ScanResultsScreen.tsx",
@@ -1342,15 +1378,6 @@
             "HeatmapWrapper"
           ],
           "notes": "Phase 4 v3 default landing surface at /overview. Workspace-scoped: aggregates the last N days of scans across every Brand and TrackerConfiguration. Hero + multi-line trend + Top Entities (Slice A) + competitive sections (Slice B: SoV, gap groups per tracked brand, rec rate, brand-vs-competitor, mention distribution radar, top domains, domain types) + depth sections (Slice C: mentions-by-platform, sentiment, activity heatmap (90d capped), topic coverage, recent chats + drawer). Brand selector multi-select filters every comparison chart; share charts recompute denominators."
-        },
-        {
-          "name": "TrackerListScreen",
-          "category": "Feature — Trackers",
-          "path": "src/features/trackers/components/TrackerListScreen.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": ["Badge", "Button", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Trackers index at /trackers. Cross-brand list with per-tracker scan count + latest scan timestamp. Each Active/Paused row has a Run now button that triggers a manual scan via useRunScan and surfaces 409 Conflict (24h cooldown) inline. Phase 4 v3 retired the per-tracker dashboard — rows do not navigate anywhere; analytics live on /overview."
         },
         {
           "name": "CoreMetricsRow",
