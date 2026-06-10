@@ -1,6 +1,7 @@
 import { Checkbox } from "@/components/atoms/checkbox";
 import { Sparkles, UserPen, X } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
+import { AliasEditor } from "@/components/molecules/AliasEditor";
 import { ConfidenceTag } from "./ConfidenceTag";
 import { cn } from "@/lib/utils";
 import { countryCodeToFlagUrl } from "../flag";
@@ -13,6 +14,14 @@ interface SuggestionCardProps {
   onRemove?: (id: string) => void;
   typeMetadataKey?: string;
   typeLabels?: Record<string, string>;
+  /**
+   * When provided (Product + Competitor cards), renders an inline alias chip
+   * editor below the candidate description and round-trips edits via the
+   * callback. The whole-card click-to-toggle pattern is preserved; chip
+   * interactions are isolated with `stopPropagation`.
+   */
+  aliases?: string[];
+  onAliasesChange?: (aliases: string[]) => void;
 }
 
 function SourceIcon({ source }: { source: CandidateDto["source"] }) {
@@ -48,10 +57,13 @@ export function SuggestionCard({
   onRemove,
   typeMetadataKey,
   typeLabels,
+  aliases,
+  onAliasesChange,
 }: SuggestionCardProps) {
   const typeValue = typeMetadataKey ? candidate.metadata?.[typeMetadataKey] : undefined;
   const typeLabel = typeValue && typeLabels ? typeLabels[typeValue] : undefined;
   const flagUrl = countryCodeToFlagUrl(candidate.metadata?.countryCode);
+  const aliasesEnabled = aliases !== undefined && onAliasesChange !== undefined;
 
   return (
     <div
@@ -91,6 +103,17 @@ export function SuggestionCard({
         )}
         {candidate.description && (
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{candidate.description}</p>
+        )}
+        {aliasesEnabled && (
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <AliasEditor
+              aliases={aliases}
+              onChange={onAliasesChange}
+              label={DISCOVERY_COPY.confirmation.aliasesLabel}
+              placeholder={DISCOVERY_COPY.confirmation.aliasesPlaceholder}
+              variant="inline"
+            />
+          </div>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">

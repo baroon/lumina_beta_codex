@@ -480,6 +480,15 @@
           "variants": [],
           "dependencies": [],
           "notes": "Linear-style section header: optional leading icon chip, tight-tracked title + muted description, and right-aligned meta/actions slots."
+        },
+        {
+          "name": "AliasEditor",
+          "category": "Molecules",
+          "path": "src/components/molecules/AliasEditor.tsx",
+          "status": "implemented",
+          "variants": ["framed", "inline"],
+          "dependencies": ["Badge"],
+          "notes": "Chip-style 'also known as' editor: existing aliases render as removable Badge chips, plus an inline input with Enter-to-add and blur-to-flush. Case-insensitive duplicate prevention. Used by the discovery wizard for Brand.Aliases on BrandIdentity and per-candidate Product/Competitor aliases on SuggestionCard."
         }
       ]
     },

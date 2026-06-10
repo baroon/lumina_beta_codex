@@ -36,6 +36,12 @@ interface DiscoverySectionProps {
   typeMetadataKey?: string;
   typeRequired?: boolean;
   captureDomain?: boolean;
+  /**
+   * Optional per-candidate alias map (id → aliases). Only passed for
+   * Product + Competitor sections. Undefined hides the chip editor.
+   */
+  aliasesById?: Record<string, string[]>;
+  onCandidateAliasesChange?: (id: string, aliases: string[]) => void;
 }
 
 export function DiscoverySection({
@@ -57,6 +63,8 @@ export function DiscoverySection({
   typeMetadataKey,
   typeRequired,
   captureDomain,
+  aliasesById,
+  onCandidateAliasesChange,
 }: DiscoverySectionProps) {
   const [expanded, setExpanded] = useState(true);
   const allSelected = candidates.length > 0 && candidates.every((c) => selectedIds.has(c.id));
@@ -143,17 +151,28 @@ export function DiscoverySection({
                 </Button>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {candidates.map((candidate) => (
-                  <SuggestionCard
-                    key={candidate.id}
-                    candidate={candidate}
-                    selected={selectedIds.has(candidate.id)}
-                    onToggle={onToggle}
-                    onRemove={onRemove}
-                    typeMetadataKey={typeMetadataKey}
-                    typeLabels={typeLabels}
-                  />
-                ))}
+                {candidates.map((candidate) => {
+                  const aliasesProps =
+                    aliasesById && onCandidateAliasesChange
+                      ? {
+                          aliases: aliasesById[candidate.id] ?? candidate.aliases ?? [],
+                          onAliasesChange: (next: string[]) =>
+                            onCandidateAliasesChange(candidate.id, next),
+                        }
+                      : {};
+                  return (
+                    <SuggestionCard
+                      key={candidate.id}
+                      candidate={candidate}
+                      selected={selectedIds.has(candidate.id)}
+                      onToggle={onToggle}
+                      onRemove={onRemove}
+                      typeMetadataKey={typeMetadataKey}
+                      typeLabels={typeLabels}
+                      {...aliasesProps}
+                    />
+                  );
+                })}
               </div>
             </>
           )}

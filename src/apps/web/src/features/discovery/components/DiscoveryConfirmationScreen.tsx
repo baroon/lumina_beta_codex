@@ -144,6 +144,22 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const [removedIds, setRemovedIds] = useState<Map<string, Set<string>>>(new Map());
   const [aliases, setAliases] = useState<string[]>(results.aliases ?? []);
 
+  // Per-candidate alias overrides for Product + Competitor sections. Keyed by
+  // candidate id; untouched rows fall back to candidate.aliases so LLM-suggested
+  // aliases still round-trip through confirm.
+  const [productAliasOverrides, setProductAliasOverrides] = useState<Record<string, string[]>>({});
+  const [competitorAliasOverrides, setCompetitorAliasOverrides] = useState<
+    Record<string, string[]>
+  >({});
+
+  const handleProductAliasesChange = useCallback((id: string, next: string[]) => {
+    setProductAliasOverrides((prev) => ({ ...prev, [id]: next }));
+  }, []);
+
+  const handleCompetitorAliasesChange = useCallback((id: string, next: string[]) => {
+    setCompetitorAliasOverrides((prev) => ({ ...prev, [id]: next }));
+  }, []);
+
   // Safety net: if the results prop delivers new candidate data after mount
   // (e.g., component mounted with stale cache, then query refetched), re-sync
   // the preselection for sections the user hasn't modified yet.
@@ -266,18 +282,28 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   );
 
   const handleConfirm = () => {
-    const toInput = (c: CandidateDto): ConfirmCandidateInput => ({
-      name: c.name,
-      description: c.description,
-      confidence: c.confidence,
-      source: c.source,
-      metadata: c.metadata,
-    });
+    const toInput = (c: CandidateDto, sectionKey: SectionKey): ConfirmCandidateInput => {
+      const overrides =
+        sectionKey === "products"
+          ? productAliasOverrides
+          : sectionKey === "competitors"
+            ? competitorAliasOverrides
+            : null;
+      const aliases = overrides ? (overrides[c.id] ?? c.aliases ?? null) : null;
+      return {
+        name: c.name,
+        description: c.description,
+        confidence: c.confidence,
+        source: c.source,
+        metadata: c.metadata,
+        aliases,
+      };
+    };
 
     const selectedInputs = (key: SectionKey): ConfirmCandidateInput[] => {
       const candidates = getCombinedCandidates(key);
       const selected = selections.get(key) || new Set<string>();
-      return candidates.filter((c) => selected.has(c.id)).map(toInput);
+      return candidates.filter((c) => selected.has(c.id)).map((c) => toInput(c, key));
     };
 
     confirmMutation.mutate({
@@ -473,6 +499,18 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
   const makeSectionProps = (key: SectionKey) => {
     const candidates = getCombinedCandidates(key);
     const selectedIds = selections.get(key) || new Set<string>();
+    const aliasProps =
+      key === "products"
+        ? {
+            aliasesById: productAliasOverrides,
+            onCandidateAliasesChange: handleProductAliasesChange,
+          }
+        : key === "competitors"
+          ? {
+              aliasesById: competitorAliasOverrides,
+              onCandidateAliasesChange: handleCompetitorAliasesChange,
+            }
+          : {};
     return {
       candidates,
       selectedIds,
@@ -485,6 +523,7 @@ export function DiscoveryConfirmationScreen({ results }: DiscoveryConfirmationSc
       onRefresh: () => handleRefreshLens(key),
       refreshesRemaining: MAX_LENS_REFRESHES - (lensRefreshCounts.get(key) ?? 0),
       isRefreshing: refreshingLens === key,
+      ...aliasProps,
     };
   };
 

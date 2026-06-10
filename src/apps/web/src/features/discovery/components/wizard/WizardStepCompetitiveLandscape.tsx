@@ -43,6 +43,9 @@ interface SectionData {
   onRefresh?: () => void;
   refreshesRemaining?: number;
   isRefreshing?: boolean;
+  /** Only populated by Competitor section (Product/Trust/Topic sections leave undefined). */
+  aliasesById?: Record<string, string[]>;
+  onCandidateAliasesChange?: (id: string, aliases: string[]) => void;
 }
 
 interface WizardStepCompetitiveLandscapeProps {
@@ -84,6 +87,8 @@ export function WizardStepCompetitiveLandscape({
         refreshesRemaining={competitors.refreshesRemaining}
         isRefreshing={competitors.isRefreshing}
         captureDomain
+        aliasesById={competitors.aliasesById}
+        onCandidateAliasesChange={competitors.onCandidateAliasesChange}
       />
       <DiscoverySection
         icon={SECTION_ICONS.topics}

@@ -32,6 +32,8 @@ interface WizardStepProductsProps {
   onRefresh?: () => void;
   refreshesRemaining?: number;
   isRefreshing?: boolean;
+  aliasesById?: Record<string, string[]>;
+  onCandidateAliasesChange?: (id: string, aliases: string[]) => void;
 }
 
 export function WizardStepProducts({
@@ -45,6 +47,8 @@ export function WizardStepProducts({
   onRefresh,
   refreshesRemaining,
   isRefreshing,
+  aliasesById,
+  onCandidateAliasesChange,
 }: WizardStepProductsProps) {
   return (
     <DiscoverySection
@@ -65,6 +69,8 @@ export function WizardStepProducts({
       typeOptions={PRODUCT_TYPE_OPTIONS}
       typeMetadataKey="productType"
       typeRequired
+      aliasesById={aliasesById}
+      onCandidateAliasesChange={onCandidateAliasesChange}
     />
   );
 }

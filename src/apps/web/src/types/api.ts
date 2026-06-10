@@ -68,6 +68,8 @@ export interface CandidateDto {
   confidence: number;
   source: CandidateSource;
   metadata: Record<string, string>;
+  /** "Also known as" — populated for Product and Competitor candidates. Empty for other types. */
+  aliases?: string[];
 }
 
 export interface ConfirmCandidateInput {
@@ -76,6 +78,8 @@ export interface ConfirmCandidateInput {
   confidence: number;
   source: CandidateSource;
   metadata?: Record<string, string> | null;
+  /** Round-trips Product.Aliases / Competitor.Aliases through confirm. Omit / null for other candidate types. */
+  aliases?: string[] | null;
 }
 
 export interface ConfirmBrandProfileInput {
