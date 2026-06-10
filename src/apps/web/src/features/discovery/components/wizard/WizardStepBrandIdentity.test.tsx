@@ -78,6 +78,8 @@ describe("WizardStepBrandIdentity", () => {
       />,
     );
 
+    // The alias input is collapsed behind a "+" by default — click to reveal.
+    await userEvent.click(screen.getByRole("button", { name: /add also known as/i }));
     await userEvent.type(screen.getByPlaceholderText("Add an alias..."), "Lumina AI{Enter}");
     expect(onAliasesChange).toHaveBeenCalledWith(["Lumina AI"]);
 

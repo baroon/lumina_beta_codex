@@ -15,6 +15,10 @@ function Controlled({ initial = [] as string[] }) {
   );
 }
 
+async function openEditor() {
+  await userEvent.click(screen.getByRole("button", { name: /add also known as/i }));
+}
+
 describe("AliasEditor", () => {
   it("renders the label and existing aliases as chips", () => {
     render(<Controlled initial={["Photoshop", "PS"]} />);
@@ -23,18 +27,32 @@ describe("AliasEditor", () => {
     expect(screen.getByText("PS")).toBeInTheDocument();
   });
 
-  it("adds an alias on Enter", async () => {
+  it("hides the input behind a + button by default", () => {
     render(<Controlled />);
+    expect(screen.getByRole("button", { name: /add also known as/i })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Add an alias...")).not.toBeInTheDocument();
+  });
+
+  it("clicking + reveals the input", async () => {
+    render(<Controlled />);
+    await openEditor();
+    expect(screen.getByPlaceholderText("Add an alias...")).toBeInTheDocument();
+  });
+
+  it("adds an alias on Enter and keeps the input open for more", async () => {
+    render(<Controlled />);
+    await openEditor();
     const input = screen.getByPlaceholderText("Add an alias...");
     await userEvent.type(input, "Wikipedia{enter}");
     expect(screen.getByText("Wikipedia")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Add an alias...")).toBeInTheDocument();
   });
 
   it("dedups case-insensitively", async () => {
     render(<Controlled initial={["Photoshop"]} />);
+    await openEditor();
     const input = screen.getByPlaceholderText("Add an alias...");
     await userEvent.type(input, "photoshop{enter}");
-    // Only one chip
     expect(screen.getAllByText(/photoshop/i)).toHaveLength(1);
   });
 
@@ -46,16 +64,27 @@ describe("AliasEditor", () => {
 
   it("trims whitespace before adding", async () => {
     render(<Controlled />);
+    await openEditor();
     const input = screen.getByPlaceholderText("Add an alias...");
     await userEvent.type(input, "   PS   {enter}");
     expect(screen.getByText("PS")).toBeInTheDocument();
   });
 
-  it("flushes the draft on blur", async () => {
+  it("blurring with empty draft collapses back to the + button", async () => {
     render(<Controlled />);
+    await openEditor();
+    expect(screen.getByPlaceholderText("Add an alias...")).toBeInTheDocument();
+    await userEvent.tab();
+    expect(screen.queryByPlaceholderText("Add an alias...")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add also known as/i })).toBeInTheDocument();
+  });
+
+  it("Escape clears the draft and collapses back to the + button", async () => {
+    render(<Controlled />);
+    await openEditor();
     const input = screen.getByPlaceholderText("Add an alias...");
-    await userEvent.type(input, "TOI");
-    await userEvent.tab(); // blur
-    expect(screen.getByText("TOI")).toBeInTheDocument();
+    await userEvent.type(input, "draft text{escape}");
+    expect(screen.queryByPlaceholderText("Add an alias...")).not.toBeInTheDocument();
+    expect(screen.queryByText("draft text")).not.toBeInTheDocument();
   });
 });

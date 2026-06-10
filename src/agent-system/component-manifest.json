@@ -488,7 +488,7 @@
           "status": "implemented",
           "variants": ["framed", "inline"],
           "dependencies": ["Badge"],
-          "notes": "Chip-style 'also known as' editor: existing aliases render as removable Badge chips, plus an inline input with Enter-to-add and blur-to-flush. Case-insensitive duplicate prevention. Used by the discovery wizard for Brand.Aliases on BrandIdentity and per-candidate Product/Competitor aliases on SuggestionCard."
+          "notes": "Chip-style 'also known as' editor: existing aliases render as removable Badge chips, ending in a subtle '+' icon button. Clicking '+' reveals an input (Enter to add and keep input open, Escape or empty blur to collapse back). Case-insensitive duplicate prevention. Used by the discovery wizard for Brand.Aliases on BrandIdentity and per-candidate Product/Competitor aliases on SuggestionCard."
         }
       ]
     },
