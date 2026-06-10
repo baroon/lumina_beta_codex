@@ -110,7 +110,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Source = ParseSource(p.Source),
                 ProductType = ParseEnum(Meta(p, "productType"), ProductType.Product),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         foreach (var a in request.Audiences)
@@ -124,7 +123,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = a.Confidence,
                 Source = ParseSource(a.Source),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         foreach (var m in request.Markets)
@@ -138,7 +136,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Source = ParseSource(m.Source),
                 CountryCode = NormalizeCountryCode(Meta(m, "countryCode")),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         foreach (var t in request.Topics)
@@ -151,7 +148,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Confidence = t.Confidence,
                 Source = ParseSource(t.Source),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         foreach (var c in request.Competitors)
@@ -171,7 +167,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Source = ParseSource(c.Source),
                 Domain = Meta(c, "domain"),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         foreach (var ts in request.TrustSignals)
@@ -186,7 +181,6 @@ public class ConfirmDiscoveryCommandHandler : IRequestHandler<ConfirmDiscoveryCo
                 Source = ParseSource(ts.Source),
                 SignalType = ParseEnum(Meta(ts, "signalType"), TrustSignalType.TestimonialsAndReviews),
                 CreatedAt = now,
-                UpdatedAt = now,
             });
 
         latestRun.Status = DiscoveryStatus.Completed;

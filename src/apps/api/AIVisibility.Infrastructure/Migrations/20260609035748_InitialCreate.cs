@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -199,8 +199,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -265,8 +264,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -320,8 +318,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -353,8 +350,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -383,8 +379,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -415,8 +410,7 @@ namespace AIVisibility.Infrastructure.Migrations
                     confidence = table.Column<double>(type: "double precision", nullable: false),
                     source = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     discovery_run_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {

@@ -29,8 +29,6 @@ public class CompetitorConfiguration : IEntityTypeConfiguration<Competitor>
         builder.Property(c => c.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(c => c.DiscoveryRunId).HasColumnName("discovery_run_id");
         builder.Property(c => c.CreatedAt).HasColumnName("created_at");
-        builder.Property(c => c.UpdatedAt).HasColumnName("updated_at");
-
         builder.Property(c => c.Aliases)
             .HasColumnName("aliases")
             .HasColumnType("jsonb")

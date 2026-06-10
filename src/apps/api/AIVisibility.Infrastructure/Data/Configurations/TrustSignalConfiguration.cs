@@ -19,8 +19,6 @@ public class TrustSignalConfiguration : IEntityTypeConfiguration<TrustSignal>
         builder.Property(ts => ts.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(ts => ts.DiscoveryRunId).HasColumnName("discovery_run_id");
         builder.Property(ts => ts.CreatedAt).HasColumnName("created_at");
-        builder.Property(ts => ts.UpdatedAt).HasColumnName("updated_at");
-
         builder.HasIndex(ts => ts.BrandId);
     }
 }

@@ -11,7 +11,6 @@ public class Topic
     public CandidateSource Source { get; set; }
     public Guid DiscoveryRunId { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
 
     public Brand Brand { get; set; } = null!;
     public DiscoveryRun DiscoveryRun { get; set; } = null!;

@@ -17,8 +17,6 @@ public class TopicConfiguration : IEntityTypeConfiguration<Topic>
         builder.Property(t => t.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.DiscoveryRunId).HasColumnName("discovery_run_id");
         builder.Property(t => t.CreatedAt).HasColumnName("created_at");
-        builder.Property(t => t.UpdatedAt).HasColumnName("updated_at");
-
         builder.HasIndex(t => t.BrandId);
     }
 }

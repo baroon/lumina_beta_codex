@@ -33,8 +33,6 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Source).HasColumnName("source").HasConversion<string>().HasMaxLength(50);
         builder.Property(p => p.DiscoveryRunId).HasColumnName("discovery_run_id");
         builder.Property(p => p.CreatedAt).HasColumnName("created_at");
-        builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
-
         builder.HasIndex(p => p.BrandId);
     }
 }
