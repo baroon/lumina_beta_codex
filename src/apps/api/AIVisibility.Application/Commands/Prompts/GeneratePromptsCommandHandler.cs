@@ -37,7 +37,7 @@ public class GeneratePromptsCommandHandler : IRequestHandler<GeneratePromptsComm
             .ToListAsync(cancellationToken))
             .ToDictionary(c => c.Id);
         var rawTemplates = await _db.PromptTemplates
-            .Where(t => checkIds.Contains(t.LensId))
+            .Where(t => t.IsActive && checkIds.Contains(t.LensId))
             .Select(t => new { t.Id, t.LensId, t.TemplateText })
             .ToListAsync(cancellationToken);
         var templates = rawTemplates

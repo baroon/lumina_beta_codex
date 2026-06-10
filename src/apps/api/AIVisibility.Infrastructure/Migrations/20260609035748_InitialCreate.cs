@@ -67,11 +67,19 @@ namespace AIVisibility.Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     lens_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    template_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false)
+                    template_text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_prompt_templates", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_prompt_templates_lenses_lens_id",
+                        column: x => x.lens_id,
+                        principalTable: "lenses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1326,29 +1334,30 @@ namespace AIVisibility.Infrastructure.Migrations
                     { new Guid("c0000000-0000-0000-0000-000000000006"), "ContentGaps", "Where is the brand absent from AI answers when it should be present?", 6, "Content Gaps" }
                 });
 
+            var initialSeedAt = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
             migrationBuilder.InsertData(
                 table: "prompt_templates",
-                columns: new[] { "id", "lens_id", "name", "template_text" },
+                columns: new[] { "id", "lens_id", "name", "template_text", "is_active", "created_at" },
                 values: new object[,]
                 {
-                    { new Guid("70000000-0000-0000-0000-000000000101"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category discovery", "What are the best {category} options in {market}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000102"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category recommendation", "Which {category} would you recommend in {market}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000103"), new Guid("c0000000-0000-0000-0000-000000000001"), "Leading providers", "Who are the leading {category} providers right now?" },
-                    { new Guid("70000000-0000-0000-0000-000000000201"), new Guid("c0000000-0000-0000-0000-000000000002"), "Buying intent", "I want to buy {category} for {topic} — which do you recommend?" },
-                    { new Guid("70000000-0000-0000-0000-000000000202"), new Guid("c0000000-0000-0000-0000-000000000002"), "Budget choice", "What's the best {category} for {topic} on a budget?" },
-                    { new Guid("70000000-0000-0000-0000-000000000203"), new Guid("c0000000-0000-0000-0000-000000000002"), "Ready to choose", "I'm ready to choose a {category} for {topic} — what should I go with?" },
-                    { new Guid("70000000-0000-0000-0000-000000000301"), new Guid("c0000000-0000-0000-0000-000000000003"), "Head to head", "How does {brand} compare to {competitor} for {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000302"), new Guid("c0000000-0000-0000-0000-000000000003"), "Which is better", "Is {brand} or {competitor} the better {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000303"), new Guid("c0000000-0000-0000-0000-000000000003"), "Key differences", "What are the main differences between {brand} and {competitor}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000401"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reliability", "Is {brand} a reliable {category}? What is its reputation?" },
-                    { new Guid("70000000-0000-0000-0000-000000000402"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reviews", "What do people say about {brand}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000403"), new Guid("c0000000-0000-0000-0000-000000000004"), "Trust", "Can I trust {brand} for {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000501"), new Guid("c0000000-0000-0000-0000-000000000005"), "Authoritative sources", "What are the most authoritative sources about {topic} in {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000502"), new Guid("c0000000-0000-0000-0000-000000000005"), "Experts to follow", "Which experts or publications should I follow on {topic}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000503"), new Guid("c0000000-0000-0000-0000-000000000005"), "Trustworthy info", "Where can I find trustworthy information about {topic}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000601"), new Guid("c0000000-0000-0000-0000-000000000006"), "Considerations", "What should I consider about {topic} when choosing a {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000602"), new Guid("c0000000-0000-0000-0000-000000000006"), "Questions to ask", "What questions should I ask about {topic} before choosing a {category}?" },
-                    { new Guid("70000000-0000-0000-0000-000000000603"), new Guid("c0000000-0000-0000-0000-000000000006"), "Overlooked factors", "What do most people overlook about {topic} when it comes to {category}?" }
+                    { new Guid("70000000-0000-0000-0000-000000000101"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category discovery", "What are the best {category} options in {market}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000102"), new Guid("c0000000-0000-0000-0000-000000000001"), "Category recommendation", "Which {category} would you recommend in {market}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000103"), new Guid("c0000000-0000-0000-0000-000000000001"), "Leading providers", "Who are the leading {category} providers right now?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000201"), new Guid("c0000000-0000-0000-0000-000000000002"), "Buying intent", "I want to buy {category} for {topic} — which do you recommend?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000202"), new Guid("c0000000-0000-0000-0000-000000000002"), "Budget choice", "What's the best {category} for {topic} on a budget?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000203"), new Guid("c0000000-0000-0000-0000-000000000002"), "Ready to choose", "I'm ready to choose a {category} for {topic} — what should I go with?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000301"), new Guid("c0000000-0000-0000-0000-000000000003"), "Head to head", "How does {brand} compare to {competitor} for {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000302"), new Guid("c0000000-0000-0000-0000-000000000003"), "Which is better", "Is {brand} or {competitor} the better {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000303"), new Guid("c0000000-0000-0000-0000-000000000003"), "Key differences", "What are the main differences between {brand} and {competitor}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000401"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reliability", "Is {brand} a reliable {category}? What is its reputation?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000402"), new Guid("c0000000-0000-0000-0000-000000000004"), "Reviews", "What do people say about {brand}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000403"), new Guid("c0000000-0000-0000-0000-000000000004"), "Trust", "Can I trust {brand} for {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000501"), new Guid("c0000000-0000-0000-0000-000000000005"), "Authoritative sources", "What are the most authoritative sources about {topic} in {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000502"), new Guid("c0000000-0000-0000-0000-000000000005"), "Experts to follow", "Which experts or publications should I follow on {topic}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000503"), new Guid("c0000000-0000-0000-0000-000000000005"), "Trustworthy info", "Where can I find trustworthy information about {topic}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000601"), new Guid("c0000000-0000-0000-0000-000000000006"), "Considerations", "What should I consider about {topic} when choosing a {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000602"), new Guid("c0000000-0000-0000-0000-000000000006"), "Questions to ask", "What questions should I ask about {topic} before choosing a {category}?", true, initialSeedAt },
+                    { new Guid("70000000-0000-0000-0000-000000000603"), new Guid("c0000000-0000-0000-0000-000000000006"), "Overlooked factors", "What do most people overlook about {topic} when it comes to {category}?", true, initialSeedAt }
                 });
 
             migrationBuilder.CreateIndex(
@@ -2154,6 +2163,13 @@ namespace AIVisibility.Infrastructure.Migrations
             migrationBuilder.Sql(
                 "ALTER TABLE mentions ADD CONSTRAINT chk_mentions_recommendation_score_range " +
                 "CHECK (recommendation_score BETWEEN -1 AND 1)");
+
+            // Case-insensitive unique index on (lens_id, LOWER(name)) for
+            // prompt_templates — prevents two templates with the same name
+            // under one lens.
+            migrationBuilder.Sql(
+                "CREATE UNIQUE INDEX ix_prompt_templates_lens_lower_name " +
+                "ON prompt_templates (lens_id, LOWER(name))");
         }
 
         /// <inheritdoc />

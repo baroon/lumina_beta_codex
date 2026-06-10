@@ -14,6 +14,10 @@ public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTempla
     private static readonly Guid CitationVisibility = new("c0000000-0000-0000-0000-000000000005");
     private static readonly Guid ContentGaps = new("c0000000-0000-0000-0000-000000000006");
 
+    // Fixed timestamp for the initial seed batch. New rows added later should
+    // carry their own batch date so the lineage stays inspectable.
+    private static readonly DateTime InitialSeedAt = new(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+
     public void Configure(EntityTypeBuilder<PromptTemplate> builder)
     {
         builder.ToTable("prompt_templates");
@@ -22,7 +26,16 @@ public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTempla
         builder.Property(t => t.LensId).HasColumnName("lens_id");
         builder.Property(t => t.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
         builder.Property(t => t.TemplateText).HasColumnName("template_text").HasMaxLength(2000).IsRequired();
+        builder.Property(t => t.IsActive).HasColumnName("is_active");
+        builder.Property(t => t.CreatedAt).HasColumnName("created_at");
         builder.HasIndex(t => t.LensId);
+
+        // No-nav FK to lenses: templates must reference a real lens; lenses
+        // are seed reference data so RESTRICT, not Cascade.
+        builder.HasOne<Lens>()
+            .WithMany()
+            .HasForeignKey(t => t.LensId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Starter prompt library (ADR-002 §5): 3 example phrasings per Visibility Lens. These are
         // style anchors for the LLM generator and fill-ins for the deterministic fallback.
@@ -79,5 +92,7 @@ public class PromptTemplateConfiguration : IEntityTypeConfiguration<PromptTempla
             LensId = checkId,
             Name = name,
             TemplateText = text,
+            IsActive = true,
+            CreatedAt = InitialSeedAt,
         };
 }
