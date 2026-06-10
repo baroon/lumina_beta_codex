@@ -11,6 +11,7 @@ import { useSourceTypes } from "@/features/reports/hooks/useSourceTypes";
 import { useUpdateSourceClassification } from "@/features/reports/hooks/useUpdateSourceClassification";
 import { SourceCitationsDrawer } from "@/features/reports/components/SourceCitationsDrawer";
 import { SourcesTable } from "@/features/reports/components/SourcesTable";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { ArrowLeft } from "lucide-react";
 
 interface ScanSourcesScreenProps {
@@ -60,6 +61,7 @@ export function ScanSourcesScreen({ scanRunId }: ScanSourcesScreenProps) {
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Sources" />
       <PageHeader title={copy.title} description={copy.subtitle} />
 
       <Link

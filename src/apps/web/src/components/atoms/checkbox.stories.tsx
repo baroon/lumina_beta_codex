@@ -15,6 +15,7 @@ export const Default: Story = {};
 export const AllSizes: Story = {
   render: () => (
     <div className="flex items-center gap-4">
+      <Checkbox checkboxSize="xs" />
       <Checkbox checkboxSize="sm" />
       <Checkbox checkboxSize="default" />
       <Checkbox checkboxSize="lg" />

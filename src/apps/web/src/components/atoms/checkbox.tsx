@@ -7,12 +7,15 @@ const checkboxVariants = cva(
   {
     variants: {
       checkboxSize: {
+        // Default — matches `text-xs` (12px) labels in dense dropdowns and
+        // the rest of the tightened type scale.
+        xs: "h-3 w-3",
         sm: "h-3.5 w-3.5",
         default: "h-4 w-4",
         lg: "h-5 w-5",
       },
     },
-    defaultVariants: { checkboxSize: "default" },
+    defaultVariants: { checkboxSize: "xs" },
   },
 );
 

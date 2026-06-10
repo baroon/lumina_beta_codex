@@ -7,6 +7,7 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { useScanTopic } from "@/features/reports/hooks/useScanTopic";
 import { cn } from "@/lib/utils";
 import type {
@@ -54,6 +55,7 @@ export function ScanTopicDetailScreen({ scanRunId, topicId }: ScanTopicDetailScr
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel={data.topicName} />
       <PageHeader title={data.topicName} description={copy.subtitle} />
 
       <Link

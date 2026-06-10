@@ -6,11 +6,11 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
-          {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">{title}</h1>
+          {description && <p className="mt-0.5 text-xs text-neutral-500">{description}</p>}
         </div>
         {children && <div className="flex items-center gap-2">{children}</div>}
       </div>

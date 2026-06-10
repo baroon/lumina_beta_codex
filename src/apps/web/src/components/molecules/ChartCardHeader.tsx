@@ -1,11 +1,6 @@
-import { ChevronDown, Info, type LucideIcon } from "lucide-react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/atoms/tooltip";
+import { InfoTooltip } from "@/components/molecules/InfoTooltip";
 import { cn } from "@/lib/utils";
 
 interface ChartCardHeaderProps {
@@ -72,24 +67,7 @@ export function ChartCardHeader({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
-            {tooltip ? (
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={`About ${title}`}
-                      className="rounded-full text-neutral-400 transition hover:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
-                    >
-                      <Info size={13} aria-hidden />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-xs text-xs text-neutral-700">
-                    {tooltip}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : null}
+            {tooltip ? <InfoTooltip label={title} body={tooltip} iconSize={13} /> : null}
           </div>
           {subtitle ? <p className="mt-0.5 text-xs text-neutral-500">{subtitle}</p> : null}
         </div>

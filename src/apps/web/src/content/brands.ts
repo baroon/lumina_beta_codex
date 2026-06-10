@@ -16,4 +16,27 @@ export const BRANDS_COPY = {
     addBrand: "Add Brand",
     empty: "No brands yet. Add your first brand to get started.",
   },
+  profile: {
+    description: "Brand identity, dimensions, and discovery snapshot.",
+    rerunDiscovery: "Re-run discovery",
+    sections: {
+      identity: "Identity",
+      aliases: "Aliases",
+    },
+    fields: {
+      description: "Description",
+      industry: "Industry",
+      category: "Category",
+      positioning: "Positioning",
+      websiteUrl: "Website",
+    },
+    empty: {
+      noDiscovery:
+        "Discovery hasn't run yet for this brand. Click Re-run discovery to populate the profile.",
+      noAliases: "No aliases yet.",
+      noItems: "Not detected.",
+      notSet: "Not set.",
+    },
+    editNotice: "Edits happen in the discovery wizard for now — inline editing is coming soon.",
+  },
 } as const;

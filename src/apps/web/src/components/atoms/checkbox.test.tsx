@@ -8,6 +8,16 @@ describe("Checkbox", () => {
     expect(screen.getByRole("checkbox", { name: "Accept terms" })).toBeInTheDocument();
   });
 
+  it("defaults to xs when no checkboxSize is provided", () => {
+    render(<Checkbox aria-label="Default" />);
+    expect(screen.getByRole("checkbox", { name: "Default" })).toHaveClass("h-3", "w-3");
+  });
+
+  it("renders xs size variant", () => {
+    render(<Checkbox checkboxSize="xs" aria-label="Extra small" />);
+    expect(screen.getByRole("checkbox", { name: "Extra small" })).toHaveClass("h-3", "w-3");
+  });
+
   it("renders sm size variant", () => {
     render(<Checkbox checkboxSize="sm" aria-label="Small" />);
     expect(screen.getByRole("checkbox", { name: "Small" })).toHaveClass("h-3.5", "w-3.5");

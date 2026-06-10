@@ -1,9 +1,18 @@
-import { createRouter, createRootRoute, createRoute, Outlet } from "@tanstack/react-router";
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
 import { AppShell } from "@/components/organisms/AppShell";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { BrandsListPage } from "@/routes/brands/list";
 import { NewBrandPage } from "@/routes/brands/new";
 import { DiscoveryPage } from "@/routes/brands/discovery";
+import { BrandProfilePage } from "@/routes/brands/profile";
+import { TrackerHubPage } from "@/routes/brands/tracker-hub";
+import { TrackerEditPage } from "@/routes/brands/tracker-edit";
 import { ScanListPage } from "@/routes/scans/list";
 import { ScanResultsPage } from "@/routes/scans/results";
 import { ScanSourcesPage } from "@/routes/scans/sources";
@@ -14,6 +23,13 @@ import { ScanCompetitorDetailPage } from "@/routes/scans/competitor-detail";
 import { ScanClaimsPage } from "@/routes/scans/claims";
 import { TrackerListPage } from "@/routes/trackers/list";
 import { OverviewPage } from "@/routes/overview";
+import { PromptsPage } from "@/routes/prompts";
+import { SourcesDomainsPage } from "@/routes/sources/domains";
+import { SourcesUrlsPage } from "@/routes/sources/urls";
+import { CompetitorsPage } from "@/routes/competitors";
+import { InsightsPage } from "@/routes/insights";
+import { SettingsWorkspacePage } from "@/routes/settings/workspace";
+import { SettingsProfilePage } from "@/routes/settings/profile";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -28,9 +44,24 @@ const rootRoute = createRootRoute({
   ),
 });
 
+// `/` redirects to the workspace dashboard. The dedicated new-user
+// welcome page slots in here in a future phase; until then, returning
+// users land on /overview and new users see the overview's "no brands"
+// empty state which CTAs into /brands/new.
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/overview", replace: true });
+  },
+});
+
+// Brand list (MANAGE section). Moved from `/` so management surfaces
+// live under `/brands/...` and the index can be replaced by the welcome
+// landing later without route churn.
+const brandsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands",
   component: BrandsListPage,
 });
 
@@ -44,6 +75,39 @@ const discoveryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/brands/$brandId/discovery",
   component: DiscoveryPage,
+});
+
+// Bare `/brands/$brandId` redirects to the brand's profile page — the
+// canonical landing for a single brand. Sub-routes (discovery, trackers
+// later) live alongside.
+const brandIndexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId",
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/brands/$brandId/profile",
+      params: { brandId: params.brandId },
+      replace: true,
+    });
+  },
+});
+
+const brandProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/profile",
+  component: BrandProfilePage,
+});
+
+const trackerHubRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/trackers/$trackerId",
+  component: TrackerHubPage,
+});
+
+const trackerEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/trackers/$trackerId/edit",
+  component: TrackerEditPage,
 });
 
 const scansListRoute = createRoute({
@@ -106,10 +170,62 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 });
 
+// New flat analytics routes (placeholders during navigation rollout).
+// Real screens land in steps 11–14 of the migration plan; the routes
+// exist now so direct URLs + sidebar links don't 404.
+const promptsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/prompts",
+  component: PromptsPage,
+});
+
+const sourcesDomainsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sources/domains",
+  component: SourcesDomainsPage,
+});
+
+const sourcesUrlsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sources/urls",
+  component: SourcesUrlsPage,
+});
+
+const competitorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/competitors",
+  component: CompetitorsPage,
+});
+
+const insightsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/insights",
+  component: InsightsPage,
+});
+
+// Settings stubs — pulled forward from step 15 so the sidebar Settings
+// entries resolve instead of 404-ing when step 3 ships.
+const settingsWorkspaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/workspace",
+  component: SettingsWorkspacePage,
+});
+
+const settingsProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/profile",
+  component: SettingsProfilePage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  brandsListRoute,
   newBrandRoute,
   discoveryRoute,
+  brandIndexRoute,
+  brandProfileRoute,
+  trackerHubRoute,
+  trackerEditRoute,
   scansListRoute,
   scanResultsRoute,
   scanSourcesRoute,
@@ -120,6 +236,13 @@ const routeTree = rootRoute.addChildren([
   scanClaimsRoute,
   trackerListRoute,
   overviewRoute,
+  promptsRoute,
+  sourcesDomainsRoute,
+  sourcesUrlsRoute,
+  competitorsRoute,
+  insightsRoute,
+  settingsWorkspaceRoute,
+  settingsProfileRoute,
 ]);
 
 export const router = createRouter({ routeTree });

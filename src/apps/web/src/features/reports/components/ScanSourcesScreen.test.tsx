@@ -2,6 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanSourcesDto, SourceTypeReferenceDto } from "@/types/api";
+
+// Stub ScanBreadcrumb — it calls useScanResults (React Query) which
+// would otherwise need a QueryClientProvider in these screen tests.
+vi.mock("./ScanBreadcrumb", () => ({ ScanBreadcrumb: () => null }));
+
 import { ScanSourcesScreen } from "./ScanSourcesScreen";
 
 type SourcesHookReturn = {

@@ -7,6 +7,7 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { useScanTopics } from "@/features/reports/hooks/useScanTopics";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { TopicsTable } from "@/features/reports/components/TopicsTable";
 
 interface ScanTopicsScreenProps {
@@ -47,6 +48,7 @@ export function ScanTopicsScreen({ scanRunId }: ScanTopicsScreenProps) {
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Topics" />
       <PageHeader title={copy.title} description={copy.subtitle} />
 
       <Link

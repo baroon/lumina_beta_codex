@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
+import { discoveryApi } from "@/api/discoveryApi";
 import type { CreateBrandRequest } from "@/types/api";
 
 export function useBrandsList() {
@@ -14,6 +15,21 @@ export function useBrand(brandId: string) {
   return useQuery({
     queryKey: ["brands", brandId],
     queryFn: () => brandsApi.getById(brandId),
+    enabled: !!brandId,
+  });
+}
+
+/**
+ * Brand-feature wrapper around the discovery results endpoint. Shares the
+ * `["discovery", brandId]` query key with the discovery feature's own
+ * hook so React Query keeps a single cache entry — this hook exists only
+ * because the cross-feature lint rule bans `brands` from importing
+ * `@/features/discovery/*`. Identical fetch + cache semantics either way.
+ */
+export function useBrandDiscoveryResults(brandId: string) {
+  return useQuery({
+    queryKey: ["discovery", brandId],
+    queryFn: () => discoveryApi.getResults(brandId),
     enabled: !!brandId,
   });
 }

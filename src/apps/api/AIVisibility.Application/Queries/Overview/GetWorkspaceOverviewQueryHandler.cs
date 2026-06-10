@@ -59,6 +59,15 @@ public class GetWorkspaceOverviewQueryHandler
             .Where(t => trackedBrandIds.Contains(t.BrandId))
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
+        // Apply optional tracker-scope filter — intersect with the
+        // workspace's own trackers so a caller can't read another
+        // workspace's data by passing arbitrary GUIDs. Null/empty filter
+        // means "no filter" (matches the LensCodes/TopicNames convention).
+        if (request.TrackerIds is { Count: > 0 })
+        {
+            var requested = new HashSet<Guid>(request.TrackerIds);
+            trackerIds = trackerIds.Where(id => requested.Contains(id)).ToList();
+        }
         if (trackerIds.Count == 0)
         {
             return EmptyDto(workspaceId, windowFrom, windowTo, trackedBrands.Select(b => new TrackedBrandDto(b.Id, b.Name)).ToList());

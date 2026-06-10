@@ -22,7 +22,15 @@ public record GetWorkspaceOverviewQuery(
     IReadOnlyList<string>? TopicNames,
     IReadOnlyList<string>? ProductNames,
     IReadOnlyList<string>? MarketNames,
-    IReadOnlyList<string>? AudienceNames) : IRequest<WorkspaceOverviewDto>;
+    IReadOnlyList<string>? AudienceNames,
+    /// <summary>
+    /// Optional tracker-scope filter — when null or empty, all trackers in
+    /// the workspace's brands are used (matches the convention of the
+    /// other filter params). When non-empty, only trackers in this set
+    /// (intersected with workspace membership for safety) are included.
+    /// Drives the FE TrackerSelector's `?trackers=` URL param.
+    /// </summary>
+    IReadOnlyList<Guid>? TrackerIds = null) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,

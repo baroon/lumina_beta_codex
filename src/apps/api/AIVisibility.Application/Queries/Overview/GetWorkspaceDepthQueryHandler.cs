@@ -44,6 +44,13 @@ public class GetWorkspaceDepthQueryHandler
             .Where(t => trackedBrandIds.Contains(t.BrandId))
             .Select(t => new TrackerRow(t.Id, t.BrandId, t.Name))
             .ToListAsync(cancellationToken);
+        // Apply optional tracker-scope filter — intersect with the
+        // workspace's own trackers (security). Null/empty filter = no filter.
+        if (request.TrackerIds is { Count: > 0 })
+        {
+            var requested = new HashSet<Guid>(request.TrackerIds);
+            trackers = trackers.Where(t => requested.Contains(t.Id)).ToList();
+        }
         if (trackers.Count == 0)
         {
             return EmptyDto(workspaceId, windowFrom, windowTo);

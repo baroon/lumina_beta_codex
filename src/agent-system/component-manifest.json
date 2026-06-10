@@ -397,8 +397,8 @@
           "path": "src/components/molecules/ChartCardHeader.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Tooltip", "lucide-react"],
-          "notes": "Compact header for chart cards on the Workspace Overview. Leading primary-tinted icon badge + neutral-900 title + optional info tooltip ⓘ (Radix Tooltip) + optional right-side actions slot + optional trailing collapse chevron when `onToggleCollapsed` is wired (used by CollapsibleCard). Tooltip body is plain text resolved by the caller from the content layer — the molecule stays a pure UI primitive so locale switching happens upstream."
+          "dependencies": ["InfoTooltip", "lucide-react"],
+          "notes": "Compact header for chart cards on the Workspace Overview. Leading primary-tinted icon badge + neutral-900 title + optional info tooltip (delegates to InfoTooltip when the `tooltip` prop is non-empty) + optional right-side actions slot + optional trailing collapse chevron when `onToggleCollapsed` is wired (used by CollapsibleCard). Tooltip body is plain text resolved by the caller from the content layer — the molecule stays a pure UI primitive so locale switching happens upstream."
         },
         {
           "name": "SourceTypeDropdown",
@@ -489,6 +489,60 @@
           "variants": ["framed", "inline"],
           "dependencies": ["Badge"],
           "notes": "Chip-style 'also known as' editor: existing aliases render as removable Badge chips, ending in a subtle '+' icon button. Clicking '+' reveals an input (Enter to add and keep input open, Escape or empty blur to collapse back). Case-insensitive duplicate prevention. Used by the discovery wizard for Brand.Aliases on BrandIdentity and per-candidate Product/Competitor aliases on SuggestionCard."
+        },
+        {
+          "name": "MetricCategoryLayout",
+          "category": "Molecules",
+          "path": "src/components/molecules/MetricCategoryLayout.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "Categorized dashboard scaffold: optional status + controls strips, sticky pill-style category nav, stacked sections. IntersectionObserver-driven scroll-spy highlights the section in view; clicking a pill scrolls + syncs the URL hash for shareable deep links. Used by ScanResultsScreen and WorkspaceOverviewScreen to group metrics into Visibility / Recommendation / Sentiment / Competitive / Citations & Sources."
+        },
+        {
+          "name": "InfoTooltip",
+          "category": "Molecules",
+          "path": "src/components/molecules/InfoTooltip.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Tooltip", "lucide-react"],
+          "notes": "Single ⓘ + hover/focus tooltip used by every chart-card title and KPI tile label across the app. Trigger is a focusable `<span role=button>` rather than a real `<button>` so it can be safely nested inside a clickable parent (HeroTile renders as a button when its tile is clickable). Click + keyDown propagation stopped so activating the icon doesn't also fire the parent's onClick. `body` defaults to `INFO_TOOLTIP_PLACEHOLDER` (\"Description coming soon.\") so callers can drop the icon in before real copy is authored. Consumed by ChartCardHeader (renders only when its `tooltip` prop is non-empty), ScanResultsScreen ChartTitle + MetricTile, and WorkspaceOverviewScreen HeroTile."
+        },
+        {
+          "name": "Breadcrumb",
+          "category": "Molecules",
+          "path": "src/components/molecules/Breadcrumb.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Skeleton", "lucide-react", "@tanstack/react-router"],
+          "notes": "Compact navigation breadcrumb — `Workspace › Brand › Tracker › Scan`. Items with `to` render as TanStack Links (with optional `params` for dynamic routes); items without `to` and the final item render as plain text with `aria-current=page` on the tail. Items with `label === undefined` render a small skeleton segment so the trail keeps its layout while async parent labels resolve. The `to` prop is cast to `never` internally because the molecule is generic — consumers trade route-string type safety for a uniform API. Used by management pages and scan detail pages once wired up in the navigation phase."
+        },
+        {
+          "name": "Tabs",
+          "category": "Molecules",
+          "path": "src/components/molecules/Tabs.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["lucide-react"],
+          "notes": "Underlined tab strip with a single visible panel; active tab is mirrored to the URL `?tab=` query param (configurable via `paramName`). Distinct from MetricCategoryLayout — Tabs hide inactive panels entirely, which is the right pattern for hubs (Tracker hub) where one panel is in focus at a time. The URL sync uses `history.replaceState` so back/forward leaves the page rather than unwinding tab clicks, and other query params (notably `?trackers=` analytics scope) are preserved when the tab changes. Keyboard support: ArrowLeft/Right cycle with wrap-around, Home/End jump to first/last, focus follows selection. ARIA: role=tablist/tab/tabpanel with aria-selected, aria-controls, aria-labelledby wired correctly."
+        },
+        {
+          "name": "TrackerSelector",
+          "category": "Molecules",
+          "path": "src/components/molecules/TrackerSelector.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Checkbox", "Input", "lucide-react", "useTrackerScope"],
+          "notes": "Top-of-sidebar analytics scope selector. Multi-select checkbox tree — brands group their trackers; all-on by default. Tri-state master ('All trackers') and per-brand checkboxes with standard semantics (checked → click → uncheck; unchecked or indeterminate → click → select all). Selection state lives in the URL `?trackers=` param via `useTrackerScope` — the molecule itself is stateless w.r.t. URL and accepts `scope` + `onScopeChange` as props for unit-testability. Trackers with `hasScans === false` render greyed with a 'No scans yet' hint and remain checkable. Search filters by brand name OR tracker name; an empty workspace renders a 'No trackers yet · Add a brand' state. Click-outside + Escape close the dropdown. Trigger pill label adapts: 'All trackers (N)' / 'None selected' / single tracker name / 'N of M trackers'. Pure helpers (`allTrackerIds`, `isTrackerSelected`, `computeWorkspaceState`, `computeBrandState`, `toggleTracker`, `toggleBrand`, `toggleWorkspace`, `triggerLabel`) are exported so consumers can test selection math in isolation."
+        },
+        {
+          "name": "ComingSoon",
+          "category": "Molecules",
+          "path": "src/components/molecules/ComingSoon.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "lucide-react"],
+          "notes": "Placeholder body for routes that are reachable but not yet built. Used during the navigation IA rollout (workspace-wide /prompts, /sources/domains, /sources/urls, /competitors, /insights) — routes register before their screens exist so direct URLs + sidebar links don't 404. Consistent visual across the placeholder set so the gap reads as 'in flight' rather than 'broken'. Accepts optional icon (rendered in primary-tinted badge), description, and a `beta` flag that pins a small BETA pill next to the title."
         }
       ]
     },
@@ -510,9 +564,14 @@
           "category": "Organisms",
           "path": "src/components/organisms/Sidebar.tsx",
           "status": "implemented",
-          "variants": ["expanded", "collapsed"],
-          "dependencies": ["SidebarNavItem"],
-          "notes": "Collapsible sidebar navigation (240px expanded, 48px collapsed)."
+          "variants": [],
+          "dependencies": [
+            "TrackerSelector",
+            "useTrackerScope",
+            "@tanstack/react-router",
+            "lucide-react"
+          ],
+          "notes": "App-shell left sidebar. Top: app name + TrackerSelector pill (always visible, even on management pages where it's inert). Below: three categorized sections — ANALYTICS (Overview/Prompts/Sources › Domains/Sources › URLs/Competitors/Insights · BETA/Scans), MANAGE (Brands and Trackers — both pointing at the brand list pre-step-6, with Trackers carrying a #trackers hash for the future expand-trackers-on-/brands behavior), and SETTINGS (Workspace, Profile — placeholder routes). Step 3 of the navigation rollout. The TrackerSelector receives empty static fixtures until step 4 wires a real data hook for brand-grouped trackers."
         },
         {
           "name": "ErrorBoundary",
@@ -831,7 +890,25 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["PageHeader", "Button", "Badge", "LoadingPage"],
-          "notes": "Brand picker: lists onboarded brands with discovery status, links to each brand's discovery/tracker flow, and an Add Brand action."
+          "notes": "Brand picker: lists onboarded brands with discovery status, links to each brand's profile page, and an Add Brand action."
+        },
+        {
+          "name": "BrandProfileScreen",
+          "category": "Feature — Brands",
+          "path": "src/features/brands/components/BrandProfileScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "SectionHeader",
+            "Card",
+            "Badge",
+            "LoadingPage",
+            "ErrorPage",
+            "useBrand",
+            "useDiscoveryResults"
+          ],
+          "notes": "Read-only brand profile view at /brands/$brandId/profile — the canonical landing page for a single brand. Renders identity fields (description, industry, category, positioning, website), aliases as chips, and one section per dimension (products, audiences, markets, topics, competitors, trust signals) showing the items as chips. Edits route through the existing discovery wizard via a 'Re-run discovery' CTA until proper PATCH endpoints land; an inline notice surfaces that today's edit path is the wizard. Sources data from useBrand + useDiscoveryResults (which returns the full DiscoveryResultsDto)."
         }
       ]
     },
@@ -839,6 +916,54 @@
       "name": "Feature — Tracker",
       "description": "Components for creating, editing, and managing visibility trackers including prompt configuration and platform selection.",
       "components": [
+        {
+          "name": "TrackerHubScreen",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/TrackerHubScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "Tabs",
+            "Breadcrumb",
+            "ComingSoon",
+            "PageHeader",
+            "Card",
+            "Badge",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerSummary",
+            "useTrackerScheduleSetup",
+            "usePrompts",
+            "useTrackerScans",
+            "useRunScan"
+          ],
+          "notes": "Tabbed hub for a single Visibility Tracker at /brands/$brandId/trackers/$trackerId — the one 'hub-with-tabs' survivor in the navigation IA rework (everything else is flattened into the sidebar). Tabs: Overview (placeholder until MetricCategoryLayout is scoped per-tracker) · Schedule (real cadence/timezone/platforms read-only) · Prompts (read-only list, capped at 50 for the hub view) · Lenses (placeholder until a per-tracker lens endpoint lands) · Scans (workspace scan list filtered client-side via useTrackerScans). Header shows breadcrumb (Brands › Brand › Tracker), tracker name, cadence + platform chips, 'Run scan now' button (v1: button + inline status; drawer with live progress is a follow-up polish), and 'Edit' link to the edit route. Tab state synced to ?tab= via the Tabs molecule."
+        },
+        {
+          "name": "TrackerEditScreen",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/TrackerEditScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "Breadcrumb",
+            "ComingSoon",
+            "PageHeader",
+            "SectionHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "Checkbox",
+            "Select",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerSummary",
+            "useTrackerScheduleSetup",
+            "useConfigureTrackerSchedule",
+            "usePrompts"
+          ],
+          "notes": "Tracker edit screen at /brands/$brandId/trackers/$trackerId/edit. Schedule section is the only fully-editable surface today (cadence + timezone + platforms via useConfigureTrackerSchedule, saves WITHOUT kicking off a scan — distinct from the create-flow TrackerScheduleScreen which activates + scans). Prompts section renders a count + link to the wizard for actual prompt management. Lenses section is a ComingSoon placeholder pending a per-tracker lens-edit endpoint. Sticky bottom save bar appears only when the schedule form is dirty (compared field-by-field against the setup snapshot); shows 'Saving…' during mutation, 'Saved.' on success, 'Save failed — try again.' on error. Discard reverts local state to the setup snapshot."
+        },
         {
           "name": "TrackerNameEditor",
           "category": "Feature — Tracker",
@@ -1064,6 +1189,15 @@
       "name": "Feature — Reporting",
       "description": "Components for tracker dashboards, performance tables, evidence views, and scan run history.",
       "components": [
+        {
+          "name": "ScanBreadcrumb",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ScanBreadcrumb.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Breadcrumb", "useScanResults"],
+          "notes": "Thin wrapper around `Breadcrumb` for the scan detail surfaces. Fetches the scan summary via `useScanResults` (React-Query-cached so it shares the cache entry with pages that already call it) and renders the canonical trail `Brands › {Brand} › {Tracker} › {currentLabel}`. Brand label links to `/brands/$id/profile`, tracker label links to `/brands/$id/trackers/$id`. While the summary loads the brand and tracker rows render skeleton segments so the trail keeps its layout. Used by ScanResultsScreen, ScanSourcesScreen, ScanTopicsScreen, ScanTopicDetailScreen, ScanCompetitorsScreen, ScanCompetitorDetailScreen, ScanClaimsScreen."
+        },
         {
           "name": "ScanResultsScreen",
           "category": "Feature — Reporting",

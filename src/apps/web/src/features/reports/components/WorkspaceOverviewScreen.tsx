@@ -1,16 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDown,
   ArrowUp,
   BarChart3,
+  Eye,
   Globe,
   Grid3X3,
+  Heart,
   Layers,
   Loader2,
   MessageSquare,
   Minus,
   PieChart,
+  Quote,
   Smile,
+  Swords,
   Target,
   ThumbsUp,
   TrendingUp,
@@ -28,6 +32,11 @@ import {
   type DateGranularity,
 } from "@/components/molecules/DateGranularityToggle";
 import { LensChipRow } from "@/components/molecules/LensChipRow";
+import {
+  MetricCategoryLayout,
+  type MetricCategorySection,
+} from "@/components/molecules/MetricCategoryLayout";
+import { InfoTooltip } from "@/components/molecules/InfoTooltip";
 import { TrustSignalsPill } from "@/components/molecules/TrustSignalsPill";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { sentimentColors } from "@/components/charts/chartTheme";
@@ -56,6 +65,7 @@ import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
 import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
+import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
@@ -164,6 +174,9 @@ const METRIC_OPTIONS: MetricOption[] = [
 export function WorkspaceOverviewScreen() {
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Lifted from the old DepthSections wrapper so the chats card +
+  // drawer can live in different parts of the category layout.
+  const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
   // FE-only lens-filter state — both variants below write to this list.
   // No data fetch honors it yet; once we settle on one variant we will
   // wire `?lensCodes=` through the overview endpoints.
@@ -181,6 +194,11 @@ export function WorkspaceOverviewScreen() {
   const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Tracker-scope filter from the sidebar's TrackerSelector. `"all"` →
+  // no filter (matches the LensCodes/TopicNames convention on the BE);
+  // explicit subset → only those trackers feed the analytics queries.
+  const { scope: trackerScope } = useTrackerScope();
+  const trackerIds = trackerScope === "all" ? [] : trackerScope;
   const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(
     range,
     selectedLensCodes,
@@ -188,6 +206,28 @@ export function WorkspaceOverviewScreen() {
     selectedProductNames,
     selectedMarketNames,
     selectedAudienceNames,
+    trackerIds,
+  );
+  // Slice B + C data fetched separately so a failure in one doesn't
+  // blank the whole page. Lifted out of the old wrapper components so
+  // each card can live in its own metric category.
+  const { data: competitiveData } = useWorkspaceCompetitive(
+    range,
+    selectedLensCodes,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    trackerIds,
+  );
+  const { data: depthData } = useWorkspaceDepth(
+    range,
+    selectedLensCodes,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    trackerIds,
   );
   // Per-lens mention counts for the chip in the LensSelector. Unscoped
   // from `selectedLensCodes` on purpose so the chip stays stable as the
@@ -272,48 +312,53 @@ export function WorkspaceOverviewScreen() {
     name: c.name,
   }));
 
+  const controlsStrip = (
+    <ComparisonControlsRow
+      range={range}
+      onRangeChange={setRange}
+      granularity={granularity}
+      onGranularityChange={setGranularity}
+      trackedBrands={trackedBrandsEntities}
+      competitors={competitorEntities}
+      selectedKeys={selectedKeys}
+      onSelectedKeysChange={setSelectedKeys}
+      selectedLensCodes={selectedLensCodes}
+      onSelectedLensCodesChange={setSelectedLensCodes}
+      lensCountsByCode={lensCountsByCode}
+      topicsByBrand={topicsByBrand}
+      selectedTopicNames={selectedTopicNames}
+      onSelectedTopicNamesChange={setSelectedTopicNames}
+      topicCountsByName={topicCountsByName}
+      productsByBrand={productsByBrand}
+      selectedProductNames={selectedProductNames}
+      onSelectedProductNamesChange={setSelectedProductNames}
+      productCountsByName={productCountsByName}
+      marketsByBrand={marketsByBrand}
+      selectedMarketNames={selectedMarketNames}
+      onSelectedMarketNamesChange={setSelectedMarketNames}
+      marketCountsByName={marketCountsByName}
+      audiencesByBrand={audiencesByBrand}
+      selectedAudienceNames={selectedAudienceNames}
+      onSelectedAudienceNamesChange={setSelectedAudienceNames}
+      audienceCountsByName={audienceCountsByName}
+      trustSignalsByBrand={trustSignalsByBrand}
+      isRefreshing={isFetching && !isLoading}
+    />
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader title={copy.title} description={copy.subtitle} />
 
-      <ComparisonControlsRow
-        range={range}
-        onRangeChange={setRange}
-        granularity={granularity}
-        onGranularityChange={setGranularity}
-        trackedBrands={trackedBrandsEntities}
-        competitors={competitorEntities}
-        selectedKeys={selectedKeys}
-        onSelectedKeysChange={setSelectedKeys}
-        selectedLensCodes={selectedLensCodes}
-        onSelectedLensCodesChange={setSelectedLensCodes}
-        lensCountsByCode={lensCountsByCode}
-        topicsByBrand={topicsByBrand}
-        selectedTopicNames={selectedTopicNames}
-        onSelectedTopicNamesChange={setSelectedTopicNames}
-        topicCountsByName={topicCountsByName}
-        productsByBrand={productsByBrand}
-        selectedProductNames={selectedProductNames}
-        onSelectedProductNamesChange={setSelectedProductNames}
-        productCountsByName={productCountsByName}
-        marketsByBrand={marketsByBrand}
-        selectedMarketNames={selectedMarketNames}
-        onSelectedMarketNamesChange={setSelectedMarketNames}
-        marketCountsByName={marketCountsByName}
-        audiencesByBrand={audiencesByBrand}
-        selectedAudienceNames={selectedAudienceNames}
-        onSelectedAudienceNamesChange={setSelectedAudienceNames}
-        audienceCountsByName={audienceCountsByName}
-        trustSignalsByBrand={trustSignalsByBrand}
-        isRefreshing={isFetching && !isLoading}
-      />
-
       {data.trackedBrands.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-neutral-600">
-            {copy.empty.noBrands}
-          </CardContent>
-        </Card>
+        <>
+          {controlsStrip}
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-neutral-600">
+              {copy.empty.noBrands}
+            </CardContent>
+          </Card>
+        </>
       ) : (
         // Soft dim while a refetch is in flight. `placeholderData` keeps the
         // prior payload mounted so nothing actually swaps in — the dim is the
@@ -322,46 +367,22 @@ export function WorkspaceOverviewScreen() {
         <div
           aria-busy={isFetching && !isLoading}
           className={cn(
-            "space-y-6 transition-opacity duration-150",
+            "transition-opacity duration-150",
             isFetching && !isLoading && "opacity-60",
           )}
         >
-          <HeroRow
-            hero={data.hero}
-            previousHero={data.previousHero}
-            onDrillDown={handleHeroDrillDown}
-          />
-          <TrendChartsGrid
+          <CategorizedOverview
             data={data}
+            competitiveData={competitiveData}
+            depthData={depthData}
             selectedKeys={selectedKeys}
             granularity={granularity}
-            registerRef={(metric, el) => {
-              chartRefs.current[metric] = el;
-            }}
+            chartRefs={chartRefs}
+            controlsStrip={controlsStrip}
+            onDrillDown={handleHeroDrillDown}
+            onSelectChat={setSelectedChat}
           />
-          <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
-
-          {/* Slice B competitive sections — fetched separately so an
-              aggregation failure in one doesn't blank the whole page. */}
-          <CompetitiveSections
-            range={range}
-            lensCodes={selectedLensCodes}
-            topicNames={selectedTopicNames}
-            productNames={selectedProductNames}
-            marketNames={selectedMarketNames}
-            audienceNames={selectedAudienceNames}
-            selectedKeys={selectedKeys}
-          />
-
-          {/* Slice C depth sections + recent chats. Same pattern. */}
-          <DepthSections
-            range={range}
-            lensCodes={selectedLensCodes}
-            topicNames={selectedTopicNames}
-            productNames={selectedProductNames}
-            marketNames={selectedMarketNames}
-            audienceNames={selectedAudienceNames}
-          />
+          <RecentChatDrawer chat={selectedChat} onClose={() => setSelectedChat(null)} />
         </div>
       )}
     </div>
@@ -369,46 +390,155 @@ export function WorkspaceOverviewScreen() {
 }
 
 // ---------------------------------------------------------------------------
-// Slice B sections — fetched from /api/overview/competitive
+// Categorized layout — 5 sections that match the Scans page grouping. The
+// MetricCategoryLayout stacks the controls strip + pill nav together so they
+// stay pinned to the top of the viewport as one block while the user scrolls.
 // ---------------------------------------------------------------------------
 
-function CompetitiveSections({
-  range,
-  lensCodes,
-  topicNames,
-  productNames,
-  marketNames,
-  audienceNames,
-  selectedKeys,
-}: {
-  range: DateRangeSelection;
-  lensCodes: readonly string[];
-  topicNames: readonly string[];
-  productNames: readonly string[];
-  marketNames: readonly string[];
-  audienceNames: readonly string[];
+interface CategorizedOverviewProps {
+  data: WorkspaceOverviewDto;
+  competitiveData: import("@/types/api").WorkspaceCompetitiveDto | undefined;
+  depthData: import("@/types/api").WorkspaceDepthDto | undefined;
   selectedKeys: readonly string[];
-}) {
-  const { data, isLoading, isError } = useWorkspaceCompetitive(
-    range,
-    lensCodes,
-    topicNames,
-    productNames,
-    marketNames,
-    audienceNames,
-  );
-  if (isLoading || isError || !data) return null;
+  granularity: DateGranularity;
+  chartRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  /** Filter row forwarded to MetricCategoryLayout's sticky stack. */
+  controlsStrip: ReactNode;
+  onDrillDown: (metricValue: string) => void;
+  onSelectChat: (chat: WorkspaceRecentChatDto) => void;
+}
+
+function CategorizedOverview({
+  data,
+  competitiveData,
+  depthData,
+  selectedKeys,
+  granularity,
+  chartRefs,
+  controlsStrip,
+  onDrillDown,
+  onSelectChat,
+}: CategorizedOverviewProps) {
+  function trendCard(metricValue: string) {
+    const metric = METRIC_OPTIONS.find((m) => m.value === metricValue);
+    if (!metric) return null;
+    return (
+      <div
+        ref={(el) => {
+          chartRefs.current[metric.value] = el;
+        }}
+        className="scroll-mt-20"
+        data-testid={`trend-card-${metric.value}`}
+      >
+        <TrendCard
+          data={data}
+          metric={metric}
+          selectedKeys={selectedKeys}
+          granularity={granularity}
+        />
+      </div>
+    );
+  }
+
+  const sections: MetricCategorySection[] = [
+    {
+      id: "visibility",
+      label: "Visibility",
+      icon: Eye,
+      children: (
+        <div className="space-y-4">
+          {trendCard("mention")}
+          {trendCard("sov")}
+          {depthData && <MentionsByPlatformCard rows={depthData.mentionsByPlatform} />}
+          <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
+        </div>
+      ),
+    },
+    {
+      id: "recommendation",
+      label: "Recommendation",
+      icon: ThumbsUp,
+      children: (
+        <div className="space-y-4">
+          {trendCard("rec")}
+          {trendCard("rank")}
+          {competitiveData && (
+            <RecommendationRateCard
+              rates={competitiveData.recommendationRates}
+              selectedKeys={selectedKeys}
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "sentiment",
+      label: "Sentiment & Trust",
+      icon: Heart,
+      children: (
+        <div className="space-y-4">
+          {trendCard("sentiment")}
+          {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
+          {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
+        </div>
+      ),
+    },
+    {
+      id: "competitive",
+      label: "Competitive",
+      icon: Swords,
+      children: (
+        <div className="space-y-4">
+          {competitiveData && (
+            <ShareOfVoiceCard
+              mentions={competitiveData.mentionDistribution}
+              selectedKeys={selectedKeys}
+            />
+          )}
+          {competitiveData && (
+            <BrandVsCompetitorCard
+              mentions={competitiveData.mentionDistribution}
+              selectedKeys={selectedKeys}
+            />
+          )}
+          {competitiveData && (
+            <MentionDistributionCard
+              mentions={competitiveData.mentionDistribution}
+              selectedKeys={selectedKeys}
+            />
+          )}
+          {competitiveData && (
+            <CompetitiveGapGroupsCard
+              groups={competitiveData.competitiveGaps}
+              selectedKeys={selectedKeys}
+            />
+          )}
+          {depthData && <TopicHeatmapCard heatmap={depthData.topicHeatmap} />}
+        </div>
+      ),
+    },
+    {
+      id: "citations",
+      label: "Citations & Sources",
+      icon: Quote,
+      children: (
+        <div className="space-y-4">
+          {trendCard("owned")}
+          {competitiveData && <TopCitationDomainsCard rows={competitiveData.topDomains} />}
+          {competitiveData && <DomainTypesCard rows={competitiveData.domainTypes} />}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <>
-      <ShareOfVoiceCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-      <RecommendationRateCard rates={data.recommendationRates} selectedKeys={selectedKeys} />
-      <BrandVsCompetitorCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-      <MentionDistributionCard mentions={data.mentionDistribution} selectedKeys={selectedKeys} />
-      <CompetitiveGapGroupsCard groups={data.competitiveGaps} selectedKeys={selectedKeys} />
-      <TopCitationDomainsCard rows={data.topDomains} />
-      <DomainTypesCard rows={data.domainTypes} />
-    </>
+    <MetricCategoryLayout
+      statusStrip={
+        <HeroRow hero={data.hero} previousHero={data.previousHero} onDrillDown={onDrillDown} />
+      }
+      controlsStrip={controlsStrip}
+      sections={sections}
+    />
   );
 }
 
@@ -768,17 +898,15 @@ function ComparisonControlsRow({
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   return (
-    // Sticky filter region with two side-by-side columns:
-    //   - LEFT  : a narrow Time column — D/W/M granularity stacked above
-    //             the date-range picker. Stretches to match the height
-    //             of the right column.
-    //   - RIGHT : flex-1; stacks the Lenses row above the Trackers row
-    //             so both dimension groups share the same horizontal
-    //             space and headings line up consistently.
-    // Both columns wrap internally (flex-wrap), so the page never needs
-    // a horizontal scrollbar regardless of how many dimensions land in
-    // them.
-    <div className="sticky top-0 z-20 flex flex-wrap items-stretch gap-2">
+    // Two side-by-side columns: a narrow Time column on the left (D/W/M
+    // toggle + date-range picker, stretched to match) and a flex-1 right
+    // column that stacks the Lenses row above the Trackers row so both
+    // dimension groups share the same horizontal space. Both wrap
+    // internally so the page never needs a horizontal scrollbar.
+    //
+    // Sticky behavior is owned by the outer MetricCategoryLayout — this
+    // row + the pill nav stick together as a single block.
+    <div className="flex flex-wrap items-stretch gap-2">
       <div className="flex shrink-0 flex-col items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
         <DateGranularityToggle value={granularity} onChange={onGranularityChange} />
         <DateRangePicker value={range} onChange={onRangeChange} />
@@ -911,7 +1039,10 @@ function HeroTile({
 }) {
   const inner = (
     <>
-      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
+      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-neutral-500">
+        <span className="truncate">{label}</span>
+        <InfoTooltip label={label} iconSize={12} />
+      </div>
       <div className="mt-1 flex items-baseline gap-2">
         <p className="text-2xl font-semibold text-neutral-900">{value}</p>
         <HeroDelta current={current} previous={previous} />
@@ -974,41 +1105,6 @@ function HeroDelta({ current, previous }: { current: number | null; previous: nu
       {isUp ? <ArrowUp size={12} aria-hidden /> : <ArrowDown size={12} aria-hidden />}
       {Math.abs(rounded)}%
     </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Trend charts grid — one card per metric (no dropdown). 2-col on lg+.
-// ---------------------------------------------------------------------------
-
-interface TrendChartsGridProps {
-  data: WorkspaceOverviewDto;
-  selectedKeys: readonly string[];
-  /** Chart-axis granularity from the D/W/M toggle. */
-  granularity: DateGranularity;
-  /** Registers per-metric DOM refs so the hero-tile drill-down can scroll. */
-  registerRef: (metricValue: string, el: HTMLDivElement | null) => void;
-}
-
-function TrendChartsGrid({ data, selectedKeys, granularity, registerRef }: TrendChartsGridProps) {
-  return (
-    <div className="grid gap-4">
-      {METRIC_OPTIONS.map((metric) => (
-        <div
-          key={metric.value}
-          ref={(el) => registerRef(metric.value, el)}
-          className="scroll-mt-4"
-          data-testid={`trend-card-${metric.value}`}
-        >
-          <TrendCard
-            data={data}
-            metric={metric}
-            selectedKeys={selectedKeys}
-            granularity={granularity}
-          />
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1378,48 +1474,6 @@ function sentimentVariant(
 function entityColor(isBrand: boolean, index: number): string {
   if (isBrand && index === 0) return ENTITY_PALETTE[0];
   return ENTITY_PALETTE[index % ENTITY_PALETTE.length];
-}
-
-// ---------------------------------------------------------------------------
-// Slice C depth sections — fetched from /api/overview/depth
-// ---------------------------------------------------------------------------
-
-function DepthSections({
-  range,
-  lensCodes,
-  topicNames,
-  productNames,
-  marketNames,
-  audienceNames,
-}: {
-  range: DateRangeSelection;
-  lensCodes: readonly string[];
-  topicNames: readonly string[];
-  productNames: readonly string[];
-  marketNames: readonly string[];
-  audienceNames: readonly string[];
-}) {
-  const { data, isLoading, isError } = useWorkspaceDepth(
-    range,
-    lensCodes,
-    topicNames,
-    productNames,
-    marketNames,
-    audienceNames,
-  );
-  const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
-
-  if (isLoading || isError || !data) return null;
-
-  return (
-    <>
-      <MentionsByPlatformCard rows={data.mentionsByPlatform} />
-      <SentimentDistributionCard slices={data.sentimentDistribution} />
-      <TopicHeatmapCard heatmap={data.topicHeatmap} />
-      <RecentChatsCard chats={data.recentChats} onSelect={setSelectedChat} />
-      <RecentChatDrawer chat={selectedChat} onClose={() => setSelectedChat(null)} />
-    </>
-  );
 }
 
 function MentionsByPlatformCard({ rows }: { rows: readonly PlatformMentionDto[] }) {

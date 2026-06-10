@@ -19,7 +19,11 @@ public record GetWorkspaceCompetitiveQuery(
     IReadOnlyList<string>? TopicNames,
     IReadOnlyList<string>? ProductNames,
     IReadOnlyList<string>? MarketNames,
-    IReadOnlyList<string>? AudienceNames)
+    IReadOnlyList<string>? AudienceNames,
+    /// <summary>
+    /// Optional tracker-scope filter — see <see cref="GetWorkspaceOverviewQuery.TrackerIds"/>.
+    /// </summary>
+    IReadOnlyList<Guid>? TrackerIds = null)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { useScanCompetitors } from "@/features/reports/hooks/useScanCompetitors";
 import { CompetitorsTable } from "@/features/reports/components/CompetitorsTable";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 
 interface ScanCompetitorsScreenProps {
   scanRunId: string;
@@ -47,6 +48,7 @@ export function ScanCompetitorsScreen({ scanRunId }: ScanCompetitorsScreenProps)
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Competitors" />
       <PageHeader title={copy.title} description={copy.subtitle} />
 
       <Link

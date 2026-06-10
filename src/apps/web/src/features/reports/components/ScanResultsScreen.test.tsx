@@ -296,8 +296,10 @@ describe("ScanResultsScreen", () => {
     expect(sovLabels.some((l) => l.includes("Brand"))).toBe(true);
   });
 
-  it("hides the Share-of-Voice chart when brand SoV is null", () => {
-    // Denominator-zero case from the aggregator — section must not render.
+  it("shows the SoV card with an empty state when brand SoV is null", () => {
+    // Denominator-zero case from the aggregator. Under the categorized
+    // layout the SoV card stays mounted (so the Competitive section keeps
+    // its visible structure), but the chart is replaced by an empty state.
     const data = makeResults({
       coreMetrics: {
         ...makeResults().coreMetrics,
@@ -313,10 +315,10 @@ describe("ScanResultsScreen", () => {
     };
     render(<ScanResultsScreen scanRunId="s1" />);
 
-    // 4 breakdown + 1 top-cited = 5 bar charts, NOT 6 (SoV section gone).
+    // SoV chart is gone — 4 breakdown + 1 top-cited = 5 bar charts (was 6).
     expect(screen.getAllByTestId("bar-chart").length).toBe(5);
-    // SoV section heading must not be present (the tile label still is).
-    expect(screen.queryByRole("heading", { name: /share of voice/i })).not.toBeInTheDocument();
+    // SoV section heading remains (it anchors the Competitive category).
+    expect(screen.getByRole("heading", { name: /share of voice/i })).toBeInTheDocument();
   });
 
   it("renders 'No data' for nullable rates that come back null", () => {

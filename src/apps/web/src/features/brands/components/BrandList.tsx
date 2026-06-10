@@ -33,7 +33,7 @@ export function BrandList() {
           {items.map((brand) => (
             <li key={brand.id}>
               <Link
-                to="/brands/$brandId/discovery"
+                to="/brands/$brandId/profile"
                 params={{ brandId: brand.id }}
                 className="flex items-center justify-between rounded-lg border border-neutral-200 bg-surface-card p-4 transition-all hover:border-neutral-300 hover:shadow-sm"
               >

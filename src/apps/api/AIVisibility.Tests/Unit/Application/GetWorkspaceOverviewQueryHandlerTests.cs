@@ -336,4 +336,76 @@ public class GetWorkspaceOverviewQueryHandlerTests
         acme.Should().NotBeNull();
         acme!.Points.Should().HaveCount(1);
     }
+
+    [Fact]
+    public async Task TrackerIdsFilter_ScopesAggregationToSubsetOfTrackers()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Filter to ONLY Acme's tracker. The handler must drop Beta's
+        // scans + brand series entirely from the aggregation.
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: new[] { seed.AcmeTrackerId }),
+            CancellationToken.None);
+
+        // 2 scans (both Acme's). Beta's 2 scans are out of scope.
+        result.ScanCount.Should().Be(2);
+        result.Hero.Queries.Should().Be(2);
+        // Both Acme scans had brand mentions → rate = 1.0.
+        result.Hero.BrandMentionRate.Should().BeApproximately(1.0, 1e-9);
+
+        // Brand mention rate series only contains Acme.
+        var brandSeries = result.Series.Where(s => s.MetricName == MetricNames.BrandMentionRate).ToList();
+        brandSeries.Should().HaveCount(1);
+        brandSeries[0].EntityName.Should().Be("Acme");
+    }
+
+    [Fact]
+    public async Task TrackerIdsFilter_IgnoresUnknownIdsForSecurity()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Caller passes a GUID that doesn't belong to this workspace.
+        // Intersection with workspace trackers yields the empty set, so
+        // the handler returns the empty DTO — no cross-workspace leak.
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: new[] { Guid.NewGuid() }),
+            CancellationToken.None);
+
+        result.ScanCount.Should().Be(0);
+        result.Series.Should().BeEmpty();
+        result.TopEntities.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TrackerIdsFilter_NullOrEmpty_TreatedAsNoFilter()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var withNull = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null),
+            CancellationToken.None);
+        var withEmpty = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: Array.Empty<Guid>()),
+            CancellationToken.None);
+
+        // Matches the LensCodes / TopicNames convention: null and empty
+        // mean "no filter, include everything".
+        withNull.ScanCount.Should().Be(4);
+        withEmpty.ScanCount.Should().Be(4);
+    }
 }

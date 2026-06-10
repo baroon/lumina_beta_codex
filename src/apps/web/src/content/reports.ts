@@ -60,6 +60,8 @@ export const REPORTS_COPY = {
       ownedCitationShare: "Owned citation share",
       overallSentiment: "Overall sentiment",
       noData: "No data",
+      noCitations:
+        "No citations in this scan. Add a search-enabled platform (ChatGptSearch, Perplexity) to capture cited sources.",
       momentumSuffix: "vs last scan",
     },
     shareOfVoice: {

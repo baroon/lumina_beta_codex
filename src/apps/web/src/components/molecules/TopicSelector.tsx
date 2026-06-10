@@ -197,7 +197,6 @@ function BrandSection({
                   checked={checked}
                   onCheckedChange={() => onToggle(name)}
                   aria-label={name}
-                  checkboxSize="sm"
                 />
                 <span className="flex-1 truncate font-medium text-neutral-900">{name}</span>
                 {countsByName && name in countsByName && <MentionChip count={countsByName[name]} />}

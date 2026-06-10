@@ -2,6 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanCompetitorDetailDto } from "@/types/api";
+
+vi.mock("./ScanBreadcrumb", () => ({ ScanBreadcrumb: () => null }));
+
 import { ScanCompetitorDetailScreen } from "./ScanCompetitorDetailScreen";
 
 type HookReturn = {

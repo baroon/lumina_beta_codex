@@ -28,8 +28,8 @@ interface BrandSelectorProps {
   ariaLabel?: string;
   /**
    * Route the "Manage brands" footer link points at. Defaults to the brand
-   * list page (`/`). Set to `null` to hide the footer link entirely (e.g.
-   * for tests or for embedded contexts).
+   * list page (`/brands`). Set to `null` to hide the footer link entirely
+   * (e.g. for tests or for embedded contexts).
    */
   manageBrandsHref?: string | null;
 }
@@ -49,7 +49,7 @@ export function BrandSelector({
   selectedKeys,
   onChange,
   ariaLabel = "Brand selector",
-  manageBrandsHref = "/",
+  manageBrandsHref = "/brands",
 }: BrandSelectorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -267,7 +267,6 @@ function SectionBlock({
                   checked={checked}
                   onCheckedChange={() => onToggle(entity)}
                   aria-label={entity.name}
-                  checkboxSize="sm"
                 />
                 <BrandInitialAvatar name={entity.name} />
                 <span className="flex-1 truncate">{entity.name}</span>

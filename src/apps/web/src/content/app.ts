@@ -6,6 +6,19 @@ export const APP_COPY = {
     overview: "Overview",
     trackers: "Trackers",
     scans: "Scans",
+    // Phase: navigation-and-pages rework (categorized sidebar).
+    prompts: "Prompts",
+    sourcesDomains: "Sources › Domains",
+    sourcesUrls: "Sources › URLs",
+    competitors: "Competitors",
+    insights: "Insights",
+    settingsWorkspace: "Workspace",
+    settingsProfile: "Profile",
+  },
+  navSections: {
+    analytics: "Analytics",
+    manage: "Manage",
+    settings: "Settings",
   },
   stepper: {
     progressLabel: "Wizard progress",

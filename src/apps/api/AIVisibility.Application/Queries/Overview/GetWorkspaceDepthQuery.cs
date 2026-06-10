@@ -15,7 +15,11 @@ public record GetWorkspaceDepthQuery(
     IReadOnlyList<string>? TopicNames,
     IReadOnlyList<string>? ProductNames,
     IReadOnlyList<string>? MarketNames,
-    IReadOnlyList<string>? AudienceNames) : IRequest<WorkspaceDepthDto>;
+    IReadOnlyList<string>? AudienceNames,
+    /// <summary>
+    /// Optional tracker-scope filter — see <see cref="GetWorkspaceOverviewQuery.TrackerIds"/>.
+    /// </summary>
+    IReadOnlyList<Guid>? TrackerIds = null) : IRequest<WorkspaceDepthDto>;
 
 public sealed record WorkspaceDepthDto(
     Guid WorkspaceId,

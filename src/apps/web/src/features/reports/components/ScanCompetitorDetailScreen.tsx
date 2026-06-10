@@ -6,6 +6,7 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { useScanCompetitor } from "@/features/reports/hooks/useScanCompetitor";
 import { cn } from "@/lib/utils";
 import type { CompetitorMentionSourceDto, CompetitorMetricsDto } from "@/types/api";
@@ -52,6 +53,7 @@ export function ScanCompetitorDetailScreen({
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel={data.name} />
       <PageHeader title={data.name} description={data.domain ?? copy.subtitle} />
 
       <Link

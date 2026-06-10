@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { cn } from "@/lib/utils";
 import { useScanClaims } from "@/features/reports/hooks/useScanClaims";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 
 interface ScanClaimsScreenProps {
   scanRunId: string;
@@ -56,6 +57,7 @@ export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
 
   return (
     <div className="space-y-6">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Claims" />
       <PageHeader title={copy.title} description={copy.subtitle} />
 
       <Link

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trackersApi } from "@/api/trackersApi";
 
@@ -12,4 +13,23 @@ export function useAllTrackers() {
     queryKey: ["all-trackers"],
     queryFn: () => trackersApi.list(),
   });
+}
+
+/**
+ * Find a single tracker by id from the workspace list. Shares the
+ * `all-trackers` query cache so this and the tracker selector / brand
+ * list / tracker hub all read from one source.
+ */
+export function useTrackerSummary(trackerId: string) {
+  const query = useAllTrackers();
+  const tracker = useMemo(
+    () => query.data?.find((t) => t.trackerId === trackerId),
+    [query.data, trackerId],
+  );
+  return {
+    tracker,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+  };
 }

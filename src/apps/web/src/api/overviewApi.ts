@@ -27,6 +27,7 @@ function buildOverviewQuery(
   productNames: readonly string[] = [],
   marketNames: readonly string[] = [],
   audienceNames: readonly string[] = [],
+  trackerIds: readonly string[] = [],
 ): string {
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from.toISOString());
@@ -37,6 +38,7 @@ function buildOverviewQuery(
   for (const name of productNames) params.append("productNames", name);
   for (const name of marketNames) params.append("marketNames", name);
   for (const name of audienceNames) params.append("audienceNames", name);
+  for (const id of trackerIds) params.append("trackerIds", id);
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -54,9 +56,10 @@ export const overviewApi = {
     productNames: readonly string[],
     marketNames: readonly string[],
     audienceNames: readonly string[],
+    trackerIds: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceOverviewDto>(
-      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
+      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
     ),
   competitive: (
     range: DateRange,
@@ -65,9 +68,10 @@ export const overviewApi = {
     productNames: readonly string[],
     marketNames: readonly string[],
     audienceNames: readonly string[],
+    trackerIds: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceCompetitiveDto>(
-      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
+      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
     ),
   depth: (
     range: DateRange,
@@ -76,9 +80,10 @@ export const overviewApi = {
     productNames: readonly string[],
     marketNames: readonly string[],
     audienceNames: readonly string[],
+    trackerIds: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceDepthDto>(
-      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames)}`,
+      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
     ),
   /**
    * Per-lens mention counts for the current window. Deliberately

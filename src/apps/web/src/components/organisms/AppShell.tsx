@@ -9,7 +9,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="flex h-screen bg-surface-page">
       <Sidebar />
       <main className="flex-1 overflow-auto [scrollbar-gutter:stable]">
-        <div className="px-8 py-8">{children}</div>
+        <div className="px-6 py-6">{children}</div>
       </main>
     </div>
   );

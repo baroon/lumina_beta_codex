@@ -38,6 +38,14 @@ public class GetWorkspaceCompetitiveQueryHandler
             .Where(t => brandIds.Contains(t.BrandId))
             .Select(t => new TrackerRow(t.Id, t.BrandId))
             .ToListAsync(cancellationToken);
+        // Apply optional tracker-scope filter — intersect with the
+        // workspace's own trackers (security: prevent cross-workspace
+        // GUID leaks). Null/empty filter = no filter.
+        if (request.TrackerIds is { Count: > 0 })
+        {
+            var requested = new HashSet<Guid>(request.TrackerIds);
+            trackers = trackers.Where(t => requested.Contains(t.Id)).ToList();
+        }
         var trackerIds = trackers.Select(t => t.Id).ToList();
         var trackersByBrand = trackers
             .GroupBy(t => t.BrandId)

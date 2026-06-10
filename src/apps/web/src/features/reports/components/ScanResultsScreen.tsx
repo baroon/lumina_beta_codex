@@ -1,5 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { Database, ShieldAlert, Tags, Users } from "lucide-react";
+import {
+  Database,
+  Eye,
+  Heart,
+  Quote,
+  ShieldAlert,
+  Swords,
+  Tags,
+  ThumbsUp,
+  Users,
+} from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
@@ -7,8 +17,14 @@ import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChar
 import { SentimentDonut } from "@/components/charts/SentimentDonut";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
+import {
+  MetricCategoryLayout,
+  type MetricCategorySection,
+} from "@/components/molecules/MetricCategoryLayout";
+import { InfoTooltip } from "@/components/molecules/InfoTooltip";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
+import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { useScanResults } from "@/features/reports/hooks/useScanResults";
 import type { BreakdownsDto, CoreMetricsDto, ScanSummaryDto } from "@/types/api";
 
@@ -20,6 +36,11 @@ interface ScanResultsScreenProps {
  * Slice (d) reporting page. Composes the entire Scan Results view from the
  * single GET /api/scans/{id}/results call. Charts go through the shared
  * /components/charts/ wrappers per ARCH-003 (no direct nivo imports here).
+ *
+ * Metrics are grouped into five categories — Visibility, Recommendation,
+ * Sentiment & Trust, Competitive, Citations & Sources — via
+ * <MetricCategoryLayout>. The sticky pill nav syncs to the URL hash for
+ * deep linking.
  */
 export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
   const { data, isLoading, isError, error, refetch } = useScanResults(scanRunId);
@@ -27,9 +48,6 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
   if (isLoading) return <LoadingPage />;
 
   if (isError) {
-    // 404 means scan or AnalysisJob not found — render a friendly empty
-    // state rather than the generic error page so users hitting the URL
-    // before aggregation completes see something actionable.
     if (error instanceof ApiError && error.status === 404) {
       return (
         <Card>
@@ -49,64 +67,99 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
 
   if (!data) return null;
 
+  const sections: MetricCategorySection[] = [
+    {
+      id: "visibility",
+      label: "Visibility",
+      icon: Eye,
+      children: <VisibilitySection metrics={data.coreMetrics} breakdowns={data.breakdowns} />,
+    },
+    {
+      id: "recommendation",
+      label: "Recommendation",
+      icon: ThumbsUp,
+      children: <RecommendationSection metrics={data.coreMetrics} />,
+    },
+    {
+      id: "sentiment",
+      label: "Sentiment & Trust",
+      icon: Heart,
+      children: <SentimentSection metrics={data.coreMetrics} />,
+    },
+    {
+      id: "competitive",
+      label: "Competitive",
+      icon: Swords,
+      children: <CompetitiveSection metrics={data.coreMetrics} breakdowns={data.breakdowns} />,
+    },
+    {
+      id: "citations",
+      label: "Citations & Sources",
+      icon: Quote,
+      children: <CitationsSection metrics={data.coreMetrics} />,
+    },
+  ];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
+      <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Scan Results" />
       <PageHeader
         title={REPORTS_COPY.scanResults.title}
         description={REPORTS_COPY.scanResults.subtitle
           .replace("{brandName}", data.summary.brandName)
           .replace("{trackerName}", data.summary.trackerName)}
       />
-
-      <div className="flex flex-wrap items-center gap-4">
-        <Link
-          to="/scans/$scanRunId/sources"
-          params={{ scanRunId }}
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-        >
-          <Database className="h-4 w-4" />
-          {REPORTS_COPY.sources.viewSources}
-        </Link>
-        <Link
-          to="/scans/$scanRunId/topics"
-          params={{ scanRunId }}
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-        >
-          <Tags className="h-4 w-4" />
-          {REPORTS_COPY.topics.viewTopics}
-        </Link>
-        <Link
-          to="/scans/$scanRunId/competitors"
-          params={{ scanRunId }}
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-        >
-          <Users className="h-4 w-4" />
-          {REPORTS_COPY.competitors.viewCompetitors}
-        </Link>
-        <Link
-          to="/scans/$scanRunId/claims"
-          params={{ scanRunId }}
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-        >
-          <ShieldAlert className="h-4 w-4" />
-          {REPORTS_COPY.scanResults.viewClaims}
-        </Link>
-      </div>
-
-      <SummarySection summary={data.summary} />
-      <CoreMetricsSection metrics={data.coreMetrics} />
-      <SentimentDistributionSection distribution={data.coreMetrics.brandSentimentDistribution} />
-      <ShareOfVoiceSection metrics={data.coreMetrics} breakdowns={data.breakdowns} />
-      <TopCitedSourcesSection sources={data.coreMetrics.topCitedSources} />
-      <BrandAttributesSection attributes={data.coreMetrics.topBrandAttributes} />
-      <BreakdownsSection breakdowns={data.breakdowns} />
+      <CrossLinkBar scanRunId={scanRunId} />
+      <MetricCategoryLayout
+        statusStrip={<SummarySection summary={data.summary} />}
+        sections={sections}
+      />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sections (file-local; will be promoted to dedicated files when polished)
+// Header strip + cross-links (kept above the category layout)
 // ---------------------------------------------------------------------------
+
+function CrossLinkBar({ scanRunId }: { scanRunId: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <Link
+        to="/scans/$scanRunId/sources"
+        params={{ scanRunId }}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+      >
+        <Database className="h-4 w-4" />
+        {REPORTS_COPY.sources.viewSources}
+      </Link>
+      <Link
+        to="/scans/$scanRunId/topics"
+        params={{ scanRunId }}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+      >
+        <Tags className="h-4 w-4" />
+        {REPORTS_COPY.topics.viewTopics}
+      </Link>
+      <Link
+        to="/scans/$scanRunId/competitors"
+        params={{ scanRunId }}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+      >
+        <Users className="h-4 w-4" />
+        {REPORTS_COPY.competitors.viewCompetitors}
+      </Link>
+      <Link
+        to="/scans/$scanRunId/claims"
+        params={{ scanRunId }}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
+      >
+        <ShieldAlert className="h-4 w-4" />
+        {REPORTS_COPY.scanResults.viewClaims}
+      </Link>
+    </div>
+  );
+}
 
 interface SummarySectionProps {
   summary: ScanSummaryDto;
@@ -155,26 +208,31 @@ function SummarySection({ summary }: SummarySectionProps) {
   );
 }
 
-interface CoreMetricsSectionProps {
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+interface VisibilitySectionProps {
   metrics: CoreMetricsDto;
+  breakdowns: BreakdownsDto;
 }
 
-function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
+function VisibilitySection({ metrics, breakdowns }: VisibilitySectionProps) {
   const m = REPORTS_COPY.scanResults.metrics;
+  const breakdownLabels = REPORTS_COPY.scanResults.breakdowns;
+  const sections = REPORTS_COPY.scanResults.sections;
+
+  const platformData = mapRateBreakdown(breakdowns.byPlatform, "platformName");
+  const lensData = mapRateBreakdown(breakdowns.byLens, "lensName");
+  const topicData = mapRateBreakdown(breakdowns.byTopic, "topicName");
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{REPORTS_COPY.scanResults.sections.coreMetrics}</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricTile
           label={m.brandMentionRate}
           value={formatRate(metrics.brandMentionRate)}
           subValue={formatMomentum(metrics.brandMentionRateMomentum)}
-        />
-        <MetricTile
-          label={m.brandRecommendationRate}
-          value={formatRate(metrics.brandRecommendationRate)}
         />
         <MetricTile
           label={m.brandShareOfVoice}
@@ -182,323 +240,253 @@ function CoreMetricsSection({ metrics }: CoreMetricsSectionProps) {
           subValue={formatMomentum(metrics.brandShareOfVoiceMomentum)}
         />
         <MetricTile
-          label={m.brandFirstMentionRate}
-          value={formatRate(metrics.brandFirstMentionRate)}
-        />
-        <MetricTile
-          label={m.brandRecommendationScore}
-          value={formatSignedScore(metrics.brandRecommendationScore)}
-        />
-        <MetricTile
-          label={m.brandRecommendationShare}
-          value={formatRate(metrics.brandRecommendationShare)}
-        />
-        <MetricTile
           label={m.brandAbsenceRate}
           value={formatRate(metrics.brandAbsenceRate)}
           subValue={formatMomentum(metrics.brandAbsenceRateMomentum)}
+        />
+        <MetricTile
+          label={m.brandFirstMentionRate}
+          value={formatRate(metrics.brandFirstMentionRate)}
+        />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <BreakdownChartCard
+          title={sections.byPlatform}
+          data={platformData}
+          emptyText={breakdownLabels.noRows}
+          valueAxisLabel={breakdownLabels.mentionRate}
+          rate
+        />
+        <BreakdownChartCard
+          title={sections.byLens}
+          data={lensData}
+          emptyText={breakdownLabels.noRows}
+          valueAxisLabel={breakdownLabels.mentionRate}
+          rate
+        />
+        <BreakdownChartCard
+          title={sections.byTopic}
+          data={topicData}
+          emptyText={breakdownLabels.noRows}
+          valueAxisLabel={breakdownLabels.mentionRate}
+          rate
+        />
+      </div>
+    </div>
+  );
+}
+
+interface RecommendationSectionProps {
+  metrics: CoreMetricsDto;
+}
+
+function RecommendationSection({ metrics }: RecommendationSectionProps) {
+  const m = REPORTS_COPY.scanResults.metrics;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <MetricTile
+        label={m.brandRecommendationRate}
+        value={formatRate(metrics.brandRecommendationRate)}
+      />
+      <MetricTile
+        label={m.brandRecommendationScore}
+        value={formatSignedScore(metrics.brandRecommendationScore)}
+      />
+      <MetricTile
+        label={m.brandRecommendationShare}
+        value={formatRate(metrics.brandRecommendationShare)}
+      />
+      <MetricTile
+        label={m.brandTopRecommendationShare}
+        value={formatRate(metrics.brandTopRecommendationShare)}
+      />
+      <MetricTile
+        label={m.averageBrandRank}
+        value={formatRankWithUniverse(
+          metrics.averageBrandRank,
+          metrics.averageBrandRankUniverseSize,
+        )}
+      />
+      <MetricTile
+        label={m.averageBrandRecommendationPosition}
+        value={formatRank(metrics.averageBrandRecommendationPosition)}
+      />
+      <MetricTile
+        label={m.brandRecommendationContext}
+        value={`${metrics.brandRecommendedForCount} / ${metrics.brandWithCaveatsCount}`}
+      />
+      <MetricTile
+        label={m.brandTopicRecommendations}
+        value={`${metrics.brandTopicRecommendedCount} / ${metrics.brandTopicNotRecommendedCount}`}
+      />
+    </div>
+  );
+}
+
+interface SentimentSectionProps {
+  metrics: CoreMetricsDto;
+}
+
+function SentimentSection({ metrics }: SentimentSectionProps) {
+  const m = REPORTS_COPY.scanResults.metrics;
+  const sections = REPORTS_COPY.scanResults.sections;
+  const hasDistribution = Object.keys(metrics.brandSentimentDistribution).length > 0;
+  const hasAttributes = metrics.topBrandAttributes.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile
+          label={m.overallSentiment}
+          value={dominantSentiment(metrics.brandSentimentDistribution) ?? m.noData}
         />
         <MetricTile
           label={m.averageAnswerCertainty}
           value={formatRate(metrics.averageAnswerCertainty)}
         />
         <MetricTile
-          label={m.brandTopRecommendationShare}
-          value={formatRate(metrics.brandTopRecommendationShare)}
-        />
-        <MetricTile
-          label={m.averageBrandRecommendationPosition}
-          value={formatRank(metrics.averageBrandRecommendationPosition)}
-        />
-        <MetricTile label={m.brandRiskFlagCount} value={metrics.brandRiskFlagCount} />
-        <MetricTile
           label={m.brandComparisonRecord}
           value={`${metrics.brandWinningComparisonCount} / ${metrics.brandLosingComparisonCount}`}
         />
-        <MetricTile
-          label={m.brandRecommendationContext}
-          value={`${metrics.brandRecommendedForCount} / ${metrics.brandWithCaveatsCount}`}
-        />
-        <MetricTile
-          label={m.brandTopicRecommendations}
-          value={`${metrics.brandTopicRecommendedCount} / ${metrics.brandTopicNotRecommendedCount}`}
-        />
-        <MetricTile
-          label={m.authorityCitations}
-          value={`${metrics.highAuthorityCitationCount} / ${metrics.lowAuthorityCitationCount}`}
-        />
-        <MetricTile
-          label={m.averageBrandRank}
-          value={formatRankWithUniverse(
-            metrics.averageBrandRank,
-            metrics.averageBrandRankUniverseSize,
-          )}
-        />
-        <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
-        <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />
-        <MetricTile
-          label={m.citationCount}
-          value={metrics.citationCount}
-          subValue={`${metrics.ownedCitationCount} ${m.ownedCitationCount} · ${metrics.competitorCitationCount} ${m.competitorCitationCount} · ${metrics.thirdPartyCitationCount} ${m.thirdPartyCitationCount} · ${metrics.unknownCitationCount} ${m.unknownCitationCount}`}
-        />
-        {/* Phase 4 Slice 5: OwnedCitationShare + OverallSentiment per ADR-004 §"Core
-            Scan Results metrics". FE-derived from existing CoreMetricsDto fields
-            (D21 — no new ScanMetric row) so the backend stays unchanged. */}
-        <MetricTile
-          label={m.ownedCitationShare}
-          value={formatOwnedShare(metrics.ownedCitationCount, metrics.citationCount)}
-        />
-        <MetricTile
-          label={m.overallSentiment}
-          value={dominantSentiment(metrics.brandSentimentDistribution) ?? m.noData}
-        />
-      </CardContent>
-    </Card>
+        <MetricTile label={m.brandRiskFlagCount} value={metrics.brandRiskFlagCount} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <ChartTitle title={sections.sentimentDistribution} />
+          </CardHeader>
+          <CardContent>
+            {hasDistribution ? (
+              <SentimentDonut data={metrics.brandSentimentDistribution} />
+            ) : (
+              <EmptyState message={REPORTS_COPY.scanResults.metrics.noData} />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <ChartTitle title={sections.brandAttributes} />
+          </CardHeader>
+          <CardContent>
+            {hasAttributes ? (
+              <ul className="flex flex-wrap gap-2" role="list">
+                {metrics.topBrandAttributes.map((a) => (
+                  <li key={`${a.rank}:${a.name}`}>
+                    <Badge variant={attributePolarityVariant(a.polarity)} className="gap-1 text-xs">
+                      <span>{a.name}</span>
+                      <span className="opacity-70">×{a.mentionCount}</span>
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState message={REPORTS_COPY.scanResults.metrics.noData} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 
-interface ShareOfVoiceSectionProps {
+interface CompetitiveSectionProps {
   metrics: CoreMetricsDto;
   breakdowns: BreakdownsDto;
 }
 
-/**
- * Share-of-Voice breakdown chart — brand + each tracked competitor's share
- * of the total brand+competitor mention count (ADR-004 §"Breakdown charts"
- * #3, Phase 4 Slice 5). FE-derived: the brand's share is
- * <c>brandShareOfVoice</c> directly; each competitor's share is its mention
- * count divided by the inferred total
- * (competitorMentionCount / (1 - brandShareOfVoice)). Skipped when
- * <c>brandShareOfVoice</c> is null (denominator-zero — no brand+competitor
- * mentions in this scan).
- */
-function ShareOfVoiceSection({ metrics, breakdowns }: ShareOfVoiceSectionProps) {
-  const copy = REPORTS_COPY.scanResults;
-  if (
-    metrics.brandShareOfVoice == null ||
-    metrics.competitorMentionCount === 0 ||
-    breakdowns.byCompetitor.length === 0
-  ) {
-    return null;
-  }
+function CompetitiveSection({ metrics, breakdowns }: CompetitiveSectionProps) {
+  const m = REPORTS_COPY.scanResults.metrics;
+  const sections = REPORTS_COPY.scanResults.sections;
+  const breakdownLabels = REPORTS_COPY.scanResults.breakdowns;
 
-  // Derive total mentions from the SoV identity:
-  //   brandSoV = brandMentions / (brandMentions + competitorMentions)
-  //   (1 - brandSoV) = competitorMentions / total
-  //   total = competitorMentions / (1 - brandSoV)
-  // We already gated on competitorMentionCount > 0 + SoV != null, and SoV=1
-  // would require competitor count to be 0 — so (1 - SoV) is safely positive.
-  const totalMentions = metrics.competitorMentionCount / (1 - metrics.brandShareOfVoice);
-
-  const data: BarChartDatum[] = [
-    { label: "Brand", value: metrics.brandShareOfVoice },
-    ...breakdowns.byCompetitor
-      .filter((c) => c.mentionCount > 0)
-      .map((c) => ({ label: c.competitorName, value: c.mentionCount / totalMentions })),
-  ];
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{copy.sections.shareOfVoice}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <BarChartWrapper
-          data={data}
-          layout="horizontal"
-          valueAxisLabel={copy.shareOfVoice.valueAxis}
-          formatValue={(v) => `${Math.round(v * 100)}%`}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-interface SentimentDistributionSectionProps {
-  distribution: Record<string, number>;
-}
-
-function SentimentDistributionSection({ distribution }: SentimentDistributionSectionProps) {
-  if (Object.keys(distribution).length === 0) return null;
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{REPORTS_COPY.scanResults.sections.sentimentDistribution}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <SentimentDonut data={distribution} />
-      </CardContent>
-    </Card>
-  );
-}
-
-interface TopCitedSourcesSectionProps {
-  sources: import("@/types/api").TopCitedSourceDto[];
-}
-
-function TopCitedSourcesSection({ sources }: TopCitedSourcesSectionProps) {
-  if (sources.length === 0) return null;
-  // Charts receive prepared view models (ARCH-003) — flatten the rank+name
-  // into the bar wrapper's {label, value} shape here, not in the wrapper.
-  const data: BarChartDatum[] = sources.map((s) => ({
-    label: s.sourceName,
-    value: s.citationCount,
-  }));
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{REPORTS_COPY.scanResults.sections.topCitedSources}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <BarChartWrapper data={data} layout="horizontal" valueAxisLabel="Citations" />
-      </CardContent>
-    </Card>
-  );
-}
-
-interface BrandAttributesSectionProps {
-  attributes: import("@/types/api").BrandAttributeDto[];
-}
-
-/**
- * Polarity-coloured chip cloud of attributes the AI ascribed to the
- * brand at Overall scope (Phase 4 measurement-model expansion). Empty
- * when no attributes were extracted for the brand on this scan.
- */
-function BrandAttributesSection({ attributes }: BrandAttributesSectionProps) {
-  if (attributes.length === 0) return null;
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{REPORTS_COPY.scanResults.sections.brandAttributes}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="flex flex-wrap gap-2" role="list">
-          {attributes.map((a) => (
-            <li key={`${a.rank}:${a.name}`}>
-              <Badge variant={attributePolarityVariant(a.polarity)} className="gap-1 text-xs">
-                <span>{a.name}</span>
-                <span className="opacity-70">×{a.mentionCount}</span>
-              </Badge>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-}
-
-function attributePolarityVariant(
-  polarity: string,
-): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
-  switch (polarity) {
-    case "Positive":
-      return "success";
-    case "Negative":
-      return "destructive";
-    case "Neutral":
-    default:
-      return "secondary";
-  }
-}
-
-interface BreakdownsSectionProps {
-  breakdowns: BreakdownsDto;
-}
-
-function BreakdownsSection({ breakdowns }: BreakdownsSectionProps) {
-  const copy = REPORTS_COPY.scanResults;
-  const labels = copy.breakdowns;
-
-  const platformData: BarChartDatum[] = breakdowns.byPlatform.map((r) => ({
-    label: r.platformName,
-    value: r.brandMentionRate ?? 0,
-  }));
-  const lensData: BarChartDatum[] = breakdowns.byLens.map((r) => ({
-    label: r.lensName,
-    value: r.brandMentionRate ?? 0,
-  }));
-  const topicData: BarChartDatum[] = breakdowns.byTopic.map((r) => ({
-    label: r.topicName,
-    value: r.brandMentionRate ?? 0,
-  }));
-  // ByCompetitor uses MentionCount (count of mentions of THIS competitor),
-  // not a rate — competitor scope is the per-entity tally.
+  const sovData = buildShareOfVoiceData(metrics, breakdowns);
   const competitorData: BarChartDatum[] = breakdowns.byCompetitor.map((r) => ({
     label: r.competitorName,
     value: r.mentionCount,
   }));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <BreakdownChartCard
-        title={copy.sections.byPlatform}
-        data={platformData}
-        emptyText={labels.noRows}
-        valueAxisLabel={labels.mentionRate}
-        rate
-      />
-      <BreakdownChartCard
-        title={copy.sections.byLens}
-        data={lensData}
-        emptyText={labels.noRows}
-        valueAxisLabel={labels.mentionRate}
-        rate
-      />
-      <BreakdownChartCard
-        title={copy.sections.byTopic}
-        data={topicData}
-        emptyText={labels.noRows}
-        valueAxisLabel={labels.mentionRate}
-        rate
-      />
-      <BreakdownChartCard
-        title={copy.sections.byCompetitor}
-        data={competitorData}
-        emptyText={labels.noRows}
-        valueAxisLabel={labels.mentionCount}
-      />
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile label={m.competitorMentionCount} value={metrics.competitorMentionCount} />
+        <MetricTile label={m.productMentionCount} value={metrics.productMentionCount} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <ChartTitle title={sections.shareOfVoice} />
+          </CardHeader>
+          <CardContent>
+            {sovData ? (
+              <BarChartWrapper
+                data={sovData}
+                layout="horizontal"
+                valueAxisLabel={REPORTS_COPY.scanResults.shareOfVoice.valueAxis}
+                formatValue={(v) => `${Math.round(v * 100)}%`}
+              />
+            ) : (
+              <EmptyState message={REPORTS_COPY.scanResults.metrics.noData} />
+            )}
+          </CardContent>
+        </Card>
+        <BreakdownChartCard
+          title={sections.byCompetitor}
+          data={competitorData}
+          emptyText={breakdownLabels.noRows}
+          valueAxisLabel={breakdownLabels.mentionCount}
+        />
+      </div>
     </div>
   );
 }
 
-function BreakdownChartCard({
-  title,
-  data,
-  emptyText,
-  valueAxisLabel,
-  rate,
-}: {
-  title: string;
-  data: BarChartDatum[];
-  emptyText: string;
-  valueAxisLabel: string;
-  /** Format the value axis as a percent (for rate-shaped metrics). */
-  rate?: boolean;
-}) {
+interface CitationsSectionProps {
+  metrics: CoreMetricsDto;
+}
+
+function CitationsSection({ metrics }: CitationsSectionProps) {
+  const m = REPORTS_COPY.scanResults.metrics;
+  const sections = REPORTS_COPY.scanResults.sections;
+  const sourcesData: BarChartDatum[] = metrics.topCitedSources.map((s) => ({
+    label: s.sourceName,
+    value: s.citationCount,
+  }));
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          <p className="text-sm text-neutral-500">{emptyText}</p>
-        ) : (
-          <BarChartWrapper
-            data={data}
-            layout="horizontal"
-            valueAxisLabel={valueAxisLabel}
-            formatValue={rate ? (v) => `${Math.round(v * 100)}%` : undefined}
-          />
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile
+          label={m.citationCount}
+          value={metrics.citationCount}
+          subValue={`${metrics.ownedCitationCount} ${m.ownedCitationCount} · ${metrics.competitorCitationCount} ${m.competitorCitationCount} · ${metrics.thirdPartyCitationCount} ${m.thirdPartyCitationCount} · ${metrics.unknownCitationCount} ${m.unknownCitationCount}`}
+        />
+        <MetricTile
+          label={m.ownedCitationShare}
+          value={formatOwnedShare(metrics.ownedCitationCount, metrics.citationCount)}
+        />
+        <MetricTile
+          label={m.authorityCitations}
+          value={`${metrics.highAuthorityCitationCount} / ${metrics.lowAuthorityCitationCount}`}
+        />
+      </div>
+      <Card>
+        <CardHeader>
+          <ChartTitle title={sections.topCitedSources} />
+        </CardHeader>
+        <CardContent>
+          {sourcesData.length > 0 ? (
+            <BarChartWrapper data={sourcesData} layout="horizontal" valueAxisLabel="Citations" />
+          ) : (
+            <EmptyState message={REPORTS_COPY.scanResults.metrics.noCitations} />
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Small helpers
+// Small helpers + shared widgets
 // ---------------------------------------------------------------------------
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -524,10 +512,26 @@ function MetricTile({
   subValue?: string;
 }) {
   return (
-    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-neutral-900">{value}</div>
-      {subValue && <div className="mt-1 text-xs text-neutral-500">{subValue}</div>}
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+      <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+        <span className="truncate">{label}</span>
+        <InfoTooltip label={label} iconSize={11} />
+      </div>
+      <div className="mt-0.5 text-xl font-semibold tabular-nums text-neutral-900">{value}</div>
+      {subValue && <div className="mt-0.5 text-[11px] text-neutral-500">{subValue}</div>}
+    </div>
+  );
+}
+
+/**
+ * CardTitle with an inline ⓘ tooltip placeholder. Drop into a CardHeader
+ * to reserve space for explanatory copy alongside the title.
+ */
+function ChartTitle({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <CardTitle>{title}</CardTitle>
+      <InfoTooltip label={title} iconSize={13} />
     </div>
   );
 }
@@ -536,6 +540,98 @@ function StatusBadge({ status }: { status: string }) {
   const variant =
     status === "Completed" ? "secondary" : status === "Failed" ? "destructive" : "outline";
   return <Badge variant={variant}>{status}</Badge>;
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center rounded-md border border-dashed border-neutral-200 bg-neutral-50 p-6 text-sm text-neutral-500">
+      {message}
+    </div>
+  );
+}
+
+function BreakdownChartCard({
+  title,
+  data,
+  emptyText,
+  valueAxisLabel,
+  rate,
+}: {
+  title: string;
+  data: BarChartDatum[];
+  emptyText: string;
+  valueAxisLabel: string;
+  /** Format the value axis as a percent (for rate-shaped metrics). */
+  rate?: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <ChartTitle title={title} />
+      </CardHeader>
+      <CardContent>
+        {data.length === 0 ? (
+          <EmptyState message={emptyText} />
+        ) : (
+          <BarChartWrapper
+            data={data}
+            layout="horizontal"
+            valueAxisLabel={valueAxisLabel}
+            formatValue={rate ? (v) => `${Math.round(v * 100)}%` : undefined}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function attributePolarityVariant(
+  polarity: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (polarity) {
+    case "Positive":
+      return "success";
+    case "Negative":
+      return "destructive";
+    case "Neutral":
+    default:
+      return "secondary";
+  }
+}
+
+function mapRateBreakdown<T>(rows: T[], nameKey: keyof T): BarChartDatum[] {
+  return rows.map((r) => ({
+    label: String(r[nameKey]),
+    // `brandMentionRate` exists on every breakdown row type (Platform/Lens/Topic).
+    value: ((r as unknown as { brandMentionRate: number | null }).brandMentionRate ?? 0) as number,
+  }));
+}
+
+/**
+ * Brand + per-competitor share-of-voice bar data, FE-derived from
+ * <c>brandShareOfVoice</c> and per-competitor mention counts. Returns null
+ * when the SoV denominator is zero (no brand+competitor mentions in scope).
+ */
+function buildShareOfVoiceData(
+  metrics: CoreMetricsDto,
+  breakdowns: BreakdownsDto,
+): BarChartDatum[] | null {
+  if (
+    metrics.brandShareOfVoice == null ||
+    metrics.competitorMentionCount === 0 ||
+    breakdowns.byCompetitor.length === 0
+  ) {
+    return null;
+  }
+  // brandSoV = brandMentions / (brandMentions + competitorMentions)
+  //   => totalMentions = competitorMentions / (1 - brandSoV)
+  const totalMentions = metrics.competitorMentionCount / (1 - metrics.brandShareOfVoice);
+  return [
+    { label: "Brand", value: metrics.brandShareOfVoice },
+    ...breakdowns.byCompetitor
+      .filter((c) => c.mentionCount > 0)
+      .map((c) => ({ label: c.competitorName, value: c.mentionCount / totalMentions })),
+  ];
 }
 
 function formatRate(value: number | null): string {
@@ -548,26 +644,18 @@ function formatRank(value: number | null): string {
   return value.toFixed(1);
 }
 
-// Show rank with the average universe denominator when available so "rank 3"
-// reads as "3 of ~7" — the latter is far more interpretable. The ~ signals
-// the universe is an average across answers, not a hard number.
 function formatRankWithUniverse(rank: number | null, universe: number | null): string {
   const r = formatRank(rank);
   if (rank == null || universe == null) return r;
   return `${r} of ~${universe.toFixed(0)}`;
 }
 
-// Recommendation score is signed [-1, +1]; show explicit sign + 2 decimals so
-// −0.10 and +0.10 read distinctly.
 function formatSignedScore(value: number | null): string {
   if (value == null) return REPORTS_COPY.scanResults.metrics.noData;
   const sign = value >= 0 ? "+" : "−";
   return `${sign}${Math.abs(value).toFixed(2)}`;
 }
 
-// Momentum subValue — "↑ +5 pp" / "↓ -3 pp" vs the previous scan. Undefined
-// when value is null so the tile hides its subValue slot entirely (first scan
-// has no comparison point).
 function formatMomentum(value: number | null): string | undefined {
   if (value == null) return undefined;
   const pp = Math.round(value * 100);
@@ -582,12 +670,6 @@ function formatOwnedShare(ownedCount: number, total: number): string {
   return `${Math.round((ownedCount / total) * 100)}%`;
 }
 
-/**
- * Mode (most-observed value) of the sentiment distribution. Defined as the
- * key with the highest count; ties broken by JS object iteration order
- * (insertion order from the server, which is the order the aggregator
- * encountered the values — deterministic enough for tie-breaking).
- */
 function dominantSentiment(distribution: Record<string, number>): string | null {
   const entries = Object.entries(distribution);
   if (entries.length === 0) return null;
