@@ -1235,6 +1235,25 @@
           "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` (already scope-aware after step 5) into one sortable table — columns: # · Entity · Mentions (with proportional bar) · Share of voice · Recommendation rate. Tracked brands highlighted with a 'You' badge + soft primary background; the rank-1 non-tracked-brand row gets a 'Leader' badge. Pure `mergeEntityRows` helper exported for unit testing. Scope follows the sidebar's TrackerSelector."
         },
         {
+          "name": "PromptsScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/PromptsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "SectionHeader",
+            "Card",
+            "Input",
+            "Badge",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspacePrompts"
+          ],
+          "notes": "Workspace-wide prompt inventory at /prompts. v1 lists every active prompt across selected trackers with columns: Prompt · Lens · Topics · Tracker (brand + tracker name) · Scans · Platforms · Last scan. Search filters by prompt text, lens, topic, tracker, or brand (case-insensitive). Sourced from a new `GET /api/prompts?trackerIds=&from=&to=` endpoint (WorkspacePromptsController → GetWorkspacePromptsQueryHandler) that aggregates scan count + last scan + platform codes per prompt in window. Analytical columns (visibility / sentiment / position / mention count) are deliberately deferred to a follow-up — they need heavier joins through PromptRuns → AIAnswers → Mentions / AnswerSignals."
+        },
+        {
           "name": "ScanResultsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/ScanResultsScreen.tsx",

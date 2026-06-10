@@ -203,6 +203,34 @@ export interface PromptList {
   topics: PromptOption[];
 }
 
+/** Workspace-wide prompt inventory row returned by GET /api/prompts. */
+export interface WorkspacePromptRowDto {
+  promptId: string;
+  text: string;
+  lensId: string;
+  lensName: string;
+  topics: string[];
+  trackerId: string;
+  trackerName: string;
+  brandId: string;
+  brandName: string;
+  /** Distinct scan runs in the window where this prompt was executed. */
+  scanCount: number;
+  /** Most recent ScanRun.CompletedAt for this prompt in window. ISO string; null when no runs. */
+  lastScanAt: string | null;
+  /** Distinct platform codes the prompt ran on (e.g. "openai"). */
+  platformCodes: string[];
+}
+
+export interface WorkspacePromptsDto {
+  workspaceId: string;
+  /** Window lower bound (ISO). Null = "all time". */
+  from: string | null;
+  /** Window upper bound (ISO). Resolves to UTC now when caller omits. */
+  to: string;
+  prompts: WorkspacePromptRowDto[];
+}
+
 export interface AddCustomPromptRequest {
   text: string;
   lensId: string;

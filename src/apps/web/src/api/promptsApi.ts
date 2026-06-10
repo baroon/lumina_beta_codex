@@ -1,10 +1,26 @@
 import { apiClient } from "./apiClient";
+import type { DateRange } from "@/components/molecules/DateRangePicker";
 import type {
   AddCustomPromptRequest,
   ConfirmPromptsResult,
   GeneratePromptsResult,
   PromptList,
+  WorkspacePromptsDto,
 } from "@/types/api";
+
+/**
+ * Build the `?from=&to=&trackerIds=` query string for the workspace
+ * prompts endpoint. Matches the convention of `overviewApi` so the BE
+ * filter shape stays consistent.
+ */
+function buildWorkspacePromptsQuery(range: DateRange, trackerIds: readonly string[]): string {
+  const params = new URLSearchParams();
+  if (range.from) params.set("from", range.from.toISOString());
+  if (range.to) params.set("to", range.to.toISOString());
+  for (const id of trackerIds) params.append("trackerIds", id);
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
 
 export interface RegenerateFilters {
   lensId?: string;
@@ -35,4 +51,13 @@ export const promptsApi = {
 
   remove: (trackerId: string, promptId: string) =>
     apiClient.delete<void>(`/api/trackers/${trackerId}/prompts/${promptId}`),
+
+  /**
+   * Workspace-wide prompt inventory at GET /api/prompts. Distinct from
+   * the per-tracker `list` above — used by the workspace /prompts page.
+   */
+  workspace: (range: DateRange, trackerIds: readonly string[] = []) =>
+    apiClient.get<WorkspacePromptsDto>(
+      `/api/prompts${buildWorkspacePromptsQuery(range, trackerIds)}`,
+    ),
 };
