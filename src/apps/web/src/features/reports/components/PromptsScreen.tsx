@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
+import { InlineEdit } from "@/components/atoms/inline-edit";
 import { Input } from "@/components/atoms/input";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
@@ -8,7 +10,11 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
-import { useWorkspacePrompts } from "@/features/reports/hooks/useWorkspacePrompts";
+import {
+  useRemoveWorkspacePrompt,
+  useUpdateWorkspacePrompt,
+  useWorkspacePrompts,
+} from "@/features/reports/hooks/useWorkspacePrompts";
 import { cn } from "@/lib/utils";
 import type { WorkspacePromptRowDto } from "@/types/api";
 
@@ -101,6 +107,8 @@ export function filterRows(
 // ---------------------------------------------------------------------------
 
 function PromptsTable({ rows }: { rows: readonly WorkspacePromptRowDto[] }) {
+  const update = useUpdateWorkspacePrompt();
+  const remove = useRemoveWorkspacePrompt();
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -113,11 +121,22 @@ function PromptsTable({ rows }: { rows: readonly WorkspacePromptRowDto[] }) {
             <Th>Sentiment</Th>
             <Th className="text-right">Mentions</Th>
             <Th>Activity</Th>
+            <Th className="w-6">
+              <span className="sr-only">Remove</span>
+            </Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {rows.map((row) => (
-            <PromptRow key={row.promptId} row={row} />
+            <PromptRow
+              key={row.promptId}
+              row={row}
+              onEdit={(text) =>
+                update.mutate({ trackerId: row.trackerId, promptId: row.promptId, text })
+              }
+              onRemove={() => remove.mutate({ trackerId: row.trackerId, promptId: row.promptId })}
+              isRemoving={remove.isPending}
+            />
           ))}
         </tbody>
       </table>
@@ -125,11 +144,30 @@ function PromptsTable({ rows }: { rows: readonly WorkspacePromptRowDto[] }) {
   );
 }
 
-function PromptRow({ row }: { row: WorkspacePromptRowDto }) {
+function PromptRow({
+  row,
+  onEdit,
+  onRemove,
+  isRemoving,
+}: {
+  row: WorkspacePromptRowDto;
+  onEdit: (text: string) => void;
+  onRemove: () => void;
+  isRemoving: boolean;
+}) {
   return (
     <tr>
       <Td>
-        <span className="text-neutral-900">{row.text}</span>
+        <InlineEdit
+          value={row.text}
+          onChange={(next) => {
+            if (next.trim().length > 0 && next !== row.text) {
+              onEdit(next);
+            }
+          }}
+          multiline
+          placeholder="Prompt text"
+        />
       </Td>
       <Td>
         <div className="flex flex-wrap items-center gap-1">
@@ -185,6 +223,17 @@ function PromptRow({ row }: { row: WorkspacePromptRowDto }) {
             {row.platformCodes.length > 0 && ` · ${row.platformCodes.join(", ")}`}
           </span>
         </div>
+      </Td>
+      <Td className="w-6">
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={isRemoving}
+          aria-label={`Remove prompt ${row.text}`}
+          className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
+        >
+          <X className="h-3 w-3" aria-hidden />
+        </button>
       </Td>
     </tr>
   );

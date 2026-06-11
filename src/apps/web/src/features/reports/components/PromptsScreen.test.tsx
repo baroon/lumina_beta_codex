@@ -11,11 +11,17 @@ let promptsState: {
   error?: unknown;
 };
 
+let updatePromptMutate: ReturnType<typeof vi.fn>;
+let removePromptMutate: ReturnType<typeof vi.fn>;
+const idleMutation = { isPending: false, isError: false, isSuccess: false };
+
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
 }));
 vi.mock("@/features/reports/hooks/useWorkspacePrompts", () => ({
   useWorkspacePrompts: () => ({ ...promptsState, refetch: vi.fn() }),
+  useUpdateWorkspacePrompt: () => ({ mutate: updatePromptMutate, ...idleMutation }),
+  useRemoveWorkspacePrompt: () => ({ mutate: removePromptMutate, ...idleMutation }),
 }));
 
 import { PromptsScreen, filterRows } from "./PromptsScreen";
@@ -54,6 +60,8 @@ function payload(rows: WorkspacePromptRowDto[]): WorkspacePromptsDto {
 beforeEach(() => {
   scopeState = { scope: "all" };
   promptsState = { data: payload([]), isLoading: false, isError: false };
+  updatePromptMutate = vi.fn();
+  removePromptMutate = vi.fn();
 });
 
 describe("filterRows (pure)", () => {
@@ -201,5 +209,45 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     expect(screen.getByText("never")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Inline edit + remove on each row
+  // -------------------------------------------------------------------
+
+  it("clicking the prompt text + editing + blurring fires update with the row's trackerId", async () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1", trackerId: "t1", text: "Best resume builder?" })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    // Two buttons match this text: the InlineEdit cell button (text only)
+    // and the Remove X (aria-label "Remove prompt Best resume builder").
+    // Use exact-match regex to target the InlineEdit one.
+    await userEvent.click(screen.getByRole("button", { name: /^Best resume builder\?$/ }));
+    const input = screen.getByDisplayValue("Best resume builder?") as HTMLTextAreaElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Top resume builder of 2026?");
+    input.blur();
+    expect(updatePromptMutate).toHaveBeenCalledOnce();
+    expect(updatePromptMutate.mock.calls[0][0]).toEqual({
+      trackerId: "t1",
+      promptId: "p1",
+      text: "Top resume builder of 2026?",
+    });
+  });
+
+  it("clicking the X removes the row via the per-row trackerId/promptId", async () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1", trackerId: "t1", text: "Best resume builder?" })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Remove prompt Best resume builder/i }),
+    );
+    expect(removePromptMutate).toHaveBeenCalledWith({ trackerId: "t1", promptId: "p1" });
   });
 });
