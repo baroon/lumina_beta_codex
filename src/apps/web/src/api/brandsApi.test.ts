@@ -30,4 +30,15 @@ describe("brandsApi", () => {
       aliases: ["AcmeCorp", "Acme Inc"],
     });
   });
+
+  it("updateProfile PUTs the identity payload to /api/brands/:id/profile", () => {
+    const payload = {
+      shortDescription: "Career platform",
+      industry: "Tech",
+      category: null,
+      positioning: null,
+    };
+    brandsApi.updateProfile("b1", payload);
+    expect(client.put).toHaveBeenCalledWith("/api/brands/b1/profile", payload);
+  });
 });

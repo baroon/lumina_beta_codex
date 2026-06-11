@@ -69,4 +69,31 @@ public class BrandsController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpPut("{id:guid}/profile")]
+    [ProducesResponseType(typeof(UpdateBrandProfileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProfile(
+        Guid id,
+        [FromBody] UpdateBrandProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandProfileCommand(
+                    id,
+                    request.ShortDescription,
+                    request.Industry,
+                    request.Category,
+                    request.Positioning),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }

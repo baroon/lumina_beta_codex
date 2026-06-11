@@ -28,6 +28,7 @@ import {
   useBrand,
   useBrandDiscoveryResults,
   useUpdateBrandAliases,
+  useUpdateBrandProfile,
 } from "@/features/brands/hooks/useBrands";
 import type { CandidateDto } from "@/types/api";
 
@@ -113,12 +114,13 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
           <p className="text-xs text-neutral-500">{copy.editNotice}</p>
 
           <ProfileIdentitySection
-            brandName={brand.name}
+            brandId={brandId}
             websiteUrl={brand.websiteUrl}
             shortDescription={profile?.shortDescription ?? null}
             industry={profile?.industry ?? null}
             category={profile?.category ?? null}
             positioning={profile?.positioning ?? null}
+            hasProfile={!!profile}
           />
 
           <AliasesSection brandId={brandId} brandName={brand.name} aliases={discovery.aliases} />
@@ -164,22 +166,88 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
 // ---------------------------------------------------------------------------
 
 interface ProfileIdentitySectionProps {
-  brandName: string;
+  brandId: string;
   websiteUrl: string;
   shortDescription: string | null;
   industry: string | null;
   category: string | null;
   positioning: string | null;
+  /**
+   * True when a BrandProfile row exists for this brand. When false (a
+   * fresh brand whose discovery hasn't completed) the section shows
+   * read-only "—" placeholders rather than editable inputs, since the
+   * BE rejects the PUT until a row exists.
+   */
+  hasProfile: boolean;
 }
 
+/**
+ * Editable identity section. Same dirty-gated Save / Discard model as
+ * the alias picker — three single-line inputs (industry, category,
+ * positioning) and one textarea (description). Empty / whitespace-only
+ * input persists as null on the BE so we round-trip the same emptiness
+ * the FE renders as "Not set".
+ */
 function ProfileIdentitySection({
+  brandId,
   websiteUrl,
   shortDescription,
   industry,
   category,
   positioning,
+  hasProfile,
 }: ProfileIdentitySectionProps) {
   const copy = BRANDS_COPY.profile;
+  const update = useUpdateBrandProfile(brandId);
+
+  const [draftDescription, setDraftDescription] = useState(shortDescription ?? "");
+  const [draftIndustry, setDraftIndustry] = useState(industry ?? "");
+  const [draftCategory, setDraftCategory] = useState(category ?? "");
+  const [draftPositioning, setDraftPositioning] = useState(positioning ?? "");
+
+  // Sync the local drafts whenever the server values change (initial
+  // load or post-save invalidation).
+  useEffect(() => {
+    setDraftDescription(shortDescription ?? "");
+    setDraftIndustry(industry ?? "");
+    setDraftCategory(category ?? "");
+    setDraftPositioning(positioning ?? "");
+  }, [shortDescription, industry, category, positioning]);
+
+  const dirty = useMemo(() => {
+    return (
+      draftDescription.trim() !== (shortDescription ?? "") ||
+      draftIndustry.trim() !== (industry ?? "") ||
+      draftCategory.trim() !== (category ?? "") ||
+      draftPositioning.trim() !== (positioning ?? "")
+    );
+  }, [
+    draftDescription,
+    draftIndustry,
+    draftCategory,
+    draftPositioning,
+    shortDescription,
+    industry,
+    category,
+    positioning,
+  ]);
+
+  function save() {
+    update.mutate({
+      shortDescription: draftDescription.trim() || null,
+      industry: draftIndustry.trim() || null,
+      category: draftCategory.trim() || null,
+      positioning: draftPositioning.trim() || null,
+    });
+  }
+
+  function discard() {
+    setDraftDescription(shortDescription ?? "");
+    setDraftIndustry(industry ?? "");
+    setDraftCategory(category ?? "");
+    setDraftPositioning(positioning ?? "");
+  }
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
@@ -196,13 +264,88 @@ function ProfileIdentitySection({
               <ExternalLink className="h-3 w-3" aria-hidden />
             </a>
           </Field>
-          <Field label={copy.fields.industry}>{industry || copy.empty.notSet}</Field>
-          <Field label={copy.fields.category}>{category || copy.empty.notSet}</Field>
-          <Field label={copy.fields.positioning}>{positioning || copy.empty.notSet}</Field>
+          <Field label={copy.fields.industry}>
+            {hasProfile ? (
+              <Input
+                inputSize="sm"
+                value={draftIndustry}
+                onChange={(e) => setDraftIndustry(e.target.value)}
+                placeholder={copy.empty.notSet}
+                aria-label={copy.fields.industry}
+              />
+            ) : (
+              <span>{industry || copy.empty.notSet}</span>
+            )}
+          </Field>
+          <Field label={copy.fields.category}>
+            {hasProfile ? (
+              <Input
+                inputSize="sm"
+                value={draftCategory}
+                onChange={(e) => setDraftCategory(e.target.value)}
+                placeholder={copy.empty.notSet}
+                aria-label={copy.fields.category}
+              />
+            ) : (
+              <span>{category || copy.empty.notSet}</span>
+            )}
+          </Field>
+          <Field label={copy.fields.positioning}>
+            {hasProfile ? (
+              <Input
+                inputSize="sm"
+                value={draftPositioning}
+                onChange={(e) => setDraftPositioning(e.target.value)}
+                placeholder={copy.empty.notSet}
+                aria-label={copy.fields.positioning}
+              />
+            ) : (
+              <span>{positioning || copy.empty.notSet}</span>
+            )}
+          </Field>
           <div className="sm:col-span-2">
-            <Field label={copy.fields.description}>{shortDescription || copy.empty.notSet}</Field>
+            <Field label={copy.fields.description}>
+              {hasProfile ? (
+                <textarea
+                  value={draftDescription}
+                  onChange={(e) => setDraftDescription(e.target.value)}
+                  rows={3}
+                  placeholder={copy.empty.notSet}
+                  aria-label={copy.fields.description}
+                  className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                />
+              ) : (
+                <span>{shortDescription || copy.empty.notSet}</span>
+              )}
+            </Field>
           </div>
         </div>
+
+        {hasProfile && (
+          <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+            <span className="text-[11px] text-neutral-500">
+              {update.isError ? (
+                <span className="text-semantic-error-600">Save failed — try again.</span>
+              ) : update.isSuccess && !dirty ? (
+                <span className="text-semantic-success-600">Saved.</span>
+              ) : dirty ? (
+                "Unsaved changes."
+              ) : (
+                "Identity fields are kept in sync across reports."
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              {dirty && (
+                <Button variant="outline" size="sm" onClick={discard} disabled={update.isPending}>
+                  Discard
+                </Button>
+              )}
+              <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+                {update.isPending ? "Saving…" : "Save identity"}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

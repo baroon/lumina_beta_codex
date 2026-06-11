@@ -16,11 +16,14 @@ let brandState: { data?: BrandDto; isLoading: boolean; isError: boolean; error?:
 let discoveryState: { data?: DiscoveryResultsDto; isLoading: boolean };
 let updateAliasesMutate: ReturnType<typeof vi.fn>;
 let updateAliasesState = { isPending: false, isError: false, isSuccess: false };
+let updateProfileMutate: ReturnType<typeof vi.fn>;
+let updateProfileState = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
   useBrandDiscoveryResults: () => discoveryState,
   useUpdateBrandAliases: () => ({ mutate: updateAliasesMutate, ...updateAliasesState }),
+  useUpdateBrandProfile: () => ({ mutate: updateProfileMutate, ...updateProfileState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -115,6 +118,8 @@ describe("BrandProfileScreen", () => {
     discoveryState = { data: discoveryFixture, isLoading: false };
     updateAliasesMutate = vi.fn();
     updateAliasesState = { isPending: false, isError: false, isSuccess: false };
+    updateProfileMutate = vi.fn();
+    updateProfileState = { isPending: false, isError: false, isSuccess: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -127,12 +132,12 @@ describe("BrandProfileScreen", () => {
     expect(screen.getByText(/re-run discovery/i)).toBeInTheDocument();
   });
 
-  it("renders the brand profile identity fields", () => {
+  it("renders the brand profile identity fields as editable inputs", () => {
     render(<BrandProfileScreen brandId="b1" />);
-    expect(screen.getByText("Career platform for resume building.")).toBeInTheDocument();
-    expect(screen.getByText("Career Services")).toBeInTheDocument();
-    expect(screen.getByText("SaaS")).toBeInTheDocument();
-    expect(screen.getByText("Empowering job seekers.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Career platform for resume building.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Career Services")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("SaaS")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Empowering job seekers.")).toBeInTheDocument();
     expect(screen.getByText("https://acme.example.com")).toBeInTheDocument();
   });
 
@@ -168,7 +173,7 @@ describe("BrandProfileScreen", () => {
     expect(screen.getByText(/discovery hasn't run yet/i)).toBeInTheDocument();
   });
 
-  it("falls back to 'Not set.' for missing profile fields", () => {
+  it("renders 'Not set.' as the placeholder when a profile field is null", () => {
     discoveryState = {
       data: {
         ...discoveryFixture,
@@ -183,8 +188,8 @@ describe("BrandProfileScreen", () => {
       isLoading: false,
     };
     render(<BrandProfileScreen brandId="b1" />);
-    // Four "Not set." labels — one per missing field.
-    expect(screen.getAllByText(/^not set\.?$/i).length).toBe(4);
+    // Four "Not set." placeholders — one per empty input/textarea.
+    expect(screen.getAllByPlaceholderText(/^not set\.?$/i).length).toBe(4);
   });
 
   // -------------------------------------------------------------------
@@ -247,6 +252,67 @@ describe("BrandProfileScreen", () => {
   it("Save aliases button shows 'Saving…' while the mutation is pending", () => {
     updateAliasesState = { isPending: true, isError: false, isSuccess: false };
     render(<BrandProfileScreen brandId="b1" />);
+    // Only the aliases mutation is pending; the identity button still
+    // reads "Save identity", so "Saving…" is unambiguous.
+    expect(screen.getByRole("button", { name: /Saving…/i })).toBeDisabled();
+  });
+
+  // -------------------------------------------------------------------
+  // Identity section — inline editing
+  // -------------------------------------------------------------------
+
+  it("Save identity is disabled when no identity field is dirty", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /Save identity/i })).toBeDisabled();
+  });
+
+  it("Typing into the industry input dirties the section", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    const industry = screen.getByLabelText(/^industry$/i) as HTMLInputElement;
+    await userEvent.clear(industry);
+    await userEvent.type(industry, "Tech");
+    expect(industry.value).toBe("Tech");
+    expect(screen.getByRole("button", { name: /Save identity/i })).toBeEnabled();
+  });
+
+  it("Save identity calls the mutation with trimmed + null-coerced fields", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    const positioning = screen.getByLabelText(/^positioning$/i) as HTMLInputElement;
+    await userEvent.clear(positioning);
+    await userEvent.type(positioning, "  New positioning.  ");
+    const description = screen.getByLabelText(/^description$/i) as HTMLTextAreaElement;
+    await userEvent.clear(description);
+    await userEvent.click(screen.getByRole("button", { name: /Save identity/i }));
+    expect(updateProfileMutate).toHaveBeenCalledOnce();
+    const [args] = updateProfileMutate.mock.calls[0];
+    expect(args.positioning).toBe("New positioning.");
+    // Cleared description sends null so the server clears the field too,
+    // round-tripping the same emptiness the FE renders as "Not set".
+    expect(args.shortDescription).toBeNull();
+    // Untouched fields keep their server values.
+    expect(args.industry).toBe("Career Services");
+    expect(args.category).toBe("SaaS");
+  });
+
+  it("Discard reverts identity edits back to the server values", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    const industry = screen.getByLabelText(/^industry$/i) as HTMLInputElement;
+    await userEvent.clear(industry);
+    await userEvent.type(industry, "Tech");
+    expect(industry.value).toBe("Tech");
+    // Two Discard buttons can be present (identity + aliases) when both
+    // are dirty; here only identity is dirty so there's exactly one.
+    await userEvent.click(screen.getByRole("button", { name: /Discard/i }));
+    expect((screen.getByLabelText(/^industry$/i) as HTMLInputElement).value).toBe(
+      "Career Services",
+    );
+  });
+
+  it("Save identity button shows 'Saving…' while the mutation is pending", () => {
+    updateProfileState = { isPending: true, isError: false, isSuccess: false };
+    render(<BrandProfileScreen brandId="b1" />);
+    // Only the identity mutation is pending; the aliases button still
+    // reads "Save aliases", so "Saving…" is unambiguous.
     expect(screen.getByRole("button", { name: /Saving…/i })).toBeDisabled();
   });
 });

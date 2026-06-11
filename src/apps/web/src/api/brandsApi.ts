@@ -5,6 +5,8 @@ import type {
   CreateBrandResponse,
   UpdateBrandAliasesRequest,
   UpdateBrandAliasesResult,
+  UpdateBrandProfileRequest,
+  UpdateBrandProfileResult,
 } from "@/types/api";
 
 export const brandsApi = {
@@ -16,4 +18,7 @@ export const brandsApi = {
 
   updateAliases: (id: string, data: UpdateBrandAliasesRequest) =>
     apiClient.put<UpdateBrandAliasesResult>(`/api/brands/${id}/aliases`, data),
+
+  updateProfile: (id: string, data: UpdateBrandProfileRequest) =>
+    apiClient.put<UpdateBrandProfileResult>(`/api/brands/${id}/profile`, data),
 };

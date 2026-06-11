@@ -24,6 +24,20 @@ export interface UpdateBrandAliasesResult {
   aliases: string[];
 }
 
+export interface UpdateBrandProfileRequest {
+  shortDescription: string | null;
+  industry: string | null;
+  category: string | null;
+  positioning: string | null;
+}
+
+export interface UpdateBrandProfileResult {
+  shortDescription: string | null;
+  industry: string | null;
+  category: string | null;
+  positioning: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

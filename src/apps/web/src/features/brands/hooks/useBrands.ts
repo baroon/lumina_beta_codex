@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import { discoveryApi } from "@/api/discoveryApi";
-import type { CreateBrandRequest, UpdateBrandAliasesRequest } from "@/types/api";
+import type {
+  CreateBrandRequest,
+  UpdateBrandAliasesRequest,
+  UpdateBrandProfileRequest,
+} from "@/types/api";
 
 export function useBrandsList() {
   return useQuery({
@@ -56,6 +60,22 @@ export function useUpdateBrandAliases(brandId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: UpdateBrandAliasesRequest) => brandsApi.updateAliases(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
+ * Mutates the brand's identity fields (shortDescription / industry /
+ * category / positioning). Like aliases, these surface to the FE via
+ * the discovery results DTO so the discovery cache is invalidated on
+ * success.
+ */
+export function useUpdateBrandProfile(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateBrandProfileRequest) => brandsApi.updateProfile(brandId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },
