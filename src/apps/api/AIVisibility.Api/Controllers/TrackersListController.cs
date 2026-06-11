@@ -1,3 +1,4 @@
+using AIVisibility.Api.DTOs;
 using AIVisibility.Application.Commands.Trackers;
 using AIVisibility.Application.Queries.Trackers;
 using MediatR;
@@ -39,6 +40,41 @@ public class TrackersListController : ControllerBase
         {
             await _mediator.Send(new DeleteTrackerCommand(trackerId), cancellationToken);
             return NoContent();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("{trackerId:guid}/name")]
+    [ProducesResponseType(typeof(RenameTrackerResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Rename(
+        Guid trackerId,
+        [FromBody] RenameTrackerRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameTrackerCommand(trackerId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (DuplicateTrackerNameException ex)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Duplicate tracker name",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+            });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
         {

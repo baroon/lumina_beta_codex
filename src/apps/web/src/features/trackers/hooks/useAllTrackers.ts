@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { trackersApi } from "@/api/trackersApi";
+import type { RenameTrackerRequest } from "@/types/api";
 
 /**
  * Flat list of trackers across brands for the /trackers page (Phase 4
@@ -13,6 +14,23 @@ export function useAllTrackers() {
   return useQuery({
     queryKey: ["all-trackers"],
     queryFn: () => trackersApi.list(),
+  });
+}
+
+/**
+ * Renames a tracker. Invalidates the workspace tracker list so the
+ * sidebar selector + every list of trackers picks up the new label.
+ * The current page's React Query cache doesn't need a separate
+ * invalidation — the tracker's data (scans, lenses, schedule) is
+ * keyed on tracker id, not name.
+ */
+export function useRenameTracker(trackerId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RenameTrackerRequest) => trackersApi.rename(trackerId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-trackers"] });
+    },
   });
 }
 

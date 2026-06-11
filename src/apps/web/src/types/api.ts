@@ -92,6 +92,15 @@ export interface AddBrandTrustSignalResult {
   name: string;
 }
 
+export interface RenameTrackerRequest {
+  name: string;
+}
+
+export interface RenameTrackerResult {
+  trackerId: string;
+  name: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

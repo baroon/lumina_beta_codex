@@ -49,11 +49,17 @@ let updateLensesState = { isPending: false, isError: false, isSuccess: false };
 
 let deleteTrackerMutate: ReturnType<typeof vi.fn>;
 let deleteTrackerState = { isPending: false, isError: false, isSuccess: false };
+let renameTrackerMutate: ReturnType<typeof vi.fn>;
+let renameTrackerState: { isPending: boolean; isError: boolean; error?: Error } = {
+  isPending: false,
+  isError: false,
+};
 
 vi.mock("@/features/trackers/hooks/useAllTrackers", () => ({
   useAllTrackers: () => ({ data: [] }),
   useTrackerSummary: () => summaryState,
   useDeleteTracker: () => ({ mutate: deleteTrackerMutate, ...deleteTrackerState }),
+  useRenameTracker: () => ({ mutate: renameTrackerMutate, ...renameTrackerState }),
 }));
 vi.mock("@/features/trackers/hooks/useTrackerSchedule", () => ({
   useTrackerScheduleSetup: () => scheduleSetupState,
@@ -143,12 +149,16 @@ beforeEach(() => {
   updateLensesState = { isPending: false, isError: false, isSuccess: false };
   deleteTrackerMutate = vi.fn();
   deleteTrackerState = { isPending: false, isError: false, isSuccess: false };
+  renameTrackerMutate = vi.fn();
+  renameTrackerState = { isPending: false, isError: false };
 });
 
 describe("TrackerEditScreen", () => {
   it("renders the page header with the tracker name", () => {
     render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
-    expect(screen.getByRole("heading", { name: /Edit Acme · US Tracker/i })).toBeInTheDocument();
+    // The breadcrumb already carries the "Edit" label; the page header
+    // is now just the inline-editable tracker name.
+    expect(screen.getByRole("heading", { name: /Acme · US Tracker/i })).toBeInTheDocument();
   });
 
   it("renders a breadcrumb with Brands › Brand › Tracker › Edit", () => {
@@ -291,5 +301,35 @@ describe("TrackerEditScreen", () => {
     const deleteButtons = screen.getAllByRole("button", { name: /^Delete tracker$/ });
     await userEvent.click(deleteButtons[deleteButtons.length - 1]);
     expect(deleteTrackerMutate).toHaveBeenCalledOnce();
+  });
+
+  // ---------------------------------------------------------------------
+  // Inline rename in the page header
+  // ---------------------------------------------------------------------
+
+  it("clicking the page-header name + typing + blurring fires the rename mutation", async () => {
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+    // The InlineEdit atom renders the tracker name inside a button when
+    // not editing; click it to expose the input.
+    await userEvent.click(screen.getByRole("button", { name: /Acme · US Tracker/i }));
+    const input = screen.getByDisplayValue("Acme · US Tracker") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Acme · UK Tracker");
+    // Blur commits.
+    input.blur();
+    expect(renameTrackerMutate).toHaveBeenCalledOnce();
+    expect(renameTrackerMutate.mock.calls[0][0]).toEqual({ name: "Acme · UK Tracker" });
+  });
+
+  it("shows a rename error message when the mutation fails", () => {
+    renameTrackerState = {
+      isPending: false,
+      isError: true,
+      error: new Error('A tracker named "Acme · UK Tracker" already exists for this brand.'),
+    };
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+    expect(
+      screen.getByText(/A tracker named "Acme · UK Tracker" already exists/i),
+    ).toBeInTheDocument();
   });
 });

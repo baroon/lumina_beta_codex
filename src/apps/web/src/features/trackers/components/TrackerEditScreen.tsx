@@ -5,6 +5,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Checkbox } from "@/components/atoms/checkbox";
+import { InlineEdit } from "@/components/atoms/inline-edit";
 import {
   Select,
   SelectContent,
@@ -16,11 +17,14 @@ import { Breadcrumb } from "@/components/molecules/Breadcrumb";
 import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
-import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { usePrompts } from "@/features/trackers/hooks/usePrompts";
-import { useDeleteTracker, useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
+import {
+  useDeleteTracker,
+  useRenameTracker,
+  useTrackerSummary,
+} from "@/features/trackers/hooks/useAllTrackers";
 import {
   useConfigureTrackerSchedule,
   useTrackerScheduleSetup,
@@ -114,7 +118,7 @@ export function TrackerEditScreen({ brandId, trackerId }: TrackerEditScreenProps
             { label: "Edit" },
           ]}
         />
-        <PageHeader title={`Edit ${tracker.name}`} />
+        <TrackerNameHeader trackerId={trackerId} trackerName={tracker.name} />
       </div>
 
       {data ? (
@@ -132,6 +136,45 @@ export function TrackerEditScreen({ brandId, trackerId }: TrackerEditScreenProps
       <LensesSection trackerId={trackerId} />
 
       <DangerZoneSection trackerId={trackerId} brandId={brandId} trackerName={tracker.name} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page title with inline-editable tracker name
+// ---------------------------------------------------------------------------
+
+function TrackerNameHeader({ trackerId, trackerName }: { trackerId: string; trackerName: string }) {
+  const rename = useRenameTracker(trackerId);
+  const errorMessage =
+    rename.isError && rename.error instanceof Error
+      ? rename.error.message
+      : rename.isError
+        ? "Rename failed — try again."
+        : null;
+
+  return (
+    <div>
+      <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+        <InlineEdit
+          value={trackerName}
+          onChange={(next) => {
+            // InlineEdit only fires onChange when the trimmed value
+            // differs from the prior value, so the click-away no-op
+            // path is handled there. The BE also short-circuits on
+            // equal-name input, so double-coverage is fine.
+            if (next.trim().length > 0) {
+              rename.mutate({ name: next });
+            }
+          }}
+          placeholder="Tracker name"
+        />
+      </h1>
+      {errorMessage && (
+        <p className="mt-1 text-xs text-semantic-error-600" role="alert">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

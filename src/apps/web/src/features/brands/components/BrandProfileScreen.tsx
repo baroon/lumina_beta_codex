@@ -67,11 +67,12 @@ interface BrandProfileScreenProps {
 }
 
 /**
- * Read-only brand profile view. Renders identity fields, aliases, and
- * each dimension's confirmed items. Edits route through the existing
- * discovery wizard (Re-run discovery CTA) until proper PATCH endpoints
- * land — this screen ships as the canonical landing page for a brand,
- * removing the awkward "brand row → discovery wizard" jump.
+ * Canonical landing page for a brand. Every section is editable inline:
+ * identity fields, aliases, and every dimension chip list (products,
+ * audiences, markets, topics, competitors, trust signals). The "Re-run
+ * discovery" CTA remains as the path back into the discovery wizard
+ * when the user wants the LLM to repopulate everything; the danger
+ * zone at the bottom hard-deletes the brand and its entire subtree.
  */
 export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
   const brandQuery = useBrand(brandId);
@@ -127,8 +128,6 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
 
       {discovery && (
         <>
-          <p className="text-xs text-neutral-500">{copy.editNotice}</p>
-
           <ProfileIdentitySection
             brandId={brandId}
             websiteUrl={brand.websiteUrl}

@@ -37,6 +37,5 @@ export const BRANDS_COPY = {
       noItems: "Not detected.",
       notSet: "Not set.",
     },
-    editNotice: "Edits happen in the discovery wizard for now — inline editing is coming soon.",
   },
 } as const;
