@@ -237,6 +237,25 @@ export function useRenameBrandTopic(brandId: string) {
   });
 }
 
+/**
+ * Replaces the alias list on a single brand competitor. Competitor
+ * aliases are downstream input to mention detection — a deeper edit
+ * surface than the chip-level rename. Invalidates the discovery cache
+ * so the chip metadata refreshes.
+ */
+export function useUpdateBrandCompetitorAliases(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { competitorId: string; aliases: string[] }) =>
+      brandsApi.updateCompetitorAliases(brandId, vars.competitorId, {
+        aliases: vars.aliases,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
 /** Renames a Competitor on the brand. Mirrors the dimension rename shape. */
 export function useRenameBrandCompetitor(brandId: string) {
   const queryClient = useQueryClient();

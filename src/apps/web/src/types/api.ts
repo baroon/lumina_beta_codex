@@ -140,6 +140,14 @@ export interface RenameBrandDimensionResult {
   name: string;
 }
 
+export interface UpdateBrandCompetitorAliasesRequest {
+  aliases: string[];
+}
+
+export interface UpdateBrandCompetitorAliasesResult {
+  aliases: string[];
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

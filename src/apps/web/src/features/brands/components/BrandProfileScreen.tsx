@@ -20,6 +20,9 @@ import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { InlineEdit } from "@/components/atoms/inline-edit";
 import { Input } from "@/components/atoms/input";
+import * as Dialog from "@radix-ui/react-dialog";
+import { cn } from "@/lib/utils";
+import { AliasEditor } from "@/components/molecules/AliasEditor";
 import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
 import { EditableChipList } from "@/components/molecules/EditableChipList";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
@@ -51,6 +54,7 @@ import {
   useRenameBrandTopic,
   useRenameBrandTrustSignal,
   useUpdateBrandAliases,
+  useUpdateBrandCompetitorAliases,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
@@ -606,6 +610,8 @@ function DimensionEditCard({
   add,
   remove,
   rename,
+  onEditDetails,
+  detailsAriaSingular,
 }: {
   icon: (typeof SECTION_ICON)[keyof typeof SECTION_ICON];
   title: string;
@@ -628,6 +634,8 @@ function DimensionEditCard({
     isPending: boolean;
     isError: boolean;
   };
+  onEditDetails?: (itemId: string) => void;
+  detailsAriaSingular?: string;
 }) {
   const copy = BRANDS_COPY.profile;
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
@@ -672,6 +680,8 @@ function DimensionEditCard({
             setTimeout(() => setPendingRemoveId(null), 0);
           }}
           onRename={(id, name) => rename.mutate({ id, name })}
+          onEditDetails={onEditDetails}
+          detailsAriaSingular={detailsAriaSingular}
         />
       </CardContent>
     </Card>
@@ -701,18 +711,35 @@ function CompetitorsSection({
   brandId: string;
   competitors: readonly CandidateDto[];
 }) {
+  const [openCompetitorId, setOpenCompetitorId] = useState<string | null>(null);
+  const openCompetitor = competitors.find((c) => c.id === openCompetitorId) ?? null;
+
   return (
-    <DimensionEditCard
-      icon={SECTION_ICON.competitors}
-      title={DISCOVERY_COPY.sections.competitors.title}
-      items={competitors}
-      addPlaceholder="Add a competitor…"
-      addLabel="Add competitor"
-      removeAriaSingular="competitor"
-      add={useAddBrandCompetitor(brandId)}
-      remove={useRemoveBrandCompetitor(brandId)}
-      rename={useRenameBrandCompetitor(brandId)}
-    />
+    <>
+      <DimensionEditCard
+        icon={SECTION_ICON.competitors}
+        title={DISCOVERY_COPY.sections.competitors.title}
+        items={competitors}
+        addPlaceholder="Add a competitor…"
+        addLabel="Add competitor"
+        removeAriaSingular="competitor"
+        add={useAddBrandCompetitor(brandId)}
+        remove={useRemoveBrandCompetitor(brandId)}
+        rename={useRenameBrandCompetitor(brandId)}
+        onEditDetails={(id) => setOpenCompetitorId(id)}
+        detailsAriaSingular="competitor"
+      />
+      {openCompetitor && (
+        <CompetitorAliasesDialog
+          brandId={brandId}
+          competitor={openCompetitor}
+          open
+          onOpenChange={(next) => {
+            if (!next) setOpenCompetitorId(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -850,6 +877,124 @@ function WebsiteUrlEditor({ brandId, websiteUrl }: { brandId: string; websiteUrl
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Per-competitor deeper-edit dialog. Aliases drive mention detection
+ * downstream — the chip click-to-rename handles the primary name; this
+ * dialog handles the alias list, which is a list of strings the BE
+ * trims, dedupes case-insensitive, and rejects against the competitor's
+ * own name. Reuses the existing AliasEditor molecule from the discovery
+ * wizard so the alias-add UX feels identical wherever it appears.
+ */
+function CompetitorAliasesDialog({
+  brandId,
+  competitor,
+  open,
+  onOpenChange,
+}: {
+  brandId: string;
+  competitor: CandidateDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateBrandCompetitorAliases(brandId);
+  const [aliases, setAliases] = useState<string[]>(() => competitor.aliases ?? []);
+
+  // Reset the staged aliases whenever the competitor in scope changes
+  // (the parent reopens with a different row).
+  useEffect(() => {
+    setAliases(competitor.aliases ?? []);
+  }, [competitor.id, competitor.aliases]);
+
+  const original = competitor.aliases ?? [];
+  const dirty = aliases.length !== original.length || aliases.some((a, i) => a !== original[i]);
+
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Save failed — try again."
+        : null;
+
+  function save() {
+    update.mutate(
+      { competitorId: competitor.id, aliases },
+      {
+        onSuccess: () => onOpenChange(false),
+      },
+    );
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                {competitor.name}
+              </Dialog.Title>
+              <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
+                Aliases drive mention detection. Add the variants AI answers actually use.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4">
+            <AliasEditor
+              aliases={aliases}
+              onChange={setAliases}
+              label="Aliases"
+              placeholder="Type and press Enter"
+              variant="inline"
+            />
+          </div>
+
+          {errorMessage && (
+            <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+              {update.isPending ? "Saving…" : "Save aliases"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

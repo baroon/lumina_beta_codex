@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { BrandDto, DiscoveryResultsDto } from "@/types/api";
@@ -53,6 +53,12 @@ let renameAudienceMutate: ReturnType<typeof vi.fn>;
 let renameMarketMutate: ReturnType<typeof vi.fn>;
 let renameProductMutate: ReturnType<typeof vi.fn>;
 let renameTrustSignalMutate: ReturnType<typeof vi.fn>;
+let updateCompetitorAliasesMutate: ReturnType<typeof vi.fn>;
+let updateCompetitorAliasesState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -82,6 +88,10 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useRenameBrandMarket: () => ({ mutate: renameMarketMutate, ...idleMutation }),
   useRenameBrandProduct: () => ({ mutate: renameProductMutate, ...idleMutation }),
   useRenameBrandTrustSignal: () => ({ mutate: renameTrustSignalMutate, ...idleMutation }),
+  useUpdateBrandCompetitorAliases: () => ({
+    mutate: updateCompetitorAliasesMutate,
+    ...updateCompetitorAliasesState,
+  }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -206,6 +216,8 @@ describe("BrandProfileScreen", () => {
     renameMarketMutate = vi.fn();
     renameProductMutate = vi.fn();
     renameTrustSignalMutate = vi.fn();
+    updateCompetitorAliasesMutate = vi.fn();
+    updateCompetitorAliasesState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -668,5 +680,90 @@ describe("BrandProfileScreen", () => {
     // Same text + blur — no mutation fires.
     input.blur();
     expect(renameAudienceMutate).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------
+  // Competitor aliases dialog
+  // -------------------------------------------------------------------
+
+  it("clicking the details ⋯ on a competitor opens the aliases dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    // The dialog title is the competitor name.
+    expect(within(screen.getByRole("dialog")).getByText(/Resume\.io/i)).toBeInTheDocument();
+  });
+
+  it("Save aliases fires the mutation with the staged aliases list", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            aliases: ["resumeio"],
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    // Type a new alias and press Enter (AliasEditor commits on Enter).
+    await userEvent.click(within(dialog).getByRole("button", { name: /add aliases/i }));
+    await userEvent.type(
+      within(dialog).getByPlaceholderText(/Type and press Enter/i),
+      "ResumeIO Pro{enter}",
+    );
+    // Save commits the full staged list to the mutation.
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save aliases$/ }));
+    expect(updateCompetitorAliasesMutate).toHaveBeenCalledOnce();
+    const [args] = updateCompetitorAliasesMutate.mock.calls[0];
+    expect(args.competitorId).toBe("c1");
+    expect(args.aliases).toEqual(["resumeio", "ResumeIO Pro"]);
+  });
+
+  it("Save is disabled until the staged aliases differ from the server", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            aliases: ["resumeio"],
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: /^Save aliases$/ })).toBeDisabled();
+  });
+
+  it("renders a server-error message when the alias save fails", async () => {
+    updateCompetitorAliasesState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Alias 'Resume.io' collides with the competitor's primary name."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/collides with the competitor's primary name/i),
+    ).toBeInTheDocument();
   });
 });

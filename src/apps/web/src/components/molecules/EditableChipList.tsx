@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { X } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
@@ -43,6 +43,20 @@ interface EditableChipListProps {
    * endpoint.
    */
   onRename?: (itemId: string, name: string) => void;
+  /**
+   * Optional per-chip "details" affordance — when provided, each chip
+   * gets a small ⋯ button between the name and the X that fires
+   * `onEditDetails(itemId)`. The parent handles the dialog / drawer /
+   * popover; the molecule only emits the click. Used by callers that
+   * have a dimension-specific deeper edit surface (e.g. competitor
+   * aliases + domain) beyond what a single chip can express.
+   */
+  onEditDetails?: (itemId: string) => void;
+  /**
+   * Singular noun for the details-button aria-label:
+   * `Edit details for {singular} {item.name}`.
+   */
+  detailsAriaSingular?: string;
   isAdding?: boolean;
   /**
    * The id of the item currently being removed (drives the per-chip
@@ -76,6 +90,8 @@ export function EditableChipList({
   onAdd,
   onRemove,
   onRename,
+  onEditDetails,
+  detailsAriaSingular,
   isAdding = false,
   pendingRemoveId = null,
   serverError = null,
@@ -123,6 +139,16 @@ export function EditableChipList({
                   // without re-creating the input on every render.
                   siblingNames={items.filter((it) => it.id !== item.id).map((it) => it.name)}
                 />
+                {onEditDetails && (
+                  <button
+                    type="button"
+                    onClick={() => onEditDetails(item.id)}
+                    aria-label={`Edit details for ${detailsAriaSingular ?? removeAriaSingular} ${item.name}`}
+                    className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
+                  >
+                    <MoreHorizontal className="h-3 w-3" aria-hidden />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onRemove(item.id)}
