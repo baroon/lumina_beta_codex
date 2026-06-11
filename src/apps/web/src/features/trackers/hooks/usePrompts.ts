@@ -36,7 +36,7 @@ export function useRemovePrompt(trackerId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (promptId: string) => promptsApi.remove(trackerId, promptId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] }),
+    onSuccess: () => invalidatePromptCaches(queryClient, trackerId),
   });
 }
 
@@ -44,7 +44,7 @@ export function useAddCustomPrompt(trackerId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: AddCustomPromptRequest) => promptsApi.addCustom(trackerId, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] }),
+    onSuccess: () => invalidatePromptCaches(queryClient, trackerId),
   });
 }
 
@@ -53,6 +53,18 @@ export function useUpdatePrompt(trackerId: string) {
   return useMutation({
     mutationFn: (vars: { promptId: string; text: string }) =>
       promptsApi.update(trackerId, vars.promptId, { text: vars.text }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] }),
+    onSuccess: () => invalidatePromptCaches(queryClient, trackerId),
   });
+}
+
+/**
+ * Prompt mutations affect two cache surfaces: the per-tracker list
+ * (TrackerHub Prompts tab) and the workspace-wide inventory (/prompts
+ * page). The per-tracker key is exact; the workspace key prefix matches
+ * every filter / window combination so a mutation forces a fresh fetch
+ * regardless of which slice the user is currently viewing.
+ */
+function invalidatePromptCaches(queryClient: ReturnType<typeof useQueryClient>, trackerId: string) {
+  queryClient.invalidateQueries({ queryKey: ["prompts", trackerId] });
+  queryClient.invalidateQueries({ queryKey: ["workspace-prompts"] });
 }

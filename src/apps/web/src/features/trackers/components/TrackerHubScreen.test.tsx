@@ -57,8 +57,16 @@ vi.mock("@/features/trackers/hooks/useTrackerSchedule", () => ({
   useTrackerScheduleSetup: () => scheduleState,
   useConfigureTrackerSchedule: () => ({ mutate: vi.fn() }),
 }));
+let addPromptMutate: ReturnType<typeof vi.fn>;
+let updatePromptMutate: ReturnType<typeof vi.fn>;
+let removePromptMutate: ReturnType<typeof vi.fn>;
+const idleMutation = { isPending: false, isError: false, isSuccess: false };
+
 vi.mock("@/features/trackers/hooks/usePrompts", () => ({
   usePrompts: () => promptsState,
+  useAddCustomPrompt: () => ({ mutate: addPromptMutate, ...idleMutation }),
+  useUpdatePrompt: () => ({ mutate: updatePromptMutate, ...idleMutation }),
+  useRemovePrompt: () => ({ mutate: removePromptMutate, ...idleMutation }),
 }));
 vi.mock("@/features/trackers/hooks/useScans", () => ({
   useRunScan: () => ({
@@ -232,6 +240,9 @@ beforeEach(() => {
   runScanIsSuccess = false;
   lensesState = { data: lensesFixture, isLoading: false, isError: false };
   overviewState = { data: overviewFixture, isLoading: false, isError: false };
+  addPromptMutate = vi.fn();
+  updatePromptMutate = vi.fn();
+  removePromptMutate = vi.fn();
 });
 
 describe("TrackerHubScreen", () => {
@@ -278,6 +289,43 @@ describe("TrackerHubScreen", () => {
     await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
     expect(screen.getByText("What's the best resume builder?")).toBeInTheDocument();
     expect(screen.getByText("Top 5 resume builders 2026?")).toBeInTheDocument();
+  });
+
+  it("Prompts tab — clicking X on a prompt fires the remove mutation", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Remove prompt What's the best resume builder/i }),
+    );
+    expect(removePromptMutate).toHaveBeenCalledWith("pr1");
+  });
+
+  it("Prompts tab — Add prompt fires the mutation with the trimmed text + first lens", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    const input = screen.getByPlaceholderText(/Add a prompt/i);
+    await userEvent.type(input, "  How do I optimize my resume for ATS?  ");
+    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/ }));
+    expect(addPromptMutate).toHaveBeenCalledOnce();
+    expect(addPromptMutate.mock.calls[0][0]).toEqual({
+      text: "How do I optimize my resume for ATS?",
+      // First lens from the fixture defaults the select.
+      lensId: "l1",
+      primaryTopicId: null,
+    });
+  });
+
+  it("Prompts tab — Add prompt is disabled when the allocation cap is reached", async () => {
+    // Set allocation == prompt count so the cap is hit.
+    promptsState = {
+      data: { ...promptsFixture, promptAllocation: promptsFixture.prompts.length },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    expect(screen.getByText(/\(at cap\)/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Add prompt$/ })).toBeDisabled();
   });
 
   it("Scans tab links each scan to its results page", async () => {

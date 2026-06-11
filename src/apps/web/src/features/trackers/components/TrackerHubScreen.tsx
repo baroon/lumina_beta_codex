@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
@@ -9,16 +10,31 @@ import {
   Play,
   Settings as SettingsIcon,
   Sliders,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
+import { InlineEdit } from "@/components/atoms/inline-edit";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/atoms/select";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Tabs, type TabItem } from "@/components/molecules/Tabs";
-import { usePrompts } from "@/features/trackers/hooks/usePrompts";
+import {
+  useAddCustomPrompt,
+  usePrompts,
+  useRemovePrompt,
+  useUpdatePrompt,
+} from "@/features/trackers/hooks/usePrompts";
 import { useRunScan, useTrackerScans } from "@/features/trackers/hooks/useScans";
 import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
@@ -428,11 +444,13 @@ function ScheduleTab({ setup }: { setup: TrackerScheduleSetup | null }) {
 }
 
 // ---------------------------------------------------------------------------
-// Prompts tab — read-only summary
+// Prompts tab — inline edit + add + remove
 // ---------------------------------------------------------------------------
 
 function PromptsTab({ trackerId }: { trackerId: string }) {
   const prompts = usePrompts(trackerId);
+  const lenses = useTrackerLensesSetup(trackerId);
+
   if (prompts.isLoading) {
     return (
       <Card>
@@ -451,39 +469,56 @@ function PromptsTab({ trackerId }: { trackerId: string }) {
       </Card>
     );
   }
+
   const rows = prompts.data.prompts;
+  const allocation = prompts.data.promptAllocation ?? rows.length;
+  const atCap = rows.length >= allocation;
+  const availableLenses = lenses.data?.lenses ?? [];
+
   return (
     <Card>
-      <CardContent className="space-y-2 p-4">
+      <CardContent className="space-y-3 p-4">
         <div className="text-xs text-neutral-500">
-          {rows.length} prompt{rows.length === 1 ? "" : "s"} · allocation{" "}
-          {prompts.data.promptAllocation}
+          {rows.length} prompt{rows.length === 1 ? "" : "s"} · allocation {allocation}
+          {atCap && <span className="ml-2 text-semantic-warning-600">(at cap)</span>}
         </div>
         {rows.length === 0 ? (
           <p className="text-xs text-neutral-500">No prompts yet for this tracker.</p>
         ) : (
           <ul className="space-y-1.5">
             {rows.slice(0, 50).map((p) => (
-              <PromptRow key={p.id} prompt={p} />
+              <PromptRow key={p.id} trackerId={trackerId} prompt={p} />
             ))}
             {rows.length > 50 && (
-              <li className="text-xs text-neutral-500">
-                Showing first 50 of {rows.length}. The full prompt-management surface lands in the
-                workspace Prompts page.
-              </li>
+              <li className="text-xs text-neutral-500">Showing first 50 of {rows.length}.</li>
             )}
           </ul>
         )}
+        <AddPromptForm trackerId={trackerId} lenses={availableLenses} disabled={atCap} />
       </CardContent>
     </Card>
   );
 }
 
-function PromptRow({ prompt }: { prompt: PromptDto }) {
+function PromptRow({ trackerId, prompt }: { trackerId: string; prompt: PromptDto }) {
+  const update = useUpdatePrompt(trackerId);
+  const remove = useRemovePrompt(trackerId);
+
   return (
     <li className="flex items-start justify-between gap-3 rounded-md border border-neutral-200 bg-neutral-50/40 p-2">
-      <span className="flex-1 text-xs text-neutral-700">{prompt.text}</span>
-      <div className="flex shrink-0 gap-1">
+      <div className="min-w-0 flex-1 text-xs text-neutral-700">
+        <InlineEdit
+          value={prompt.text}
+          onChange={(next) => {
+            if (next.trim().length > 0 && next !== prompt.text) {
+              update.mutate({ promptId: prompt.id, text: next });
+            }
+          }}
+          multiline
+          placeholder="Prompt text"
+        />
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
         <Badge variant="outline" className="text-[10px]">
           {prompt.lensName}
         </Badge>
@@ -492,8 +527,96 @@ function PromptRow({ prompt }: { prompt: PromptDto }) {
             {t}
           </Badge>
         ))}
+        <button
+          type="button"
+          onClick={() => remove.mutate(prompt.id)}
+          disabled={remove.isPending}
+          aria-label={`Remove prompt ${prompt.text}`}
+          className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
+        >
+          <X className="h-3 w-3" aria-hidden />
+        </button>
       </div>
     </li>
+  );
+}
+
+function AddPromptForm({
+  trackerId,
+  lenses,
+  disabled,
+}: {
+  trackerId: string;
+  lenses: readonly { id: string; name: string }[];
+  disabled: boolean;
+}) {
+  const add = useAddCustomPrompt(trackerId);
+  const [text, setText] = useState("");
+  const [lensId, setLensId] = useState<string>("");
+  const errorMessage =
+    add.isError && add.error instanceof Error
+      ? add.error.message
+      : add.isError
+        ? "Add failed — try again."
+        : null;
+
+  function submit() {
+    const trimmed = text.trim();
+    if (!trimmed || !lensId) return;
+    add.mutate(
+      { text: trimmed, lensId, primaryTopicId: null },
+      {
+        onSuccess: () => setText(""),
+      },
+    );
+  }
+
+  if (lenses.length === 0) return null;
+  if (lensId === "" && lenses[0]) {
+    // Default the lens select to the first lens once the data lands —
+    // running this in render is fine, the next setState triggers a
+    // single re-render rather than an effect chain.
+    setLensId(lenses[0].id);
+  }
+
+  return (
+    <div className="space-y-2 border-t border-neutral-100 pt-3">
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder={disabled ? "Allocation reached — remove a prompt first" : "Add a prompt…"}
+        aria-label="Add a prompt"
+        disabled={disabled || add.isPending}
+        className={cn(
+          "w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+          (disabled || add.isPending) && "cursor-not-allowed opacity-60",
+        )}
+      />
+      <div className="flex items-center gap-2">
+        <Select value={lensId} onValueChange={setLensId} disabled={disabled || add.isPending}>
+          <SelectTrigger className="w-48 text-xs">
+            <SelectValue placeholder="Lens" />
+          </SelectTrigger>
+          <SelectContent>
+            {lenses.map((l) => (
+              <SelectItem key={l.id} value={l.id}>
+                {l.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={submit}
+          disabled={disabled || add.isPending || text.trim() === "" || !lensId}
+        >
+          {add.isPending ? "Adding…" : "Add prompt"}
+        </Button>
+        {errorMessage && <span className="text-xs text-semantic-error-600">{errorMessage}</span>}
+      </div>
+    </div>
   );
 }
 
