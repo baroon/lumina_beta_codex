@@ -10,8 +10,10 @@ import type {
   AddBrandTopicRequest,
   AddBrandTrustSignalRequest,
   CreateBrandRequest,
+  RenameBrandRequest,
   UpdateBrandAliasesRequest,
   UpdateBrandProfileRequest,
+  UpdateBrandWebsiteUrlRequest,
 } from "@/types/api";
 
 /**
@@ -198,6 +200,43 @@ export function useRemoveBrandCompetitor(brandId: string) {
   return useMutation({
     mutationFn: (competitorId: string) => brandsApi.removeCompetitor(brandId, competitorId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
+ * Renames a brand. The brand name flows through several caches —
+ * the brands list (sidebar selector, brand row list), the per-brand
+ * cache (page header), the discovery results DTO (brandName field),
+ * and every workspace overview that surfaces brand labels. We
+ * invalidate the lot rather than enumerate; brand renames are rare
+ * enough that a wholesale refresh is cheap and avoids a stale label.
+ */
+export function useRenameBrand(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RenameBrandRequest) => brandsApi.rename(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+      queryClient.invalidateQueries({ queryKey: ["all-trackers"] });
+      queryClient.invalidateQueries({ queryKey: ["workspace-overview"] });
+    },
+  });
+}
+
+/**
+ * Updates the brand's website URL. Only the per-brand + discovery
+ * caches need refreshing; the URL doesn't appear in workspace-level
+ * aggregations.
+ */
+export function useUpdateBrandWebsiteUrl(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateBrandWebsiteUrlRequest) => brandsApi.updateWebsiteUrl(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands", brandId] });
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },
   });

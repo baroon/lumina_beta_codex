@@ -69,6 +69,66 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/name")]
+    [ProducesResponseType(typeof(RenameBrandResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Rename(
+        Guid id,
+        [FromBody] RenameBrandRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandCommand(id, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (DuplicateBrandNameException ex)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Duplicate brand name",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:guid}/website-url")]
+    [ProducesResponseType(typeof(UpdateBrandWebsiteUrlResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateWebsiteUrl(
+        Guid id,
+        [FromBody] UpdateBrandWebsiteUrlRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandWebsiteUrlCommand(id, request.WebsiteUrl), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/aliases")]
     [ProducesResponseType(typeof(UpdateBrandAliasesResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

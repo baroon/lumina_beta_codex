@@ -110,4 +110,16 @@ describe("brandsApi", () => {
     brandsApi.removeTrustSignal("b1", "ts1");
     expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/trust-signals/ts1");
   });
+
+  it("rename PUTs the name payload to /api/brands/:id/name", () => {
+    brandsApi.rename("b1", { name: "Acme Corp" });
+    expect(client.put).toHaveBeenCalledWith("/api/brands/b1/name", { name: "Acme Corp" });
+  });
+
+  it("updateWebsiteUrl PUTs to /api/brands/:id/website-url", () => {
+    brandsApi.updateWebsiteUrl("b1", { websiteUrl: "https://new.com" });
+    expect(client.put).toHaveBeenCalledWith("/api/brands/b1/website-url", {
+      websiteUrl: "https://new.com",
+    });
+  });
 });

@@ -37,6 +37,16 @@ let addProductMutate: ReturnType<typeof vi.fn>;
 let removeProductMutate: ReturnType<typeof vi.fn>;
 let addTrustSignalMutate: ReturnType<typeof vi.fn>;
 let removeTrustSignalMutate: ReturnType<typeof vi.fn>;
+let renameBrandMutate: ReturnType<typeof vi.fn>;
+let renameBrandState: { isPending: boolean; isError: boolean; error?: Error } = {
+  isPending: false,
+  isError: false,
+};
+let updateWebsiteUrlMutate: ReturnType<typeof vi.fn>;
+let updateWebsiteUrlState: { isPending: boolean; isError: boolean; error?: Error } = {
+  isPending: false,
+  isError: false,
+};
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -58,6 +68,8 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useRemoveBrandProduct: () => ({ mutate: removeProductMutate, ...idleMutation }),
   useAddBrandTrustSignal: () => ({ mutate: addTrustSignalMutate, ...idleMutation }),
   useRemoveBrandTrustSignal: () => ({ mutate: removeTrustSignalMutate, ...idleMutation }),
+  useRenameBrand: () => ({ mutate: renameBrandMutate, ...renameBrandState }),
+  useUpdateBrandWebsiteUrl: () => ({ mutate: updateWebsiteUrlMutate, ...updateWebsiteUrlState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -172,6 +184,10 @@ describe("BrandProfileScreen", () => {
     removeProductMutate = vi.fn();
     addTrustSignalMutate = vi.fn();
     removeTrustSignalMutate = vi.fn();
+    renameBrandMutate = vi.fn();
+    renameBrandState = { isPending: false, isError: false };
+    updateWebsiteUrlMutate = vi.fn();
+    updateWebsiteUrlState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -539,5 +555,61 @@ describe("BrandProfileScreen", () => {
       screen.getByRole("button", { name: /Remove product AI Resume Builder/i }),
     );
     expect(removeProductMutate).toHaveBeenCalledWith("pr1");
+  });
+
+  // -------------------------------------------------------------------
+  // Brand rename + website URL edit
+  // -------------------------------------------------------------------
+
+  it("clicking the page-header name + typing + blurring fires the rename mutation", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Acme Corp/i }));
+    const input = screen.getByDisplayValue("Acme Corp") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Acme Renamed");
+    input.blur();
+    expect(renameBrandMutate).toHaveBeenCalledOnce();
+    expect(renameBrandMutate.mock.calls[0][0]).toEqual({ name: "Acme Renamed" });
+  });
+
+  it("shows a rename error message when the brand-rename mutation fails", () => {
+    renameBrandState = {
+      isPending: false,
+      isError: true,
+      error: new Error('A brand named "Acme Renamed" already exists in this workspace.'),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByText(/A brand named "Acme Renamed" already exists/i)).toBeInTheDocument();
+  });
+
+  it("editing the website URL + blurring fires the updateWebsiteUrl mutation", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /https:\/\/acme\.example\.com/i }));
+    const input = screen.getByDisplayValue("https://acme.example.com") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "https://acme-new.com");
+    input.blur();
+    expect(updateWebsiteUrlMutate).toHaveBeenCalledOnce();
+    expect(updateWebsiteUrlMutate.mock.calls[0][0]).toEqual({
+      websiteUrl: "https://acme-new.com",
+    });
+  });
+
+  it("the open-in-new-tab link points at the current website URL", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    const link = screen.getByRole("link", {
+      name: /Open https:\/\/acme\.example\.com in a new tab/i,
+    });
+    expect(link).toHaveAttribute("href", "https://acme.example.com");
+  });
+
+  it("shows a website-URL error message when the mutation fails", () => {
+    updateWebsiteUrlState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Website URL must be an absolute http(s) URL. Got: not a url"),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByText(/Website URL must be an absolute http\(s\) URL/i)).toBeInTheDocument();
   });
 });

@@ -78,7 +78,8 @@ function buildTimezones(current: string): string[] {
  *   (distinct from the create-flow TrackerScheduleScreen).
  *
  *   Prompts — read-only summary + link to the wizard prompt review.
- *   Lenses — ComingSoon; no per-tracker lens-edit endpoint exists yet.
+ *   Lenses — editable checkbox picker backed by GET/PUT
+ *   /api/trackers/{id}/lenses.
  *
  * Sticky "Save changes" bar appears when the schedule form is dirty.
  */

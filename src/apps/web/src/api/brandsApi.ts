@@ -15,10 +15,14 @@ import type {
   BrandDto,
   CreateBrandRequest,
   CreateBrandResponse,
+  RenameBrandRequest,
+  RenameBrandResult,
   UpdateBrandAliasesRequest,
   UpdateBrandAliasesResult,
   UpdateBrandProfileRequest,
   UpdateBrandProfileResult,
+  UpdateBrandWebsiteUrlRequest,
+  UpdateBrandWebsiteUrlResult,
 } from "@/types/api";
 
 export const brandsApi = {
@@ -71,4 +75,10 @@ export const brandsApi = {
     apiClient.delete<void>(`/api/brands/${id}/trust-signals/${trustSignalId}`),
 
   delete: (id: string) => apiClient.delete<void>(`/api/brands/${id}`),
+
+  rename: (id: string, data: RenameBrandRequest) =>
+    apiClient.put<RenameBrandResult>(`/api/brands/${id}/name`, data),
+
+  updateWebsiteUrl: (id: string, data: UpdateBrandWebsiteUrlRequest) =>
+    apiClient.put<UpdateBrandWebsiteUrlResult>(`/api/brands/${id}/website-url`, data),
 };

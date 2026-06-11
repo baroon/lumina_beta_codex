@@ -101,6 +101,24 @@ export interface RenameTrackerResult {
   name: string;
 }
 
+export interface RenameBrandRequest {
+  name: string;
+}
+
+export interface RenameBrandResult {
+  brandId: string;
+  name: string;
+}
+
+export interface UpdateBrandWebsiteUrlRequest {
+  websiteUrl: string;
+}
+
+export interface UpdateBrandWebsiteUrlResult {
+  brandId: string;
+  websiteUrl: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

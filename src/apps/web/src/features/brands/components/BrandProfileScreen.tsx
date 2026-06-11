@@ -18,12 +18,12 @@ import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
+import { InlineEdit } from "@/components/atoms/inline-edit";
 import { Input } from "@/components/atoms/input";
 import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
 import { EditableChipList } from "@/components/molecules/EditableChipList";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
-import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { BRANDS_COPY } from "@/content/brands";
 import { DISCOVERY_COPY } from "@/content/discovery";
@@ -43,8 +43,10 @@ import {
   useRemoveBrandProduct,
   useRemoveBrandTopic,
   useRemoveBrandTrustSignal,
+  useRenameBrand,
   useUpdateBrandAliases,
   useUpdateBrandProfile,
+  useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
 import type { CandidateDto } from "@/types/api";
 
@@ -107,7 +109,7 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={brand.name} description={copy.description}>
+      <BrandNameHeader brandId={brandId} brandName={brand.name} description={copy.description}>
         <Link
           to="/brands/$brandId/discovery"
           params={{ brandId }}
@@ -116,7 +118,7 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
           <RefreshCw className="h-3.5 w-3.5" aria-hidden />
           {copy.rerunDiscovery}
         </Link>
-      </PageHeader>
+      </BrandNameHeader>
 
       {!discovery && (
         <Card>
@@ -150,6 +152,57 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
           <BrandDangerZoneSection brandId={brandId} brandName={brand.name} />
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page header with inline-editable brand name
+// ---------------------------------------------------------------------------
+
+function BrandNameHeader({
+  brandId,
+  brandName,
+  description,
+  children,
+}: {
+  brandId: string;
+  brandName: string;
+  description?: string;
+  children?: React.ReactNode;
+}) {
+  const rename = useRenameBrand(brandId);
+  const errorMessage =
+    rename.isError && rename.error instanceof Error
+      ? rename.error.message
+      : rename.isError
+        ? "Rename failed — try again."
+        : null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            <InlineEdit
+              value={brandName}
+              onChange={(next) => {
+                if (next.trim().length > 0) {
+                  rename.mutate({ name: next });
+                }
+              }}
+              placeholder="Brand name"
+            />
+          </h1>
+          {description && <p className="mt-0.5 text-xs text-neutral-500">{description}</p>}
+          {errorMessage && (
+            <p className="mt-1 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+        </div>
+        {children && <div className="flex items-center gap-2">{children}</div>}
+      </div>
     </div>
   );
 }
@@ -289,15 +342,7 @@ function ProfileIdentitySection({
         <SectionHeader icon={SECTION_ICON.brandProfile} title={copy.sections.identity} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={copy.fields.websiteUrl}>
-            <a
-              href={websiteUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1 text-primary-600 hover:underline"
-            >
-              {websiteUrl}
-              <ExternalLink className="h-3 w-3" aria-hidden />
-            </a>
+            <WebsiteUrlEditor brandId={brandId} websiteUrl={websiteUrl} />
           </Field>
           <Field label={copy.fields.industry}>
             {hasProfile ? (
@@ -735,6 +780,55 @@ function TrustSignalsSection({
       add={useAddBrandTrustSignal(brandId)}
       remove={useRemoveBrandTrustSignal(brandId)}
     />
+  );
+}
+
+/**
+ * Editable website URL paired with an external-link icon. The inline
+ * editor lets the user fix typos; the icon opens the current saved URL
+ * in a new tab so the click-through path stays one tap. Validation is
+ * trim + absolute-http(s) on the BE — if the user types something
+ * malformed the mutation 400s and the error renders below the field.
+ */
+function WebsiteUrlEditor({ brandId, websiteUrl }: { brandId: string; websiteUrl: string }) {
+  const update = useUpdateBrandWebsiteUrl(brandId);
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Update failed — try again."
+        : null;
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-1">
+        <div className="flex-1">
+          <InlineEdit
+            value={websiteUrl}
+            onChange={(next) => {
+              if (next.trim().length > 0) {
+                update.mutate({ websiteUrl: next });
+              }
+            }}
+            placeholder="https://example.com"
+          />
+        </div>
+        <a
+          href={websiteUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={`Open ${websiteUrl} in a new tab`}
+          className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-primary-600"
+        >
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      </div>
+      {errorMessage && (
+        <p className="mt-1 text-[11px] text-semantic-error-600" role="alert">
+          {errorMessage}
+        </p>
+      )}
+    </div>
   );
 }
 
