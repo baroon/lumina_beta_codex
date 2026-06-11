@@ -38,6 +38,15 @@ export interface UpdateBrandProfileResult {
   positioning: string | null;
 }
 
+export interface AddBrandTopicRequest {
+  name: string;
+}
+
+export interface AddBrandTopicResult {
+  topicId: string;
+  name: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

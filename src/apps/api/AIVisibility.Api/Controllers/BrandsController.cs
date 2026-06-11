@@ -70,6 +70,48 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/topics")]
+    [ProducesResponseType(typeof(AddBrandTopicResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddTopic(
+        Guid id,
+        [FromBody] AddBrandTopicRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandTopicCommand(id, request.Name),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/topics/{topicId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveTopic(
+        Guid id,
+        Guid topicId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(new RemoveBrandTopicCommand(id, topicId), cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/profile")]
     [ProducesResponseType(typeof(UpdateBrandProfileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

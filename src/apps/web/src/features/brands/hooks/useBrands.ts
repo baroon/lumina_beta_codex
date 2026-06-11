@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import { discoveryApi } from "@/api/discoveryApi";
 import type {
+  AddBrandTopicRequest,
   CreateBrandRequest,
   UpdateBrandAliasesRequest,
   UpdateBrandProfileRequest,
@@ -76,6 +77,36 @@ export function useUpdateBrandProfile(brandId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: UpdateBrandProfileRequest) => brandsApi.updateProfile(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
+ * Adds a user-authored Topic to the brand. The BE anchors the new row
+ * to the brand's most recent DiscoveryRun and stamps Source = UserAdded.
+ * Invalidates the discovery cache so the chip list re-renders.
+ */
+export function useAddBrandTopic(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddBrandTopicRequest) => brandsApi.addTopic(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
+ * Removes a Topic from the brand. Cascade FKs handle prompt_topics
+ * and tracker_topics junction cleanup; we only need to invalidate
+ * the discovery cache.
+ */
+export function useRemoveBrandTopic(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (topicId: string) => brandsApi.removeTopic(brandId, topicId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },

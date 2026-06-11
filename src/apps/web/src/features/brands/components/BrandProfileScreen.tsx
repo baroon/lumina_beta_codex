@@ -25,8 +25,10 @@ import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { BRANDS_COPY } from "@/content/brands";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import {
+  useAddBrandTopic,
   useBrand,
   useBrandDiscoveryResults,
+  useRemoveBrandTopic,
   useUpdateBrandAliases,
   useUpdateBrandProfile,
 } from "@/features/brands/hooks/useBrands";
@@ -140,11 +142,7 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
             icon={SECTION_ICON.markets}
             items={discovery.markets}
           />
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.topics.title}
-            icon={SECTION_ICON.topics}
-            items={discovery.topics}
-          />
+          <TopicsSection brandId={brandId} topics={discovery.topics} />
           <DimensionSection
             title={DISCOVERY_COPY.sections.competitors.title}
             icon={SECTION_ICON.competitors}
@@ -470,7 +468,7 @@ function AliasesSection({ brandId, brandName, aliases }: AliasesSectionProps) {
             className="max-w-xs"
           />
           <Button variant="outline" size="sm" onClick={add} disabled={input.trim() === ""}>
-            Add
+            Add alias
           </Button>
         </div>
 
@@ -535,6 +533,133 @@ function DimensionSection({ title, icon, items }: DimensionSectionProps) {
             ))}
           </ul>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface TopicsSectionProps {
+  brandId: string;
+  topics: readonly CandidateDto[];
+}
+
+/**
+ * Editable topic chip list. Each chip carries an X to remove the
+ * topic immediately; the bottom row has an input + Add button to
+ * stage a new topic. Unlike aliases/identity (which batch into one
+ * Save), topic add and remove are individual mutations — there's no
+ * "dirty" state to gate, so each click hits the BE directly.
+ *
+ * Mutation pending states disable the relevant buttons; cache
+ * invalidation refreshes the chip list. Inline error surfaces server
+ * messages (e.g. case-insensitive duplicate) and client-side
+ * validation (empty, duplicate in current list).
+ */
+function TopicsSection({ brandId, topics }: TopicsSectionProps) {
+  const copy = BRANDS_COPY.profile;
+  const add = useAddBrandTopic(brandId);
+  const remove = useRemoveBrandTopic(brandId);
+  const [input, setInput] = useState("");
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  function handleAdd() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    if (topics.some((t) => t.name.toLowerCase() === trimmed.toLowerCase())) {
+      setClientError(`"${trimmed}" is already in the list.`);
+      return;
+    }
+    setClientError(null);
+    add.mutate(
+      { name: trimmed },
+      {
+        onSuccess: () => setInput(""),
+      },
+    );
+  }
+
+  function handleInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  }
+
+  function handleRemove(topicId: string) {
+    setPendingRemoveId(topicId);
+    remove.mutate(topicId, {
+      onSettled: () => setPendingRemoveId(null),
+    });
+  }
+
+  const serverError = add.isError || remove.isError;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <SectionHeader
+          icon={SECTION_ICON.topics}
+          title={DISCOVERY_COPY.sections.topics.title}
+          meta={
+            <span className="text-xs text-neutral-500" aria-label={`${topics.length} items`}>
+              {topics.length}
+            </span>
+          }
+        />
+
+        {topics.length === 0 ? (
+          <p className="text-xs text-neutral-500">{copy.empty.noItems}</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5" role="list">
+            {topics.map((topic) => (
+              <li key={topic.id}>
+                <Badge variant="secondary" className="inline-flex items-center gap-1 pr-1 text-xs">
+                  <span>{topic.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(topic.id)}
+                    disabled={pendingRemoveId === topic.id}
+                    aria-label={`Remove topic ${topic.name}`}
+                    className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
+          <Input
+            inputSize="sm"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (clientError) setClientError(null);
+            }}
+            onKeyDown={handleInputKey}
+            placeholder="Add a topic…"
+            aria-label="Add a topic"
+            className="max-w-xs"
+            disabled={add.isPending}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAdd}
+            disabled={input.trim() === "" || add.isPending}
+          >
+            {add.isPending ? "Adding…" : "Add topic"}
+          </Button>
+          {clientError && <span className="text-xs text-semantic-error-600">{clientError}</span>}
+          {!clientError && serverError && (
+            <span className="text-xs text-semantic-error-600">
+              {add.isError ? "Add failed — try again." : "Remove failed — try again."}
+            </span>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

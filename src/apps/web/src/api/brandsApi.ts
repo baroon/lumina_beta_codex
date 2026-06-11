@@ -1,5 +1,7 @@
 import { apiClient } from "./apiClient";
 import type {
+  AddBrandTopicRequest,
+  AddBrandTopicResult,
   BrandDto,
   CreateBrandRequest,
   CreateBrandResponse,
@@ -21,4 +23,10 @@ export const brandsApi = {
 
   updateProfile: (id: string, data: UpdateBrandProfileRequest) =>
     apiClient.put<UpdateBrandProfileResult>(`/api/brands/${id}/profile`, data),
+
+  addTopic: (id: string, data: AddBrandTopicRequest) =>
+    apiClient.post<AddBrandTopicResult>(`/api/brands/${id}/topics`, data),
+
+  removeTopic: (id: string, topicId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/topics/${topicId}`),
 };

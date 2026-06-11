@@ -18,12 +18,18 @@ let updateAliasesMutate: ReturnType<typeof vi.fn>;
 let updateAliasesState = { isPending: false, isError: false, isSuccess: false };
 let updateProfileMutate: ReturnType<typeof vi.fn>;
 let updateProfileState = { isPending: false, isError: false, isSuccess: false };
+let addTopicMutate: ReturnType<typeof vi.fn>;
+let addTopicState = { isPending: false, isError: false, isSuccess: false };
+let removeTopicMutate: ReturnType<typeof vi.fn>;
+let removeTopicState = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
   useBrandDiscoveryResults: () => discoveryState,
   useUpdateBrandAliases: () => ({ mutate: updateAliasesMutate, ...updateAliasesState }),
   useUpdateBrandProfile: () => ({ mutate: updateProfileMutate, ...updateProfileState }),
+  useAddBrandTopic: () => ({ mutate: addTopicMutate, ...addTopicState }),
+  useRemoveBrandTopic: () => ({ mutate: removeTopicMutate, ...removeTopicState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -120,6 +126,10 @@ describe("BrandProfileScreen", () => {
     updateAliasesState = { isPending: false, isError: false, isSuccess: false };
     updateProfileMutate = vi.fn();
     updateProfileState = { isPending: false, isError: false, isSuccess: false };
+    addTopicMutate = vi.fn();
+    addTopicState = { isPending: false, isError: false, isSuccess: false };
+    removeTopicMutate = vi.fn();
+    removeTopicState = { isPending: false, isError: false, isSuccess: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -211,7 +221,7 @@ describe("BrandProfileScreen", () => {
   it("Add appends a new alias and clears the input", async () => {
     render(<BrandProfileScreen brandId="b1" />);
     await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "AcmeCorp");
-    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add alias$/ }));
     expect(screen.getByText("AcmeCorp")).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/add an alias/i)).toHaveValue("");
   });
@@ -219,14 +229,14 @@ describe("BrandProfileScreen", () => {
   it("Add rejects a case-insensitive duplicate with an inline error", async () => {
     render(<BrandProfileScreen brandId="b1" />);
     await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "acme");
-    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add alias$/ }));
     expect(screen.getByText(/already in the list/i)).toBeInTheDocument();
   });
 
   it("Add rejects an alias that matches the brand name", async () => {
     render(<BrandProfileScreen brandId="b1" />);
     await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "Acme Corp");
-    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add alias$/ }));
     expect(screen.getByText(/matches the brand name/i)).toBeInTheDocument();
   });
 
@@ -234,7 +244,7 @@ describe("BrandProfileScreen", () => {
     render(<BrandProfileScreen brandId="b1" />);
     await userEvent.click(screen.getByRole("button", { name: /Remove alias Acme Inc/i }));
     await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "AcmeWorld");
-    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add alias$/ }));
     await userEvent.click(screen.getByRole("button", { name: /Save aliases/i }));
     expect(updateAliasesMutate).toHaveBeenCalledOnce();
     const [args] = updateAliasesMutate.mock.calls[0];
@@ -314,5 +324,60 @@ describe("BrandProfileScreen", () => {
     // Only the identity mutation is pending; the aliases button still
     // reads "Save aliases", so "Saving…" is unambiguous.
     expect(screen.getByRole("button", { name: /Saving…/i })).toBeDisabled();
+  });
+
+  // -------------------------------------------------------------------
+  // Topics section — add / remove
+  // -------------------------------------------------------------------
+
+  it("renders one chip per topic with an X to remove it", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(
+      screen.getByRole("button", { name: /Remove topic Resume optimization/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicking the X on a topic fires the remove mutation with the topic ID", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Remove topic Resume optimization/i }),
+    );
+    expect(removeTopicMutate).toHaveBeenCalledOnce();
+    const [args] = removeTopicMutate.mock.calls[0];
+    expect(args).toBe("t1");
+  });
+
+  it("Add fires the add mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a topic/i), "  Career change  ");
+    await userEvent.click(screen.getByRole("button", { name: /^Add topic$/ }));
+    expect(addTopicMutate).toHaveBeenCalledOnce();
+    const [args] = addTopicMutate.mock.calls[0];
+    expect(args).toEqual({ name: "Career change" });
+  });
+
+  it("Add is disabled when the input is empty or whitespace-only", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /^Add topic$/ })).toBeDisabled();
+  });
+
+  it("Add shows an inline error for a case-insensitive duplicate of an existing topic", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a topic/i), "resume OPTIMIZATION");
+    await userEvent.click(screen.getByRole("button", { name: /^Add topic$/ }));
+    expect(screen.getByText(/already in the list/i)).toBeInTheDocument();
+    expect(addTopicMutate).not.toHaveBeenCalled();
+  });
+
+  it("Add button shows 'Adding…' while the mutation is pending", () => {
+    addTopicState = { isPending: true, isError: false, isSuccess: false };
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /Adding…/i })).toBeDisabled();
+  });
+
+  it("shows a server-error hint when the add mutation errors", () => {
+    addTopicState = { isPending: false, isError: true, isSuccess: false };
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByText(/Add failed/i)).toBeInTheDocument();
   });
 });

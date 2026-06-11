@@ -41,4 +41,16 @@ describe("brandsApi", () => {
     brandsApi.updateProfile("b1", payload);
     expect(client.put).toHaveBeenCalledWith("/api/brands/b1/profile", payload);
   });
+
+  it("addTopic POSTs the name to /api/brands/:id/topics", () => {
+    brandsApi.addTopic("b1", { name: "Career change" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/topics", {
+      name: "Career change",
+    });
+  });
+
+  it("removeTopic DELETEs /api/brands/:id/topics/:topicId", () => {
+    brandsApi.removeTopic("b1", "t1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/topics/t1");
+  });
 });
