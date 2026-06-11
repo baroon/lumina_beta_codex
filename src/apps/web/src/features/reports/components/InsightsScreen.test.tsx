@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { WorkspaceOverviewDto, WorkspaceTopEntityRowDto } from "@/types/api";
+import type {
+  InsightsNarrativeDto,
+  WorkspaceOverviewDto,
+  WorkspaceTopEntityRowDto,
+} from "@/types/api";
 
 let scopeState: { scope: "all" | string[] };
 let overviewState: {
@@ -9,12 +14,22 @@ let overviewState: {
   isError: boolean;
   error?: unknown;
 };
+let narrativeMutate: ReturnType<typeof vi.fn>;
+let narrativeState: {
+  data?: InsightsNarrativeDto;
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
 }));
 vi.mock("@/features/reports/hooks/useWorkspaceOverview", () => ({
   useWorkspaceOverview: () => ({ ...overviewState, refetch: vi.fn() }),
+}));
+vi.mock("@/features/reports/hooks/useInsightsNarrative", () => ({
+  useGenerateInsightsNarrative: () => ({ mutate: narrativeMutate, ...narrativeState }),
 }));
 
 import { InsightsScreen } from "./InsightsScreen";
@@ -53,7 +68,20 @@ function overview(topEntities: WorkspaceTopEntityRowDto[]): WorkspaceOverviewDto
 beforeEach(() => {
   scopeState = { scope: "all" };
   overviewState = { data: overview([]), isLoading: false, isError: false };
+  narrativeMutate = vi.fn();
+  narrativeState = { isPending: false, isError: false };
 });
+
+const withData = () => {
+  overviewState = {
+    data: overview([
+      row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+      row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+    ]),
+    isLoading: false,
+    isError: false,
+  };
+};
 
 describe("InsightsScreen", () => {
   it("renders the page header with a Beta badge", () => {
@@ -129,5 +157,59 @@ describe("InsightsScreen", () => {
     expect(rows[1]).toHaveTextContent("High");
     expect(rows[2]).toHaveTextContent("Mid");
     expect(rows[3]).toHaveTextContent("Low");
+  });
+
+  // -------------------------------------------------------------------
+  // AI summary section
+  // -------------------------------------------------------------------
+
+  it("does not render the AI summary CTA when there's no scan data", () => {
+    render(<InsightsScreen />);
+    expect(screen.queryByRole("button", { name: /Generate AI summary/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the Generate button once there's scan data + calls the mutation on click", async () => {
+    withData();
+    render(<InsightsScreen />);
+    const button = screen.getByRole("button", { name: /Generate AI summary/i });
+    await userEvent.click(button);
+    expect(narrativeMutate).toHaveBeenCalledOnce();
+    // First arg has selection + trackerIds; verify shape rather than
+    // exact dates (the selection is a moving 30-day window).
+    const [args] = narrativeMutate.mock.calls[0];
+    expect(args).toHaveProperty("selection");
+    expect(args.trackerIds).toEqual([]);
+  });
+
+  it("shows an 'Asking the model…' indicator while the mutation is pending", () => {
+    withData();
+    narrativeState = { isPending: true, isError: false };
+    render(<InsightsScreen />);
+    expect(screen.getByText(/Asking the model/i)).toBeInTheDocument();
+  });
+
+  it("renders the AI summary text + a 'via {platform}' byline on success", () => {
+    withData();
+    narrativeState = {
+      data: { narrative: "Acme is trailing Canva by 30 points.", platformCode: "openai" },
+      isPending: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+    expect(screen.getByText(/Acme is trailing Canva by 30 points\./i)).toBeInTheDocument();
+    expect(screen.getByText(/via openai/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Regenerate/i })).toBeInTheDocument();
+  });
+
+  it("renders an error message + Regenerate button when the mutation fails", () => {
+    withData();
+    narrativeState = {
+      isPending: false,
+      isError: true,
+      error: new Error("The 'openai' platform is not configured. Add an API key first."),
+    };
+    render(<InsightsScreen />);
+    expect(screen.getByText(/openai.*not configured/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Regenerate/i })).toBeInTheDocument();
   });
 });

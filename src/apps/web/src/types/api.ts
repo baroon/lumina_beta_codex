@@ -119,6 +119,17 @@ export interface UpdateBrandWebsiteUrlResult {
   websiteUrl: string;
 }
 
+export interface GenerateInsightsNarrativeRequest {
+  from?: string | null;
+  to?: string | null;
+  trackerIds?: string[] | null;
+}
+
+export interface InsightsNarrativeDto {
+  narrative: string;
+  platformCode: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
