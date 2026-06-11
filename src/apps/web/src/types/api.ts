@@ -47,6 +47,15 @@ export interface AddBrandTopicResult {
   name: string;
 }
 
+export interface AddBrandCompetitorRequest {
+  name: string;
+}
+
+export interface AddBrandCompetitorResult {
+  competitorId: string;
+  name: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

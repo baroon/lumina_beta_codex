@@ -53,4 +53,16 @@ describe("brandsApi", () => {
     brandsApi.removeTopic("b1", "t1");
     expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/topics/t1");
   });
+
+  it("addCompetitor POSTs the name to /api/brands/:id/competitors", () => {
+    brandsApi.addCompetitor("b1", { name: "Adobe Express" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/competitors", {
+      name: "Adobe Express",
+    });
+  });
+
+  it("removeCompetitor DELETEs /api/brands/:id/competitors/:competitorId", () => {
+    brandsApi.removeCompetitor("b1", "c1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/competitors/c1");
+  });
 });

@@ -22,6 +22,10 @@ let addTopicMutate: ReturnType<typeof vi.fn>;
 let addTopicState = { isPending: false, isError: false, isSuccess: false };
 let removeTopicMutate: ReturnType<typeof vi.fn>;
 let removeTopicState = { isPending: false, isError: false, isSuccess: false };
+let addCompetitorMutate: ReturnType<typeof vi.fn>;
+let addCompetitorState = { isPending: false, isError: false, isSuccess: false };
+let removeCompetitorMutate: ReturnType<typeof vi.fn>;
+let removeCompetitorState = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
@@ -30,6 +34,8 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useUpdateBrandProfile: () => ({ mutate: updateProfileMutate, ...updateProfileState }),
   useAddBrandTopic: () => ({ mutate: addTopicMutate, ...addTopicState }),
   useRemoveBrandTopic: () => ({ mutate: removeTopicMutate, ...removeTopicState }),
+  useAddBrandCompetitor: () => ({ mutate: addCompetitorMutate, ...addCompetitorState }),
+  useRemoveBrandCompetitor: () => ({ mutate: removeCompetitorMutate, ...removeCompetitorState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -130,6 +136,10 @@ describe("BrandProfileScreen", () => {
     addTopicState = { isPending: false, isError: false, isSuccess: false };
     removeTopicMutate = vi.fn();
     removeTopicState = { isPending: false, isError: false, isSuccess: false };
+    addCompetitorMutate = vi.fn();
+    addCompetitorState = { isPending: false, isError: false, isSuccess: false };
+    removeCompetitorMutate = vi.fn();
+    removeCompetitorState = { isPending: false, isError: false, isSuccess: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -379,5 +389,46 @@ describe("BrandProfileScreen", () => {
     addTopicState = { isPending: false, isError: true, isSuccess: false };
     render(<BrandProfileScreen brandId="b1" />);
     expect(screen.getByText(/Add failed/i)).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Competitors section — add / remove
+  // -------------------------------------------------------------------
+
+  it("renders one chip per competitor with an X to remove it", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(
+      screen.getByRole("button", { name: /Remove competitor Resume\.io/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clicking the X on a competitor fires the remove mutation with the ID", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Remove competitor Resume\.io/i }));
+    expect(removeCompetitorMutate).toHaveBeenCalledOnce();
+    const [args] = removeCompetitorMutate.mock.calls[0];
+    expect(args).toBe("c1");
+  });
+
+  it("Add competitor fires the add mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a competitor/i), "  Adobe Express  ");
+    await userEvent.click(screen.getByRole("button", { name: /^Add competitor$/ }));
+    expect(addCompetitorMutate).toHaveBeenCalledOnce();
+    const [args] = addCompetitorMutate.mock.calls[0];
+    expect(args).toEqual({ name: "Adobe Express" });
+  });
+
+  it("Add competitor is disabled when the input is empty", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /^Add competitor$/ })).toBeDisabled();
+  });
+
+  it("Add competitor shows an inline error for a case-insensitive duplicate", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a competitor/i), "resume.IO");
+    await userEvent.click(screen.getByRole("button", { name: /^Add competitor$/ }));
+    expect(screen.getByText(/already in the list/i)).toBeInTheDocument();
+    expect(addCompetitorMutate).not.toHaveBeenCalled();
   });
 });

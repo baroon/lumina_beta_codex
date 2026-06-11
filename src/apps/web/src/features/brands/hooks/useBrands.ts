@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import { discoveryApi } from "@/api/discoveryApi";
 import type {
+  AddBrandCompetitorRequest,
   AddBrandTopicRequest,
   CreateBrandRequest,
   UpdateBrandAliasesRequest,
@@ -107,6 +108,32 @@ export function useRemoveBrandTopic(brandId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (topicId: string) => brandsApi.removeTopic(brandId, topicId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
+ * Adds a user-authored Competitor to the brand. Mirrors
+ * <c>useAddBrandTopic</c> — anchors to the latest DiscoveryRun on the
+ * BE; invalidates the discovery cache here.
+ */
+export function useAddBrandCompetitor(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddBrandCompetitorRequest) => brandsApi.addCompetitor(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/** Removes a Competitor from the brand. Cascade FKs handle junctions. */
+export function useRemoveBrandCompetitor(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (competitorId: string) => brandsApi.removeCompetitor(brandId, competitorId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },

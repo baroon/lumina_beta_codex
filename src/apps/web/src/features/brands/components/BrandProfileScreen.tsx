@@ -25,9 +25,11 @@ import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { BRANDS_COPY } from "@/content/brands";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import {
+  useAddBrandCompetitor,
   useAddBrandTopic,
   useBrand,
   useBrandDiscoveryResults,
+  useRemoveBrandCompetitor,
   useRemoveBrandTopic,
   useUpdateBrandAliases,
   useUpdateBrandProfile,
@@ -143,11 +145,7 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
             items={discovery.markets}
           />
           <TopicsSection brandId={brandId} topics={discovery.topics} />
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.competitors.title}
-            icon={SECTION_ICON.competitors}
-            items={discovery.competitors}
-          />
+          <CompetitorsSection brandId={brandId} competitors={discovery.competitors} />
           <DimensionSection
             title={DISCOVERY_COPY.sections.trustSignals.title}
             icon={SECTION_ICON.trustSignals}
@@ -652,6 +650,129 @@ function TopicsSection({ brandId, topics }: TopicsSectionProps) {
             disabled={input.trim() === "" || add.isPending}
           >
             {add.isPending ? "Adding…" : "Add topic"}
+          </Button>
+          {clientError && <span className="text-xs text-semantic-error-600">{clientError}</span>}
+          {!clientError && serverError && (
+            <span className="text-xs text-semantic-error-600">
+              {add.isError ? "Add failed — try again." : "Remove failed — try again."}
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface CompetitorsSectionProps {
+  brandId: string;
+  competitors: readonly CandidateDto[];
+}
+
+/**
+ * Editable competitor chip list. Identical interaction shape to
+ * <c>TopicsSection</c>: chip-with-X per row (each X is its own
+ * mutation), input + Add button below, inline error for client-side
+ * duplicate + server failure. Once the third dimension lands we can
+ * extract a shared molecule; for now keeping a deliberate copy
+ * avoids a premature abstraction across only two callers.
+ */
+function CompetitorsSection({ brandId, competitors }: CompetitorsSectionProps) {
+  const copy = BRANDS_COPY.profile;
+  const add = useAddBrandCompetitor(brandId);
+  const remove = useRemoveBrandCompetitor(brandId);
+  const [input, setInput] = useState("");
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  function handleAdd() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    if (competitors.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      setClientError(`"${trimmed}" is already in the list.`);
+      return;
+    }
+    setClientError(null);
+    add.mutate(
+      { name: trimmed },
+      {
+        onSuccess: () => setInput(""),
+      },
+    );
+  }
+
+  function handleInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAdd();
+    }
+  }
+
+  function handleRemove(competitorId: string) {
+    setPendingRemoveId(competitorId);
+    remove.mutate(competitorId, {
+      onSettled: () => setPendingRemoveId(null),
+    });
+  }
+
+  const serverError = add.isError || remove.isError;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <SectionHeader
+          icon={SECTION_ICON.competitors}
+          title={DISCOVERY_COPY.sections.competitors.title}
+          meta={
+            <span className="text-xs text-neutral-500" aria-label={`${competitors.length} items`}>
+              {competitors.length}
+            </span>
+          }
+        />
+
+        {competitors.length === 0 ? (
+          <p className="text-xs text-neutral-500">{copy.empty.noItems}</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5" role="list">
+            {competitors.map((competitor) => (
+              <li key={competitor.id}>
+                <Badge variant="secondary" className="inline-flex items-center gap-1 pr-1 text-xs">
+                  <span>{competitor.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(competitor.id)}
+                    disabled={pendingRemoveId === competitor.id}
+                    aria-label={`Remove competitor ${competitor.name}`}
+                    className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
+          <Input
+            inputSize="sm"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (clientError) setClientError(null);
+            }}
+            onKeyDown={handleInputKey}
+            placeholder="Add a competitor…"
+            aria-label="Add a competitor"
+            className="max-w-xs"
+            disabled={add.isPending}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAdd}
+            disabled={input.trim() === "" || add.isPending}
+          >
+            {add.isPending ? "Adding…" : "Add competitor"}
           </Button>
           {clientError && <span className="text-xs text-semantic-error-600">{clientError}</span>}
           {!clientError && serverError && (

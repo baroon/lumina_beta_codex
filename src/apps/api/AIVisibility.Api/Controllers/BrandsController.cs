@@ -112,6 +112,50 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/competitors")]
+    [ProducesResponseType(typeof(AddBrandCompetitorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddCompetitor(
+        Guid id,
+        [FromBody] AddBrandCompetitorRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandCompetitorCommand(id, request.Name),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/competitors/{competitorId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveCompetitor(
+        Guid id,
+        Guid competitorId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveBrandCompetitorCommand(id, competitorId),
+                cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/profile")]
     [ProducesResponseType(typeof(UpdateBrandProfileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

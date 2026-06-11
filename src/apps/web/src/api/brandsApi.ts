@@ -1,5 +1,7 @@
 import { apiClient } from "./apiClient";
 import type {
+  AddBrandCompetitorRequest,
+  AddBrandCompetitorResult,
   AddBrandTopicRequest,
   AddBrandTopicResult,
   BrandDto,
@@ -29,4 +31,10 @@ export const brandsApi = {
 
   removeTopic: (id: string, topicId: string) =>
     apiClient.delete<void>(`/api/brands/${id}/topics/${topicId}`),
+
+  addCompetitor: (id: string, data: AddBrandCompetitorRequest) =>
+    apiClient.post<AddBrandCompetitorResult>(`/api/brands/${id}/competitors`, data),
+
+  removeCompetitor: (id: string, competitorId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/competitors/${competitorId}`),
 };
