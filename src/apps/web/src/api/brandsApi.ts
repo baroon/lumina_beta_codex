@@ -37,4 +37,6 @@ export const brandsApi = {
 
   removeCompetitor: (id: string, competitorId: string) =>
     apiClient.delete<void>(`/api/brands/${id}/competitors/${competitorId}`),
+
+  delete: (id: string) => apiClient.delete<void>(`/api/brands/${id}`),
 };

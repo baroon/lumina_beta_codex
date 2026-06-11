@@ -4,6 +4,7 @@ vi.mock("./apiClient", () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -23,5 +24,10 @@ describe("trackersApi", () => {
   it("create posts to the trackers endpoint", () => {
     trackersApi.create("b1", { name: "My Tracker" });
     expect(client.post).toHaveBeenCalledWith("/api/brands/b1/trackers", { name: "My Tracker" });
+  });
+
+  it("delete DELETEs /api/trackers/:id", () => {
+    trackersApi.delete("t1");
+    expect(client.delete).toHaveBeenCalledWith("/api/trackers/t1");
   });
 });

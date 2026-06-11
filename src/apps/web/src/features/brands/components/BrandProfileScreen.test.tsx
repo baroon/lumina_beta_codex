@@ -27,6 +27,9 @@ let addCompetitorState = { isPending: false, isError: false, isSuccess: false };
 let removeCompetitorMutate: ReturnType<typeof vi.fn>;
 let removeCompetitorState = { isPending: false, isError: false, isSuccess: false };
 
+let deleteBrandMutate: ReturnType<typeof vi.fn>;
+let deleteBrandState = { isPending: false, isError: false, isSuccess: false };
+
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
   useBrandDiscoveryResults: () => discoveryState,
@@ -36,6 +39,7 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useRemoveBrandTopic: () => ({ mutate: removeTopicMutate, ...removeTopicState }),
   useAddBrandCompetitor: () => ({ mutate: addCompetitorMutate, ...addCompetitorState }),
   useRemoveBrandCompetitor: () => ({ mutate: removeCompetitorMutate, ...removeCompetitorState }),
+  useDeleteBrand: () => ({ mutate: deleteBrandMutate, ...deleteBrandState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -140,6 +144,8 @@ describe("BrandProfileScreen", () => {
     addCompetitorState = { isPending: false, isError: false, isSuccess: false };
     removeCompetitorMutate = vi.fn();
     removeCompetitorState = { isPending: false, isError: false, isSuccess: false };
+    deleteBrandMutate = vi.fn();
+    deleteBrandState = { isPending: false, isError: false, isSuccess: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -430,5 +436,32 @@ describe("BrandProfileScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Add competitor$/ }));
     expect(screen.getByText(/already in the list/i)).toBeInTheDocument();
     expect(addCompetitorMutate).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------
+  // Danger zone — brand delete with type-to-confirm dialog
+  // -------------------------------------------------------------------
+
+  it("renders a Delete brand button in the danger zone", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /^Delete brand$/ })).toBeInTheDocument();
+  });
+
+  it("clicking Delete brand opens the confirmation dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /^Delete brand$/ }));
+    expect(screen.getByRole("heading", { name: /Delete brand/i })).toBeInTheDocument();
+  });
+
+  it("typing the brand name and clicking confirm fires the delete mutation", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /^Delete brand$/ }));
+    await userEvent.type(screen.getByLabelText(/Confirmation phrase/i), "Acme Corp");
+    // Two "Delete brand" buttons exist now (danger-zone trigger + the
+    // dialog's destructive button). The destructive one inside the
+    // dialog is the second match.
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete brand$/ });
+    await userEvent.click(deleteButtons[deleteButtons.length - 1]);
+    expect(deleteBrandMutate).toHaveBeenCalledOnce();
   });
 });

@@ -14,4 +14,6 @@ export const trackersApi = {
     apiClient.post<CreateTrackerResponse>(`/api/brands/${brandId}/trackers`, data),
 
   list: () => apiClient.get<TrackerListItemDto[]>("/api/trackers"),
+
+  delete: (trackerId: string) => apiClient.delete<void>(`/api/trackers/${trackerId}`),
 };

@@ -139,3 +139,23 @@ export function useRemoveBrandCompetitor(brandId: string) {
     },
   });
 }
+
+/**
+ * Hard-deletes the brand and its entire subtree. Navigates to /brands
+ * on success since the current screen (/brands/$brandId/profile) no
+ * longer points to anything. Invalidates the brands list cache so the
+ * deleted row stops appearing immediately.
+ */
+export function useDeleteBrand(brandId: string) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: () => brandsApi.delete(brandId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      queryClient.removeQueries({ queryKey: ["brands", brandId] });
+      queryClient.removeQueries({ queryKey: ["discovery", brandId] });
+      navigate({ to: "/brands" });
+    },
+  });
+}

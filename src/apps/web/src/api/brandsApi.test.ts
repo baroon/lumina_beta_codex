@@ -65,4 +65,9 @@ describe("brandsApi", () => {
     brandsApi.removeCompetitor("b1", "c1");
     expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/competitors/c1");
   });
+
+  it("delete DELETEs /api/brands/:id", () => {
+    brandsApi.delete("b1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1");
+  });
 });

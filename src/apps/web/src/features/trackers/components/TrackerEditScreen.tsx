@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bot, Calendar, CalendarClock, Globe, MessageSquare, Sliders } from "lucide-react";
+import { Bot, Calendar, CalendarClock, Globe, MessageSquare, Sliders, Trash2 } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -13,13 +13,14 @@ import {
   SelectValue,
 } from "@/components/atoms/select";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
+import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { usePrompts } from "@/features/trackers/hooks/usePrompts";
-import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
+import { useDeleteTracker, useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import {
   useConfigureTrackerSchedule,
   useTrackerScheduleSetup,
@@ -129,7 +130,59 @@ export function TrackerEditScreen({ brandId, trackerId }: TrackerEditScreenProps
       <PromptsSection trackerId={trackerId} brandId={brandId} />
 
       <LensesSection trackerId={trackerId} />
+
+      <DangerZoneSection trackerId={trackerId} brandId={brandId} trackerName={tracker.name} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Danger zone — hard delete, type-to-confirm
+// ---------------------------------------------------------------------------
+
+function DangerZoneSection({
+  trackerId,
+  brandId,
+  trackerName,
+}: {
+  trackerId: string;
+  brandId: string;
+  trackerName: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const del = useDeleteTracker(trackerId, brandId);
+
+  return (
+    <Card className="border-semantic-error-200">
+      <CardContent className="space-y-3 p-4">
+        <SectionHeader icon={Trash2} title="Danger zone" />
+        <p className="text-xs text-neutral-600">
+          Deleting this tracker permanently removes every scan run, prompt run, and recorded answer
+          for it. The owning brand and its other trackers are not affected. This cannot be undone.
+        </p>
+        <div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setOpen(true)}
+            disabled={del.isPending}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            Delete tracker
+          </Button>
+        </div>
+        <ConfirmDeleteDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Delete tracker"
+          description="This permanently deletes the tracker, every scan run, every prompt run, and every answer recorded for it. The owning brand and its other trackers are not affected."
+          expectedConfirmText={trackerName}
+          confirmLabel="Delete tracker"
+          onConfirm={() => del.mutate()}
+          isDeleting={del.isPending}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

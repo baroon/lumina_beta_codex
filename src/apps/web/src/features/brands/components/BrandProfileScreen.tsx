@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Sparkles,
   Swords,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
+import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -29,6 +31,7 @@ import {
   useAddBrandTopic,
   useBrand,
   useBrandDiscoveryResults,
+  useDeleteBrand,
   useRemoveBrandCompetitor,
   useRemoveBrandTopic,
   useUpdateBrandAliases,
@@ -151,9 +154,53 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
             icon={SECTION_ICON.trustSignals}
             items={discovery.trustSignals}
           />
+
+          <BrandDangerZoneSection brandId={brandId} brandName={brand.name} />
         </>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Danger zone — hard delete, type-to-confirm
+// ---------------------------------------------------------------------------
+
+function BrandDangerZoneSection({ brandId, brandName }: { brandId: string; brandName: string }) {
+  const [open, setOpen] = useState(false);
+  const del = useDeleteBrand(brandId);
+
+  return (
+    <Card className="border-semantic-error-200">
+      <CardContent className="space-y-3 p-4">
+        <SectionHeader icon={Trash2} title="Danger zone" />
+        <p className="text-xs text-neutral-600">
+          Deleting this brand permanently removes every tracker, every scan, every prompt run, every
+          recorded answer, and every dimension row associated with it. This cannot be undone.
+        </p>
+        <div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setOpen(true)}
+            disabled={del.isPending}
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            Delete brand
+          </Button>
+        </div>
+        <ConfirmDeleteDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Delete brand"
+          description="This permanently deletes the brand, every tracker, every scan, every prompt run, every answer, and every dimension row associated with it."
+          expectedConfirmText={brandName}
+          confirmLabel="Delete brand"
+          onConfirm={() => del.mutate()}
+          isDeleting={del.isPending}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

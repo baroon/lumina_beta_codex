@@ -543,6 +543,15 @@
           "variants": [],
           "dependencies": ["Badge", "lucide-react"],
           "notes": "Placeholder body for routes that are reachable but not yet built. Used during the navigation IA rollout (workspace-wide /prompts, /sources/domains, /sources/urls, /competitors, /insights) — routes register before their screens exist so direct URLs + sidebar links don't 404. Consistent visual across the placeholder set so the gap reads as 'in flight' rather than 'broken'. Accepts optional icon (rendered in primary-tinted badge), description, and a `beta` flag that pins a small BETA pill next to the title."
+        },
+        {
+          "name": "ConfirmDeleteDialog",
+          "category": "Molecules",
+          "path": "src/components/molecules/ConfirmDeleteDialog.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["@radix-ui/react-dialog", "Button", "Input", "Label", "lucide-react"],
+          "notes": "Type-to-confirm destructive-action dialog. Used by the brand + tracker delete flows: the user must type the exact name of the resource (case-sensitive, exact match — no trim) to enable the destructive button. Closing via X, backdrop, or Cancel resets the typed text so re-opening shows a blank input. Auto-focuses the input on open and accepts an `isDeleting` flag that swaps the button label to 'Deleting…' while the parent mutation is in flight. The dialog never auto-closes on confirm — the caller controls closing after the mutation settles."
         }
       ]
     },

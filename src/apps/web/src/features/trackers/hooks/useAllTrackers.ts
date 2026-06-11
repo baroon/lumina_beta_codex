@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { trackersApi } from "@/api/trackersApi";
 
 /**
@@ -12,6 +13,27 @@ export function useAllTrackers() {
   return useQuery({
     queryKey: ["all-trackers"],
     queryFn: () => trackersApi.list(),
+  });
+}
+
+/**
+ * Hard-deletes a tracker. On success navigates back to the owning
+ * brand profile (the screen we're standing on after a delete is now
+ * pointing at a deleted resource). Invalidates the tracker list +
+ * scan-list caches so stale tracker rows disappear.
+ */
+export function useDeleteTracker(trackerId: string, brandId: string) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: () => trackersApi.delete(trackerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-trackers"] });
+      queryClient.removeQueries({ queryKey: ["tracker-schedule", trackerId] });
+      queryClient.removeQueries({ queryKey: ["tracker-lenses", trackerId] });
+      queryClient.removeQueries({ queryKey: ["tracker-overview"] });
+      navigate({ to: "/brands/$brandId/profile", params: { brandId } });
+    },
   });
 }
 

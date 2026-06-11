@@ -47,9 +47,13 @@ let lensesSetupState: {
 let updateLensesMutate: ReturnType<typeof vi.fn>;
 let updateLensesState = { isPending: false, isError: false, isSuccess: false };
 
+let deleteTrackerMutate: ReturnType<typeof vi.fn>;
+let deleteTrackerState = { isPending: false, isError: false, isSuccess: false };
+
 vi.mock("@/features/trackers/hooks/useAllTrackers", () => ({
   useAllTrackers: () => ({ data: [] }),
   useTrackerSummary: () => summaryState,
+  useDeleteTracker: () => ({ mutate: deleteTrackerMutate, ...deleteTrackerState }),
 }));
 vi.mock("@/features/trackers/hooks/useTrackerSchedule", () => ({
   useTrackerScheduleSetup: () => scheduleSetupState,
@@ -137,6 +141,8 @@ beforeEach(() => {
   lensesSetupState = { data: lensesFixture, isLoading: false, isError: false };
   updateLensesMutate = vi.fn();
   updateLensesState = { isPending: false, isError: false, isSuccess: false };
+  deleteTrackerMutate = vi.fn();
+  deleteTrackerState = { isPending: false, isError: false, isSuccess: false };
 });
 
 describe("TrackerEditScreen", () => {
@@ -261,5 +267,29 @@ describe("TrackerEditScreen", () => {
     lensesSetupState = { data: undefined, isLoading: false, isError: true };
     render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByText(/Could not load lens setup/i)).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------
+  // Danger zone — tracker delete with type-to-confirm dialog
+  // ---------------------------------------------------------------------
+
+  it("renders a Delete tracker button in the danger zone", () => {
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByRole("button", { name: /^Delete tracker$/ })).toBeInTheDocument();
+  });
+
+  it("clicking Delete tracker opens the confirmation dialog", async () => {
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("button", { name: /^Delete tracker$/ }));
+    expect(screen.getByRole("heading", { name: /Delete tracker/i })).toBeInTheDocument();
+  });
+
+  it("typing the tracker name and clicking confirm fires the delete mutation", async () => {
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("button", { name: /^Delete tracker$/ }));
+    await userEvent.type(screen.getByLabelText(/Confirmation phrase/i), "Acme · US Tracker");
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete tracker$/ });
+    await userEvent.click(deleteButtons[deleteButtons.length - 1]);
+    expect(deleteTrackerMutate).toHaveBeenCalledOnce();
   });
 });
