@@ -70,4 +70,44 @@ describe("brandsApi", () => {
     brandsApi.delete("b1");
     expect(client.delete).toHaveBeenCalledWith("/api/brands/b1");
   });
+
+  it("addAudience POSTs to /api/brands/:id/audiences", () => {
+    brandsApi.addAudience("b1", { name: "HR" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/audiences", { name: "HR" });
+  });
+
+  it("removeAudience DELETEs /api/brands/:id/audiences/:audienceId", () => {
+    brandsApi.removeAudience("b1", "a1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/audiences/a1");
+  });
+
+  it("addMarket POSTs to /api/brands/:id/markets", () => {
+    brandsApi.addMarket("b1", { name: "DE" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/markets", { name: "DE" });
+  });
+
+  it("removeMarket DELETEs /api/brands/:id/markets/:marketId", () => {
+    brandsApi.removeMarket("b1", "m1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/markets/m1");
+  });
+
+  it("addProduct POSTs to /api/brands/:id/products", () => {
+    brandsApi.addProduct("b1", { name: "Pro" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/products", { name: "Pro" });
+  });
+
+  it("removeProduct DELETEs /api/brands/:id/products/:productId", () => {
+    brandsApi.removeProduct("b1", "p1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/products/p1");
+  });
+
+  it("addTrustSignal POSTs to /api/brands/:id/trust-signals", () => {
+    brandsApi.addTrustSignal("b1", { name: "Webby" });
+    expect(client.post).toHaveBeenCalledWith("/api/brands/b1/trust-signals", { name: "Webby" });
+  });
+
+  it("removeTrustSignal DELETEs /api/brands/:id/trust-signals/:trustSignalId", () => {
+    brandsApi.removeTrustSignal("b1", "ts1");
+    expect(client.delete).toHaveBeenCalledWith("/api/brands/b1/trust-signals/ts1");
+  });
 });

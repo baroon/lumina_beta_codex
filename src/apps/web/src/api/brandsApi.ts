@@ -1,9 +1,17 @@
 import { apiClient } from "./apiClient";
 import type {
+  AddBrandAudienceRequest,
+  AddBrandAudienceResult,
   AddBrandCompetitorRequest,
   AddBrandCompetitorResult,
+  AddBrandMarketRequest,
+  AddBrandMarketResult,
+  AddBrandProductRequest,
+  AddBrandProductResult,
   AddBrandTopicRequest,
   AddBrandTopicResult,
+  AddBrandTrustSignalRequest,
+  AddBrandTrustSignalResult,
   BrandDto,
   CreateBrandRequest,
   CreateBrandResponse,
@@ -37,6 +45,30 @@ export const brandsApi = {
 
   removeCompetitor: (id: string, competitorId: string) =>
     apiClient.delete<void>(`/api/brands/${id}/competitors/${competitorId}`),
+
+  addAudience: (id: string, data: AddBrandAudienceRequest) =>
+    apiClient.post<AddBrandAudienceResult>(`/api/brands/${id}/audiences`, data),
+
+  removeAudience: (id: string, audienceId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/audiences/${audienceId}`),
+
+  addMarket: (id: string, data: AddBrandMarketRequest) =>
+    apiClient.post<AddBrandMarketResult>(`/api/brands/${id}/markets`, data),
+
+  removeMarket: (id: string, marketId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/markets/${marketId}`),
+
+  addProduct: (id: string, data: AddBrandProductRequest) =>
+    apiClient.post<AddBrandProductResult>(`/api/brands/${id}/products`, data),
+
+  removeProduct: (id: string, productId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/products/${productId}`),
+
+  addTrustSignal: (id: string, data: AddBrandTrustSignalRequest) =>
+    apiClient.post<AddBrandTrustSignalResult>(`/api/brands/${id}/trust-signals`, data),
+
+  removeTrustSignal: (id: string, trustSignalId: string) =>
+    apiClient.delete<void>(`/api/brands/${id}/trust-signals/${trustSignalId}`),
 
   delete: (id: string) => apiClient.delete<void>(`/api/brands/${id}`),
 };

@@ -552,6 +552,15 @@
           "variants": [],
           "dependencies": ["@radix-ui/react-dialog", "Button", "Input", "Label", "lucide-react"],
           "notes": "Type-to-confirm destructive-action dialog. Used by the brand + tracker delete flows: the user must type the exact name of the resource (case-sensitive, exact match — no trim) to enable the destructive button. Closing via X, backdrop, or Cancel resets the typed text so re-opening shows a blank input. Auto-focuses the input on open and accepts an `isDeleting` flag that swaps the button label to 'Deleting…' while the parent mutation is in flight. The dialog never auto-closes on confirm — the caller controls closing after the mutation settles."
+        },
+        {
+          "name": "EditableChipList",
+          "category": "Molecules",
+          "path": "src/components/molecules/EditableChipList.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "Button", "Input", "lucide-react"],
+          "notes": "Shared chip-list editor for entity-backed brand dimensions (audiences, markets, products, topics, competitors, trust signals). Pure presentation — items + addLabel/addPlaceholder/emptyLabel/removeAriaSingular labels + onAdd/onRemove callbacks + isAdding/pendingRemoveId/serverError state come from the parent. Internally handles the typed-input state, trim + case-insensitive duplicate guard against the current items, and Enter-to-submit. Server errors are surfaced through `serverError`; the molecule never reads from React Query."
         }
       ]
     },

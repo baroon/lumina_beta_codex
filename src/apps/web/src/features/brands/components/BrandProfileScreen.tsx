@@ -20,6 +20,7 @@ import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
 import { ConfirmDeleteDialog } from "@/components/molecules/ConfirmDeleteDialog";
+import { EditableChipList } from "@/components/molecules/EditableChipList";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -27,13 +28,21 @@ import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { BRANDS_COPY } from "@/content/brands";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import {
+  useAddBrandAudience,
   useAddBrandCompetitor,
+  useAddBrandMarket,
+  useAddBrandProduct,
   useAddBrandTopic,
+  useAddBrandTrustSignal,
   useBrand,
   useBrandDiscoveryResults,
   useDeleteBrand,
+  useRemoveBrandAudience,
   useRemoveBrandCompetitor,
+  useRemoveBrandMarket,
+  useRemoveBrandProduct,
   useRemoveBrandTopic,
+  useRemoveBrandTrustSignal,
   useUpdateBrandAliases,
   useUpdateBrandProfile,
 } from "@/features/brands/hooks/useBrands";
@@ -132,28 +141,12 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
 
           <AliasesSection brandId={brandId} brandName={brand.name} aliases={discovery.aliases} />
 
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.products.title}
-            icon={SECTION_ICON.products}
-            items={discovery.products}
-          />
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.audiences.title}
-            icon={SECTION_ICON.audiences}
-            items={discovery.audiences}
-          />
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.markets.title}
-            icon={SECTION_ICON.markets}
-            items={discovery.markets}
-          />
+          <ProductsSection brandId={brandId} products={discovery.products} />
+          <AudiencesSection brandId={brandId} audiences={discovery.audiences} />
+          <MarketsSection brandId={brandId} markets={discovery.markets} />
           <TopicsSection brandId={brandId} topics={discovery.topics} />
           <CompetitorsSection brandId={brandId} competitors={discovery.competitors} />
-          <DimensionSection
-            title={DISCOVERY_COPY.sections.trustSignals.title}
-            icon={SECTION_ICON.trustSignals}
-            items={discovery.trustSignals}
-          />
+          <TrustSignalsSection brandId={brandId} trustSignals={discovery.trustSignals} />
 
           <BrandDangerZoneSection brandId={brandId} brandName={brand.name} />
         </>
@@ -545,14 +538,50 @@ function AliasesSection({ brandId, brandName, aliases }: AliasesSectionProps) {
   );
 }
 
-interface DimensionSectionProps {
-  title: string;
+/**
+ * Generic editable-dimension card. Wraps a SectionHeader + the shared
+ * EditableChipList molecule. Each callsite passes a mutation pair +
+ * the dimension-specific labels. The mutation hooks themselves still
+ * own React Query cache invalidation (the molecule never touches the
+ * cache); this component only adapts pending state + error messaging
+ * into the molecule's presentational props.
+ */
+function DimensionEditCard({
+  icon,
+  title,
+  items,
+  addPlaceholder,
+  addLabel,
+  removeAriaSingular,
+  add,
+  remove,
+}: {
   icon: (typeof SECTION_ICON)[keyof typeof SECTION_ICON];
+  title: string;
   items: readonly CandidateDto[];
-}
-
-function DimensionSection({ title, icon, items }: DimensionSectionProps) {
+  addPlaceholder: string;
+  addLabel: string;
+  removeAriaSingular: string;
+  add: {
+    mutate: (args: { name: string }) => void;
+    isPending: boolean;
+    isError: boolean;
+  };
+  remove: {
+    mutate: (id: string) => void;
+    isPending: boolean;
+    isError: boolean;
+  };
+}) {
   const copy = BRANDS_COPY.profile;
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+
+  const serverError = add.isError
+    ? "Add failed — try again."
+    : remove.isError
+      ? "Remove failed — try again."
+      : null;
+
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
@@ -565,271 +594,148 @@ function DimensionSection({ title, icon, items }: DimensionSectionProps) {
             </span>
           }
         />
-        {items.length === 0 ? (
-          <p className="text-xs text-neutral-500">{copy.empty.noItems}</p>
-        ) : (
-          <ul className="flex flex-wrap gap-1.5" role="list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <Badge variant="secondary" className="text-xs">
-                  {item.name}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface TopicsSectionProps {
-  brandId: string;
-  topics: readonly CandidateDto[];
-}
-
-/**
- * Editable topic chip list. Each chip carries an X to remove the
- * topic immediately; the bottom row has an input + Add button to
- * stage a new topic. Unlike aliases/identity (which batch into one
- * Save), topic add and remove are individual mutations — there's no
- * "dirty" state to gate, so each click hits the BE directly.
- *
- * Mutation pending states disable the relevant buttons; cache
- * invalidation refreshes the chip list. Inline error surfaces server
- * messages (e.g. case-insensitive duplicate) and client-side
- * validation (empty, duplicate in current list).
- */
-function TopicsSection({ brandId, topics }: TopicsSectionProps) {
-  const copy = BRANDS_COPY.profile;
-  const add = useAddBrandTopic(brandId);
-  const remove = useRemoveBrandTopic(brandId);
-  const [input, setInput] = useState("");
-  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
-  const [clientError, setClientError] = useState<string | null>(null);
-
-  function handleAdd() {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    if (topics.some((t) => t.name.toLowerCase() === trimmed.toLowerCase())) {
-      setClientError(`"${trimmed}" is already in the list.`);
-      return;
-    }
-    setClientError(null);
-    add.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => setInput(""),
-      },
-    );
-  }
-
-  function handleInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAdd();
-    }
-  }
-
-  function handleRemove(topicId: string) {
-    setPendingRemoveId(topicId);
-    remove.mutate(topicId, {
-      onSettled: () => setPendingRemoveId(null),
-    });
-  }
-
-  const serverError = add.isError || remove.isError;
-
-  return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <SectionHeader
-          icon={SECTION_ICON.topics}
-          title={DISCOVERY_COPY.sections.topics.title}
-          meta={
-            <span className="text-xs text-neutral-500" aria-label={`${topics.length} items`}>
-              {topics.length}
-            </span>
-          }
+        <EditableChipList
+          items={items}
+          addPlaceholder={addPlaceholder}
+          addLabel={addLabel}
+          emptyLabel={copy.empty.noItems}
+          removeAriaSingular={removeAriaSingular}
+          isAdding={add.isPending}
+          pendingRemoveId={pendingRemoveId}
+          serverError={serverError}
+          onAdd={(name) => add.mutate({ name })}
+          onRemove={(id) => {
+            setPendingRemoveId(id);
+            // Reset pending id on the next tick — the row vanishes
+            // when the cache invalidates so a settled callback is
+            // unnecessary, and the pending id is only used until the
+            // FE state re-renders.
+            remove.mutate(id);
+            setTimeout(() => setPendingRemoveId(null), 0);
+          }}
         />
-
-        {topics.length === 0 ? (
-          <p className="text-xs text-neutral-500">{copy.empty.noItems}</p>
-        ) : (
-          <ul className="flex flex-wrap gap-1.5" role="list">
-            {topics.map((topic) => (
-              <li key={topic.id}>
-                <Badge variant="secondary" className="inline-flex items-center gap-1 pr-1 text-xs">
-                  <span>{topic.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(topic.id)}
-                    disabled={pendingRemoveId === topic.id}
-                    aria-label={`Remove topic ${topic.name}`}
-                    className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
-          <Input
-            inputSize="sm"
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              if (clientError) setClientError(null);
-            }}
-            onKeyDown={handleInputKey}
-            placeholder="Add a topic…"
-            aria-label="Add a topic"
-            className="max-w-xs"
-            disabled={add.isPending}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAdd}
-            disabled={input.trim() === "" || add.isPending}
-          >
-            {add.isPending ? "Adding…" : "Add topic"}
-          </Button>
-          {clientError && <span className="text-xs text-semantic-error-600">{clientError}</span>}
-          {!clientError && serverError && (
-            <span className="text-xs text-semantic-error-600">
-              {add.isError ? "Add failed — try again." : "Remove failed — try again."}
-            </span>
-          )}
-        </div>
       </CardContent>
     </Card>
   );
 }
 
-interface CompetitorsSectionProps {
+function TopicsSection({ brandId, topics }: { brandId: string; topics: readonly CandidateDto[] }) {
+  return (
+    <DimensionEditCard
+      icon={SECTION_ICON.topics}
+      title={DISCOVERY_COPY.sections.topics.title}
+      items={topics}
+      addPlaceholder="Add a topic…"
+      addLabel="Add topic"
+      removeAriaSingular="topic"
+      add={useAddBrandTopic(brandId)}
+      remove={useRemoveBrandTopic(brandId)}
+    />
+  );
+}
+
+function CompetitorsSection({
+  brandId,
+  competitors,
+}: {
   brandId: string;
   competitors: readonly CandidateDto[];
+}) {
+  return (
+    <DimensionEditCard
+      icon={SECTION_ICON.competitors}
+      title={DISCOVERY_COPY.sections.competitors.title}
+      items={competitors}
+      addPlaceholder="Add a competitor…"
+      addLabel="Add competitor"
+      removeAriaSingular="competitor"
+      add={useAddBrandCompetitor(brandId)}
+      remove={useRemoveBrandCompetitor(brandId)}
+    />
+  );
 }
 
-/**
- * Editable competitor chip list. Identical interaction shape to
- * <c>TopicsSection</c>: chip-with-X per row (each X is its own
- * mutation), input + Add button below, inline error for client-side
- * duplicate + server failure. Once the third dimension lands we can
- * extract a shared molecule; for now keeping a deliberate copy
- * avoids a premature abstraction across only two callers.
- */
-function CompetitorsSection({ brandId, competitors }: CompetitorsSectionProps) {
-  const copy = BRANDS_COPY.profile;
-  const add = useAddBrandCompetitor(brandId);
-  const remove = useRemoveBrandCompetitor(brandId);
-  const [input, setInput] = useState("");
-  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
-  const [clientError, setClientError] = useState<string | null>(null);
-
-  function handleAdd() {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    if (competitors.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      setClientError(`"${trimmed}" is already in the list.`);
-      return;
-    }
-    setClientError(null);
-    add.mutate(
-      { name: trimmed },
-      {
-        onSuccess: () => setInput(""),
-      },
-    );
-  }
-
-  function handleInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAdd();
-    }
-  }
-
-  function handleRemove(competitorId: string) {
-    setPendingRemoveId(competitorId);
-    remove.mutate(competitorId, {
-      onSettled: () => setPendingRemoveId(null),
-    });
-  }
-
-  const serverError = add.isError || remove.isError;
-
+function AudiencesSection({
+  brandId,
+  audiences,
+}: {
+  brandId: string;
+  audiences: readonly CandidateDto[];
+}) {
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <SectionHeader
-          icon={SECTION_ICON.competitors}
-          title={DISCOVERY_COPY.sections.competitors.title}
-          meta={
-            <span className="text-xs text-neutral-500" aria-label={`${competitors.length} items`}>
-              {competitors.length}
-            </span>
-          }
-        />
+    <DimensionEditCard
+      icon={SECTION_ICON.audiences}
+      title={DISCOVERY_COPY.sections.audiences.title}
+      items={audiences}
+      addPlaceholder="Add an audience…"
+      addLabel="Add audience"
+      removeAriaSingular="audience"
+      add={useAddBrandAudience(brandId)}
+      remove={useRemoveBrandAudience(brandId)}
+    />
+  );
+}
 
-        {competitors.length === 0 ? (
-          <p className="text-xs text-neutral-500">{copy.empty.noItems}</p>
-        ) : (
-          <ul className="flex flex-wrap gap-1.5" role="list">
-            {competitors.map((competitor) => (
-              <li key={competitor.id}>
-                <Badge variant="secondary" className="inline-flex items-center gap-1 pr-1 text-xs">
-                  <span>{competitor.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(competitor.id)}
-                    disabled={pendingRemoveId === competitor.id}
-                    aria-label={`Remove competitor ${competitor.name}`}
-                    className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
+function MarketsSection({
+  brandId,
+  markets,
+}: {
+  brandId: string;
+  markets: readonly CandidateDto[];
+}) {
+  return (
+    <DimensionEditCard
+      icon={SECTION_ICON.markets}
+      title={DISCOVERY_COPY.sections.markets.title}
+      items={markets}
+      addPlaceholder="Add a market…"
+      addLabel="Add market"
+      removeAriaSingular="market"
+      add={useAddBrandMarket(brandId)}
+      remove={useRemoveBrandMarket(brandId)}
+    />
+  );
+}
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-100 pt-3">
-          <Input
-            inputSize="sm"
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              if (clientError) setClientError(null);
-            }}
-            onKeyDown={handleInputKey}
-            placeholder="Add a competitor…"
-            aria-label="Add a competitor"
-            className="max-w-xs"
-            disabled={add.isPending}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAdd}
-            disabled={input.trim() === "" || add.isPending}
-          >
-            {add.isPending ? "Adding…" : "Add competitor"}
-          </Button>
-          {clientError && <span className="text-xs text-semantic-error-600">{clientError}</span>}
-          {!clientError && serverError && (
-            <span className="text-xs text-semantic-error-600">
-              {add.isError ? "Add failed — try again." : "Remove failed — try again."}
-            </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+function ProductsSection({
+  brandId,
+  products,
+}: {
+  brandId: string;
+  products: readonly CandidateDto[];
+}) {
+  return (
+    <DimensionEditCard
+      icon={SECTION_ICON.products}
+      title={DISCOVERY_COPY.sections.products.title}
+      items={products}
+      addPlaceholder="Add a product…"
+      addLabel="Add product"
+      removeAriaSingular="product"
+      add={useAddBrandProduct(brandId)}
+      remove={useRemoveBrandProduct(brandId)}
+    />
+  );
+}
+
+function TrustSignalsSection({
+  brandId,
+  trustSignals,
+}: {
+  brandId: string;
+  trustSignals: readonly CandidateDto[];
+}) {
+  return (
+    <DimensionEditCard
+      icon={SECTION_ICON.trustSignals}
+      title={DISCOVERY_COPY.sections.trustSignals.title}
+      items={trustSignals}
+      addPlaceholder="Add a trust signal…"
+      addLabel="Add trust signal"
+      removeAriaSingular="trust signal"
+      add={useAddBrandTrustSignal(brandId)}
+      remove={useRemoveBrandTrustSignal(brandId)}
+    />
   );
 }
 

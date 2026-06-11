@@ -177,6 +177,152 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPost("{id:guid}/audiences")]
+    [ProducesResponseType(typeof(AddBrandAudienceResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddAudience(
+        Guid id, [FromBody] AddBrandAudienceRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandAudienceCommand(id, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/audiences/{audienceId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveAudience(
+        Guid id, Guid audienceId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveBrandAudienceCommand(id, audienceId), cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/markets")]
+    [ProducesResponseType(typeof(AddBrandMarketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddMarket(
+        Guid id, [FromBody] AddBrandMarketRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandMarketCommand(id, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/markets/{marketId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveMarket(
+        Guid id, Guid marketId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveBrandMarketCommand(id, marketId), cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/products")]
+    [ProducesResponseType(typeof(AddBrandProductResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddProduct(
+        Guid id, [FromBody] AddBrandProductRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandProductCommand(id, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/products/{productId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveProduct(
+        Guid id, Guid productId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveBrandProductCommand(id, productId), cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:guid}/trust-signals")]
+    [ProducesResponseType(typeof(AddBrandTrustSignalResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddTrustSignal(
+        Guid id,
+        [FromBody] AddBrandTrustSignalRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new AddBrandTrustSignalCommand(id, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:guid}/trust-signals/{trustSignalId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RemoveTrustSignal(
+        Guid id, Guid trustSignalId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _mediator.Send(
+                new RemoveBrandTrustSignalCommand(id, trustSignalId), cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/profile")]
     [ProducesResponseType(typeof(UpdateBrandProfileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

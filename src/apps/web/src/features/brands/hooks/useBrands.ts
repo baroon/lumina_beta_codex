@@ -3,12 +3,75 @@ import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import { discoveryApi } from "@/api/discoveryApi";
 import type {
+  AddBrandAudienceRequest,
   AddBrandCompetitorRequest,
+  AddBrandMarketRequest,
+  AddBrandProductRequest,
   AddBrandTopicRequest,
+  AddBrandTrustSignalRequest,
   CreateBrandRequest,
   UpdateBrandAliasesRequest,
   UpdateBrandProfileRequest,
 } from "@/types/api";
+
+/**
+ * Build a mutation hook pair (add + remove) for a brand dimension that
+ * follows the topic / competitor shape. Each pair invalidates the
+ * `["discovery", brandId]` cache so the chip list re-renders. The
+ * factory eliminates 8 nearly-identical hook bodies for audiences,
+ * markets, products, and trust signals.
+ */
+function makeDimensionHooks<TAddReq>(
+  addFn: (brandId: string, data: TAddReq) => Promise<unknown>,
+  removeFn: (brandId: string, id: string) => Promise<unknown>,
+) {
+  return {
+    useAdd(brandId: string) {
+      const queryClient = useQueryClient();
+      return useMutation({
+        mutationFn: (data: TAddReq) => addFn(brandId, data),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+        },
+      });
+    },
+    useRemove(brandId: string) {
+      const queryClient = useQueryClient();
+      return useMutation({
+        mutationFn: (id: string) => removeFn(brandId, id),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+        },
+      });
+    },
+  };
+}
+
+const audienceHooks = makeDimensionHooks<AddBrandAudienceRequest>(
+  brandsApi.addAudience,
+  brandsApi.removeAudience,
+);
+const marketHooks = makeDimensionHooks<AddBrandMarketRequest>(
+  brandsApi.addMarket,
+  brandsApi.removeMarket,
+);
+const productHooks = makeDimensionHooks<AddBrandProductRequest>(
+  brandsApi.addProduct,
+  brandsApi.removeProduct,
+);
+const trustSignalHooks = makeDimensionHooks<AddBrandTrustSignalRequest>(
+  brandsApi.addTrustSignal,
+  brandsApi.removeTrustSignal,
+);
+
+export const useAddBrandAudience = audienceHooks.useAdd;
+export const useRemoveBrandAudience = audienceHooks.useRemove;
+export const useAddBrandMarket = marketHooks.useAdd;
+export const useRemoveBrandMarket = marketHooks.useRemove;
+export const useAddBrandProduct = productHooks.useAdd;
+export const useRemoveBrandProduct = productHooks.useRemove;
+export const useAddBrandTrustSignal = trustSignalHooks.useAdd;
+export const useRemoveBrandTrustSignal = trustSignalHooks.useRemove;
 
 export function useBrandsList() {
   return useQuery({

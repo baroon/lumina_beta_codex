@@ -29,6 +29,16 @@ let removeCompetitorState = { isPending: false, isError: false, isSuccess: false
 
 let deleteBrandMutate: ReturnType<typeof vi.fn>;
 let deleteBrandState = { isPending: false, isError: false, isSuccess: false };
+let addAudienceMutate: ReturnType<typeof vi.fn>;
+let removeAudienceMutate: ReturnType<typeof vi.fn>;
+let addMarketMutate: ReturnType<typeof vi.fn>;
+let removeMarketMutate: ReturnType<typeof vi.fn>;
+let addProductMutate: ReturnType<typeof vi.fn>;
+let removeProductMutate: ReturnType<typeof vi.fn>;
+let addTrustSignalMutate: ReturnType<typeof vi.fn>;
+let removeTrustSignalMutate: ReturnType<typeof vi.fn>;
+
+const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
@@ -40,6 +50,14 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useAddBrandCompetitor: () => ({ mutate: addCompetitorMutate, ...addCompetitorState }),
   useRemoveBrandCompetitor: () => ({ mutate: removeCompetitorMutate, ...removeCompetitorState }),
   useDeleteBrand: () => ({ mutate: deleteBrandMutate, ...deleteBrandState }),
+  useAddBrandAudience: () => ({ mutate: addAudienceMutate, ...idleMutation }),
+  useRemoveBrandAudience: () => ({ mutate: removeAudienceMutate, ...idleMutation }),
+  useAddBrandMarket: () => ({ mutate: addMarketMutate, ...idleMutation }),
+  useRemoveBrandMarket: () => ({ mutate: removeMarketMutate, ...idleMutation }),
+  useAddBrandProduct: () => ({ mutate: addProductMutate, ...idleMutation }),
+  useRemoveBrandProduct: () => ({ mutate: removeProductMutate, ...idleMutation }),
+  useAddBrandTrustSignal: () => ({ mutate: addTrustSignalMutate, ...idleMutation }),
+  useRemoveBrandTrustSignal: () => ({ mutate: removeTrustSignalMutate, ...idleMutation }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -146,6 +164,14 @@ describe("BrandProfileScreen", () => {
     removeCompetitorState = { isPending: false, isError: false, isSuccess: false };
     deleteBrandMutate = vi.fn();
     deleteBrandState = { isPending: false, isError: false, isSuccess: false };
+    addAudienceMutate = vi.fn();
+    removeAudienceMutate = vi.fn();
+    addMarketMutate = vi.fn();
+    removeMarketMutate = vi.fn();
+    addProductMutate = vi.fn();
+    removeProductMutate = vi.fn();
+    addTrustSignalMutate = vi.fn();
+    removeTrustSignalMutate = vi.fn();
   });
 
   it("renders the brand name in the page header", () => {
@@ -463,5 +489,55 @@ describe("BrandProfileScreen", () => {
     const deleteButtons = screen.getAllByRole("button", { name: /^Delete brand$/ });
     await userEvent.click(deleteButtons[deleteButtons.length - 1]);
     expect(deleteBrandMutate).toHaveBeenCalledOnce();
+  });
+
+  // -------------------------------------------------------------------
+  // Audience / Market / Product / Trust signal sections — smoke tests
+  // -------------------------------------------------------------------
+  //
+  // All four sections route through the same DimensionEditCard +
+  // EditableChipList molecule that the topic + competitor sections
+  // use, and that molecule has its own dedicated test file. These
+  // smoke tests just confirm the wiring: the right hook fires with
+  // the right name when the right Add button is clicked.
+
+  it("Add audience fires the audience mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add an audience/i), "  HR teams  ");
+    await userEvent.click(screen.getByRole("button", { name: /^Add audience$/ }));
+    expect(addAudienceMutate).toHaveBeenCalledOnce();
+    expect(addAudienceMutate.mock.calls[0][0]).toEqual({ name: "HR teams" });
+  });
+
+  it("Add market fires the market mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a market/i), "Germany");
+    await userEvent.click(screen.getByRole("button", { name: /^Add market$/ }));
+    expect(addMarketMutate).toHaveBeenCalledOnce();
+    expect(addMarketMutate.mock.calls[0][0]).toEqual({ name: "Germany" });
+  });
+
+  it("Add product fires the product mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a product/i), "Pro Plan");
+    await userEvent.click(screen.getByRole("button", { name: /^Add product$/ }));
+    expect(addProductMutate).toHaveBeenCalledOnce();
+    expect(addProductMutate.mock.calls[0][0]).toEqual({ name: "Pro Plan" });
+  });
+
+  it("Add trust signal fires the trust-signal mutation with the trimmed name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add a trust signal/i), "Webby 2025");
+    await userEvent.click(screen.getByRole("button", { name: /^Add trust signal$/ }));
+    expect(addTrustSignalMutate).toHaveBeenCalledOnce();
+    expect(addTrustSignalMutate.mock.calls[0][0]).toEqual({ name: "Webby 2025" });
+  });
+
+  it("clicking X on a product chip fires the remove mutation with the id", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Remove product AI Resume Builder/i }),
+    );
+    expect(removeProductMutate).toHaveBeenCalledWith("pr1");
   });
 });

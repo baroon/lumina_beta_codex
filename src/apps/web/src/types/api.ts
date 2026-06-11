@@ -56,6 +56,42 @@ export interface AddBrandCompetitorResult {
   name: string;
 }
 
+export interface AddBrandAudienceRequest {
+  name: string;
+}
+
+export interface AddBrandAudienceResult {
+  audienceId: string;
+  name: string;
+}
+
+export interface AddBrandMarketRequest {
+  name: string;
+}
+
+export interface AddBrandMarketResult {
+  marketId: string;
+  name: string;
+}
+
+export interface AddBrandProductRequest {
+  name: string;
+}
+
+export interface AddBrandProductResult {
+  productId: string;
+  name: string;
+}
+
+export interface AddBrandTrustSignalRequest {
+  name: string;
+}
+
+export interface AddBrandTrustSignalResult {
+  trustSignalId: string;
+  name: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
