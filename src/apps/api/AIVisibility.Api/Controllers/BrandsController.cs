@@ -47,4 +47,26 @@ public class BrandsController : ControllerBase
         var result = await _mediator.Send(new GetBrandQuery(id), cancellationToken);
         return result != null ? Ok(result) : NotFound();
     }
+
+    [HttpPut("{id:guid}/aliases")]
+    [ProducesResponseType(typeof(UpdateBrandAliasesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAliases(
+        Guid id,
+        [FromBody] UpdateBrandAliasesRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandAliasesCommand(id, request.Aliases),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }

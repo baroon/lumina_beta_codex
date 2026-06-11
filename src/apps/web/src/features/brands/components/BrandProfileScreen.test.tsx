@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { BrandDto, DiscoveryResultsDto } from "@/types/api";
 
@@ -13,10 +14,13 @@ vi.mock("@tanstack/react-router", () => ({
 
 let brandState: { data?: BrandDto; isLoading: boolean; isError: boolean; error?: unknown };
 let discoveryState: { data?: DiscoveryResultsDto; isLoading: boolean };
+let updateAliasesMutate: ReturnType<typeof vi.fn>;
+let updateAliasesState = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/features/brands/hooks/useBrands", () => ({
   useBrand: () => ({ ...brandState, refetch: vi.fn() }),
   useBrandDiscoveryResults: () => discoveryState,
+  useUpdateBrandAliases: () => ({ mutate: updateAliasesMutate, ...updateAliasesState }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -109,6 +113,8 @@ describe("BrandProfileScreen", () => {
   beforeEach(() => {
     brandState = { data: brandFixture, isLoading: false, isError: false };
     discoveryState = { data: discoveryFixture, isLoading: false };
+    updateAliasesMutate = vi.fn();
+    updateAliasesState = { isPending: false, isError: false, isSuccess: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -179,5 +185,68 @@ describe("BrandProfileScreen", () => {
     render(<BrandProfileScreen brandId="b1" />);
     // Four "Not set." labels — one per missing field.
     expect(screen.getAllByText(/^not set\.?$/i).length).toBe(4);
+  });
+
+  // -------------------------------------------------------------------
+  // Aliases section — inline editing
+  // -------------------------------------------------------------------
+
+  it("Save aliases is disabled when the alias draft matches the server", () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /Save aliases/i })).toBeDisabled();
+  });
+
+  it("X removes an alias chip and the change is staged as dirty", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Remove alias Acme Inc/i }));
+    expect(screen.queryByText("Acme Inc")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save aliases/i })).toBeEnabled();
+  });
+
+  it("Add appends a new alias and clears the input", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "AcmeCorp");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    expect(screen.getByText("AcmeCorp")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/add an alias/i)).toHaveValue("");
+  });
+
+  it("Add rejects a case-insensitive duplicate with an inline error", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "acme");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    expect(screen.getByText(/already in the list/i)).toBeInTheDocument();
+  });
+
+  it("Add rejects an alias that matches the brand name", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "Acme Corp");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    expect(screen.getByText(/matches the brand name/i)).toBeInTheDocument();
+  });
+
+  it("Save aliases calls the mutation with the staged draft", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Remove alias Acme Inc/i }));
+    await userEvent.type(screen.getByPlaceholderText(/add an alias/i), "AcmeWorld");
+    await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Save aliases/i }));
+    expect(updateAliasesMutate).toHaveBeenCalledOnce();
+    const [args] = updateAliasesMutate.mock.calls[0];
+    expect(args.aliases).toEqual(["Acme", "AcmeWorld"]);
+  });
+
+  it("Discard reverts the staged changes back to the server data", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Remove alias Acme Inc/i }));
+    expect(screen.queryByText("Acme Inc")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Discard/i }));
+    expect(screen.getByText("Acme Inc")).toBeInTheDocument();
+  });
+
+  it("Save aliases button shows 'Saving…' while the mutation is pending", () => {
+    updateAliasesState = { isPending: true, isError: false, isSuccess: false };
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("button", { name: /Saving…/i })).toBeDisabled();
   });
 });

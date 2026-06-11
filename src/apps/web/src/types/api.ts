@@ -16,6 +16,14 @@ export interface BrandDto {
   latestDiscovery: LatestDiscoveryDto | null;
 }
 
+export interface UpdateBrandAliasesRequest {
+  aliases: string[];
+}
+
+export interface UpdateBrandAliasesResult {
+  aliases: string[];
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

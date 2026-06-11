@@ -23,4 +23,11 @@ describe("brandsApi", () => {
     brandsApi.getById("b1");
     expect(client.get).toHaveBeenCalledWith("/api/brands/b1");
   });
+
+  it("updateAliases PUTs the alias payload to /api/brands/:id/aliases", () => {
+    brandsApi.updateAliases("b1", { aliases: ["AcmeCorp", "Acme Inc"] });
+    expect(client.put).toHaveBeenCalledWith("/api/brands/b1/aliases", {
+      aliases: ["AcmeCorp", "Acme Inc"],
+    });
+  });
 });

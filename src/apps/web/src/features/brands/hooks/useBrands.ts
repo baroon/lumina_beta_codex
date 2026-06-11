@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { brandsApi } from "@/api/brandsApi";
 import { discoveryApi } from "@/api/discoveryApi";
-import type { CreateBrandRequest } from "@/types/api";
+import type { CreateBrandRequest, UpdateBrandAliasesRequest } from "@/types/api";
 
 export function useBrandsList() {
   return useQuery({
@@ -43,6 +43,21 @@ export function useCreateBrand() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["brands"] });
       navigate({ to: "/brands/$brandId/discovery", params: { brandId: result.brandId } });
+    },
+  });
+}
+
+/**
+ * Mutates the brand's alias list. Aliases live on Brand.Aliases but
+ * surface to the FE through the discovery results DTO, so the
+ * `["discovery", brandId]` cache is invalidated on success.
+ */
+export function useUpdateBrandAliases(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateBrandAliasesRequest) => brandsApi.updateAliases(brandId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },
   });
 }
