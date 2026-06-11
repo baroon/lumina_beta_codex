@@ -2,15 +2,28 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/atoms/select";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
+import { SourceTypeDropdown } from "@/components/molecules/SourceTypeDropdown";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { useSourceTypes } from "@/features/reports/hooks/useSourceTypes";
+import {
+  useUpdateWorkspaceSourceClassification,
+  useWorkspaceBrandsForClassification,
+} from "@/features/reports/hooks/useUpdateWorkspaceSourceClassification";
 import { useWorkspaceDomains } from "@/features/reports/hooks/useWorkspaceDomains";
 import { cn } from "@/lib/utils";
-import type { WorkspaceDomainRowDto } from "@/types/api";
+import type { SourceTypeReferenceDto, WorkspaceDomainRowDto } from "@/types/api";
 
 /**
  * Workspace-wide domain-level citation source view at /sources/domains.
@@ -22,8 +35,17 @@ export function DomainsScreen() {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const domains = useWorkspaceDomains(defaultDateRangeSelection(), trackerIds);
+  const brands = useWorkspaceBrandsForClassification();
+  const sourceTypes = useSourceTypes();
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [classifyingBrandId, setClassifyingBrandId] = useState<string | null>(null);
+
+  const brandsList = brands.data ?? [];
+  // Default the classifying-against brand to the first one in the
+  // workspace. Users with multiple brands can switch via the picker.
+  const effectiveClassifyingBrandId =
+    classifyingBrandId ?? (brandsList.length > 0 ? brandsList[0].id : null);
 
   const allRows = domains.data?.domains ?? [];
   const typeCounts = useMemo(() => countByType(allRows), [allRows]);
@@ -74,6 +96,13 @@ export function DomainsScreen() {
               selected={typeFilter}
               onSelect={(t) => setTypeFilter((current) => (current === t ? null : t))}
             />
+            {brandsList.length > 1 && (
+              <ClassifyingBrandPicker
+                brands={brandsList.map((b) => ({ id: b.id, name: b.name }))}
+                value={effectiveClassifyingBrandId}
+                onChange={setClassifyingBrandId}
+              />
+            )}
           </div>
 
           {filteredRows.length === 0 ? (
@@ -83,7 +112,11 @@ export function DomainsScreen() {
                 : "No sources match your filter."}
             </p>
           ) : (
-            <DomainsTable rows={filteredRows} />
+            <DomainsTable
+              rows={filteredRows}
+              classifyingBrandId={effectiveClassifyingBrandId}
+              sourceTypes={sourceTypes.data ?? []}
+            />
           )}
         </CardContent>
       </Card>
@@ -118,6 +151,38 @@ export function countByType(rows: readonly WorkspaceDomainRowDto[]): Record<stri
     out[r.sourceType] = (out[r.sourceType] ?? 0) + 1;
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Classifying-for brand picker (multi-brand workspaces only)
+// ---------------------------------------------------------------------------
+
+function ClassifyingBrandPicker({
+  brands,
+  value,
+  onChange,
+}: {
+  brands: readonly { id: string; name: string }[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-wide text-neutral-500">Classifying for</span>
+      <Select value={value ?? undefined} onValueChange={onChange}>
+        <SelectTrigger selectSize="sm" className="w-[160px]" aria-label="Classifying for brand">
+          <SelectValue placeholder="Pick a brand" />
+        </SelectTrigger>
+        <SelectContent>
+          {brands.map((b) => (
+            <SelectItem key={b.id} value={b.id}>
+              {b.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -165,7 +230,15 @@ function TypeFilterPills({
 // Table
 // ---------------------------------------------------------------------------
 
-function DomainsTable({ rows }: { rows: readonly WorkspaceDomainRowDto[] }) {
+function DomainsTable({
+  rows,
+  classifyingBrandId,
+  sourceTypes,
+}: {
+  rows: readonly WorkspaceDomainRowDto[];
+  classifyingBrandId: string | null;
+  sourceTypes: readonly SourceTypeReferenceDto[];
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -181,41 +254,90 @@ function DomainsTable({ rows }: { rows: readonly WorkspaceDomainRowDto[] }) {
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {rows.map((row) => (
-            <tr key={row.sourceId}>
-              <Td>
-                <div className="flex flex-col">
-                  <span className="text-neutral-900">{row.sourceName}</span>
-                  {row.normalizedDomain && (
-                    <span className="text-[10px] text-neutral-500">{row.normalizedDomain}</span>
-                  )}
-                </div>
-              </Td>
-              <Td>
-                <Badge variant="secondary" className="text-[10px]">
-                  {row.sourceType}
-                </Badge>
-              </Td>
-              <Td className="text-right tabular-nums">{row.citationCount}</Td>
-              <Td className="text-right tabular-nums">{row.retrievedInScans}</Td>
-              <Td className="text-right tabular-nums">
-                {row.authorityScore == null ? (
-                  <span className="text-neutral-400">—</span>
-                ) : (
-                  <span className="text-neutral-700">{Math.round(row.authorityScore)}</span>
-                )}
-              </Td>
-              <Td>
-                {row.lastSeenAt ? (
-                  formatRelativeDate(row.lastSeenAt)
-                ) : (
-                  <span className="text-neutral-400">never</span>
-                )}
-              </Td>
-            </tr>
+            <DomainsRow
+              key={row.sourceId}
+              row={row}
+              classifyingBrandId={classifyingBrandId}
+              sourceTypes={sourceTypes}
+            />
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function DomainsRow({
+  row,
+  classifyingBrandId,
+  sourceTypes,
+}: {
+  row: WorkspaceDomainRowDto;
+  classifyingBrandId: string | null;
+  sourceTypes: readonly SourceTypeReferenceDto[];
+}) {
+  const update = useUpdateWorkspaceSourceClassification(classifyingBrandId);
+  const errorMessage =
+    update.isError && update.variables?.sourceId === row.sourceId
+      ? update.error instanceof Error
+        ? update.error.message
+        : "Save failed — try again."
+      : null;
+
+  // Without a brand context (zero brands in workspace) or until the
+  // source-types reference list arrives, fall back to the read-only
+  // badge — the dropdown can't fire a useful mutation yet.
+  const canEdit = classifyingBrandId != null && sourceTypes.length > 0;
+
+  return (
+    <tr>
+      <Td>
+        <div className="flex flex-col">
+          <span className="text-neutral-900">{row.sourceName}</span>
+          {row.normalizedDomain && (
+            <span className="text-[10px] text-neutral-500">{row.normalizedDomain}</span>
+          )}
+        </div>
+      </Td>
+      <Td>
+        {canEdit ? (
+          <div className="flex flex-col gap-1">
+            <SourceTypeDropdown
+              value={row.sourceType}
+              onChange={(next) => update.mutate({ sourceId: row.sourceId, sourceType: next })}
+              sourceTypes={sourceTypes}
+              disabled={update.isPending}
+              ariaLabel={`Source type for ${row.sourceName}`}
+            />
+            {errorMessage && (
+              <p className="text-[10px] text-semantic-error-600" role="alert">
+                {errorMessage}
+              </p>
+            )}
+          </div>
+        ) : (
+          <Badge variant="secondary" className="text-[10px]">
+            {row.sourceType}
+          </Badge>
+        )}
+      </Td>
+      <Td className="text-right tabular-nums">{row.citationCount}</Td>
+      <Td className="text-right tabular-nums">{row.retrievedInScans}</Td>
+      <Td className="text-right tabular-nums">
+        {row.authorityScore == null ? (
+          <span className="text-neutral-400">—</span>
+        ) : (
+          <span className="text-neutral-700">{Math.round(row.authorityScore)}</span>
+        )}
+      </Td>
+      <Td>
+        {row.lastSeenAt ? (
+          formatRelativeDate(row.lastSeenAt)
+        ) : (
+          <span className="text-neutral-400">never</span>
+        )}
+      </Td>
+    </tr>
   );
 }
 

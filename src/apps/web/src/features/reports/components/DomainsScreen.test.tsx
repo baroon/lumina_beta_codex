@@ -1,7 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { WorkspaceDomainRowDto, WorkspaceDomainsDto } from "@/types/api";
+import type {
+  BrandDto,
+  SourceTypeReferenceDto,
+  WorkspaceDomainRowDto,
+  WorkspaceDomainsDto,
+} from "@/types/api";
 
 let scopeState: { scope: "all" | string[] };
 let domainsState: {
@@ -10,6 +15,15 @@ let domainsState: {
   isError: boolean;
   error?: unknown;
 };
+let brandsState: { data?: BrandDto[]; isLoading: boolean };
+let sourceTypesState: { data?: SourceTypeReferenceDto[]; isLoading: boolean };
+let updateClassificationMutate: ReturnType<typeof vi.fn>;
+let updateClassificationState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+  variables?: { sourceId: string; sourceType: string };
+} = { isPending: false, isError: false };
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
@@ -17,8 +31,35 @@ vi.mock("@/hooks/useTrackerScope", () => ({
 vi.mock("@/features/reports/hooks/useWorkspaceDomains", () => ({
   useWorkspaceDomains: () => ({ ...domainsState, refetch: vi.fn() }),
 }));
+vi.mock("@/features/reports/hooks/useSourceTypes", () => ({
+  useSourceTypes: () => sourceTypesState,
+}));
+vi.mock("@/features/reports/hooks/useUpdateWorkspaceSourceClassification", () => ({
+  useUpdateWorkspaceSourceClassification: () => ({
+    mutate: updateClassificationMutate,
+    ...updateClassificationState,
+  }),
+  useWorkspaceBrandsForClassification: () => brandsState,
+}));
 
 import { DomainsScreen, countByType, filterDomains } from "./DomainsScreen";
+
+const BRANDS: BrandDto[] = [
+  {
+    id: "b1",
+    name: "Acme Corp",
+    websiteUrl: "https://acme.example.com",
+    createdAt: "2026-06-01T00:00:00Z",
+    latestDiscovery: null,
+  },
+];
+
+const SOURCE_TYPES: SourceTypeReferenceDto[] = [
+  { id: "1", code: "Owned", name: "Owned", description: "", displayOrder: 1 },
+  { id: "2", code: "Competitor", name: "Competitor", description: "", displayOrder: 2 },
+  { id: "3", code: "Editorial", name: "Editorial", description: "", displayOrder: 3 },
+  { id: "4", code: "UGC", name: "UGC", description: "", displayOrder: 4 },
+];
 
 function row(overrides: Partial<WorkspaceDomainRowDto>): WorkspaceDomainRowDto {
   return {
@@ -46,6 +87,10 @@ function payload(rows: WorkspaceDomainRowDto[]): WorkspaceDomainsDto {
 beforeEach(() => {
   scopeState = { scope: "all" };
   domainsState = { data: payload([]), isLoading: false, isError: false };
+  brandsState = { data: BRANDS, isLoading: false };
+  sourceTypesState = { data: SOURCE_TYPES, isLoading: false };
+  updateClassificationMutate = vi.fn();
+  updateClassificationState = { isPending: false, isError: false };
 });
 
 describe("filterDomains (pure)", () => {
@@ -173,5 +218,84 @@ describe("DomainsScreen", () => {
     await userEvent.click(editorialPill);
     expect(screen.getByText("Reddit")).toBeInTheDocument();
     expect(screen.getByText("TechCrunch")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Per-row classification editor (Phase 4 v1 plan §D11/D20)
+  // -------------------------------------------------------------------
+
+  it("renders an editable source-type dropdown per row when a brand is in scope", () => {
+    domainsState = {
+      data: payload([
+        row({ sourceId: "trust", sourceName: "Trustpilot", sourceType: "Editorial" }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<DomainsScreen />);
+    expect(
+      screen.getByRole("combobox", { name: /source type for Trustpilot/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the 'Classifying for' picker when the workspace has a single brand", () => {
+    render(<DomainsScreen />);
+    expect(screen.queryByLabelText(/classifying for brand/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the 'Classifying for' picker when the workspace has multiple brands", () => {
+    brandsState = {
+      data: [
+        ...BRANDS,
+        {
+          id: "b2",
+          name: "Other Co",
+          websiteUrl: "https://other.example.com",
+          createdAt: "2026-06-01T00:00:00Z",
+          latestDiscovery: null,
+        },
+      ],
+      isLoading: false,
+    };
+    render(<DomainsScreen />);
+    expect(screen.getByLabelText(/classifying for brand/i)).toBeInTheDocument();
+  });
+
+  it("falls back to a read-only badge when the workspace has no brands yet", () => {
+    brandsState = { data: [], isLoading: false };
+    domainsState = {
+      data: payload([
+        row({ sourceId: "trust", sourceName: "Trustpilot", sourceType: "Editorial" }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<DomainsScreen />);
+    expect(
+      screen.queryByRole("combobox", { name: /source type for Trustpilot/i }),
+    ).not.toBeInTheDocument();
+    // Badge still surfaces the current dominant type inside the row.
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Editorial")).toBeInTheDocument();
+  });
+
+  it("renders a server-error message inline on the row that failed", () => {
+    updateClassificationState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Source not found."),
+      variables: { sourceId: "trust", sourceType: "UGC" },
+    };
+    domainsState = {
+      data: payload([
+        row({ sourceId: "trust", sourceName: "Trustpilot", sourceType: "Editorial" }),
+        row({ sourceId: "indeed", sourceName: "Indeed", sourceType: "Editorial" }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<DomainsScreen />);
+    // Error renders only on the failing row, not on every row.
+    expect(screen.getAllByText(/Source not found/i)).toHaveLength(1);
   });
 });
