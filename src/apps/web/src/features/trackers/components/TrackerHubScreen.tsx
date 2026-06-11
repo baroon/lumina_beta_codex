@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   Calendar,
   Eye,
   MessageSquare,
@@ -11,7 +13,7 @@ import {
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
-import { ComingSoon } from "@/components/molecules/ComingSoon";
+import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -21,7 +23,15 @@ import { useRunScan, useTrackerScans } from "@/features/trackers/hooks/useScans"
 import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
 import { useTrackerLensesSetup } from "@/features/trackers/hooks/useTrackerLenses";
-import type { PromptDto, ScanListItemDto, TrackerScheduleSetup } from "@/types/api";
+import { useTrackerOverview } from "@/features/trackers/hooks/useTrackerOverview";
+import { cn } from "@/lib/utils";
+import type {
+  PromptDto,
+  ScanListItemDto,
+  TrackerScheduleSetup,
+  WorkspaceHeroDto,
+  WorkspaceTopEntityRowDto,
+} from "@/types/api";
 
 interface TrackerHubScreenProps {
   brandId: string;
@@ -34,9 +44,10 @@ interface TrackerHubScreenProps {
  * are flattened into the sidebar. Tabs are mirrored to `?tab=` via the
  * Tabs molecule so refresh + shared links land on the same panel.
  *
- * Schedule, Prompts, Lenses, and Scans tabs render real data. The
- * Overview tab still ships as ComingSoon — it needs MetricCategoryLayout
- * scoped to one tracker (downstream of step 5's scope plumbing).
+ * All five tabs render real data. The Overview tab calls
+ * `useWorkspaceOverview` scoped to this single tracker — a compact
+ * summary; the deep workspace dashboard (with all filter controls) is
+ * still at /overview filtered via the sidebar's tracker selector.
  */
 export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) {
   const summary = useTrackerSummary(trackerId);
@@ -65,13 +76,7 @@ export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) 
       id: "overview",
       label: "Overview",
       icon: Eye,
-      children: (
-        <ComingSoon
-          icon={Eye}
-          title="Per-tracker dashboard"
-          description="Categorized metrics scoped to this tracker — Visibility / Recommendation / Sentiment / Competitive / Citations."
-        />
-      ),
+      children: <OverviewTab trackerId={trackerId} />,
     },
     {
       id: "schedule",
@@ -161,6 +166,225 @@ function RunScanButton({ trackerId }: { trackerId: string }) {
       <Play className="h-3.5 w-3.5" aria-hidden />
       {disabled ? "Starting…" : runScan.isSuccess ? "Scan started" : "Run scan now"}
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Overview tab — hero KPIs + top-entities ranking scoped to this tracker
+// via `useWorkspaceOverview([trackerId])`. The full filter-laden workspace
+// dashboard at /overview is still the deep-dive surface; this tab is the
+// compact summary a user lands on when they open the tracker hub.
+// ---------------------------------------------------------------------------
+
+function OverviewTab({ trackerId }: { trackerId: string }) {
+  const overview = useTrackerOverview(defaultDateRangeSelection(), trackerId);
+
+  if (overview.isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-neutral-500">
+          Loading overview…
+        </CardContent>
+      </Card>
+    );
+  }
+  if (overview.isError || !overview.data) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-semantic-error-600">
+          Failed to load overview.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const data = overview.data;
+  // The tracker has never been scanned (or no scans in the default 30-day
+  // window). Show a soft prompt rather than a wall of zeros so a brand
+  // new tracker reads as "ready" instead of "broken".
+  if (data.scanCount === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-neutral-500">
+          No scans in the last 30 days yet. Click{" "}
+          <span className="font-medium text-neutral-700">Run scan now</span> above to populate the
+          overview.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const rankedEntities = [...data.topEntities]
+    .sort((a, b) => (b.visibility ?? -1) - (a.visibility ?? -1))
+    .slice(0, 6);
+
+  return (
+    <div className="space-y-3">
+      <HeroRowCompact hero={data.hero} previousHero={data.previousHero} />
+      <TopEntitiesCard rows={rankedEntities} />
+    </div>
+  );
+}
+
+function HeroRowCompact({
+  hero,
+  previousHero,
+}: {
+  hero: WorkspaceHeroDto;
+  previousHero: WorkspaceHeroDto | null;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <HeroTile
+        label="Queries"
+        value={hero.queries.toLocaleString()}
+        current={hero.queries}
+        previous={previousHero?.queries ?? null}
+      />
+      <HeroTile
+        label="Mentions"
+        value={hero.mentions.toLocaleString()}
+        current={hero.mentions}
+        previous={previousHero?.mentions ?? null}
+      />
+      <HeroTile
+        label="Citations"
+        value={hero.citations.toLocaleString()}
+        current={hero.citations}
+        previous={previousHero?.citations ?? null}
+      />
+      <HeroTile
+        label="Brand mention rate"
+        value={hero.brandMentionRate == null ? "—" : `${Math.round(hero.brandMentionRate * 100)}%`}
+        current={hero.brandMentionRate}
+        previous={previousHero?.brandMentionRate ?? null}
+      />
+    </div>
+  );
+}
+
+function HeroTile({
+  label,
+  value,
+  current,
+  previous,
+}: {
+  label: string;
+  value: string;
+  current: number | null;
+  previous: number | null;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <p className="text-xl font-semibold text-neutral-900">{value}</p>
+          <HeroDelta current={current} previous={previous} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HeroDelta({ current, previous }: { current: number | null; previous: number | null }) {
+  if (current == null || previous == null) return null;
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-semantic-success-600">
+        <ArrowUp size={10} aria-hidden /> New
+      </span>
+    );
+  }
+  const pct = ((current - previous) / previous) * 100;
+  const rounded = Math.round(pct);
+  if (rounded === 0) return null;
+  const isUp = rounded > 0;
+  return (
+    <span
+      aria-label={`${isUp ? "Up" : "Down"} ${Math.abs(rounded)} percent vs previous period`}
+      className={cn(
+        "inline-flex items-center gap-0.5 text-[10px] font-medium",
+        isUp ? "text-semantic-success-600" : "text-semantic-error-600",
+      )}
+    >
+      {isUp ? <ArrowUp size={10} aria-hidden /> : <ArrowDown size={10} aria-hidden />}
+      {Math.abs(rounded)}%
+    </span>
+  );
+}
+
+function TopEntitiesCard({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }) {
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-4 text-center text-xs text-neutral-500">
+          No entities ranked yet for this tracker.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardContent className="space-y-2 p-4">
+        <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          Top entities by visibility
+        </div>
+        <table className="w-full text-xs">
+          <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th scope="col" className="w-8 px-2 py-1.5 text-right text-[10px]">
+                #
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-left text-[10px]">
+                Entity
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-right text-[10px]">
+                Visibility
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-right text-[10px]">
+                Share of voice
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {rows.map((row, index) => (
+              <tr
+                key={`${row.entityType}:${row.entityId}`}
+                className={cn(row.isTrackedBrand && "bg-primary-50/40")}
+              >
+                <td className="w-8 px-2 py-1.5 text-right text-neutral-500 tabular-nums">
+                  {index + 1}
+                </td>
+                <td className="px-2 py-1.5">
+                  <span className="font-medium text-neutral-900">{row.name}</span>
+                  {row.isTrackedBrand && (
+                    <Badge variant="secondary" className="ml-2 text-[10px]">
+                      You
+                    </Badge>
+                  )}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums">
+                  {row.visibility == null ? (
+                    <span className="text-neutral-400">—</span>
+                  ) : (
+                    `${Math.round(row.visibility * 100)}%`
+                  )}
+                </td>
+                <td className="px-2 py-1.5 text-right tabular-nums">
+                  {row.shareOfVoice == null ? (
+                    <span className="text-neutral-400">—</span>
+                  ) : (
+                    `${Math.round(row.shareOfVoice * 100)}%`
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
   );
 }
 

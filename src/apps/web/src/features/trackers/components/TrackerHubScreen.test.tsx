@@ -8,6 +8,7 @@ import type {
   TrackerLensesSetupDto,
   TrackerListItemDto,
   TrackerScheduleSetup,
+  WorkspaceOverviewDto,
 } from "@/types/api";
 
 // Stub TanStack so Link renders plain anchors + useParams is harmless.
@@ -46,6 +47,7 @@ let runScanMutate: ReturnType<typeof vi.fn>;
 let runScanIsPending = false;
 let runScanIsSuccess = false;
 let lensesState: { data?: TrackerLensesSetupDto; isLoading: boolean; isError: boolean };
+let overviewState: { data?: WorkspaceOverviewDto; isLoading: boolean; isError: boolean };
 
 vi.mock("@/features/trackers/hooks/useAllTrackers", () => ({
   useAllTrackers: () => ({ data: [], isLoading: false }),
@@ -70,6 +72,9 @@ vi.mock("@/features/trackers/hooks/useScans", () => ({
 vi.mock("@/features/trackers/hooks/useTrackerLenses", () => ({
   useTrackerLensesSetup: () => lensesState,
   useUpdateTrackerLenses: () => ({ mutate: vi.fn() }),
+}));
+vi.mock("@/features/trackers/hooks/useTrackerOverview", () => ({
+  useTrackerOverview: () => overviewState,
 }));
 
 import { TrackerHubScreen } from "./TrackerHubScreen";
@@ -132,6 +137,44 @@ const promptsFixture: PromptList = {
   topics: [],
 };
 
+const overviewFixture: WorkspaceOverviewDto = {
+  workspaceId: "w1",
+  from: "2026-05-10T00:00:00Z",
+  to: "2026-06-09T00:00:00Z",
+  trackedBrands: [{ brandId: "b1", name: "Acme" }],
+  competitors: [{ competitorId: "c1", name: "Canva" }],
+  scanCount: 4,
+  hero: { queries: 96, mentions: 30, citations: 12, brandMentionRate: 0.5 },
+  previousHero: { queries: 80, mentions: 20, citations: 10, brandMentionRate: 0.25 },
+  series: [],
+  topEntities: [
+    {
+      entityType: "Brand",
+      entityId: "b1",
+      name: "Acme",
+      isTrackedBrand: true,
+      visibility: 0.5,
+      visibilityDelta: 0.1,
+      shareOfVoice: 0.4,
+      shareOfVoiceDelta: 0.05,
+      sentiment: "Positive",
+      sentimentDelta: 1,
+    },
+    {
+      entityType: "Competitor",
+      entityId: "c1",
+      name: "Canva",
+      isTrackedBrand: false,
+      visibility: 0.8,
+      visibilityDelta: 0,
+      shareOfVoice: 0.6,
+      shareOfVoiceDelta: 0,
+      sentiment: "Neutral",
+      sentimentDelta: 0,
+    },
+  ],
+};
+
 const lensesFixture: TrackerLensesSetupDto = {
   trackerId: "t1",
   trackerName: "Acme · US Tracker",
@@ -188,6 +231,7 @@ beforeEach(() => {
   runScanIsPending = false;
   runScanIsSuccess = false;
   lensesState = { data: lensesFixture, isLoading: false, isError: false };
+  overviewState = { data: overviewFixture, isLoading: false, isError: false };
 });
 
 describe("TrackerHubScreen", () => {
@@ -303,5 +347,50 @@ describe("TrackerHubScreen", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     await userEvent.click(screen.getByRole("tab", { name: /Lenses/i }));
     expect(screen.getByText(/Failed to load lenses/i)).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Overview tab — hero KPIs + top entities scoped to this tracker
+  // -------------------------------------------------------------------
+
+  it("Overview tab renders all four hero KPIs from the workspace overview hook", () => {
+    // Overview is the default tab — no click needed.
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText("96")).toBeInTheDocument(); // queries
+    expect(screen.getByText("30")).toBeInTheDocument(); // mentions
+    expect(screen.getByText("12")).toBeInTheDocument(); // citations
+    // "50%" appears in the hero tile AND in Acme's visibility cell (also
+    // 0.5). Two matches is the right count — collapsing them with
+    // getAllByText keeps the assertion robust.
+    expect(screen.getAllByText("50%").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Overview tab renders the top entities table with the tracked brand highlighted", () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText(/Top entities by visibility/i)).toBeInTheDocument();
+    expect(screen.getByText("Canva")).toBeInTheDocument();
+    expect(screen.getByText("You")).toBeInTheDocument();
+  });
+
+  it("Overview tab shows the empty-state when the tracker has no scans yet", () => {
+    overviewState = {
+      data: { ...overviewFixture, scanCount: 0 },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText(/No scans in the last 30 days yet/i)).toBeInTheDocument();
+  });
+
+  it("Overview tab shows a loading hint while overview is loading", () => {
+    overviewState = { data: undefined, isLoading: true, isError: false };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText(/Loading overview/i)).toBeInTheDocument();
+  });
+
+  it("Overview tab shows an error hint when overview errors", () => {
+    overviewState = { data: undefined, isLoading: false, isError: true };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText(/Failed to load overview/i)).toBeInTheDocument();
   });
 });
