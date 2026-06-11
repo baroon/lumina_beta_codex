@@ -54,7 +54,15 @@ let renameMarketMutate: ReturnType<typeof vi.fn>;
 let renameProductMutate: ReturnType<typeof vi.fn>;
 let renameTrustSignalMutate: ReturnType<typeof vi.fn>;
 let updateCompetitorAliasesMutate: ReturnType<typeof vi.fn>;
+let updateCompetitorAliasesMutateAsync: ReturnType<typeof vi.fn>;
 let updateCompetitorAliasesState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
+let updateCompetitorDomainMutate: ReturnType<typeof vi.fn>;
+let updateCompetitorDomainMutateAsync: ReturnType<typeof vi.fn>;
+let updateCompetitorDomainState: {
   isPending: boolean;
   isError: boolean;
   error?: Error;
@@ -90,7 +98,13 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useRenameBrandTrustSignal: () => ({ mutate: renameTrustSignalMutate, ...idleMutation }),
   useUpdateBrandCompetitorAliases: () => ({
     mutate: updateCompetitorAliasesMutate,
+    mutateAsync: updateCompetitorAliasesMutateAsync,
     ...updateCompetitorAliasesState,
+  }),
+  useUpdateBrandCompetitorDomain: () => ({
+    mutate: updateCompetitorDomainMutate,
+    mutateAsync: updateCompetitorDomainMutateAsync,
+    ...updateCompetitorDomainState,
   }),
 }));
 
@@ -217,7 +231,11 @@ describe("BrandProfileScreen", () => {
     renameProductMutate = vi.fn();
     renameTrustSignalMutate = vi.fn();
     updateCompetitorAliasesMutate = vi.fn();
+    updateCompetitorAliasesMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateCompetitorAliasesState = { isPending: false, isError: false };
+    updateCompetitorDomainMutate = vi.fn();
+    updateCompetitorDomainMutateAsync = vi.fn().mockResolvedValue(undefined);
+    updateCompetitorDomainState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -695,7 +713,7 @@ describe("BrandProfileScreen", () => {
     expect(within(screen.getByRole("dialog")).getByText(/Resume\.io/i)).toBeInTheDocument();
   });
 
-  it("Save aliases fires the mutation with the staged aliases list", async () => {
+  it("Save changes fires the alias mutation with the staged aliases list", async () => {
     discoveryState = {
       data: {
         ...discoveryFixture,
@@ -722,14 +740,16 @@ describe("BrandProfileScreen", () => {
       "ResumeIO Pro{enter}",
     );
     // Save commits the full staged list to the mutation.
-    await userEvent.click(within(dialog).getByRole("button", { name: /^Save aliases$/ }));
-    expect(updateCompetitorAliasesMutate).toHaveBeenCalledOnce();
-    const [args] = updateCompetitorAliasesMutate.mock.calls[0];
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateCompetitorAliasesMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateCompetitorAliasesMutateAsync.mock.calls[0];
     expect(args.competitorId).toBe("c1");
     expect(args.aliases).toEqual(["resumeio", "ResumeIO Pro"]);
+    // Domain wasn't touched — no domain call.
+    expect(updateCompetitorDomainMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("Save is disabled until the staged aliases differ from the server", async () => {
+  it("Save is disabled until either aliases or domain differ from the server", async () => {
     discoveryState = {
       data: {
         ...discoveryFixture,
@@ -739,6 +759,7 @@ describe("BrandProfileScreen", () => {
             id: "c1",
             name: "Resume.io",
             aliases: ["resumeio"],
+            metadata: { domain: "resume.io" },
           },
         ],
       },
@@ -749,7 +770,7 @@ describe("BrandProfileScreen", () => {
       screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: /^Save aliases$/ })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /^Save changes$/ })).toBeDisabled();
   });
 
   it("renders a server-error message when the alias save fails", async () => {
@@ -764,6 +785,102 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/collides with the competitor's primary name/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the domain input from metadata.domain", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            metadata: { domain: "resume.io" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText(/competitor domain/i)).toHaveValue("resume.io");
+  });
+
+  it("Save changes fires the domain mutation with the trimmed value when only the domain is dirty", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            metadata: { domain: "resume.io" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const domainInput = within(dialog).getByLabelText(/competitor domain/i);
+    await userEvent.clear(domainInput);
+    await userEvent.type(domainInput, "  resume.com  ");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateCompetitorDomainMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateCompetitorDomainMutateAsync.mock.calls[0];
+    expect(args.competitorId).toBe("c1");
+    expect(args.domain).toBe("resume.com");
+    // Aliases weren't touched — no alias call.
+    expect(updateCompetitorAliasesMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("clearing the domain input passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            metadata: { domain: "resume.io" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/competitor domain/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateCompetitorDomainMutateAsync).toHaveBeenCalledOnce();
+    expect(updateCompetitorDomainMutateAsync.mock.calls[0][0].domain).toBeNull();
+  });
+
+  it("renders a server-error message when the domain save fails", async () => {
+    updateCompetitorDomainState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Domain 'not a domain!' is not a parseable hostname or URL."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/not a parseable hostname or URL/i),
     ).toBeInTheDocument();
   });
 });

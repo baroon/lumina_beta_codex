@@ -148,6 +148,16 @@ export interface UpdateBrandCompetitorAliasesResult {
   aliases: string[];
 }
 
+export interface UpdateBrandCompetitorDomainRequest {
+  /** Bare hostname, www.host, or full http(s) URL. Empty/null clears the field. */
+  domain: string | null;
+}
+
+export interface UpdateBrandCompetitorDomainResult {
+  /** Normalized lowercase host with "www." stripped, or null after a clear. */
+  domain: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

@@ -23,6 +23,8 @@ import type {
   UpdateBrandAliasesResult,
   UpdateBrandCompetitorAliasesRequest,
   UpdateBrandCompetitorAliasesResult,
+  UpdateBrandCompetitorDomainRequest,
+  UpdateBrandCompetitorDomainResult,
   UpdateBrandProfileRequest,
   UpdateBrandProfileResult,
   UpdateBrandWebsiteUrlRequest,
@@ -102,6 +104,16 @@ export const brandsApi = {
   ) =>
     apiClient.put<UpdateBrandCompetitorAliasesResult>(
       `/api/brands/${id}/competitors/${competitorId}/aliases`,
+      data,
+    ),
+
+  updateCompetitorDomain: (
+    id: string,
+    competitorId: string,
+    data: UpdateBrandCompetitorDomainRequest,
+  ) =>
+    apiClient.put<UpdateBrandCompetitorDomainResult>(
+      `/api/brands/${id}/competitors/${competitorId}/domain`,
       data,
     ),
 

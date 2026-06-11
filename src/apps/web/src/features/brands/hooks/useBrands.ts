@@ -256,6 +256,26 @@ export function useUpdateBrandCompetitorAliases(brandId: string) {
   });
 }
 
+/**
+ * Mutates a single competitor's canonical domain. Empty/null clears
+ * the field; the BE normalizes hostname/URL inputs down to lowercase
+ * host with "www." stripped, matching the citation classifier's
+ * NormalizeDomain shape — wrong domains silently mis-route citation
+ * classification, so this lives behind the same dialog as aliases.
+ */
+export function useUpdateBrandCompetitorDomain(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { competitorId: string; domain: string | null }) =>
+      brandsApi.updateCompetitorDomain(brandId, vars.competitorId, {
+        domain: vars.domain,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
 /** Renames a Competitor on the brand. Mirrors the dimension rename shape. */
 export function useRenameBrandCompetitor(brandId: string) {
   const queryClient = useQueryClient();

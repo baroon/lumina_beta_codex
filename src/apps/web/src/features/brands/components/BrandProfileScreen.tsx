@@ -55,6 +55,7 @@ import {
   useRenameBrandTrustSignal,
   useUpdateBrandAliases,
   useUpdateBrandCompetitorAliases,
+  useUpdateBrandCompetitorDomain,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
@@ -730,7 +731,7 @@ function CompetitorsSection({
         detailsAriaSingular="competitor"
       />
       {openCompetitor && (
-        <CompetitorAliasesDialog
+        <CompetitorDetailsDialog
           brandId={brandId}
           competitor={openCompetitor}
           open
@@ -881,14 +882,14 @@ function WebsiteUrlEditor({ brandId, websiteUrl }: { brandId: string; websiteUrl
 }
 
 /**
- * Per-competitor deeper-edit dialog. Aliases drive mention detection
- * downstream — the chip click-to-rename handles the primary name; this
- * dialog handles the alias list, which is a list of strings the BE
- * trims, dedupes case-insensitive, and rejects against the competitor's
- * own name. Reuses the existing AliasEditor molecule from the discovery
- * wizard so the alias-add UX feels identical wherever it appears.
+ * Per-competitor deeper-edit dialog. Two fields the chip rename can't
+ * carry: <strong>Domain</strong> (the canonical hostname that the
+ * citation classifier matches inbound URLs against — wrong domain
+ * silently mis-classifies citations) and <strong>Aliases</strong>
+ * (the variants mention detection treats as the same competitor).
+ * Save fires only the mutations whose value actually changed.
  */
-function CompetitorAliasesDialog({
+function CompetitorDetailsDialog({
   brandId,
   competitor,
   open,
@@ -899,32 +900,49 @@ function CompetitorAliasesDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const update = useUpdateBrandCompetitorAliases(brandId);
-  const [aliases, setAliases] = useState<string[]>(() => competitor.aliases ?? []);
+  const updateAliases = useUpdateBrandCompetitorAliases(brandId);
+  const updateDomain = useUpdateBrandCompetitorDomain(brandId);
 
-  // Reset the staged aliases whenever the competitor in scope changes
+  const originalDomain = competitor.metadata?.domain ?? "";
+  const originalAliases = competitor.aliases ?? [];
+
+  const [domain, setDomain] = useState<string>(originalDomain);
+  const [aliases, setAliases] = useState<string[]>(originalAliases);
+
+  // Reset staged state whenever the competitor in scope changes
   // (the parent reopens with a different row).
   useEffect(() => {
+    setDomain(competitor.metadata?.domain ?? "");
     setAliases(competitor.aliases ?? []);
-  }, [competitor.id, competitor.aliases]);
+  }, [competitor.id, competitor.aliases, competitor.metadata?.domain]);
 
-  const original = competitor.aliases ?? [];
-  const dirty = aliases.length !== original.length || aliases.some((a, i) => a !== original[i]);
+  const aliasesDirty =
+    aliases.length !== originalAliases.length || aliases.some((a, i) => a !== originalAliases[i]);
+  const domainDirty = domain.trim() !== originalDomain.trim();
+  const dirty = aliasesDirty || domainDirty;
+
+  const pending = updateAliases.isPending || updateDomain.isPending;
 
   const errorMessage =
-    update.isError && update.error instanceof Error
-      ? update.error.message
-      : update.isError
-        ? "Save failed — try again."
-        : null;
+    formatDialogError(updateDomain.error) ?? formatDialogError(updateAliases.error);
 
-  function save() {
-    update.mutate(
-      { competitorId: competitor.id, aliases },
-      {
-        onSuccess: () => onOpenChange(false),
-      },
-    );
+  async function save() {
+    // Domain first so a normalization rejection doesn't get masked by
+    // a successful alias write. Close only when both succeed.
+    try {
+      if (domainDirty) {
+        await updateDomain.mutateAsync({
+          competitorId: competitor.id,
+          domain: domain.trim() === "" ? null : domain.trim(),
+        });
+      }
+      if (aliasesDirty) {
+        await updateAliases.mutateAsync({ competitorId: competitor.id, aliases });
+      }
+      onOpenChange(false);
+    } catch {
+      // Errors surface inline via errorMessage; the dialog stays open.
+    }
   }
 
   return (
@@ -952,7 +970,7 @@ function CompetitorAliasesDialog({
                 {competitor.name}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
-                Aliases drive mention detection. Add the variants AI answers actually use.
+                Domain feeds citation classification; aliases drive mention detection.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -966,7 +984,26 @@ function CompetitorAliasesDialog({
             </Dialog.Close>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor={`competitor-domain-${competitor.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+              >
+                Domain
+              </label>
+              <Input
+                id={`competitor-domain-${competitor.id}`}
+                inputSize="sm"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                placeholder="e.g. canva.com"
+                aria-label="Competitor domain"
+              />
+              <p className="mt-1 text-[10px] text-neutral-500">
+                Hostname only. Empty clears the field.
+              </p>
+            </div>
             <AliasEditor
               aliases={aliases}
               onChange={setAliases}
@@ -984,18 +1021,24 @@ function CompetitorAliasesDialog({
 
           <div className="mt-5 flex items-center justify-end gap-2">
             <Dialog.Close asChild>
-              <Button variant="outline" size="sm" disabled={update.isPending}>
+              <Button variant="outline" size="sm" disabled={pending}>
                 Cancel
               </Button>
             </Dialog.Close>
-            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
-              {update.isPending ? "Saving…" : "Save aliases"}
+            <Button size="sm" onClick={save} disabled={!dirty || pending}>
+              {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+function formatDialogError(error: unknown): string | null {
+  if (!error) return null;
+  if (error instanceof Error) return error.message;
+  return "Save failed — try again.";
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
