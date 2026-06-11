@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type {
   PromptList,
   ScanListItemDto,
+  TrackerLensesSetupDto,
   TrackerListItemDto,
   TrackerScheduleSetup,
 } from "@/types/api";
@@ -44,6 +45,7 @@ let scansState: { scans: ScanListItemDto[]; isLoading: boolean; isError: boolean
 let runScanMutate: ReturnType<typeof vi.fn>;
 let runScanIsPending = false;
 let runScanIsSuccess = false;
+let lensesState: { data?: TrackerLensesSetupDto; isLoading: boolean; isError: boolean };
 
 vi.mock("@/features/trackers/hooks/useAllTrackers", () => ({
   useAllTrackers: () => ({ data: [], isLoading: false }),
@@ -64,6 +66,10 @@ vi.mock("@/features/trackers/hooks/useScans", () => ({
   }),
   useTrackerScans: () => scansState,
   useLatestScan: () => ({ data: undefined }),
+}));
+vi.mock("@/features/trackers/hooks/useTrackerLenses", () => ({
+  useTrackerLensesSetup: () => lensesState,
+  useUpdateTrackerLenses: () => ({ mutate: vi.fn() }),
 }));
 
 import { TrackerHubScreen } from "./TrackerHubScreen";
@@ -126,6 +132,35 @@ const promptsFixture: PromptList = {
   topics: [],
 };
 
+const lensesFixture: TrackerLensesSetupDto = {
+  trackerId: "t1",
+  trackerName: "Acme · US Tracker",
+  lenses: [
+    {
+      id: "l1",
+      code: "category",
+      name: "Category Discovery",
+      description: "Top-of-funnel discovery prompts.",
+      displayOrder: 1,
+    },
+    {
+      id: "l2",
+      code: "comparison",
+      name: "Comparison",
+      description: "Head-to-head comparison prompts.",
+      displayOrder: 2,
+    },
+    {
+      id: "l3",
+      code: "problem",
+      name: "Problem Resolution",
+      description: "Task-oriented prompts.",
+      displayOrder: 3,
+    },
+  ],
+  selectedLensIds: ["l1", "l2"],
+};
+
 const scansFixture: ScanListItemDto[] = [
   {
     scanRunId: "s1",
@@ -152,6 +187,7 @@ beforeEach(() => {
   runScanMutate = vi.fn();
   runScanIsPending = false;
   runScanIsSuccess = false;
+  lensesState = { data: lensesFixture, isLoading: false, isError: false };
 });
 
 describe("TrackerHubScreen", () => {
@@ -230,5 +266,42 @@ describe("TrackerHubScreen", () => {
     summaryState = { tracker: undefined, isLoading: false, isError: false };
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByText(/tracker not found/i)).toBeInTheDocument();
+  });
+
+  it("Lenses tab lists each lens with its active/inactive state", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Lenses/i }));
+
+    // Header summary reflects 2 of 3 selected.
+    expect(screen.getByText(/2 of 3 Visibility Lenses active/i)).toBeInTheDocument();
+
+    // Each lens name renders. We don't assert the chip color, just the
+    // textual badge for active/inactive.
+    expect(screen.getByText("Category Discovery")).toBeInTheDocument();
+    expect(screen.getByText("Comparison")).toBeInTheDocument();
+    expect(screen.getByText("Problem Resolution")).toBeInTheDocument();
+    expect(screen.getAllByText("Active").length).toBe(2);
+    expect(screen.getAllByText("Inactive").length).toBe(1);
+  });
+
+  it("Lenses tab Edit link points at the edit screen with tab=lenses", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Lenses/i }));
+    const editLink = screen.getByRole("link", { name: /Edit lenses/i });
+    expect(editLink).toHaveAttribute("href", "/brands/b1/trackers/t1/edit");
+  });
+
+  it("Lenses tab shows a loading hint while setup is loading", async () => {
+    lensesState = { data: undefined, isLoading: true, isError: false };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Lenses/i }));
+    expect(screen.getByText(/Loading lenses/i)).toBeInTheDocument();
+  });
+
+  it("Lenses tab shows an error hint when the setup query errors", async () => {
+    lensesState = { data: undefined, isLoading: false, isError: true };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("tab", { name: /Lenses/i }));
+    expect(screen.getByText(/Failed to load lenses/i)).toBeInTheDocument();
   });
 });

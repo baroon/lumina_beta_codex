@@ -20,6 +20,7 @@ import { usePrompts } from "@/features/trackers/hooks/usePrompts";
 import { useRunScan, useTrackerScans } from "@/features/trackers/hooks/useScans";
 import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
+import { useTrackerLensesSetup } from "@/features/trackers/hooks/useTrackerLenses";
 import type { PromptDto, ScanListItemDto, TrackerScheduleSetup } from "@/types/api";
 
 interface TrackerHubScreenProps {
@@ -33,10 +34,9 @@ interface TrackerHubScreenProps {
  * are flattened into the sidebar. Tabs are mirrored to `?tab=` via the
  * Tabs molecule so refresh + shared links land on the same panel.
  *
- * Schedule, Prompts, and Scans tabs render real data. Overview and
- * Lenses ship as ComingSoon placeholders — Overview needs MetricCategoryLayout
- * scoped to one tracker (downstream of step 5's scope plumbing) and
- * Lenses needs a dedicated per-tracker lens endpoint.
+ * Schedule, Prompts, Lenses, and Scans tabs render real data. The
+ * Overview tab still ships as ComingSoon — it needs MetricCategoryLayout
+ * scoped to one tracker (downstream of step 5's scope plumbing).
  */
 export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) {
   const summary = useTrackerSummary(trackerId);
@@ -89,13 +89,7 @@ export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) 
       id: "lenses",
       label: "Lenses",
       icon: Sliders,
-      children: (
-        <ComingSoon
-          icon={Sliders}
-          title="Visibility Lens selection"
-          description="The six Visibility Lenses currently active for this tracker."
-        />
-      ),
+      children: <LensesTab trackerId={trackerId} brandId={brandId} />,
     },
     {
       id: "scans",
@@ -366,6 +360,80 @@ function scanStatusVariant(
   if (status === "Failed") return "destructive";
   if (status === "Cancelled") return "outline";
   return "secondary";
+}
+
+// ---------------------------------------------------------------------------
+// Lenses tab — read-only view, edit lives on TrackerEditScreen
+// ---------------------------------------------------------------------------
+
+function LensesTab({ trackerId, brandId }: { trackerId: string; brandId: string }) {
+  const setup = useTrackerLensesSetup(trackerId);
+
+  if (setup.isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-neutral-500">
+          Loading lenses…
+        </CardContent>
+      </Card>
+    );
+  }
+  if (setup.isError || !setup.data) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center text-sm text-semantic-error-600">
+          Failed to load lenses.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const selected = new Set(setup.data.selectedLensIds);
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs text-neutral-500">
+            {selected.size} of {setup.data.lenses.length} Visibility Lenses active
+          </span>
+          <Link
+            to="/brands/$brandId/trackers/$trackerId/edit"
+            params={{ brandId, trackerId }}
+            search={{ tab: "lenses" } as never}
+            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <SettingsIcon className="h-3 w-3" aria-hidden />
+            Edit lenses
+          </Link>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {setup.data.lenses.map((lens) => {
+            const isActive = selected.has(lens.id);
+            return (
+              <li
+                key={lens.id}
+                className={
+                  isActive
+                    ? "rounded-lg border border-primary-200 bg-primary-50/40 p-3"
+                    : "rounded-lg border border-neutral-200 bg-neutral-50/40 p-3 opacity-70"
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-neutral-900">{lens.name}</span>
+                  <Badge variant={isActive ? "secondary" : "outline"} className="text-[10px]">
+                    {isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                {lens.description && (
+                  <p className="mt-1 text-[11px] text-neutral-500">{lens.description}</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ---------------------------------------------------------------------------
