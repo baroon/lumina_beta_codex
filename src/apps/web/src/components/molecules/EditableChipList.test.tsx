@@ -82,4 +82,64 @@ describe("EditableChipList", () => {
     setup({ serverError: "Add failed — try again." });
     expect(screen.getByText(/Add failed/i)).toBeInTheDocument();
   });
+
+  // -------------------------------------------------------------------
+  // Click-to-rename
+  // -------------------------------------------------------------------
+
+  it("renders the chip text as plain span when no onRename is supplied", () => {
+    setup({});
+    // The Rename aria-label is only present when onRename is wired.
+    expect(
+      screen.queryByRole("button", { name: /Rename audience Job seekers/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clicking the chip name opens an inline input + Enter fires onRename", async () => {
+    const onRename = vi.fn();
+    setup({ onRename });
+    await userEvent.click(screen.getByRole("button", { name: /Rename audience Job seekers/i }));
+    const input = screen.getByDisplayValue("Job seekers") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Hiring managers{enter}");
+    expect(onRename).toHaveBeenCalledWith("1", "Hiring managers");
+  });
+
+  it("Escape cancels the rename without firing onRename", async () => {
+    const onRename = vi.fn();
+    setup({ onRename });
+    await userEvent.click(screen.getByRole("button", { name: /Rename audience Job seekers/i }));
+    const input = screen.getByDisplayValue("Job seekers") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Discarded{escape}");
+    expect(onRename).not.toHaveBeenCalled();
+    // The chip reverts to its original text + button shape.
+    expect(
+      screen.getByRole("button", { name: /Rename audience Job seekers/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("rename silently reverts on a case-insensitive sibling collision", async () => {
+    const onRename = vi.fn();
+    render(
+      <EditableChipList
+        items={[
+          { id: "1", name: "Job seekers" },
+          { id: "2", name: "HR teams" },
+        ]}
+        addPlaceholder="Add an audience…"
+        addLabel="Add audience"
+        emptyLabel="Not detected."
+        removeAriaSingular="audience"
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Rename audience Job seekers/i }));
+    const input = screen.getByDisplayValue("Job seekers") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "HR TEAMS{enter}");
+    expect(onRename).not.toHaveBeenCalled();
+  });
 });

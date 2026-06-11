@@ -44,6 +44,12 @@ import {
   useRemoveBrandTopic,
   useRemoveBrandTrustSignal,
   useRenameBrand,
+  useRenameBrandAudience,
+  useRenameBrandCompetitor,
+  useRenameBrandMarket,
+  useRenameBrandProduct,
+  useRenameBrandTopic,
+  useRenameBrandTrustSignal,
   useUpdateBrandAliases,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
@@ -599,6 +605,7 @@ function DimensionEditCard({
   removeAriaSingular,
   add,
   remove,
+  rename,
 }: {
   icon: (typeof SECTION_ICON)[keyof typeof SECTION_ICON];
   title: string;
@@ -616,6 +623,11 @@ function DimensionEditCard({
     isPending: boolean;
     isError: boolean;
   };
+  rename: {
+    mutate: (vars: { id: string; name: string }) => void;
+    isPending: boolean;
+    isError: boolean;
+  };
 }) {
   const copy = BRANDS_COPY.profile;
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
@@ -624,7 +636,9 @@ function DimensionEditCard({
     ? "Add failed — try again."
     : remove.isError
       ? "Remove failed — try again."
-      : null;
+      : rename.isError
+        ? "Rename failed — try again."
+        : null;
 
   return (
     <Card>
@@ -657,6 +671,7 @@ function DimensionEditCard({
             remove.mutate(id);
             setTimeout(() => setPendingRemoveId(null), 0);
           }}
+          onRename={(id, name) => rename.mutate({ id, name })}
         />
       </CardContent>
     </Card>
@@ -674,6 +689,7 @@ function TopicsSection({ brandId, topics }: { brandId: string; topics: readonly 
       removeAriaSingular="topic"
       add={useAddBrandTopic(brandId)}
       remove={useRemoveBrandTopic(brandId)}
+      rename={useRenameBrandTopic(brandId)}
     />
   );
 }
@@ -695,6 +711,7 @@ function CompetitorsSection({
       removeAriaSingular="competitor"
       add={useAddBrandCompetitor(brandId)}
       remove={useRemoveBrandCompetitor(brandId)}
+      rename={useRenameBrandCompetitor(brandId)}
     />
   );
 }
@@ -716,6 +733,7 @@ function AudiencesSection({
       removeAriaSingular="audience"
       add={useAddBrandAudience(brandId)}
       remove={useRemoveBrandAudience(brandId)}
+      rename={useRenameBrandAudience(brandId)}
     />
   );
 }
@@ -737,6 +755,7 @@ function MarketsSection({
       removeAriaSingular="market"
       add={useAddBrandMarket(brandId)}
       remove={useRemoveBrandMarket(brandId)}
+      rename={useRenameBrandMarket(brandId)}
     />
   );
 }
@@ -758,6 +777,7 @@ function ProductsSection({
       removeAriaSingular="product"
       add={useAddBrandProduct(brandId)}
       remove={useRemoveBrandProduct(brandId)}
+      rename={useRenameBrandProduct(brandId)}
     />
   );
 }
@@ -779,6 +799,7 @@ function TrustSignalsSection({
       removeAriaSingular="trust signal"
       add={useAddBrandTrustSignal(brandId)}
       remove={useRemoveBrandTrustSignal(brandId)}
+      rename={useRenameBrandTrustSignal(brandId)}
     />
   );
 }

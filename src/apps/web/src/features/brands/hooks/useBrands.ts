@@ -10,6 +10,7 @@ import type {
   AddBrandTopicRequest,
   AddBrandTrustSignalRequest,
   CreateBrandRequest,
+  RenameBrandDimensionRequest,
   RenameBrandRequest,
   UpdateBrandAliasesRequest,
   UpdateBrandProfileRequest,
@@ -26,6 +27,7 @@ import type {
 function makeDimensionHooks<TAddReq>(
   addFn: (brandId: string, data: TAddReq) => Promise<unknown>,
   removeFn: (brandId: string, id: string) => Promise<unknown>,
+  renameFn: (brandId: string, id: string, data: RenameBrandDimensionRequest) => Promise<unknown>,
 ) {
   return {
     useAdd(brandId: string) {
@@ -46,34 +48,52 @@ function makeDimensionHooks<TAddReq>(
         },
       });
     },
+    useRename(brandId: string) {
+      const queryClient = useQueryClient();
+      return useMutation({
+        mutationFn: (vars: { id: string; name: string }) =>
+          renameFn(brandId, vars.id, { name: vars.name }),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+        },
+      });
+    },
   };
 }
 
 const audienceHooks = makeDimensionHooks<AddBrandAudienceRequest>(
   brandsApi.addAudience,
   brandsApi.removeAudience,
+  brandsApi.renameAudience,
 );
 const marketHooks = makeDimensionHooks<AddBrandMarketRequest>(
   brandsApi.addMarket,
   brandsApi.removeMarket,
+  brandsApi.renameMarket,
 );
 const productHooks = makeDimensionHooks<AddBrandProductRequest>(
   brandsApi.addProduct,
   brandsApi.removeProduct,
+  brandsApi.renameProduct,
 );
 const trustSignalHooks = makeDimensionHooks<AddBrandTrustSignalRequest>(
   brandsApi.addTrustSignal,
   brandsApi.removeTrustSignal,
+  brandsApi.renameTrustSignal,
 );
 
 export const useAddBrandAudience = audienceHooks.useAdd;
 export const useRemoveBrandAudience = audienceHooks.useRemove;
+export const useRenameBrandAudience = audienceHooks.useRename;
 export const useAddBrandMarket = marketHooks.useAdd;
 export const useRemoveBrandMarket = marketHooks.useRemove;
+export const useRenameBrandMarket = marketHooks.useRename;
 export const useAddBrandProduct = productHooks.useAdd;
 export const useRemoveBrandProduct = productHooks.useRemove;
+export const useRenameBrandProduct = productHooks.useRename;
 export const useAddBrandTrustSignal = trustSignalHooks.useAdd;
 export const useRemoveBrandTrustSignal = trustSignalHooks.useRemove;
+export const useRenameBrandTrustSignal = trustSignalHooks.useRename;
 
 export function useBrandsList() {
   return useQuery({
@@ -199,6 +219,30 @@ export function useRemoveBrandCompetitor(brandId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (competitorId: string) => brandsApi.removeCompetitor(brandId, competitorId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/** Renames a Topic on the brand. Mirrors the dimension rename shape. */
+export function useRenameBrandTopic(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      brandsApi.renameTopic(brandId, vars.id, { name: vars.name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/** Renames a Competitor on the brand. Mirrors the dimension rename shape. */
+export function useRenameBrandCompetitor(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { id: string; name: string }) =>
+      brandsApi.renameCompetitor(brandId, vars.id, { name: vars.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
     },

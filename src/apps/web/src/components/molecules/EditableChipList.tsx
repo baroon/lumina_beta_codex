@@ -1,8 +1,9 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface EditableChipListItem {
   id: string;
@@ -34,6 +35,14 @@ interface EditableChipListProps {
    */
   onAdd: (name: string) => void;
   onRemove: (itemId: string) => void;
+  /**
+   * Optional rename callback. When provided each chip's text becomes
+   * click-to-edit (button → inline input on click, commit on blur or
+   * Enter, cancel on Escape). When omitted chips stay read-only — used
+   * by callers (e.g. brand aliases) that don't yet have a rename
+   * endpoint.
+   */
+  onRename?: (itemId: string, name: string) => void;
   isAdding?: boolean;
   /**
    * The id of the item currently being removed (drives the per-chip
@@ -66,6 +75,7 @@ export function EditableChipList({
   removeAriaSingular,
   onAdd,
   onRemove,
+  onRename,
   isAdding = false,
   pendingRemoveId = null,
   serverError = null,
@@ -104,7 +114,15 @@ export function EditableChipList({
           {items.map((item) => (
             <li key={item.id}>
               <Badge variant="secondary" className="inline-flex items-center gap-1 pr-1 text-xs">
-                <span>{item.name}</span>
+                <ChipText
+                  item={item}
+                  removeAriaSingular={removeAriaSingular}
+                  onRename={onRename}
+                  // Render against the live items list at commit time
+                  // so the duplicate guard catches sibling collisions
+                  // without re-creating the input on every render.
+                  siblingNames={items.filter((it) => it.id !== item.id).map((it) => it.name)}
+                />
                 <button
                   type="button"
                   onClick={() => onRemove(item.id)}
@@ -148,5 +166,101 @@ export function EditableChipList({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Chip text — read-only span by default, click-to-edit when the parent
+ * passed an `onRename` callback. Commit on blur or Enter, cancel on
+ * Escape, no-op when the trimmed value equals the original (saves a
+ * round-trip when the user clicks away unchanged). The duplicate guard
+ * matches the Add input's behavior so a click-to-edit collision feels
+ * identical to an Add collision.
+ */
+function ChipText({
+  item,
+  removeAriaSingular,
+  onRename,
+  siblingNames,
+}: {
+  item: EditableChipListItem;
+  removeAriaSingular: string;
+  onRename?: (itemId: string, name: string) => void;
+  siblingNames: readonly string[];
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(item.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Reset the draft when the canonical name changes (e.g. server
+  // returns a casing change or another tab renames the row).
+  useEffect(() => {
+    setDraft(item.name);
+  }, [item.name]);
+
+  // Autofocus when entering edit mode.
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  if (!onRename) {
+    return <span>{item.name}</span>;
+  }
+
+  function commit() {
+    const trimmed = draft.trim();
+    setEditing(false);
+    if (!trimmed || trimmed === item.name) {
+      setDraft(item.name);
+      return;
+    }
+    if (siblingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      // Server would reject with "already exists"; spare the
+      // round-trip and revert silently. The clientError surface on
+      // the bottom row only covers Add; for inline rename the chip
+      // simply reverts.
+      setDraft(item.name);
+      return;
+    }
+    onRename!(item.id, trimmed);
+  }
+
+  function handleKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setDraft(item.name);
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={handleKey}
+        aria-label={`Rename ${removeAriaSingular} ${item.name}`}
+        className={cn(
+          "rounded-sm bg-white px-1 py-0 text-xs text-neutral-900",
+          "border border-primary-300 focus:outline-none focus:ring-1 focus:ring-primary-500",
+        )}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={`Rename ${removeAriaSingular} ${item.name}`}
+      className="rounded-sm px-0.5 text-left hover:bg-neutral-200/60"
+    >
+      {item.name}
+    </button>
   );
 }

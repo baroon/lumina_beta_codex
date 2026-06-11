@@ -15,6 +15,8 @@ import type {
   BrandDto,
   CreateBrandRequest,
   CreateBrandResponse,
+  RenameBrandDimensionRequest,
+  RenameBrandDimensionResult,
   RenameBrandRequest,
   RenameBrandResult,
   UpdateBrandAliasesRequest,
@@ -81,4 +83,28 @@ export const brandsApi = {
 
   updateWebsiteUrl: (id: string, data: UpdateBrandWebsiteUrlRequest) =>
     apiClient.put<UpdateBrandWebsiteUrlResult>(`/api/brands/${id}/website-url`, data),
+
+  renameTopic: (id: string, topicId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/topics/${topicId}`, data),
+
+  renameCompetitor: (id: string, competitorId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(
+      `/api/brands/${id}/competitors/${competitorId}`,
+      data,
+    ),
+
+  renameAudience: (id: string, audienceId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/audiences/${audienceId}`, data),
+
+  renameMarket: (id: string, marketId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/markets/${marketId}`, data),
+
+  renameProduct: (id: string, productId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/products/${productId}`, data),
+
+  renameTrustSignal: (id: string, trustSignalId: string, data: RenameBrandDimensionRequest) =>
+    apiClient.put<RenameBrandDimensionResult>(
+      `/api/brands/${id}/trust-signals/${trustSignalId}`,
+      data,
+    ),
 };

@@ -130,6 +130,16 @@ export interface InsightsNarrativeDto {
   platformCode: string;
 }
 
+/** Shared rename payload for every brand dimension row. */
+export interface RenameBrandDimensionRequest {
+  name: string;
+}
+
+/** Shared rename response. */
+export interface RenameBrandDimensionResult {
+  name: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

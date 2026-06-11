@@ -47,6 +47,12 @@ let updateWebsiteUrlState: { isPending: boolean; isError: boolean; error?: Error
   isPending: false,
   isError: false,
 };
+let renameTopicMutate: ReturnType<typeof vi.fn>;
+let renameCompetitorMutate: ReturnType<typeof vi.fn>;
+let renameAudienceMutate: ReturnType<typeof vi.fn>;
+let renameMarketMutate: ReturnType<typeof vi.fn>;
+let renameProductMutate: ReturnType<typeof vi.fn>;
+let renameTrustSignalMutate: ReturnType<typeof vi.fn>;
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -70,6 +76,12 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useRemoveBrandTrustSignal: () => ({ mutate: removeTrustSignalMutate, ...idleMutation }),
   useRenameBrand: () => ({ mutate: renameBrandMutate, ...renameBrandState }),
   useUpdateBrandWebsiteUrl: () => ({ mutate: updateWebsiteUrlMutate, ...updateWebsiteUrlState }),
+  useRenameBrandTopic: () => ({ mutate: renameTopicMutate, ...idleMutation }),
+  useRenameBrandCompetitor: () => ({ mutate: renameCompetitorMutate, ...idleMutation }),
+  useRenameBrandAudience: () => ({ mutate: renameAudienceMutate, ...idleMutation }),
+  useRenameBrandMarket: () => ({ mutate: renameMarketMutate, ...idleMutation }),
+  useRenameBrandProduct: () => ({ mutate: renameProductMutate, ...idleMutation }),
+  useRenameBrandTrustSignal: () => ({ mutate: renameTrustSignalMutate, ...idleMutation }),
 }));
 
 import { BrandProfileScreen } from "./BrandProfileScreen";
@@ -188,6 +200,12 @@ describe("BrandProfileScreen", () => {
     renameBrandState = { isPending: false, isError: false };
     updateWebsiteUrlMutate = vi.fn();
     updateWebsiteUrlState = { isPending: false, isError: false };
+    renameTopicMutate = vi.fn();
+    renameCompetitorMutate = vi.fn();
+    renameAudienceMutate = vi.fn();
+    renameMarketMutate = vi.fn();
+    renameProductMutate = vi.fn();
+    renameTrustSignalMutate = vi.fn();
   });
 
   it("renders the brand name in the page header", () => {
@@ -611,5 +629,44 @@ describe("BrandProfileScreen", () => {
     };
     render(<BrandProfileScreen brandId="b1" />);
     expect(screen.getByText(/Website URL must be an absolute http\(s\) URL/i)).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Dimension chip rename — click-to-edit on each chip text
+  // -------------------------------------------------------------------
+
+  it("clicking a topic chip opens an inline rename input + Enter commits", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Rename topic Resume optimization/i }),
+    );
+    const input = screen.getByDisplayValue("Resume optimization") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Resume tips{enter}");
+    expect(renameTopicMutate).toHaveBeenCalledOnce();
+    expect(renameTopicMutate.mock.calls[0][0]).toEqual({ id: "t1", name: "Resume tips" });
+  });
+
+  it("clicking a competitor chip opens rename + blur commits", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Rename competitor Resume\.io/i }));
+    const input = screen.getByDisplayValue("Resume.io") as HTMLInputElement;
+    await userEvent.clear(input);
+    await userEvent.type(input, "Resume Builder Pro");
+    input.blur();
+    expect(renameCompetitorMutate).toHaveBeenCalledOnce();
+    expect(renameCompetitorMutate.mock.calls[0][0]).toEqual({
+      id: "c1",
+      name: "Resume Builder Pro",
+    });
+  });
+
+  it("rename is a no-op when the trimmed value matches the original", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Rename audience Job seekers/i }));
+    const input = screen.getByDisplayValue("Job seekers") as HTMLInputElement;
+    // Same text + blur — no mutation fires.
+    input.blur();
+    expect(renameAudienceMutate).not.toHaveBeenCalled();
   });
 });

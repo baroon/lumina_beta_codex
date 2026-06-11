@@ -383,6 +383,115 @@ public class BrandsController : ControllerBase
         }
     }
 
+    // -----------------------------------------------------------------
+    // Dimension rename endpoints — chip click-to-edit on the FE. All
+    // six handlers share the same shape, so the controller actions are
+    // intentionally near-identical wrappers around their MediatR commands.
+    // -----------------------------------------------------------------
+
+    [HttpPut("{id:guid}/topics/{topicId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandTopicResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameTopic(
+        Guid id, Guid topicId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandTopicCommand(id, topicId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/competitors/{competitorId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandCompetitorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameCompetitor(
+        Guid id, Guid competitorId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandCompetitorCommand(id, competitorId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/audiences/{audienceId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandAudienceResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameAudience(
+        Guid id, Guid audienceId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandAudienceCommand(id, audienceId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/markets/{marketId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandMarketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameMarket(
+        Guid id, Guid marketId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandMarketCommand(id, marketId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/products/{productId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandProductResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameProduct(
+        Guid id, Guid productId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandProductCommand(id, productId, request.Name), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/trust-signals/{trustSignalId:guid}")]
+    [ProducesResponseType(typeof(RenameBrandTrustSignalResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenameTrustSignal(
+        Guid id, Guid trustSignalId,
+        [FromBody] RenameBrandDimensionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new RenameBrandTrustSignalCommand(id, trustSignalId, request.Name),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
     [HttpPut("{id:guid}/profile")]
     [ProducesResponseType(typeof(UpdateBrandProfileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
