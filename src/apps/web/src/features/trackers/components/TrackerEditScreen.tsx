@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/atoms/select";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
-import { ComingSoon } from "@/components/molecules/ComingSoon";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -25,6 +24,10 @@ import {
   useConfigureTrackerSchedule,
   useTrackerScheduleSetup,
 } from "@/features/trackers/hooks/useTrackerSchedule";
+import {
+  useTrackerLensesSetup,
+  useUpdateTrackerLenses,
+} from "@/features/trackers/hooks/useTrackerLenses";
 import { cn } from "@/lib/utils";
 
 interface TrackerEditScreenProps {
@@ -125,7 +128,7 @@ export function TrackerEditScreen({ brandId, trackerId }: TrackerEditScreenProps
 
       <PromptsSection trackerId={trackerId} brandId={brandId} />
 
-      <LensesSection />
+      <LensesSection trackerId={trackerId} />
     </div>
   );
 }
@@ -315,21 +318,137 @@ function PromptsSection({ trackerId, brandId }: { trackerId: string; brandId: st
 }
 
 // ---------------------------------------------------------------------------
-// Lenses — no edit endpoint yet
+// Lenses — picker backed by GET/PUT /api/trackers/{id}/lenses
 // ---------------------------------------------------------------------------
 
-function LensesSection() {
+function LensesSection({ trackerId }: { trackerId: string }) {
+  const setup = useTrackerLensesSetup(trackerId);
+  const update = useUpdateTrackerLenses(trackerId);
+
+  const data = setup.data;
+  const [selected, setSelected] = useState<Set<string>>(() => new Set<string>());
+
+  // Reset local state whenever fresh setup data lands (initial load or
+  // post-save invalidation).
+  useEffect(() => {
+    if (data) setSelected(new Set(data.selectedLensIds));
+  }, [data]);
+
+  const dirty = useMemo(() => {
+    if (!data) return false;
+    const original = new Set(data.selectedLensIds);
+    if (original.size !== selected.size) return true;
+    for (const id of selected) if (!original.has(id)) return true;
+    return false;
+  }, [data, selected]);
+
+  const isEmpty = selected.size === 0;
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSave() {
+    if (isEmpty) return;
+    update.mutate({ lensIds: [...selected] });
+  }
+
+  function handleDiscard() {
+    if (data) setSelected(new Set(data.selectedLensIds));
+  }
+
   return (
     <Card>
-      <CardContent className="p-4">
-        <SectionHeader icon={Sliders} title="Lenses" />
-        <div className="mt-3">
-          <ComingSoon
-            icon={Sliders}
-            title="Visibility Lens selection"
-            description="All six Visibility Lenses are currently active. Per-tracker lens deselection lands when the editable endpoint ships."
-          />
-        </div>
+      <CardContent className="space-y-4 p-4">
+        <SectionHeader icon={Sliders} title="Visibility Lenses" />
+
+        {setup.isLoading ? (
+          <p className="text-xs text-neutral-500">Loading lenses…</p>
+        ) : setup.isError || !data ? (
+          <p className="text-xs text-semantic-error-600">
+            Could not load lens setup. Refresh the page to try again.
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-neutral-500">
+              Pick which Visibility Lenses generate prompts for this tracker. At least one lens is
+              required.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {data.lenses.map((lens) => {
+                const isSelected = selected.has(lens.id);
+                return (
+                  <div
+                    key={lens.id}
+                    onClick={() => toggle(lens.id)}
+                    className={cn(
+                      "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                      isSelected
+                        ? "border-primary-500 bg-primary-50"
+                        : "border-neutral-200 hover:border-neutral-300",
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggle(lens.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={lens.name}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 space-y-0.5">
+                      <div className="text-sm font-medium text-neutral-900">{lens.name}</div>
+                      {lens.description && (
+                        <div className="text-[11px] text-neutral-500">{lens.description}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+              <span className="text-[11px] text-neutral-500">
+                {isEmpty ? (
+                  <span className="text-semantic-error-600">
+                    Select at least one lens before saving.
+                  </span>
+                ) : update.isError ? (
+                  <span className="text-semantic-error-600">Save failed — try again.</span>
+                ) : update.isSuccess && !dirty ? (
+                  <span className="text-semantic-success-600">Saved.</span>
+                ) : (
+                  <>
+                    {selected.size} of {data.lenses.length} lenses selected
+                  </>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                {dirty && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDiscard}
+                    disabled={update.isPending}
+                  >
+                    Discard
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!dirty || isEmpty || update.isPending}
+                >
+                  {update.isPending ? "Saving…" : "Save lenses"}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

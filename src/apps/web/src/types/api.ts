@@ -334,6 +334,31 @@ export interface ConfigureTrackerScheduleResult {
   cadence: string;
 }
 
+/** A single Visibility Lens row for the tracker lens picker. */
+export interface LensOptionDto {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  displayOrder: number;
+}
+
+/** GET /api/trackers/{id}/lenses — lens catalog + tracker's current selection. */
+export interface TrackerLensesSetupDto {
+  trackerId: string;
+  trackerName: string;
+  lenses: LensOptionDto[];
+  selectedLensIds: string[];
+}
+
+export interface UpdateTrackerLensesRequest {
+  lensIds: string[];
+}
+
+export interface UpdateTrackerLensesResult {
+  selectedLensCount: number;
+}
+
 export interface RunScanResult {
   scanRunId: string;
   scanCheckCount: number;
