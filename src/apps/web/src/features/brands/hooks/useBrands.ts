@@ -276,6 +276,25 @@ export function useUpdateBrandCompetitorDomain(brandId: string) {
   });
 }
 
+/**
+ * Mutates a single competitor's prose description. User-facing note —
+ * not a signal-extraction input — so the BE just trims, null-coerces
+ * empty, and caps length. Invalidates the discovery cache so the
+ * dialog re-renders with the persisted shape.
+ */
+export function useUpdateBrandCompetitorDescription(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { competitorId: string; description: string | null }) =>
+      brandsApi.updateCompetitorDescription(brandId, vars.competitorId, {
+        description: vars.description,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
 /** Renames a Competitor on the brand. Mirrors the dimension rename shape. */
 export function useRenameBrandCompetitor(brandId: string) {
   const queryClient = useQueryClient();

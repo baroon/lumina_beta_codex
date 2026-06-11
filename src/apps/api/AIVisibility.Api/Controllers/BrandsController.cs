@@ -475,6 +475,32 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/competitors/{competitorId:guid}/description")]
+    [ProducesResponseType(typeof(UpdateBrandCompetitorDescriptionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateCompetitorDescription(
+        Guid id, Guid competitorId,
+        [FromBody] UpdateBrandCompetitorDescriptionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandCompetitorDescriptionCommand(id, competitorId, request.Description),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/audiences/{audienceId:guid}")]
     [ProducesResponseType(typeof(RenameBrandAudienceResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

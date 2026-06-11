@@ -158,6 +158,16 @@ export interface UpdateBrandCompetitorDomainResult {
   domain: string | null;
 }
 
+export interface UpdateBrandCompetitorDescriptionRequest {
+  /** Prose description. Empty/null clears the field. */
+  description: string | null;
+}
+
+export interface UpdateBrandCompetitorDescriptionResult {
+  /** Trimmed prose, or null after a clear. */
+  description: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

@@ -55,6 +55,7 @@ import {
   useRenameBrandTrustSignal,
   useUpdateBrandAliases,
   useUpdateBrandCompetitorAliases,
+  useUpdateBrandCompetitorDescription,
   useUpdateBrandCompetitorDomain,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
@@ -882,12 +883,13 @@ function WebsiteUrlEditor({ brandId, websiteUrl }: { brandId: string; websiteUrl
 }
 
 /**
- * Per-competitor deeper-edit dialog. Two fields the chip rename can't
- * carry: <strong>Domain</strong> (the canonical hostname that the
- * citation classifier matches inbound URLs against — wrong domain
- * silently mis-classifies citations) and <strong>Aliases</strong>
- * (the variants mention detection treats as the same competitor).
- * Save fires only the mutations whose value actually changed.
+ * Per-competitor deeper-edit dialog. Three fields the chip rename can't
+ * carry: <strong>Domain</strong> (the canonical hostname the citation
+ * classifier matches inbound URLs against — wrong domain silently
+ * mis-classifies citations), <strong>Aliases</strong> (the variants
+ * mention detection treats as the same competitor), and
+ * <strong>Description</strong> (a user-facing note). Save fires only
+ * the mutations whose value actually changed.
  */
 function CompetitorDetailsDialog({
   brandId,
@@ -902,38 +904,51 @@ function CompetitorDetailsDialog({
 }) {
   const updateAliases = useUpdateBrandCompetitorAliases(brandId);
   const updateDomain = useUpdateBrandCompetitorDomain(brandId);
+  const updateDescription = useUpdateBrandCompetitorDescription(brandId);
 
   const originalDomain = competitor.metadata?.domain ?? "";
   const originalAliases = competitor.aliases ?? [];
+  const originalDescription = competitor.description ?? "";
 
   const [domain, setDomain] = useState<string>(originalDomain);
   const [aliases, setAliases] = useState<string[]>(originalAliases);
+  const [description, setDescription] = useState<string>(originalDescription);
 
   // Reset staged state whenever the competitor in scope changes
   // (the parent reopens with a different row).
   useEffect(() => {
     setDomain(competitor.metadata?.domain ?? "");
     setAliases(competitor.aliases ?? []);
-  }, [competitor.id, competitor.aliases, competitor.metadata?.domain]);
+    setDescription(competitor.description ?? "");
+  }, [competitor.id, competitor.aliases, competitor.metadata?.domain, competitor.description]);
 
   const aliasesDirty =
     aliases.length !== originalAliases.length || aliases.some((a, i) => a !== originalAliases[i]);
   const domainDirty = domain.trim() !== originalDomain.trim();
-  const dirty = aliasesDirty || domainDirty;
+  const descriptionDirty = description.trim() !== originalDescription.trim();
+  const dirty = aliasesDirty || domainDirty || descriptionDirty;
 
-  const pending = updateAliases.isPending || updateDomain.isPending;
+  const pending = updateAliases.isPending || updateDomain.isPending || updateDescription.isPending;
 
   const errorMessage =
-    formatDialogError(updateDomain.error) ?? formatDialogError(updateAliases.error);
+    formatDialogError(updateDomain.error) ??
+    formatDialogError(updateDescription.error) ??
+    formatDialogError(updateAliases.error);
 
   async function save() {
     // Domain first so a normalization rejection doesn't get masked by
-    // a successful alias write. Close only when both succeed.
+    // a successful alias write. Close only when all succeed.
     try {
       if (domainDirty) {
         await updateDomain.mutateAsync({
           competitorId: competitor.id,
           domain: domain.trim() === "" ? null : domain.trim(),
+        });
+      }
+      if (descriptionDirty) {
+        await updateDescription.mutateAsync({
+          competitorId: competitor.id,
+          description: description.trim() === "" ? null : description.trim(),
         });
       }
       if (aliasesDirty) {
@@ -970,7 +985,8 @@ function CompetitorDetailsDialog({
                 {competitor.name}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
-                Domain feeds citation classification; aliases drive mention detection.
+                Domain feeds citation classification; aliases drive mention detection; description
+                is a note for your team.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -1011,6 +1027,23 @@ function CompetitorDetailsDialog({
               placeholder="Type and press Enter"
               variant="inline"
             />
+            <div>
+              <label
+                htmlFor={`competitor-description-${competitor.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+              >
+                Description
+              </label>
+              <textarea
+                id={`competitor-description-${competitor.id}`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Notes about this competitor…"
+                aria-label="Competitor description"
+                className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              />
+            </div>
           </div>
 
           {errorMessage && (

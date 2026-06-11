@@ -67,6 +67,13 @@ let updateCompetitorDomainState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateCompetitorDescriptionMutate: ReturnType<typeof vi.fn>;
+let updateCompetitorDescriptionMutateAsync: ReturnType<typeof vi.fn>;
+let updateCompetitorDescriptionState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -105,6 +112,11 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
     mutate: updateCompetitorDomainMutate,
     mutateAsync: updateCompetitorDomainMutateAsync,
     ...updateCompetitorDomainState,
+  }),
+  useUpdateBrandCompetitorDescription: () => ({
+    mutate: updateCompetitorDescriptionMutate,
+    mutateAsync: updateCompetitorDescriptionMutateAsync,
+    ...updateCompetitorDescriptionState,
   }),
 }));
 
@@ -236,6 +248,9 @@ describe("BrandProfileScreen", () => {
     updateCompetitorDomainMutate = vi.fn();
     updateCompetitorDomainMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateCompetitorDomainState = { isPending: false, isError: false };
+    updateCompetitorDescriptionMutate = vi.fn();
+    updateCompetitorDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
+    updateCompetitorDescriptionState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -881,6 +896,89 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/not a parseable hostname or URL/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the description textarea from competitor.description", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            description: "Online resume builder.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText(/competitor description/i)).toHaveValue(
+      "Online resume builder.",
+    );
+  });
+
+  it("Save changes fires the description mutation with the trimmed value when only the description is dirty", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const textarea = within(dialog).getByLabelText(/competitor description/i);
+    await userEvent.type(textarea, "  Strong rival.  ");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateCompetitorDescriptionMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateCompetitorDescriptionMutateAsync.mock.calls[0];
+    expect(args.competitorId).toBe("c1");
+    expect(args.description).toBe("Strong rival.");
+    expect(updateCompetitorDomainMutateAsync).not.toHaveBeenCalled();
+    expect(updateCompetitorAliasesMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("clearing the description textarea passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        competitors: [
+          {
+            ...discoveryFixture.competitors[0],
+            id: "c1",
+            name: "Resume.io",
+            description: "Existing note.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/competitor description/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateCompetitorDescriptionMutateAsync).toHaveBeenCalledOnce();
+    expect(updateCompetitorDescriptionMutateAsync.mock.calls[0][0].description).toBeNull();
+  });
+
+  it("renders a server-error message when the description save fails", async () => {
+    updateCompetitorDescriptionState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Description must be 2000 characters or fewer (got 2001)."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for competitor Resume\.io/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),
     ).toBeInTheDocument();
   });
 });
