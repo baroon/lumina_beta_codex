@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   Eye,
   Globe,
   Grid3X3,
@@ -28,6 +30,7 @@ import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { AudienceSelector } from "@/components/molecules/AudienceSelector";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
+import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
 import {
   DateGranularityToggle,
   type DateGranularity,
@@ -69,6 +72,7 @@ import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
+import { findEntityTrend } from "@/lib/entityTrend";
 import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
 import type {
@@ -458,7 +462,11 @@ function CategorizedOverview({
           {trendCard("mention")}
           {trendCard("sov")}
           {depthData && <MentionsByPlatformCard rows={depthData.mentionsByPlatform} />}
-          <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
+          <TopEntitiesCard
+            rows={data.topEntities}
+            series={data.series}
+            selectedKeys={selectedKeys}
+          />
           <TopicOwnershipCard rows={data.topicOwnership} />
         </div>
       ),
@@ -1506,14 +1514,17 @@ function formatBucketLabel(iso: string, granularity: DateGranularity): string {
 
 function TopEntitiesCard({
   rows,
+  series,
   selectedKeys,
 }: {
   rows: readonly WorkspaceTopEntityRowDto[];
+  series: readonly EntityTrendSeriesDto[];
   selectedKeys: readonly string[];
 }) {
   const copy = REPORTS_COPY.overview.topEntities;
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
   const visibleRows = rows.filter((r) => selectedSet.has(`${r.entityType}:${r.entityId}`));
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   return (
     <CollapsibleCard icon={Trophy} title={copy.title} tooltip={copy.tooltip}>
@@ -1524,6 +1535,7 @@ function TopEntitiesCard({
           <table className="w-full text-sm">
             <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
               <tr>
+                <th scope="col" className="w-6 px-2 py-2 font-medium"></th>
                 <th scope="col" className="px-4 py-2 text-left font-medium">
                   {copy.columns.entity}
                 </th>
@@ -1539,34 +1551,63 @@ function TopEntitiesCard({
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {visibleRows.map((row) => (
-                <tr key={`${row.entityType}:${row.entityId}`} className="hover:bg-neutral-50">
-                  <td className="px-4 py-2">
-                    <span className="font-medium text-neutral-900">{row.name}</span>
-                    {row.isTrackedBrand && (
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {copy.youChip}
-                      </Badge>
-                    )}
-                  </td>
-                  <MetricCell value={row.visibility} delta={row.visibilityDelta} />
-                  <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
-                  <td className="px-4 py-2 text-left">
-                    {row.sentiment ? (
-                      <div className="flex items-center gap-2">
-                        <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
-                          {row.sentiment}
-                        </Badge>
-                        {row.sentimentDelta != null && (
-                          <SentimentDeltaChip delta={row.sentimentDelta} />
+              {visibleRows.map((row) => {
+                const key = `${row.entityType}:${row.entityId}`;
+                const isExpanded = expandedKey === key;
+                const trend = findEntityTrend(series, row.entityType, row.entityId);
+                return (
+                  <Fragment key={key}>
+                    <tr
+                      className={cn(
+                        "cursor-pointer transition hover:bg-neutral-50",
+                        isExpanded && "bg-neutral-50",
+                      )}
+                      onClick={() => setExpandedKey(isExpanded ? null : key)}
+                      aria-expanded={isExpanded}
+                      aria-controls={`overview-drill-${key}`}
+                    >
+                      <td className="w-6 px-2 py-2 text-neutral-400">
+                        {isExpanded ? (
+                          <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                         )}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-neutral-400">{copy.noData}</span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <span className="font-medium text-neutral-900">{row.name}</span>
+                        {row.isTrackedBrand && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            {copy.youChip}
+                          </Badge>
+                        )}
+                      </td>
+                      <MetricCell value={row.visibility} delta={row.visibilityDelta} />
+                      <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
+                      <td className="px-4 py-2 text-left">
+                        {row.sentiment ? (
+                          <div className="flex items-center gap-2">
+                            <Badge variant={sentimentVariant(row.sentiment)} className="text-xs">
+                              {row.sentiment}
+                            </Badge>
+                            {row.sentimentDelta != null && (
+                              <SentimentDeltaChip delta={row.sentimentDelta} />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-neutral-400">{copy.noData}</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr id={`overview-drill-${key}`}>
+                        <td colSpan={5} className="bg-neutral-50 p-4">
+                          <EntityTrendDrillDown name={row.name} trend={trend} />
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

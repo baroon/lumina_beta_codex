@@ -659,6 +659,48 @@ describe("WorkspaceOverviewScreen", () => {
     expect(within(table).queryByText("Indeed")).not.toBeInTheDocument();
   });
 
+  it("Top entities row click expands an inline per-scan trend drill-down", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+
+    // Top entities is the first table on the screen.
+    const table = screen.getAllByRole("table")[0];
+    const acmeRow = within(table).getByText("Acme").closest("tr");
+    expect(acmeRow).not.toBeNull();
+    await userEvent.click(acmeRow!);
+    expect(screen.getByText(/Visibility per scan — Acme/i)).toBeInTheDocument();
+
+    // Clicking again collapses.
+    await userEvent.click(acmeRow!);
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+  });
+
+  it("Top entities drill-down falls back to a hint when the entity has no per-scan trend", async () => {
+    // Strip Indeed's MentionRate series so the drill-down has nothing to plot.
+    hookState = {
+      isLoading: false,
+      isError: false,
+      data: {
+        ...fixture,
+        series: fixture.series.filter(
+          (s) => !(s.entityId === indeedId && s.metricName === "MentionRate"),
+        ),
+      },
+      refetch: vi.fn(),
+    };
+    render(<WorkspaceOverviewScreen />);
+
+    const table = screen.getAllByRole("table")[0];
+    const indeedRow = within(table).getByText("Indeed").closest("tr");
+    expect(indeedRow).not.toBeNull();
+    await userEvent.click(indeedRow!);
+    expect(
+      screen.getByText(/Not enough per-scan data to plot Indeed's trend/i),
+    ).toBeInTheDocument();
+  });
+
   it("renders Slice B competitive sections when competitive data loaded", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     competitiveState = {
