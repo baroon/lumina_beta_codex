@@ -82,6 +82,7 @@ import type {
   PlatformMentionDto,
   SentimentSliceDto,
   WorkspaceBrandAttributeDto,
+  WorkspaceCoMentionDto,
   WorkspaceHeroDto,
   WorkspaceOverviewDto,
   WorkspaceRecentChatDto,
@@ -515,6 +516,7 @@ function CategorizedOverview({
               selectedKeys={selectedKeys}
             />
           )}
+          <CoMentionLandscapeCard rows={data.coMentions} selectedKeys={selectedKeys} />
           {depthData && <TopicHeatmapCard heatmap={depthData.topicHeatmap} />}
         </div>
       ),
@@ -735,6 +737,68 @@ function GapBlock({ group }: { group: { trackedBrandName: string; gaps: Competit
       </h3>
       <BarChartWrapper data={data} valueAxisLabel="Mentions gap" />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Co-mention landscape (Phase 4 measurement-model item #8). Bars for the
+// count of in-scope answers where a tracked brand AND the competitor were
+// both mentioned, with a per-row "share of competitor's mentions" caption
+// for context. Filtered by the selected competitor keys so toggling a
+// competitor off in the BrandSelector hides it here too.
+// ---------------------------------------------------------------------------
+
+function CoMentionLandscapeCard({
+  rows,
+  selectedKeys,
+}: {
+  rows: readonly WorkspaceCoMentionDto[];
+  selectedKeys: readonly string[];
+}) {
+  const copy = REPORTS_COPY.overview.coMentionLandscape;
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+  const visibleRows = rows.filter((r) => selectedSet.has(`Competitor:${r.competitorId}`));
+
+  if (visibleRows.length === 0) {
+    return (
+      <CollapsibleCard icon={Users} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
+    );
+  }
+
+  const data: BarChartDatum[] = visibleRows.map((r) => ({
+    label: r.competitorName,
+    value: r.coMentionCount,
+  }));
+
+  return (
+    <CollapsibleCard icon={Users} title={copy.title} tooltip={copy.tooltip}>
+      <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
+      <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
+      <ul className="mt-3 space-y-1 text-xs text-neutral-600">
+        {visibleRows.map((r) => {
+          const share =
+            r.competitorMentionCount === 0 ? null : r.coMentionCount / r.competitorMentionCount;
+          return (
+            <li
+              key={r.competitorId}
+              className="flex items-center justify-between border-b border-neutral-100 py-1 last:border-b-0"
+            >
+              <span className="font-medium text-neutral-700">{r.competitorName}</span>
+              <span className="tabular-nums">
+                {r.coMentionCount} / {r.competitorMentionCount}
+                {share != null && (
+                  <span className="ml-2 text-neutral-500">
+                    ({Math.round(share * 100)}% {copy.shareSuffix})
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </CollapsibleCard>
   );
 }
 

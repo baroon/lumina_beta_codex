@@ -244,6 +244,15 @@ export const REPORTS_COPY = {
       noData: "No tracked competitors mentioned in this window.",
       noGroups: "No tracked-brand gap data in this window.",
     },
+    coMentionLandscape: {
+      title: "Who we appear alongside",
+      tooltip: TBD_TOOLTIP,
+      subline:
+        "Co-mention count and share of each competitor's mentions where a tracked brand also appeared.",
+      noData: "No tracked competitors mentioned alongside any brand in this window.",
+      axisLabel: "Co-mentioned answers",
+      shareSuffix: "of competitor's mentions",
+    },
     recommendationRate: {
       title: "Recommendation rate by entity",
       tooltip: TBD_TOOLTIP,

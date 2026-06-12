@@ -317,6 +317,14 @@ const fixture: WorkspaceOverviewDto = {
     { rank: 2, name: "in-depth", polarity: "Positive", mentionCount: 4 },
     { rank: 3, name: "slow", polarity: "Negative", mentionCount: 2 },
   ],
+  coMentions: [
+    {
+      competitorId: indeedId,
+      competitorName: "Indeed",
+      coMentionCount: 6,
+      competitorMentionCount: 10,
+    },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -421,6 +429,17 @@ describe("WorkspaceOverviewScreen", () => {
     // Labels appear in the hero row.
     expect(screen.getByText(/absence rate/i)).toBeInTheDocument();
     expect(screen.getByText(/first-mention rate/i)).toBeInTheDocument();
+  });
+
+  it("renders the co-mention landscape card with per-competitor share text", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    // Card title.
+    expect(screen.getByText(/who we appear alongside/i)).toBeInTheDocument();
+    // Per-competitor row: "6 / 10 (60% of competitor's mentions)"
+    expect(screen.getByText(/6 \/ 10/)).toBeInTheDocument();
+    expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
   });
 
   it("renders the workspace top brand attributes as polarity-colored chips", () => {

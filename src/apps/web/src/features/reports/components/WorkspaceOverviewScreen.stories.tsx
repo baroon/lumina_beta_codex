@@ -144,6 +144,20 @@ const overviewFixture: WorkspaceOverviewDto = {
     { rank: 4, name: "expensive", polarity: "Negative", mentionCount: 7 },
     { rank: 5, name: "modern", polarity: "Neutral", mentionCount: 4 },
   ],
+  coMentions: [
+    {
+      competitorId: indeedId,
+      competitorName: "Indeed",
+      coMentionCount: 38,
+      competitorMentionCount: 51,
+    },
+    {
+      competitorId: glassdoorId,
+      competitorName: "Glassdoor",
+      coMentionCount: 12,
+      competitorMentionCount: 24,
+    },
+  ],
 };
 
 const competitiveFixture: WorkspaceCompetitiveDto = {
@@ -417,6 +431,7 @@ export const EmptyWorkspace: Story = {
         series: [],
         topEntities: [],
         topBrandAttributes: [],
+        coMentions: [],
       } satisfies WorkspaceOverviewDto);
       return (
         <QueryClientProvider client={queryClient}>

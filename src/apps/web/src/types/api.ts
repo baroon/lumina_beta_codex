@@ -1251,6 +1251,14 @@ export interface WorkspaceOverviewDto {
    * mentions. Empty when no attributes were extracted in scope.
    */
   topBrandAttributes: WorkspaceBrandAttributeDto[];
+  /**
+   * Per-competitor co-mention rollup. Each row = a tracked competitor
+   * with the count of in-scope answers where both a tracked brand and
+   * this competitor appeared. Sorted by coMentionCount desc, then
+   * alphabetically. Competitors with zero in-scope mentions are
+   * omitted.
+   */
+  coMentions: WorkspaceCoMentionDto[];
 }
 
 export interface WorkspaceBrandAttributeDto {
@@ -1260,6 +1268,16 @@ export interface WorkspaceBrandAttributeDto {
   polarity: string;
   /** Distinct mentions tagged with this attribute. */
   mentionCount: number;
+}
+
+/** One row in the workspace co-mention rollup (Phase 4 measurement-model item #8). */
+export interface WorkspaceCoMentionDto {
+  competitorId: string;
+  competitorName: string;
+  /** Distinct in-scope answers where BOTH a tracked brand AND this competitor appeared. */
+  coMentionCount: number;
+  /** Distinct in-scope answers where this competitor was mentioned (regardless of brand). */
+  competitorMentionCount: number;
 }
 
 export interface TrackedBrandDto {

@@ -67,7 +67,18 @@ public sealed record WorkspaceOverviewDto(
     /// workspace grain = mode polarity across the attribute's mentions.
     /// Empty when no attributes were extracted in scope.
     /// </summary>
-    IReadOnlyList<WorkspaceBrandAttributeDto> TopBrandAttributes);
+    IReadOnlyList<WorkspaceBrandAttributeDto> TopBrandAttributes,
+    /// <summary>
+    /// Per-competitor co-mention rollup across the window (Phase 4
+    /// measurement-model expansion, item #8 — competitive landscape).
+    /// Each row is a tracked competitor and the count of in-scope
+    /// answers where BOTH a tracked brand AND this competitor were
+    /// mentioned. The FE divides <c>CoMentionCount</c> by
+    /// <c>CompetitorMentionCount</c> to get "what % of the
+    /// competitor's mentions share the conversation with us." Rows
+    /// with zero competitor mentions are omitted.
+    /// </summary>
+    IReadOnlyList<WorkspaceCoMentionDto> CoMentions);
 
 /// <summary>
 /// One attribute the AI ascribed to a tracked brand across the workspace.
@@ -82,6 +93,20 @@ public sealed record WorkspaceBrandAttributeDto(
     string Polarity,
     /// <summary>Distinct mentions tagged with this attribute in scope.</summary>
     int MentionCount);
+
+/// <summary>
+/// One row in the workspace co-mention rollup. Powers the "competitive
+/// landscape" chart: when our tracked brands are mentioned, which
+/// competitors share the conversation, and at what rate relative to
+/// each competitor's own visibility.
+/// </summary>
+public sealed record WorkspaceCoMentionDto(
+    Guid CompetitorId,
+    string CompetitorName,
+    /// <summary>Distinct in-scope answers where BOTH a tracked brand AND this competitor appeared.</summary>
+    int CoMentionCount,
+    /// <summary>Distinct in-scope answers where this competitor was mentioned (regardless of any brand mention).</summary>
+    int CompetitorMentionCount);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

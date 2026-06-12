@@ -124,6 +124,8 @@ public class GetWorkspaceOverviewQueryHandler
         var topEntities = BuildTopEntities(trendPoints, entityNames, trackedBrandIds);
         var topBrandAttributes = await BuildTopBrandAttributesAsync(
             scanIds, trackedBrandIds, cancellationToken);
+        var coMentions = await BuildCoMentionsAsync(
+            scanIds, trackedBrandIds, competitorRows, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -136,7 +138,8 @@ public class GetWorkspaceOverviewQueryHandler
             PreviousHero: previousHero,
             Series: series,
             TopEntities: topEntities,
-            TopBrandAttributes: topBrandAttributes);
+            TopBrandAttributes: topBrandAttributes,
+            CoMentions: coMentions);
     }
 
     /// <summary>
@@ -172,7 +175,8 @@ public class GetWorkspaceOverviewQueryHandler
             null,
             Array.Empty<EntityTrendSeriesDto>(),
             Array.Empty<WorkspaceTopEntityRowDto>(),
-            Array.Empty<WorkspaceBrandAttributeDto>());
+            Array.Empty<WorkspaceBrandAttributeDto>(),
+            Array.Empty<WorkspaceCoMentionDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -417,6 +421,85 @@ public class GetWorkspaceOverviewQueryHandler
             .ToList();
 
         return grouped;
+    }
+
+    // -----------------------------------------------------------------
+    // Co-mentions (Phase 4 measurement-model expansion, item #8)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Workspace-wide per-competitor co-mention rollup. For each tracked
+    /// competitor in the workspace, counts distinct in-scope answers
+    /// where BOTH a tracked brand AND this competitor were mentioned.
+    /// Computed from the Mentions spine rather than the MentionPair
+    /// table because we need the unrelated "competitor mentioned without
+    /// our brand" count too (it's the denominator the FE divides by to
+    /// get "% of competitor mentions that share the conversation").
+    /// Competitors with zero in-scope mentions are dropped — they'd
+    /// crowd the chart with empty bars. Ordered by co-mention count
+    /// desc, then alphabetically by name.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceCoMentionDto>> BuildCoMentionsAsync(
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        IReadOnlyList<WorkspaceCompetitorDto> competitors,
+        CancellationToken ct)
+    {
+        if (scanIds.Count == 0 || competitors.Count == 0)
+            return Array.Empty<WorkspaceCoMentionDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+        var competitorIdSet = competitors.Select(c => c.CompetitorId).ToHashSet();
+
+        // In-scope answer ids — bounded by the workspace scans.
+        var answerIds = await _db.AIAnswers.AsNoTracking()
+            .Where(a => _db.PromptRuns.Any(pr =>
+                pr.Id == a.PromptRunId && scanIdSet.Contains(pr.ScanRunId)))
+            .Select(a => a.Id)
+            .ToListAsync(ct);
+        if (answerIds.Count == 0) return Array.Empty<WorkspaceCoMentionDto>();
+
+        var answerIdSet = answerIds.ToHashSet();
+
+        // Distinct in-scope answers where ANY tracked brand was mentioned.
+        var brandAnswerIds = await _db.Mentions.AsNoTracking()
+            .Where(m => answerIdSet.Contains(m.AIAnswerId)
+                && m.EntityType == MentionEntityType.Brand
+                && trackedBrandIds.Contains(m.EntityId))
+            .Select(m => m.AIAnswerId)
+            .Distinct()
+            .ToListAsync(ct);
+        var brandAnswerIdSet = brandAnswerIds.ToHashSet();
+
+        // All competitor mentions in scope (Mention rows). We collapse to
+        // distinct (competitorId, answerId) pairs in memory because EF's
+        // grouped distinct count has uneven provider support.
+        var competitorMentionPairs = await _db.Mentions.AsNoTracking()
+            .Where(m => answerIdSet.Contains(m.AIAnswerId)
+                && m.EntityType == MentionEntityType.Competitor
+                && competitorIdSet.Contains(m.EntityId))
+            .Select(m => new { CompetitorId = m.EntityId, m.AIAnswerId })
+            .ToListAsync(ct);
+
+        var byCompetitor = competitorMentionPairs
+            .GroupBy(p => p.CompetitorId)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.AIAnswerId).Distinct().ToHashSet());
+
+        return competitors
+            .Where(c => byCompetitor.ContainsKey(c.CompetitorId))
+            .Select(c =>
+            {
+                var ids = byCompetitor[c.CompetitorId];
+                var coMention = ids.Count(id => brandAnswerIdSet.Contains(id));
+                return new WorkspaceCoMentionDto(
+                    CompetitorId: c.CompetitorId,
+                    CompetitorName: c.Name,
+                    CoMentionCount: coMention,
+                    CompetitorMentionCount: ids.Count);
+            })
+            .OrderByDescending(r => r.CoMentionCount)
+            .ThenBy(r => r.CompetitorName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     // -----------------------------------------------------------------

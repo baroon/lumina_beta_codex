@@ -95,7 +95,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
         void SeedScanWithAnswer(
             TrackerConfiguration tracker, DateTime startedAt, Brand brand,
             bool mentionsBrand, string sentimentCategory = "Positive",
-            (string Name, AttributePolarity Polarity)[]? brandAttributes = null)
+            (string Name, AttributePolarity Polarity)[]? brandAttributes = null,
+            Guid[]? competitorMentions = null)
         {
             var prompt = new Prompt
             {
@@ -153,6 +154,21 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 }
             }
 
+            if (competitorMentions is { Length: > 0 })
+            {
+                foreach (var competitorId in competitorMentions)
+                {
+                    ctx.Mentions.Add(new Mention
+                    {
+                        Id = Guid.NewGuid(), AIAnswerId = answer.Id,
+                        EntityType = MentionEntityType.Competitor, EntityId = competitorId,
+                        NormalizedName = "c", EvidenceSnippet = "e",
+                        IsRecommended = false, Sentiment = Sentiment.Neutral,
+                        CreatedAt = startedAt,
+                    });
+                }
+            }
+
             // Trend points — one per metric per entity for this scan.
             var brandMentionRate = mentionsBrand ? 1.0 : 0.0;
             ctx.TrendPoints.Add(NewTrendPoint(tracker.Id, scan.Id, TrendEntityType.Brand, brand.Id, MetricNames.BrandMentionRate, brandMentionRate, startedAt));
@@ -168,21 +184,34 @@ public class GetWorkspaceOverviewQueryHandlerTests
         //   "in-depth"    — 1 mention (Positive)
         //   "slow"        — 1 mention (Negative)
         // Workspace ranking by count desc → trustworthy(3), in-depth(1), slow(1).
+        // Co-mention fixture (item #8):
+        //   Acme@-14d: Acme brand + Indeed competitor → CO for Indeed (1).
+        //   Acme@-1d : Acme brand + Glassdoor competitor → CO for Glassdoor (1).
+        //   Beta@-14d: no brand mention but Indeed mentioned → boosts
+        //              Indeed's CompetitorMentionCount without adding a CO.
+        //   Beta@-1d : Beta brand only, no competitors.
+        // Expected workspace rollup (sorted by CO desc, then name asc):
+        //   Glassdoor: CO=1, total=1
+        //   Indeed   : CO=1, total=2
         SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme,
             mentionsBrand: true, sentimentCategory: "Negative",
             brandAttributes: new[]
             {
                 ("trustworthy", AttributePolarity.Positive),
                 ("in-depth", AttributePolarity.Positive),
-            });
+            },
+            competitorMentions: new[] { sharedId });
         SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
             {
                 ("trustworthy", AttributePolarity.Positive),
                 ("slow", AttributePolarity.Negative),
-            });
-        SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta, mentionsBrand: false, sentimentCategory: "Neutral");
+            },
+            competitorMentions: new[] { glassdoor.Id });
+        SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta,
+            mentionsBrand: false, sentimentCategory: "Neutral",
+            competitorMentions: new[] { sharedId });
         SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -262,9 +291,10 @@ public class GetWorkspaceOverviewQueryHandlerTests
 
         // 4 scans total (2 per tracker × 2 trackers) → 4 prompt-runs → 4 answers.
         // Brand mentions on 3 of them (Acme x2 + Beta latest). BrandMentionRate = 3/4.
+        // Mention rows = 3 brand + 3 competitor (Acme×2 + Beta@-14d) = 6.
         result.ScanCount.Should().Be(4);
         result.Hero.Queries.Should().Be(4);
-        result.Hero.Mentions.Should().Be(3);
+        result.Hero.Mentions.Should().Be(6);
         result.Hero.BrandMentionRate.Should().BeApproximately(3.0 / 4.0, 1e-9);
     }
 
@@ -295,9 +325,11 @@ public class GetWorkspaceOverviewQueryHandlerTests
             new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
             CancellationToken.None);
 
-        // 3 answers have any mention; in every one the tracked brand is the
-        // only entity mentioned, so it's first-named in all of them.
-        result.Hero.BrandFirstMentionRate.Should().BeApproximately(1.0, 1e-9);
+        // 4 answers have ≥1 mention now (Acme×2 with brand + competitor,
+        // Beta@-14d with Indeed only, Beta@-1d with brand only). The
+        // tracked brand is first-named in 3 of them (Acme×2 + Beta@-1d);
+        // Beta@-14d has Indeed as the only mention so it isn't.
+        result.Hero.BrandFirstMentionRate.Should().BeApproximately(3.0 / 4.0, 1e-9);
     }
 
     [Fact]
@@ -323,6 +355,44 @@ public class GetWorkspaceOverviewQueryHandlerTests
         // Ties on count (in-depth=1, slow=1) break alphabetically ascending.
         result.TopBrandAttributes[1].Name.Should().Be("in-depth");
         result.TopBrandAttributes[2].Name.Should().Be("slow");
+    }
+
+    [Fact]
+    public async Task CoMentions_CountDistinctAnswersWithBothBrandAndCompetitor()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Sorted by CoMentionCount desc, then name asc. Both have CO=1.
+        result.CoMentions.Should().HaveCount(2);
+        result.CoMentions[0].CompetitorName.Should().Be("Glassdoor");
+        result.CoMentions[0].CoMentionCount.Should().Be(1);
+        result.CoMentions[0].CompetitorMentionCount.Should().Be(1);
+        result.CoMentions[1].CompetitorName.Should().Be("Indeed");
+        result.CoMentions[1].CoMentionCount.Should().Be(1);
+        // Indeed appears in 2 answers (Acme@-14d co-mention + Beta@-14d alone).
+        result.CoMentions[1].CompetitorMentionCount.Should().Be(2);
+        result.CoMentions[1].CompetitorId.Should().Be(seed.SharedCompetitorId);
+    }
+
+    [Fact]
+    public async Task CoMentions_AreEmptyWhenScopeHasNoAnswers()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var future = DateTime.UtcNow.AddDays(30);
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(future, future.AddDays(7), null, null, null, null, null),
+            CancellationToken.None);
+
+        result.CoMentions.Should().BeEmpty();
     }
 
     [Fact]
