@@ -69,6 +69,7 @@ function overview(topEntities: WorkspaceTopEntityRowDto[]): WorkspaceOverviewDto
     previousHero: null,
     series: [],
     topEntities,
+    topBrandAttributes: [],
   };
 }
 

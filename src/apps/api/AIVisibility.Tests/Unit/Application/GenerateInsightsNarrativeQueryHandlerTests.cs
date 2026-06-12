@@ -100,7 +100,8 @@ public class GenerateInsightsNarrativeQueryHandlerTests
                 Visibility: 0.8, VisibilityDelta: 0,
                 ShareOfVoice: 0.6, ShareOfVoiceDelta: 0,
                 Sentiment: "Neutral", SentimentDelta: 0),
-        });
+        },
+        TopBrandAttributes: Array.Empty<WorkspaceBrandAttributeDto>());
 
     [Fact]
     public async Task Generate_ReturnsNarrativeText_AndPlatformCode_OnHappyPath()

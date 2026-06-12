@@ -312,6 +312,11 @@ const fixture: WorkspaceOverviewDto = {
       sentimentDelta: null,
     },
   ],
+  topBrandAttributes: [
+    { rank: 1, name: "trustworthy", polarity: "Positive", mentionCount: 8 },
+    { rank: 2, name: "in-depth", polarity: "Positive", mentionCount: 4 },
+    { rank: 3, name: "slow", polarity: "Negative", mentionCount: 2 },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -416,6 +421,20 @@ describe("WorkspaceOverviewScreen", () => {
     // Labels appear in the hero row.
     expect(screen.getByText(/absence rate/i)).toBeInTheDocument();
     expect(screen.getByText(/first-mention rate/i)).toBeInTheDocument();
+  });
+
+  it("renders the workspace top brand attributes as polarity-colored chips", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    // All 3 fixture attributes appear in the Sentiment & Trust section.
+    expect(screen.getByText("trustworthy")).toBeInTheDocument();
+    expect(screen.getByText("in-depth")).toBeInTheDocument();
+    expect(screen.getByText("slow")).toBeInTheDocument();
+    // Counts render alongside the names.
+    expect(screen.getByText("×8")).toBeInTheDocument();
+    expect(screen.getByText("×4")).toBeInTheDocument();
+    expect(screen.getByText("×2")).toBeInTheDocument();
   });
 
   it("Absence rate delta renders DOWN as success-colored (invertDelta) because lower is better", () => {

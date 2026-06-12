@@ -1245,6 +1245,21 @@ export interface WorkspaceOverviewDto {
   previousHero: WorkspaceHeroDto | null;
   series: EntityTrendSeriesDto[];
   topEntities: WorkspaceTopEntityRowDto[];
+  /**
+   * Top-N attributes (rank ≤10) the AI ascribed to any tracked brand
+   * across the window. Polarity = mode across the attribute's
+   * mentions. Empty when no attributes were extracted in scope.
+   */
+  topBrandAttributes: WorkspaceBrandAttributeDto[];
+}
+
+export interface WorkspaceBrandAttributeDto {
+  rank: number;
+  name: string;
+  /** "Positive" | "Negative" | "Neutral" — mode across the attribute's mentions. */
+  polarity: string;
+  /** Distinct mentions tagged with this attribute. */
+  mentionCount: number;
 }
 
 export interface TrackedBrandDto {

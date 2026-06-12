@@ -81,6 +81,7 @@ import type {
   TopicHeatmapDto,
   PlatformMentionDto,
   SentimentSliceDto,
+  WorkspaceBrandAttributeDto,
   WorkspaceHeroDto,
   WorkspaceOverviewDto,
   WorkspaceRecentChatDto,
@@ -479,6 +480,7 @@ function CategorizedOverview({
         <div className="space-y-4">
           {trendCard("sentiment")}
           {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
+          <BrandAttributesCard attributes={data.topBrandAttributes} />
           {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
         </div>
       ),
@@ -1549,6 +1551,54 @@ function SentimentDistributionCard({ slices }: { slices: readonly SentimentSlice
       )}
     </CollapsibleCard>
   );
+}
+
+/**
+ * Top brand attributes aggregated across every tracker's scans in window.
+ * Mirrors the per-scan ScanResultsScreen "Brand attributes" card so the
+ * chip pattern + polarity coloring are consistent across scopes.
+ * Attribute polarity is independent of mention sentiment — a positive
+ * mention can carry a negative attribute, which is the load-bearing
+ * reason this is tracked separately from the sentiment distribution.
+ */
+function BrandAttributesCard({
+  attributes,
+}: {
+  attributes: readonly WorkspaceBrandAttributeDto[];
+}) {
+  const copy = REPORTS_COPY.overview.brandAttributes;
+  return (
+    <CollapsibleCard icon={ThumbsUp} title={copy.title} tooltip={copy.tooltip}>
+      {attributes.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2" role="list">
+          {attributes.map((a) => (
+            <li key={`${a.rank}:${a.name}`}>
+              <Badge variant={attributePolarityVariant(a.polarity)} className="gap-1 text-xs">
+                <span>{a.name}</span>
+                <span className="opacity-70">×{a.mentionCount}</span>
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function attributePolarityVariant(
+  polarity: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (polarity) {
+    case "Positive":
+      return "success";
+    case "Negative":
+      return "destructive";
+    case "Neutral":
+    default:
+      return "secondary";
+  }
 }
 
 type TopicMetric = "answers" | "citations";

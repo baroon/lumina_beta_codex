@@ -56,7 +56,32 @@ public sealed record WorkspaceOverviewDto(
     /// <summary>One series per (entity, metric) across the entire workspace, ordered chronologically.</summary>
     IReadOnlyList<EntityTrendSeriesDto> Series,
     /// <summary>Top entities table — every tracked brand first, then competitors by visibility desc.</summary>
-    IReadOnlyList<WorkspaceTopEntityRowDto> TopEntities);
+    IReadOnlyList<WorkspaceTopEntityRowDto> TopEntities,
+    /// <summary>
+    /// Top-N attributes the AI ascribed to any tracked brand across the
+    /// window (Phase 4 measurement-model expansion, item #10). Aggregated
+    /// from <c>MentionAttribute</c> rows joined to brand-typed Mentions —
+    /// from-source rather than re-summing per-scan <c>BrandTopAttribute</c>
+    /// metric rows so attributes consistently in the #11+ slot of any one
+    /// scan still surface when they accumulate broadly. Polarity at the
+    /// workspace grain = mode polarity across the attribute's mentions.
+    /// Empty when no attributes were extracted in scope.
+    /// </summary>
+    IReadOnlyList<WorkspaceBrandAttributeDto> TopBrandAttributes);
+
+/// <summary>
+/// One attribute the AI ascribed to a tracked brand across the workspace.
+/// Mirrors the per-scan <c>BrandAttributeDto</c> shape but is named
+/// distinctly so the FE can keep its types ergonomic (the per-scan and
+/// per-workspace fields end up in different DTO trees).
+/// </summary>
+public sealed record WorkspaceBrandAttributeDto(
+    int Rank,
+    string Name,
+    /// <summary>"Positive" / "Negative" / "Neutral" — mode across the attribute's mentions.</summary>
+    string Polarity,
+    /// <summary>Distinct mentions tagged with this attribute in scope.</summary>
+    int MentionCount);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

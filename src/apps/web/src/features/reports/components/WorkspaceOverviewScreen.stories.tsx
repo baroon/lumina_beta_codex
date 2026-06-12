@@ -137,6 +137,13 @@ const overviewFixture: WorkspaceOverviewDto = {
       sentimentDelta: null,
     },
   ],
+  topBrandAttributes: [
+    { rank: 1, name: "trustworthy", polarity: "Positive", mentionCount: 22 },
+    { rank: 2, name: "easy to use", polarity: "Positive", mentionCount: 18 },
+    { rank: 3, name: "in-depth", polarity: "Positive", mentionCount: 11 },
+    { rank: 4, name: "expensive", polarity: "Negative", mentionCount: 7 },
+    { rank: 5, name: "modern", polarity: "Neutral", mentionCount: 4 },
+  ],
 };
 
 const competitiveFixture: WorkspaceCompetitiveDto = {
@@ -409,6 +416,7 @@ export const EmptyWorkspace: Story = {
         previousHero: null,
         series: [],
         topEntities: [],
+        topBrandAttributes: [],
       } satisfies WorkspaceOverviewDto);
       return (
         <QueryClientProvider client={queryClient}>

@@ -122,6 +122,8 @@ public class GetWorkspaceOverviewQueryHandler
         var entityNames = await ResolveEntityNamesAsync(trendPoints, cancellationToken);
         var series = BuildSeries(trendPoints, entityNames);
         var topEntities = BuildTopEntities(trendPoints, entityNames, trackedBrandIds);
+        var topBrandAttributes = await BuildTopBrandAttributesAsync(
+            scanIds, trackedBrandIds, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -133,7 +135,8 @@ public class GetWorkspaceOverviewQueryHandler
             Hero: hero,
             PreviousHero: previousHero,
             Series: series,
-            TopEntities: topEntities);
+            TopEntities: topEntities,
+            TopBrandAttributes: topBrandAttributes);
     }
 
     /// <summary>
@@ -168,7 +171,8 @@ public class GetWorkspaceOverviewQueryHandler
             new WorkspaceHeroDto(0, 0, 0, null, null, null),
             null,
             Array.Empty<EntityTrendSeriesDto>(),
-            Array.Empty<WorkspaceTopEntityRowDto>());
+            Array.Empty<WorkspaceTopEntityRowDto>(),
+            Array.Empty<WorkspaceBrandAttributeDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -345,6 +349,74 @@ public class GetWorkspaceOverviewQueryHandler
             .OrderBy(s => s.MetricName, StringComparer.Ordinal)
             .ThenBy(s => s.EntityName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    // -----------------------------------------------------------------
+    // Top brand attributes (Phase 4 measurement-model expansion, item #10)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Workspace-wide top-N attributes the AI ascribed to any tracked
+    /// brand. Joins MentionAttribute → Mention → AIAnswer → PromptRun →
+    /// ScanRun so the scope mirrors the hero counts exactly. Aggregates
+    /// from the leaf rows rather than re-summing per-scan
+    /// <c>BrandTopAttribute</c> ScanMetric rows because each scan's
+    /// rollup caps at 10 — broad-but-shallow attributes that hit #11+
+    /// in many scans would otherwise vanish. Polarity at the workspace
+    /// grain = mode polarity across the attribute's mentions; ties on
+    /// polarity fall back to alphabetical for determinism, ties on
+    /// count fall back to alphabetical on attribute name. Top 10.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceBrandAttributeDto>> BuildTopBrandAttributesAsync(
+        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+    {
+        if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandAttributeDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+
+        // Pull (Name, Polarity) for every MentionAttribute attached to a
+        // tracked-brand Mention whose answer's promptRun's scan is in
+        // scope. The mentions table is the polymorphic mention spine;
+        // brand-typed rows where EntityId is in trackedBrandIds are what
+        // we want.
+        var rows = await (
+            from ma in _db.MentionAttributes.AsNoTracking()
+            join m in _db.Mentions.AsNoTracking() on ma.MentionId equals m.Id
+            join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
+            join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
+            where m.EntityType == MentionEntityType.Brand
+                && trackedBrandIds.Contains(m.EntityId)
+                && scanIdSet.Contains(pr.ScanRunId)
+            select new { ma.Name, ma.Polarity })
+            .ToListAsync(ct);
+
+        if (rows.Count == 0) return Array.Empty<WorkspaceBrandAttributeDto>();
+
+        // Group by attribute name (LLM-emitted text, normalized
+        // on-write); polarity is the mode across the rows.
+        var grouped = rows
+            .GroupBy(r => r.Name)
+            .Select(g =>
+            {
+                var modePolarity = g.GroupBy(r => r.Polarity)
+                    .OrderByDescending(pg => pg.Count())
+                    .ThenBy(pg => pg.Key.ToString(), StringComparer.Ordinal)
+                    .First().Key;
+                return new
+                {
+                    Name = g.Key,
+                    Polarity = modePolarity.ToString(),
+                    MentionCount = g.Count(),
+                };
+            })
+            .OrderByDescending(r => r.MentionCount)
+            .ThenBy(r => r.Name, StringComparer.Ordinal)
+            .Take(10)
+            .Select((r, i) => new WorkspaceBrandAttributeDto(
+                Rank: i + 1, Name: r.Name, Polarity: r.Polarity, MentionCount: r.MentionCount))
+            .ToList();
+
+        return grouped;
     }
 
     // -----------------------------------------------------------------

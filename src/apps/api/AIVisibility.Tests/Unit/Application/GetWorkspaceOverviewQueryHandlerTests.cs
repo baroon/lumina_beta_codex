@@ -94,7 +94,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
         };
         void SeedScanWithAnswer(
             TrackerConfiguration tracker, DateTime startedAt, Brand brand,
-            bool mentionsBrand, string sentimentCategory = "Positive")
+            bool mentionsBrand, string sentimentCategory = "Positive",
+            (string Name, AttributePolarity Polarity)[]? brandAttributes = null)
         {
             var prompt = new Prompt
             {
@@ -125,14 +126,31 @@ public class GetWorkspaceOverviewQueryHandlerTests
             scansByTracker[tracker.Id].Add(scan);
             if (mentionsBrand)
             {
-                ctx.Mentions.Add(new Mention
+                var mention = new Mention
                 {
                     Id = Guid.NewGuid(), AIAnswerId = answer.Id,
                     EntityType = MentionEntityType.Brand, EntityId = brand.Id,
                     NormalizedName = brand.Name, EvidenceSnippet = "e",
                     IsRecommended = false, Sentiment = Sentiment.Positive,
                     CreatedAt = startedAt,
-                });
+                };
+                ctx.Mentions.Add(mention);
+                if (brandAttributes is { Length: > 0 })
+                {
+                    foreach (var (name, polarity) in brandAttributes)
+                    {
+                        ctx.MentionAttributes.Add(new MentionAttribute
+                        {
+                            Id = Guid.NewGuid(),
+                            MentionId = mention.Id,
+                            Name = name,
+                            Polarity = polarity,
+                            EvidenceSnippet = "e",
+                            ConfidenceScore = 0.9,
+                            CreatedAt = startedAt,
+                        });
+                    }
+                }
             }
 
             // Trend points — one per metric per entity for this scan.
@@ -145,10 +163,32 @@ public class GetWorkspaceOverviewQueryHandlerTests
         // Acme: sentiment goes Negative -> Positive (Δ = +2).
         // Beta: sentiment goes Neutral -> Positive (Δ = +1).
         // Gives downstream tests something to assert against.
-        SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme, mentionsBrand: true, sentimentCategory: "Negative");
-        SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme, mentionsBrand: true, sentimentCategory: "Positive");
+        // Attribute fixture for the workspace top-attributes aggregation:
+        //   "trustworthy" — 3 mentions (Positive×2 + Negative×1) → mode Positive
+        //   "in-depth"    — 1 mention (Positive)
+        //   "slow"        — 1 mention (Negative)
+        // Workspace ranking by count desc → trustworthy(3), in-depth(1), slow(1).
+        SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme,
+            mentionsBrand: true, sentimentCategory: "Negative",
+            brandAttributes: new[]
+            {
+                ("trustworthy", AttributePolarity.Positive),
+                ("in-depth", AttributePolarity.Positive),
+            });
+        SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
+            mentionsBrand: true, sentimentCategory: "Positive",
+            brandAttributes: new[]
+            {
+                ("trustworthy", AttributePolarity.Positive),
+                ("slow", AttributePolarity.Negative),
+            });
         SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta, mentionsBrand: false, sentimentCategory: "Neutral");
-        SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta, mentionsBrand: true, sentimentCategory: "Positive");
+        SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta,
+            mentionsBrand: true, sentimentCategory: "Positive",
+            brandAttributes: new[]
+            {
+                ("trustworthy", AttributePolarity.Negative),
+            });
 
         // Competitor trend points only on Acme's tracker for the shared competitor.
         var acmeScans = scansByTracker[acmeTracker.Id].OrderBy(s => s.StartedAt).ToList();
@@ -258,6 +298,71 @@ public class GetWorkspaceOverviewQueryHandlerTests
         // 3 answers have any mention; in every one the tracked brand is the
         // only entity mentioned, so it's first-named in all of them.
         result.Hero.BrandFirstMentionRate.Should().BeApproximately(1.0, 1e-9);
+    }
+
+    [Fact]
+    public async Task TopBrandAttributes_AreCountedAcrossTrackedBrandsAndOrderedByCount()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Seed: trustworthy×3 (P,P,N → mode P), in-depth×1 (P), slow×1 (N).
+        result.TopBrandAttributes.Should().HaveCount(3);
+
+        var first = result.TopBrandAttributes[0];
+        first.Rank.Should().Be(1);
+        first.Name.Should().Be("trustworthy");
+        first.Polarity.Should().Be(nameof(AttributePolarity.Positive));
+        first.MentionCount.Should().Be(3);
+
+        // Ties on count (in-depth=1, slow=1) break alphabetically ascending.
+        result.TopBrandAttributes[1].Name.Should().Be("in-depth");
+        result.TopBrandAttributes[2].Name.Should().Be("slow");
+    }
+
+    [Fact]
+    public async Task TopBrandAttributes_IgnoresAttributesOnNonTrackedEntities()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        // Attach an attribute to a Competitor mention — should NOT count
+        // because BuildTopBrandAttributesAsync filters by EntityType=Brand.
+        var competitorMention = new Mention
+        {
+            Id = Guid.NewGuid(),
+            AIAnswerId = ctx.AIAnswers.First().Id,
+            EntityType = MentionEntityType.Competitor,
+            EntityId = seed.SharedCompetitorId,
+            NormalizedName = "Indeed",
+            EvidenceSnippet = "e",
+            Sentiment = Sentiment.Positive,
+            CreatedAt = DateTime.UtcNow,
+        };
+        ctx.Mentions.Add(competitorMention);
+        ctx.MentionAttributes.Add(new MentionAttribute
+        {
+            Id = Guid.NewGuid(),
+            MentionId = competitorMention.Id,
+            Name = "fast",
+            Polarity = AttributePolarity.Positive,
+            EvidenceSnippet = "e",
+            ConfidenceScore = 0.9,
+            CreatedAt = DateTime.UtcNow,
+        });
+        ctx.SaveChanges();
+
+        var sut = NewHandler(ctx);
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        result.TopBrandAttributes.Should().NotContain(a => a.Name == "fast");
     }
 
     [Fact]

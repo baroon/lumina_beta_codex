@@ -277,6 +277,11 @@ export const REPORTS_COPY = {
       tooltip: TBD_TOOLTIP,
       noData: "No brand mentions in this window.",
     },
+    brandAttributes: {
+      title: "What we're known for",
+      tooltip: TBD_TOOLTIP,
+      noData: "No brand attributes extracted in this window yet.",
+    },
     topicCoverage: {
       title: "Topic coverage",
       tooltip: TBD_TOOLTIP,
