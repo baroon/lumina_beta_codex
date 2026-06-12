@@ -88,6 +88,13 @@ let updateProductTypeState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateProductDescriptionMutate: ReturnType<typeof vi.fn>;
+let updateProductDescriptionMutateAsync: ReturnType<typeof vi.fn>;
+let updateProductDescriptionState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 let updateMarketCountryCodeMutate: ReturnType<typeof vi.fn>;
 let updateMarketCountryCodeState: {
   isPending: boolean;
@@ -153,6 +160,11 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
     mutate: updateProductTypeMutate,
     mutateAsync: updateProductTypeMutateAsync,
     ...updateProductTypeState,
+  }),
+  useUpdateBrandProductDescription: () => ({
+    mutate: updateProductDescriptionMutate,
+    mutateAsync: updateProductDescriptionMutateAsync,
+    ...updateProductDescriptionState,
   }),
   useUpdateBrandMarketCountryCode: () => ({
     mutate: updateMarketCountryCodeMutate,
@@ -301,6 +313,9 @@ describe("BrandProfileScreen", () => {
     updateProductTypeMutate = vi.fn();
     updateProductTypeMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateProductTypeState = { isPending: false, isError: false };
+    updateProductDescriptionMutate = vi.fn();
+    updateProductDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
+    updateProductDescriptionState = { isPending: false, isError: false };
     updateMarketCountryCodeMutate = vi.fn();
     updateMarketCountryCodeState = { isPending: false, isError: false };
     updateTrustSignalTypeMutate = vi.fn();
@@ -1158,6 +1173,91 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/not a valid ProductType/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the product description textarea from product.description", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        products: [
+          {
+            ...discoveryFixture.products[0],
+            id: "pr1",
+            name: "AI Resume Builder",
+            description: "Generates tailored resumes from a prompt.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    expect(within(screen.getByRole("dialog")).getByLabelText(/product description/i)).toHaveValue(
+      "Generates tailored resumes from a prompt.",
+    );
+  });
+
+  it("Save changes fires the description mutation with the trimmed value when only the description is dirty", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(
+      within(dialog).getByLabelText(/product description/i),
+      "  Strong product.  ",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateProductDescriptionMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateProductDescriptionMutateAsync.mock.calls[0];
+    expect(args.productId).toBe("pr1");
+    expect(args.description).toBe("Strong product.");
+    // Type/aliases weren't touched.
+    expect(updateProductTypeMutateAsync).not.toHaveBeenCalled();
+    expect(updateProductAliasesMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("clearing the product description textarea passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        products: [
+          {
+            ...discoveryFixture.products[0],
+            id: "pr1",
+            name: "AI Resume Builder",
+            description: "Existing note.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/product description/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateProductDescriptionMutateAsync).toHaveBeenCalledOnce();
+    expect(updateProductDescriptionMutateAsync.mock.calls[0][0].description).toBeNull();
+  });
+
+  it("renders a server-error message when the product description save fails", async () => {
+    updateProductDescriptionState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Description must be 2000 characters or fewer (got 2001)."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),
     ).toBeInTheDocument();
   });
 

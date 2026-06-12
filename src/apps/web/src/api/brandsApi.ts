@@ -31,6 +31,8 @@ import type {
   UpdateBrandMarketCountryCodeResult,
   UpdateBrandProductAliasesRequest,
   UpdateBrandProductAliasesResult,
+  UpdateBrandProductDescriptionRequest,
+  UpdateBrandProductDescriptionResult,
   UpdateBrandProductTypeRequest,
   UpdateBrandProductTypeResult,
   UpdateBrandTrustSignalTypeRequest,
@@ -165,6 +167,16 @@ export const brandsApi = {
   updateProductType: (id: string, productId: string, data: UpdateBrandProductTypeRequest) =>
     apiClient.put<UpdateBrandProductTypeResult>(
       `/api/brands/${id}/products/${productId}/type`,
+      data,
+    ),
+
+  updateProductDescription: (
+    id: string,
+    productId: string,
+    data: UpdateBrandProductDescriptionRequest,
+  ) =>
+    apiClient.put<UpdateBrandProductDescriptionResult>(
+      `/api/brands/${id}/products/${productId}/description`,
       data,
     ),
 

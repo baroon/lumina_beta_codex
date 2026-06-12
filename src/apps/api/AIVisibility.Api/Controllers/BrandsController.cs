@@ -605,6 +605,32 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/products/{productId:guid}/description")]
+    [ProducesResponseType(typeof(UpdateBrandProductDescriptionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProductDescription(
+        Guid id, Guid productId,
+        [FromBody] UpdateBrandProductDescriptionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandProductDescriptionCommand(id, productId, request.Description),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/products/{productId:guid}/type")]
     [ProducesResponseType(typeof(UpdateBrandProductTypeResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

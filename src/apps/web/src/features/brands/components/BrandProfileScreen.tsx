@@ -66,6 +66,7 @@ import {
   useUpdateBrandCompetitorDomain,
   useUpdateBrandMarketCountryCode,
   useUpdateBrandProductAliases,
+  useUpdateBrandProductDescription,
   useUpdateBrandProductType,
   useUpdateBrandTrustSignalType,
   useUpdateBrandProfile,
@@ -1032,31 +1033,47 @@ function ProductDetailsDialog({
 }) {
   const updateAliases = useUpdateBrandProductAliases(brandId);
   const updateType = useUpdateBrandProductType(brandId);
+  const updateDescription = useUpdateBrandProductDescription(brandId);
 
   const originalAliases = product.aliases ?? [];
   const originalType = product.metadata?.productType ?? "Product";
+  const originalDescription = product.description ?? "";
 
   const [aliases, setAliases] = useState<string[]>(originalAliases);
   const [productType, setProductType] = useState<string>(originalType);
+  const [description, setDescription] = useState<string>(originalDescription);
 
   useEffect(() => {
     setAliases(product.aliases ?? []);
     setProductType(product.metadata?.productType ?? "Product");
-  }, [product.id, product.aliases, product.metadata?.productType]);
+    setDescription(product.description ?? "");
+  }, [product.id, product.aliases, product.metadata?.productType, product.description]);
 
   const aliasesDirty =
     aliases.length !== originalAliases.length || aliases.some((a, i) => a !== originalAliases[i]);
   const typeDirty = productType !== originalType;
-  const dirty = aliasesDirty || typeDirty;
-  const pending = updateAliases.isPending || updateType.isPending;
+  const descriptionDirty = description.trim() !== originalDescription.trim();
+  const dirty = aliasesDirty || typeDirty || descriptionDirty;
+  const pending = updateAliases.isPending || updateType.isPending || updateDescription.isPending;
 
   const errorMessage =
-    formatDialogError(updateType.error) ?? formatDialogError(updateAliases.error);
+    formatDialogError(updateType.error) ??
+    formatDialogError(updateDescription.error) ??
+    formatDialogError(updateAliases.error);
 
   async function save() {
+    // Type → description → aliases: an early rejection (e.g. invalid
+    // enum or oversize description) shouldn't get masked by a later
+    // successful write.
     try {
       if (typeDirty) {
         await updateType.mutateAsync({ productId: product.id, productType });
+      }
+      if (descriptionDirty) {
+        await updateDescription.mutateAsync({
+          productId: product.id,
+          description: description.trim() === "" ? null : description.trim(),
+        });
       }
       if (aliasesDirty) {
         await updateAliases.mutateAsync({ productId: product.id, aliases });
@@ -1092,7 +1109,8 @@ function ProductDetailsDialog({
                 {product.name}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
-                Type buckets the product; aliases drive mention detection.
+                Type buckets the product; aliases drive mention detection; description is a note for
+                your team.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -1139,6 +1157,23 @@ function ProductDetailsDialog({
               placeholder="Type and press Enter"
               variant="inline"
             />
+            <div>
+              <label
+                htmlFor={`product-description-${product.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+              >
+                Description
+              </label>
+              <textarea
+                id={`product-description-${product.id}`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Notes about this product…"
+                aria-label="Product description"
+                className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              />
+            </div>
           </div>
 
           {errorMessage && (

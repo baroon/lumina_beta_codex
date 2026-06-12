@@ -352,6 +352,24 @@ export function useUpdateBrandProductType(brandId: string) {
 }
 
 /**
+ * Mutates a product's prose description. Mirror of the competitor
+ * description hook — user-facing note, BE trims, null-coerces empty,
+ * and caps at 2000 chars.
+ */
+export function useUpdateBrandProductDescription(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { productId: string; description: string | null }) =>
+      brandsApi.updateProductDescription(brandId, vars.productId, {
+        description: vars.description,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Mutates a single competitor's prose description. User-facing note —
  * not a signal-extraction input — so the BE just trims, null-coerces
  * empty, and caps length. Invalidates the discovery cache so the

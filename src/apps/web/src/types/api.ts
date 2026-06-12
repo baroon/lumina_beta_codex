@@ -204,6 +204,14 @@ export interface UpdateBrandProductTypeResult {
   productType: string;
 }
 
+export interface UpdateBrandProductDescriptionRequest {
+  description: string | null;
+}
+
+export interface UpdateBrandProductDescriptionResult {
+  description: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
