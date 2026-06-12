@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/atoms/card";
 import { AiNarrativeSection } from "@/components/molecules/AiNarrativeSection";
 import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
+import { HeroRowCompact } from "@/components/molecules/HeroRowCompact";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
@@ -65,6 +66,8 @@ export function InsightsScreen() {
           Beta
         </Badge>
       </PageHeader>
+
+      <HeroRowCompact hero={overview.data.hero} previousHero={overview.data.previousHero} />
 
       <Card>
         <CardContent className="space-y-3 p-5">

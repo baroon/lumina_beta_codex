@@ -509,6 +509,15 @@
           "notes": "Single ⓘ + hover/focus tooltip used by every chart-card title and KPI tile label across the app. Trigger is a focusable `<span role=button>` rather than a real `<button>` so it can be safely nested inside a clickable parent (HeroTile renders as a button when its tile is clickable). Click + keyDown propagation stopped so activating the icon doesn't also fire the parent's onClick. `body` defaults to `INFO_TOOLTIP_PLACEHOLDER` (\"Description coming soon.\") so callers can drop the icon in before real copy is authored. Consumed by ChartCardHeader (renders only when its `tooltip` prop is non-empty), ScanResultsScreen ChartTitle + MetricTile, and WorkspaceOverviewScreen HeroTile."
         },
         {
+          "name": "HeroRowCompact",
+          "category": "Molecules",
+          "path": "src/components/molecules/HeroRowCompact.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Card", "lucide-react"],
+          "notes": "Compact 4-tile KPI row: Queries / Mentions / Citations / Brand mention rate. Each tile shows the absolute value plus a percent delta chip vs the previous-period hero (up = success-green, down = error-red, zero-baseline-but-nonzero = 'New' badge). Returns no delta when previousHero is null, when both periods are zero, or when the delta rounds to 0%. Used by InsightsScreen (workspace scope) and the per-tracker hub Overview tab so both surfaces lead with the same at-a-glance KPI row. Larger multi-row hero treatments live in WorkspaceOverviewScreen (separate HeroTile composition with click-to-scroll drill-down) and are deliberately not consolidated since they carry tooltip + invertDelta affordances that don't apply to this compact variant."
+        },
+        {
           "name": "AiNarrativeSection",
           "category": "Molecules",
           "path": "src/components/molecules/AiNarrativeSection.tsx",

@@ -108,6 +108,33 @@ describe("InsightsScreen", () => {
     expect(screen.getByText(/run a scan to start generating insights/i)).toBeInTheDocument();
   });
 
+  it("renders the compact hero KPI row above the templated narrative", () => {
+    overviewState = {
+      data: {
+        ...overview([
+          row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+          row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+        ]),
+        hero: {
+          queries: 142,
+          mentions: 58,
+          citations: 12,
+          brandMentionRate: 0.41,
+          brandAbsenceRate: null,
+          brandFirstMentionRate: null,
+        },
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+    expect(screen.getByText("Queries")).toBeInTheDocument();
+    expect(screen.getByText("142")).toBeInTheDocument();
+    expect(screen.getByText("Mentions")).toBeInTheDocument();
+    expect(screen.getByText("Citations")).toBeInTheDocument();
+    expect(screen.getByText("Brand mention rate")).toBeInTheDocument();
+  });
+
   it("templated narrative ranks the tracked brand against the leader", () => {
     overviewState = {
       data: overview([
