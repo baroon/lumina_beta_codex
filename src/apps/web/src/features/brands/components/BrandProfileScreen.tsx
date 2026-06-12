@@ -57,6 +57,7 @@ import {
   useUpdateBrandCompetitorAliases,
   useUpdateBrandCompetitorDescription,
   useUpdateBrandCompetitorDomain,
+  useUpdateBrandMarketCountryCode,
   useUpdateBrandProductAliases,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
@@ -775,18 +776,162 @@ function MarketsSection({
   brandId: string;
   markets: readonly CandidateDto[];
 }) {
+  const [openMarketId, setOpenMarketId] = useState<string | null>(null);
+  const openMarket = markets.find((m) => m.id === openMarketId) ?? null;
+
   return (
-    <DimensionEditCard
-      icon={SECTION_ICON.markets}
-      title={DISCOVERY_COPY.sections.markets.title}
-      items={markets}
-      addPlaceholder="Add a market…"
-      addLabel="Add market"
-      removeAriaSingular="market"
-      add={useAddBrandMarket(brandId)}
-      remove={useRemoveBrandMarket(brandId)}
-      rename={useRenameBrandMarket(brandId)}
-    />
+    <>
+      <DimensionEditCard
+        icon={SECTION_ICON.markets}
+        title={DISCOVERY_COPY.sections.markets.title}
+        items={markets}
+        addPlaceholder="Add a market…"
+        addLabel="Add market"
+        removeAriaSingular="market"
+        add={useAddBrandMarket(brandId)}
+        remove={useRemoveBrandMarket(brandId)}
+        rename={useRenameBrandMarket(brandId)}
+        onEditDetails={(id) => setOpenMarketId(id)}
+        detailsAriaSingular="market"
+      />
+      {openMarket && (
+        <MarketDetailsDialog
+          brandId={brandId}
+          market={openMarket}
+          open
+          onOpenChange={(next) => {
+            if (!next) setOpenMarketId(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Per-market deeper-edit dialog. Country code drives flag display on
+ * discovery cards — wrong code means wrong flag. ISO 3166-1 alpha-2,
+ * two-letter input. Empty clears the field (regional/global markets
+ * have no code). Server rejects anything that isn't two letters with
+ * an inline error.
+ */
+function MarketDetailsDialog({
+  brandId,
+  market,
+  open,
+  onOpenChange,
+}: {
+  brandId: string;
+  market: CandidateDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateBrandMarketCountryCode(brandId);
+  const originalCode = market.metadata?.countryCode ?? "";
+  const [countryCode, setCountryCode] = useState<string>(originalCode);
+
+  useEffect(() => {
+    setCountryCode(market.metadata?.countryCode ?? "");
+  }, [market.id, market.metadata?.countryCode]);
+
+  const dirty = countryCode.trim().toUpperCase() !== originalCode.trim().toUpperCase();
+
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Save failed — try again."
+        : null;
+
+  function save() {
+    const trimmed = countryCode.trim();
+    update.mutate(
+      { marketId: market.id, countryCode: trimmed === "" ? null : trimmed },
+      { onSuccess: () => onOpenChange(false) },
+    );
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                {market.name}
+              </Dialog.Title>
+              <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
+                Country code drives flag display. Use ISO 3166-1 alpha-2; clear for regional or
+                global markets.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4">
+            <label
+              htmlFor={`market-country-${market.id}`}
+              className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+            >
+              Country code
+            </label>
+            <Input
+              id={`market-country-${market.id}`}
+              inputSize="sm"
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
+              placeholder="e.g. US, GB, IN"
+              maxLength={2}
+              aria-label="Market country code"
+              className="w-24 uppercase"
+            />
+            <p className="mt-1 text-[10px] text-neutral-500">
+              Two-letter ISO code. Empty clears the field.
+            </p>
+          </div>
+
+          {errorMessage && (
+            <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+              {update.isPending ? "Saving…" : "Save country code"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

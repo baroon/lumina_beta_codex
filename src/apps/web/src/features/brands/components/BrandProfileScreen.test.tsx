@@ -80,6 +80,12 @@ let updateProductAliasesState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateMarketCountryCodeMutate: ReturnType<typeof vi.fn>;
+let updateMarketCountryCodeState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -127,6 +133,10 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useUpdateBrandProductAliases: () => ({
     mutate: updateProductAliasesMutate,
     ...updateProductAliasesState,
+  }),
+  useUpdateBrandMarketCountryCode: () => ({
+    mutate: updateMarketCountryCodeMutate,
+    ...updateMarketCountryCodeState,
   }),
 }));
 
@@ -263,6 +273,8 @@ describe("BrandProfileScreen", () => {
     updateCompetitorDescriptionState = { isPending: false, isError: false };
     updateProductAliasesMutate = vi.fn();
     updateProductAliasesState = { isPending: false, isError: false };
+    updateMarketCountryCodeMutate = vi.fn();
+    updateMarketCountryCodeState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -1073,6 +1085,100 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/collides with the product's primary name/i),
+    ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Market country-code dialog
+  // -------------------------------------------------------------------
+
+  it("clicking the details ⋯ on a market opens the country-code dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Edit details for market US/i }));
+    expect(within(screen.getByRole("dialog")).getByText(/US/)).toBeInTheDocument();
+  });
+
+  it("prefills the country-code input from metadata.countryCode", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        markets: [
+          {
+            ...discoveryFixture.markets[0],
+            id: "m1",
+            name: "United States",
+            metadata: { countryCode: "US" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for market United States/i }),
+    );
+    expect(within(screen.getByRole("dialog")).getByLabelText(/market country code/i)).toHaveValue(
+      "US",
+    );
+  });
+
+  it("typing lowercase coerces to uppercase via onChange normalization", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Edit details for market US/i }));
+    const dialog = screen.getByRole("dialog");
+    const input = within(dialog).getByLabelText(/market country code/i);
+    await userEvent.type(input, "gb");
+    expect(input).toHaveValue("GB");
+  });
+
+  it("Save country code fires the mutation with the trimmed uppercase value", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Edit details for market US/i }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/market country code/i), "in");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save country code$/ }));
+    expect(updateMarketCountryCodeMutate).toHaveBeenCalledOnce();
+    const [args] = updateMarketCountryCodeMutate.mock.calls[0];
+    expect(args.marketId).toBe("m1");
+    expect(args.countryCode).toBe("IN");
+  });
+
+  it("clearing the country-code input passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        markets: [
+          {
+            ...discoveryFixture.markets[0],
+            id: "m1",
+            name: "United States",
+            metadata: { countryCode: "US" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for market United States/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/market country code/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save country code$/ }));
+    expect(updateMarketCountryCodeMutate).toHaveBeenCalledOnce();
+    expect(updateMarketCountryCodeMutate.mock.calls[0][0].countryCode).toBeNull();
+  });
+
+  it("renders a server-error message when the country-code save fails", async () => {
+    updateMarketCountryCodeState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Country code 'USA' must be an ISO 3166-1 alpha-2 code"),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Edit details for market US/i }));
+    expect(
+      within(screen.getByRole("dialog")).getByText(/ISO 3166-1 alpha-2 code/i),
     ).toBeInTheDocument();
   });
 });

@@ -296,6 +296,25 @@ export function useUpdateBrandProductAliases(brandId: string) {
 }
 
 /**
+ * Mutates a single market's ISO 3166-1 alpha-2 country code. Drives
+ * flag display on discovery cards — empty value is valid (regional /
+ * global markets have no code) but anything that isn't a two-letter
+ * code triggers a 400 with an inline error.
+ */
+export function useUpdateBrandMarketCountryCode(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { marketId: string; countryCode: string | null }) =>
+      brandsApi.updateMarketCountryCode(brandId, vars.marketId, {
+        countryCode: vars.countryCode,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Mutates a single competitor's prose description. User-facing note —
  * not a signal-extraction input — so the BE just trims, null-coerces
  * empty, and caps length. Invalidates the discovery cache so the

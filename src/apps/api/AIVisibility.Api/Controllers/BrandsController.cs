@@ -535,6 +535,32 @@ public class BrandsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
     }
 
+    [HttpPut("{id:guid}/markets/{marketId:guid}/country-code")]
+    [ProducesResponseType(typeof(UpdateBrandMarketCountryCodeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMarketCountryCode(
+        Guid id, Guid marketId,
+        [FromBody] UpdateBrandMarketCountryCodeRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandMarketCountryCodeCommand(id, marketId, request.CountryCode),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/products/{productId:guid}")]
     [ProducesResponseType(typeof(RenameBrandProductResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

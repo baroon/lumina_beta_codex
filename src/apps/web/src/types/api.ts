@@ -176,6 +176,16 @@ export interface UpdateBrandProductAliasesResult {
   aliases: string[];
 }
 
+export interface UpdateBrandMarketCountryCodeRequest {
+  /** ISO 3166-1 alpha-2 code. Null/empty clears the field (regional/global markets have no code). */
+  countryCode: string | null;
+}
+
+export interface UpdateBrandMarketCountryCodeResult {
+  /** Uppercase two-letter code, or null after a clear. */
+  countryCode: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
