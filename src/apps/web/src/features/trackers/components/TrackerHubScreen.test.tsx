@@ -461,4 +461,38 @@ describe("TrackerHubScreen", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByText(/Failed to load overview/i)).toBeInTheDocument();
   });
+
+  it("Overview tab renders the signal-highlights card when the tracker has measurement-model data", () => {
+    overviewState = {
+      data: {
+        ...overviewFixture,
+        hero: { ...overviewFixture.hero, brandAbsenceRate: 0.4 },
+        topBrandAttributes: [
+          { rank: 1, name: "trustworthy", polarity: "Positive", mentionCount: 8 },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByText(/Signal highlights/i)).toBeInTheDocument();
+    expect(screen.getByText(/absent from 40% of in-scope answers/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI describes your brand as/i)).toBeInTheDocument();
+  });
+
+  it("Overview tab omits the highlights card when no signals have data", () => {
+    // Default fixture has absenceRate=0.4 which would trigger the
+    // absence bullet. Zero everything out to verify the card is gated
+    // on the absence of all signals, not just on the absence rate.
+    overviewState = {
+      data: {
+        ...overviewFixture,
+        hero: { ...overviewFixture.hero, brandAbsenceRate: null },
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.queryByText(/Signal highlights/i)).not.toBeInTheDocument();
+  });
 });

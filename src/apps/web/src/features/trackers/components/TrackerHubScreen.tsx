@@ -40,6 +40,7 @@ import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
 import { useTrackerLensesSetup } from "@/features/trackers/hooks/useTrackerLenses";
 import { useTrackerOverview } from "@/features/trackers/hooks/useTrackerOverview";
+import { buildSignalHighlights } from "@/lib/signalHighlights";
 import { cn } from "@/lib/utils";
 import type {
   PromptDto,
@@ -233,10 +234,25 @@ function OverviewTab({ trackerId }: { trackerId: string }) {
   const rankedEntities = [...data.topEntities]
     .sort((a, b) => (b.visibility ?? -1) - (a.visibility ?? -1))
     .slice(0, 6);
+  const highlights = buildSignalHighlights(data);
 
   return (
     <div className="space-y-3">
       <HeroRowCompact hero={data.hero} previousHero={data.previousHero} />
+      {highlights.length > 0 && (
+        <Card>
+          <CardContent className="space-y-2 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+              Signal highlights
+            </p>
+            <ul className="space-y-1 border-l-2 border-neutral-200 pl-3 text-sm text-neutral-700">
+              {highlights.map((h) => (
+                <li key={h.id}>{h.text}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
       <TopEntitiesCard rows={rankedEntities} />
     </div>
   );
