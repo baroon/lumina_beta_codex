@@ -21,6 +21,8 @@ import type {
   RenameBrandResult,
   UpdateBrandAliasesRequest,
   UpdateBrandAliasesResult,
+  UpdateBrandAudienceDescriptionRequest,
+  UpdateBrandAudienceDescriptionResult,
   UpdateBrandCompetitorAliasesRequest,
   UpdateBrandCompetitorAliasesResult,
   UpdateBrandCompetitorDescriptionRequest,
@@ -143,6 +145,16 @@ export const brandsApi = {
 
   renameAudience: (id: string, audienceId: string, data: RenameBrandDimensionRequest) =>
     apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/audiences/${audienceId}`, data),
+
+  updateAudienceDescription: (
+    id: string,
+    audienceId: string,
+    data: UpdateBrandAudienceDescriptionRequest,
+  ) =>
+    apiClient.put<UpdateBrandAudienceDescriptionResult>(
+      `/api/brands/${id}/audiences/${audienceId}/description`,
+      data,
+    ),
 
   renameMarket: (id: string, marketId: string, data: RenameBrandDimensionRequest) =>
     apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/markets/${marketId}`, data),

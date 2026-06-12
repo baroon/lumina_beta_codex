@@ -115,6 +115,12 @@ let updateTrustSignalDescriptionState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateAudienceDescriptionMutate: ReturnType<typeof vi.fn>;
+let updateAudienceDescriptionState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -187,6 +193,10 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
     mutate: updateTrustSignalDescriptionMutate,
     mutateAsync: updateTrustSignalDescriptionMutateAsync,
     ...updateTrustSignalDescriptionState,
+  }),
+  useUpdateBrandAudienceDescription: () => ({
+    mutate: updateAudienceDescriptionMutate,
+    ...updateAudienceDescriptionState,
   }),
 }));
 
@@ -338,6 +348,8 @@ describe("BrandProfileScreen", () => {
     updateTrustSignalDescriptionMutate = vi.fn();
     updateTrustSignalDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateTrustSignalDescriptionState = { isPending: false, isError: false };
+    updateAudienceDescriptionMutate = vi.fn();
+    updateAudienceDescriptionState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -1545,6 +1557,125 @@ describe("BrandProfileScreen", () => {
       screen.getByRole("button", {
         name: /Edit details for trust signal Trustpilot reviews/i,
       }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),
+    ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Audience description dialog (description-only, no other fields)
+  // -------------------------------------------------------------------
+
+  it("clicking the details ⋯ on an audience opens the description dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(/audience description/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the audience description textarea from audience.description", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        audiences: [
+          {
+            ...discoveryFixture.audiences[0],
+            id: "a1",
+            name: "Job seekers",
+            description: "Mid-career professionals updating their resume.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
+    );
+    expect(within(screen.getByRole("dialog")).getByLabelText(/audience description/i)).toHaveValue(
+      "Mid-career professionals updating their resume.",
+    );
+  });
+
+  it("Save description fires the mutation with the trimmed value", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(
+      within(dialog).getByLabelText(/audience description/i),
+      "  Mid-career hires.  ",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save description$/ }));
+    expect(updateAudienceDescriptionMutate).toHaveBeenCalledOnce();
+    const [args] = updateAudienceDescriptionMutate.mock.calls[0];
+    expect(args.audienceId).toBe("a1");
+    expect(args.description).toBe("Mid-career hires.");
+  });
+
+  it("clearing the audience description textarea passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        audiences: [
+          {
+            ...discoveryFixture.audiences[0],
+            id: "a1",
+            name: "Job seekers",
+            description: "Existing note.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/audience description/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save description$/ }));
+    expect(updateAudienceDescriptionMutate).toHaveBeenCalledOnce();
+    expect(updateAudienceDescriptionMutate.mock.calls[0][0].description).toBeNull();
+  });
+
+  it("Save description is disabled when the textarea matches the server", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        audiences: [
+          {
+            ...discoveryFixture.audiences[0],
+            id: "a1",
+            name: "Job seekers",
+            description: "Same value.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: /^Save description$/ })).toBeDisabled();
+  });
+
+  it("renders a server-error message when the audience description save fails", async () => {
+    updateAudienceDescriptionState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Description must be 2000 characters or fewer (got 2001)."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for audience Job seekers/i }),
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),

@@ -61,6 +61,7 @@ import {
   useRenameBrandTopic,
   useRenameBrandTrustSignal,
   useUpdateBrandAliases,
+  useUpdateBrandAudienceDescription,
   useUpdateBrandCompetitorAliases,
   useUpdateBrandCompetitorDescription,
   useUpdateBrandCompetitorDomain,
@@ -791,18 +792,156 @@ function AudiencesSection({
   brandId: string;
   audiences: readonly CandidateDto[];
 }) {
+  const [openAudienceId, setOpenAudienceId] = useState<string | null>(null);
+  const openAudience = audiences.find((a) => a.id === openAudienceId) ?? null;
+
   return (
-    <DimensionEditCard
-      icon={SECTION_ICON.audiences}
-      title={DISCOVERY_COPY.sections.audiences.title}
-      items={audiences}
-      addPlaceholder="Add an audience…"
-      addLabel="Add audience"
-      removeAriaSingular="audience"
-      add={useAddBrandAudience(brandId)}
-      remove={useRemoveBrandAudience(brandId)}
-      rename={useRenameBrandAudience(brandId)}
-    />
+    <>
+      <DimensionEditCard
+        icon={SECTION_ICON.audiences}
+        title={DISCOVERY_COPY.sections.audiences.title}
+        items={audiences}
+        addPlaceholder="Add an audience…"
+        addLabel="Add audience"
+        removeAriaSingular="audience"
+        add={useAddBrandAudience(brandId)}
+        remove={useRemoveBrandAudience(brandId)}
+        rename={useRenameBrandAudience(brandId)}
+        onEditDetails={(id) => setOpenAudienceId(id)}
+        detailsAriaSingular="audience"
+      />
+      {openAudience && (
+        <AudienceDetailsDialog
+          brandId={brandId}
+          audience={openAudience}
+          open
+          onOpenChange={(next) => {
+            if (!next) setOpenAudienceId(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Per-audience deeper-edit dialog. Audience has no enum-typed
+ * fields (unlike Product / TrustSignal) and no signal-extraction
+ * inputs (unlike Competitor.Aliases or Product.Aliases), so the
+ * only field beyond the chip rename is a user-facing description.
+ */
+function AudienceDetailsDialog({
+  brandId,
+  audience,
+  open,
+  onOpenChange,
+}: {
+  brandId: string;
+  audience: CandidateDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateBrandAudienceDescription(brandId);
+  const originalDescription = audience.description ?? "";
+  const [description, setDescription] = useState<string>(originalDescription);
+
+  useEffect(() => {
+    setDescription(audience.description ?? "");
+  }, [audience.id, audience.description]);
+
+  const dirty = description.trim() !== originalDescription.trim();
+
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Save failed — try again."
+        : null;
+
+  function save() {
+    const trimmed = description.trim();
+    update.mutate(
+      { audienceId: audience.id, description: trimmed === "" ? null : trimmed },
+      { onSuccess: () => onOpenChange(false) },
+    );
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                {audience.name}
+              </Dialog.Title>
+              <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
+                Description is a note for your team.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4">
+            <label
+              htmlFor={`audience-description-${audience.id}`}
+              className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+            >
+              Description
+            </label>
+            <textarea
+              id={`audience-description-${audience.id}`}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Notes about this audience…"
+              aria-label="Audience description"
+              className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            />
+          </div>
+
+          {errorMessage && (
+            <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+              {update.isPending ? "Saving…" : "Save description"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
