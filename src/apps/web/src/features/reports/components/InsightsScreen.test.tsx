@@ -173,6 +173,116 @@ describe("InsightsScreen", () => {
   });
 
   // -------------------------------------------------------------------
+  // Signal highlights — one bullet per measurement-model field
+  // -------------------------------------------------------------------
+
+  it("does not render any highlight bullets when no signals have data", () => {
+    overviewState = {
+      data: overview([
+        row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+        row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+
+  it("renders one bullet per measurement-model signal that has data", () => {
+    overviewState = {
+      data: {
+        ...overview([
+          row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+          row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+        ]),
+        hero: {
+          queries: 100,
+          mentions: 60,
+          citations: 15,
+          brandMentionRate: 0.5,
+          brandAbsenceRate: 0.4,
+          brandFirstMentionRate: 0.3,
+        },
+        topBrandAttributes: [
+          { rank: 1, name: "trustworthy", polarity: "Positive", mentionCount: 8 },
+          { rank: 2, name: "slow", polarity: "Negative", mentionCount: 3 },
+        ],
+        topBrandRiskFlags: [
+          { rank: 1, flagType: "layoffs", severity: "High", mentionCount: 3 },
+          { rank: 2, flagType: "outage", severity: "Medium", mentionCount: 1 },
+        ],
+        topBrandComparisons: [
+          { rank: 1, aspect: "price", winCount: 4, lossCount: 1 },
+          { rank: 2, aspect: "support_quality", winCount: 0, lossCount: 3 },
+        ],
+        topicOwnership: [
+          {
+            rank: 1,
+            topicName: "Career advice",
+            promptCount: 10,
+            brandMentionedPromptCount: 8,
+          },
+          {
+            rank: 2,
+            topicName: "Industry news",
+            promptCount: 6,
+            brandMentionedPromptCount: 1,
+          },
+        ],
+        recentFactualClaims: [
+          {
+            claimId: "c1",
+            brandId: "b1",
+            brandName: "Acme",
+            subject: "founding_year",
+            assertedValue: "1975",
+            claimText: "Founded in 1975.",
+            evidenceSnippet: "Founded in 1975.",
+            verifiability: "Verifiable",
+            reviewStatus: "Disputed",
+            createdAt: "2026-05-01T00:00:00Z",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+    expect(screen.getByText(/absent from 40% of in-scope answers/i)).toBeInTheDocument();
+    expect(screen.getByText(/AI describes your brand as/i)).toBeInTheDocument();
+    // 3 (layoffs) + 1 (outage) = 4 risk-flag mentions in scope.
+    expect(screen.getByText(/4 risk flags raised/i)).toBeInTheDocument();
+    expect(screen.getByText(/win on price, lose on support_quality/i)).toBeInTheDocument();
+    expect(screen.getByText(/own "Career advice" \(80%\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/lose "Industry news" \(17%\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 disputed/i)).toBeInTheDocument();
+  });
+
+  it("absence rate below 25% is skipped (reads as noise)", () => {
+    overviewState = {
+      data: {
+        ...overview([
+          row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+          row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+        ]),
+        hero: {
+          queries: 100,
+          mentions: 90,
+          citations: 15,
+          brandMentionRate: 0.9,
+          brandAbsenceRate: 0.1,
+          brandFirstMentionRate: 0.3,
+        },
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+    expect(screen.queryByText(/absent from/i)).not.toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
   // AI summary section
   // -------------------------------------------------------------------
 
