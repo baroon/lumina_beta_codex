@@ -277,6 +277,25 @@ export function useUpdateBrandCompetitorDomain(brandId: string) {
 }
 
 /**
+ * Mutates a product's alias list. Mirror of the competitor-aliases
+ * hook — same pipeline downstream (mention detection treats name +
+ * aliases as one set), same trim/dedup/empty-filter shape on the BE,
+ * same per-brand ownership check.
+ */
+export function useUpdateBrandProductAliases(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { productId: string; aliases: string[] }) =>
+      brandsApi.updateProductAliases(brandId, vars.productId, {
+        aliases: vars.aliases,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Mutates a single competitor's prose description. User-facing note —
  * not a signal-extraction input — so the BE just trims, null-coerces
  * empty, and caps length. Invalidates the discovery cache so the

@@ -57,6 +57,7 @@ import {
   useUpdateBrandCompetitorAliases,
   useUpdateBrandCompetitorDescription,
   useUpdateBrandCompetitorDomain,
+  useUpdateBrandProductAliases,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
@@ -796,18 +797,145 @@ function ProductsSection({
   brandId: string;
   products: readonly CandidateDto[];
 }) {
+  const [openProductId, setOpenProductId] = useState<string | null>(null);
+  const openProduct = products.find((p) => p.id === openProductId) ?? null;
+
   return (
-    <DimensionEditCard
-      icon={SECTION_ICON.products}
-      title={DISCOVERY_COPY.sections.products.title}
-      items={products}
-      addPlaceholder="Add a product…"
-      addLabel="Add product"
-      removeAriaSingular="product"
-      add={useAddBrandProduct(brandId)}
-      remove={useRemoveBrandProduct(brandId)}
-      rename={useRenameBrandProduct(brandId)}
-    />
+    <>
+      <DimensionEditCard
+        icon={SECTION_ICON.products}
+        title={DISCOVERY_COPY.sections.products.title}
+        items={products}
+        addPlaceholder="Add a product…"
+        addLabel="Add product"
+        removeAriaSingular="product"
+        add={useAddBrandProduct(brandId)}
+        remove={useRemoveBrandProduct(brandId)}
+        rename={useRenameBrandProduct(brandId)}
+        onEditDetails={(id) => setOpenProductId(id)}
+        detailsAriaSingular="product"
+      />
+      {openProduct && (
+        <ProductDetailsDialog
+          brandId={brandId}
+          product={openProduct}
+          open
+          onOpenChange={(next) => {
+            if (!next) setOpenProductId(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Per-product deeper-edit dialog. Aliases drive mention detection —
+ * same shape and downstream wiring as competitor aliases. The chip
+ * click-to-rename handles the primary name; this dialog handles the
+ * alias list. Description/ProductType are out of scope for this slice.
+ */
+function ProductDetailsDialog({
+  brandId,
+  product,
+  open,
+  onOpenChange,
+}: {
+  brandId: string;
+  product: CandidateDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateBrandProductAliases(brandId);
+  const originalAliases = product.aliases ?? [];
+  const [aliases, setAliases] = useState<string[]>(originalAliases);
+
+  useEffect(() => {
+    setAliases(product.aliases ?? []);
+  }, [product.id, product.aliases]);
+
+  const dirty =
+    aliases.length !== originalAliases.length || aliases.some((a, i) => a !== originalAliases[i]);
+
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Save failed — try again."
+        : null;
+
+  function save() {
+    update.mutate({ productId: product.id, aliases }, { onSuccess: () => onOpenChange(false) });
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                {product.name}
+              </Dialog.Title>
+              <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
+                Aliases drive mention detection. Add the variants AI answers actually use.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4">
+            <AliasEditor
+              aliases={aliases}
+              onChange={setAliases}
+              label="Aliases"
+              placeholder="Type and press Enter"
+              variant="inline"
+            />
+          </div>
+
+          {errorMessage && (
+            <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+              {update.isPending ? "Saving…" : "Save aliases"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

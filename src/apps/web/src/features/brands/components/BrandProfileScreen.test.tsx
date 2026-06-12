@@ -74,6 +74,12 @@ let updateCompetitorDescriptionState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateProductAliasesMutate: ReturnType<typeof vi.fn>;
+let updateProductAliasesState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -117,6 +123,10 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
     mutate: updateCompetitorDescriptionMutate,
     mutateAsync: updateCompetitorDescriptionMutateAsync,
     ...updateCompetitorDescriptionState,
+  }),
+  useUpdateBrandProductAliases: () => ({
+    mutate: updateProductAliasesMutate,
+    ...updateProductAliasesState,
   }),
 }));
 
@@ -251,6 +261,8 @@ describe("BrandProfileScreen", () => {
     updateCompetitorDescriptionMutate = vi.fn();
     updateCompetitorDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateCompetitorDescriptionState = { isPending: false, isError: false };
+    updateProductAliasesMutate = vi.fn();
+    updateProductAliasesState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -979,6 +991,88 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),
+    ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Product aliases dialog
+  // -------------------------------------------------------------------
+
+  it("clicking the details ⋯ on a product opens the aliases dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    expect(within(screen.getByRole("dialog")).getByText(/AI Resume Builder/i)).toBeInTheDocument();
+  });
+
+  it("Save aliases on the product dialog fires the product mutation with staged list", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        products: [
+          {
+            ...discoveryFixture.products[0],
+            id: "pr1",
+            name: "AI Resume Builder",
+            aliases: ["Resume AI"],
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: /add aliases/i }));
+    await userEvent.type(
+      within(dialog).getByPlaceholderText(/Type and press Enter/i),
+      "ResumeAI Pro{enter}",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save aliases$/ }));
+    expect(updateProductAliasesMutate).toHaveBeenCalledOnce();
+    const [args] = updateProductAliasesMutate.mock.calls[0];
+    expect(args.productId).toBe("pr1");
+    expect(args.aliases).toEqual(["Resume AI", "ResumeAI Pro"]);
+  });
+
+  it("Save is disabled until the staged product aliases differ from the server", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        products: [
+          {
+            ...discoveryFixture.products[0],
+            id: "pr1",
+            name: "AI Resume Builder",
+            aliases: ["Resume AI"],
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: /^Save aliases$/ })).toBeDisabled();
+  });
+
+  it("renders a server-error message when the product-aliases save fails", async () => {
+    updateProductAliasesState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Alias 'AI Resume Builder' collides with the product's primary name."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/collides with the product's primary name/i),
     ).toBeInTheDocument();
   });
 });

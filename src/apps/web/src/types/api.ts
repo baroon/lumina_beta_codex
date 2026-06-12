@@ -168,6 +168,14 @@ export interface UpdateBrandCompetitorDescriptionResult {
   description: string | null;
 }
 
+export interface UpdateBrandProductAliasesRequest {
+  aliases: string[];
+}
+
+export interface UpdateBrandProductAliasesResult {
+  aliases: string[];
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

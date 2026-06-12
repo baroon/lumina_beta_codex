@@ -27,6 +27,8 @@ import type {
   UpdateBrandCompetitorDescriptionResult,
   UpdateBrandCompetitorDomainRequest,
   UpdateBrandCompetitorDomainResult,
+  UpdateBrandProductAliasesRequest,
+  UpdateBrandProductAliasesResult,
   UpdateBrandProfileRequest,
   UpdateBrandProfileResult,
   UpdateBrandWebsiteUrlRequest,
@@ -137,6 +139,12 @@ export const brandsApi = {
 
   renameProduct: (id: string, productId: string, data: RenameBrandDimensionRequest) =>
     apiClient.put<RenameBrandDimensionResult>(`/api/brands/${id}/products/${productId}`, data),
+
+  updateProductAliases: (id: string, productId: string, data: UpdateBrandProductAliasesRequest) =>
+    apiClient.put<UpdateBrandProductAliasesResult>(
+      `/api/brands/${id}/products/${productId}/aliases`,
+      data,
+    ),
 
   renameTrustSignal: (id: string, trustSignalId: string, data: RenameBrandDimensionRequest) =>
     apiClient.put<RenameBrandDimensionResult>(
