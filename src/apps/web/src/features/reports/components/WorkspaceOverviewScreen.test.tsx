@@ -182,8 +182,22 @@ const fixture: WorkspaceOverviewDto = {
     { brandId: betaId, name: "Beta" },
   ],
   competitors: [{ competitorId: indeedId, name: "Indeed" }],
-  hero: { queries: 100, mentions: 60, citations: 15, brandMentionRate: 0.45 },
-  previousHero: { queries: 80, mentions: 40, citations: 10, brandMentionRate: 0.3 },
+  hero: {
+    queries: 100,
+    mentions: 60,
+    citations: 15,
+    brandMentionRate: 0.45,
+    brandAbsenceRate: 0.4,
+    brandFirstMentionRate: 0.35,
+  },
+  previousHero: {
+    queries: 80,
+    mentions: 40,
+    citations: 10,
+    brandMentionRate: 0.3,
+    brandAbsenceRate: 0.55,
+    brandFirstMentionRate: 0.25,
+  },
   series: [
     {
       entityType: "Brand",
@@ -393,6 +407,24 @@ describe("WorkspaceOverviewScreen", () => {
       // @ts-expect-error — restore by deleting the override
       delete window.HTMLElement.prototype.scrollIntoView;
     }
+  });
+
+  it("renders the Absence rate and First-mention rate hero tiles with the new measurement-model fields", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    // Labels appear in the hero row.
+    expect(screen.getByText(/absence rate/i)).toBeInTheDocument();
+    expect(screen.getByText(/first-mention rate/i)).toBeInTheDocument();
+  });
+
+  it("Absence rate delta renders DOWN as success-colored (invertDelta) because lower is better", () => {
+    // Fixture: previousAbsenceRate=0.55, currentAbsenceRate=0.4 → -27%.
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    const delta = screen.getByLabelText(/Down 27 percent vs previous period/i);
+    expect(delta).toHaveClass("text-semantic-success-600");
   });
 
   it("Average brand rank card renders with reversed Y-axis (1 at top)", () => {

@@ -82,7 +82,8 @@ public class GenerateInsightsNarrativeQueryHandlerTests
         },
         ScanCount: scanCount,
         Hero: new WorkspaceHeroDto(
-            Queries: 96, Mentions: 30, Citations: 12, BrandMentionRate: 0.5),
+            Queries: 96, Mentions: 30, Citations: 12, BrandMentionRate: 0.5,
+            BrandAbsenceRate: 0.5, BrandFirstMentionRate: 0.4),
         PreviousHero: null,
         Series: Array.Empty<EntityTrendSeriesDto>(),
         TopEntities: new[]

@@ -152,8 +152,22 @@ const overviewFixture: WorkspaceOverviewDto = {
   trackedBrands: [{ brandId: "b1", name: "Acme" }],
   competitors: [{ competitorId: "c1", name: "Canva" }],
   scanCount: 4,
-  hero: { queries: 96, mentions: 30, citations: 12, brandMentionRate: 0.5 },
-  previousHero: { queries: 80, mentions: 20, citations: 10, brandMentionRate: 0.25 },
+  hero: {
+    queries: 96,
+    mentions: 30,
+    citations: 12,
+    brandMentionRate: 0.5,
+    brandAbsenceRate: 0.4,
+    brandFirstMentionRate: 0.35,
+  },
+  previousHero: {
+    queries: 80,
+    mentions: 20,
+    citations: 10,
+    brandMentionRate: 0.25,
+    brandAbsenceRate: 0.55,
+    brandFirstMentionRate: 0.2,
+  },
   series: [],
   topEntities: [
     {

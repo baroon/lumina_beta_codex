@@ -1263,6 +1263,10 @@ export interface WorkspaceHeroDto {
   citations: number;
   /** [0..1]; null when no answers landed. */
   brandMentionRate: number | null;
+  /** Fraction of in-scope answers where every tracked brand is entirely absent — no mention AND no Owned citation. [0..1]; null when no answers. */
+  brandAbsenceRate: number | null;
+  /** Among answers with ≥1 entity mention, fraction where a tracked brand was the first-named entity. [0..1]; null when no answers had mentions. */
+  brandFirstMentionRate: number | null;
 }
 
 export interface WorkspaceTopEntityRowDto {

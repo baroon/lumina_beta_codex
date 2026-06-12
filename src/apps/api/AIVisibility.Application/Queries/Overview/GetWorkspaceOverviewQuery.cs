@@ -71,7 +71,23 @@ public sealed record WorkspaceHeroDto(
     /// (answers with ≥1 tracked-brand mention) / (total answers). Null
     /// when no answers landed in the window.
     /// </summary>
-    double? BrandMentionRate);
+    double? BrandMentionRate,
+    /// <summary>
+    /// Fraction of in-scope answers where every tracked brand is
+    /// entirely absent — no mention AND no owned citation. Mirrors
+    /// <c>MetricNames.BrandAbsenceRate</c> at the workspace grain.
+    /// Range [0,1]; null when no answers landed in the window.
+    /// </summary>
+    double? BrandAbsenceRate,
+    /// <summary>
+    /// Among answers with ≥1 entity mention, the fraction where a
+    /// tracked brand was the first-named entity by
+    /// <c>Mention.FirstMentionPosition</c>. Mirrors
+    /// <c>MetricNames.BrandFirstMentionRate</c> at the workspace
+    /// grain. Range [0,1]; null when no scoped answers had any
+    /// mentions.
+    /// </summary>
+    double? BrandFirstMentionRate);
 
 /// <summary>
 /// One row in the overview Top Entities table. Same shape as v2's

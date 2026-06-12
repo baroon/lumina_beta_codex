@@ -989,7 +989,7 @@ function HeroRow({
   onDrillDown: (metric: string) => void;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       <HeroTile
         label="Queries"
         value={hero.queries.toLocaleString()}
@@ -1018,6 +1018,24 @@ function HeroRow({
         previous={previousHero?.brandMentionRate ?? null}
         onClick={() => onDrillDown("mention")}
       />
+      <HeroTile
+        label="Absence rate"
+        value={hero.brandAbsenceRate == null ? "—" : `${Math.round(hero.brandAbsenceRate * 100)}%`}
+        current={hero.brandAbsenceRate}
+        previous={previousHero?.brandAbsenceRate ?? null}
+        invertDelta
+      />
+      <HeroTile
+        label="First-mention rate"
+        value={
+          hero.brandFirstMentionRate == null
+            ? "—"
+            : `${Math.round(hero.brandFirstMentionRate * 100)}%`
+        }
+        current={hero.brandFirstMentionRate}
+        previous={previousHero?.brandFirstMentionRate ?? null}
+        onClick={() => onDrillDown("mention")}
+      />
     </div>
   );
 }
@@ -1028,6 +1046,7 @@ function HeroTile({
   current,
   previous,
   onClick,
+  invertDelta = false,
 }: {
   label: string;
   value: string;
@@ -1036,6 +1055,8 @@ function HeroTile({
   /** Equivalent previous-window value. Null = no delta to show. */
   previous: number | null;
   onClick?: () => void;
+  /** When true, treat "up" as bad (red) and "down" as good (green). Used for absence rate. */
+  invertDelta?: boolean;
 }) {
   const inner = (
     <>
@@ -1045,7 +1066,7 @@ function HeroTile({
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <p className="text-2xl font-semibold text-neutral-900">{value}</p>
-        <HeroDelta current={current} previous={previous} />
+        <HeroDelta current={current} previous={previous} invertColors={invertDelta} />
       </div>
     </>
   );
@@ -1080,12 +1101,26 @@ function HeroTile({
  * the baseline is zero, so we surface that as a positive signal instead
  * of dividing by zero.
  */
-function HeroDelta({ current, previous }: { current: number | null; previous: number | null }) {
+function HeroDelta({
+  current,
+  previous,
+  invertColors = false,
+}: {
+  current: number | null;
+  previous: number | null;
+  /** When true, "up" reads red (absence rate, etc); "down" reads green. */
+  invertColors?: boolean;
+}) {
   if (current == null || previous == null) return null;
   if (previous === 0 && current === 0) return null;
   if (previous === 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-semantic-success-600">
+      <span
+        className={cn(
+          "inline-flex items-center gap-0.5 text-xs font-medium",
+          invertColors ? "text-semantic-error-600" : "text-semantic-success-600",
+        )}
+      >
         <ArrowUp size={12} aria-hidden /> New
       </span>
     );
@@ -1094,12 +1129,13 @@ function HeroDelta({ current, previous }: { current: number | null; previous: nu
   const rounded = Math.round(pct);
   if (rounded === 0) return null;
   const isUp = rounded > 0;
+  const isGood = invertColors ? !isUp : isUp;
   return (
     <span
       aria-label={`${isUp ? "Up" : "Down"} ${Math.abs(rounded)} percent vs previous period`}
       className={cn(
         "inline-flex items-center gap-0.5 text-xs font-medium",
-        isUp ? "text-semantic-success-600" : "text-semantic-error-600",
+        isGood ? "text-semantic-success-600" : "text-semantic-error-600",
       )}
     >
       {isUp ? <ArrowUp size={12} aria-hidden /> : <ArrowDown size={12} aria-hidden />}

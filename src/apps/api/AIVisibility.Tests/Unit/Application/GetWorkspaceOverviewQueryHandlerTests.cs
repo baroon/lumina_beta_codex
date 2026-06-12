@@ -229,6 +229,55 @@ public class GetWorkspaceOverviewQueryHandlerTests
     }
 
     [Fact]
+    public async Task Hero_BrandAbsenceRate_CountsAnswersWithNoBrandMentionOrOwnedCitation()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // 4 answers total. 3 have a tracked-brand mention; the Beta@-14d
+        // answer has neither a brand mention nor a citation. Absence = 1/4.
+        result.Hero.BrandAbsenceRate.Should().BeApproximately(1.0 / 4.0, 1e-9);
+    }
+
+    [Fact]
+    public async Task Hero_BrandFirstMentionRate_DenominatorIsAnswersWithMentions()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // 3 answers have any mention; in every one the tracked brand is the
+        // only entity mentioned, so it's first-named in all of them.
+        result.Hero.BrandFirstMentionRate.Should().BeApproximately(1.0, 1e-9);
+    }
+
+    [Fact]
+    public async Task Hero_AbsenceAndFirstMention_AreNullWhenScopeHasNoAnswers()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Future window — no scans/answers fall in it.
+        var future = DateTime.UtcNow.AddDays(30);
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(future, future.AddDays(7), null, null, null, null, null),
+            CancellationToken.None);
+
+        result.Hero.BrandAbsenceRate.Should().BeNull();
+        result.Hero.BrandFirstMentionRate.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Series_IncludesAllEntitiesAcrossTrackers()
     {
         using var ctx = NewContext();

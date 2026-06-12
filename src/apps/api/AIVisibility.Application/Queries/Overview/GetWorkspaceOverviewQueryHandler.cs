@@ -165,7 +165,7 @@ public class GetWorkspaceOverviewQueryHandler
             trackedBrands ?? Array.Empty<TrackedBrandDto>(),
             Array.Empty<WorkspaceCompetitorDto>(),
             0,
-            new WorkspaceHeroDto(0, 0, 0, null),
+            new WorkspaceHeroDto(0, 0, 0, null, null, null),
             null,
             Array.Empty<EntityTrendSeriesDto>(),
             Array.Empty<WorkspaceTopEntityRowDto>());
@@ -186,7 +186,7 @@ public class GetWorkspaceOverviewQueryHandler
     {
         if (scanIds.Count == 0)
         {
-            return new WorkspaceHeroDto(0, 0, 0, null);
+            return new WorkspaceHeroDto(0, 0, 0, null, null, null);
         }
 
         var scanIdSet = scanIds.ToHashSet();
@@ -240,19 +240,81 @@ public class GetWorkspaceOverviewQueryHandler
         // tracked-brand mention / total answers. Cleaner than averaging
         // per-tracker rates when trackers have different prompt counts.
         double? brandMentionRate = null;
+        HashSet<Guid> brandMentionedAnswerIdSet = new();
         if (answerIdSet.Count > 0)
         {
-            var brandMentionedAnswerIds = await _db.Mentions.AsNoTracking()
+            brandMentionedAnswerIdSet = (await _db.Mentions.AsNoTracking()
                 .Where(m => answerIdSet.Contains(m.AIAnswerId)
                     && m.EntityType == MentionEntityType.Brand
                     && trackedBrandIds.Contains(m.EntityId))
                 .Select(m => m.AIAnswerId)
                 .Distinct()
-                .CountAsync(ct);
-            brandMentionRate = (double)brandMentionedAnswerIds / answerIdSet.Count;
+                .ToListAsync(ct))
+                .ToHashSet();
+            brandMentionRate = (double)brandMentionedAnswerIdSet.Count / answerIdSet.Count;
         }
 
-        return new WorkspaceHeroDto(queries, mentions, citations, brandMentionRate);
+        // BrandAbsenceRate: fraction of in-scope answers with NO tracked-
+        // brand mention AND no Owned citation for ANY tracked brand.
+        // Stricter than 1 - brandMentionRate because it also catches
+        // "brand's site cited but brand wasn't named" — still a
+        // visibility signal. Per-brand classification (Owned-ness depends
+        // on which brand you're asking about) means we join citations to
+        // BrandSourceClassification, not Citation.ClassifiedAs (which
+        // was retired by Phase 4 Slice 0).
+        double? brandAbsenceRate = null;
+        if (answerIdSet.Count > 0)
+        {
+            var ownedCitedAnswerIds = await (
+                from c in _db.Citations.AsNoTracking()
+                join bsc in _db.BrandSourceClassifications.AsNoTracking()
+                    on c.SourceId equals bsc.SourceId
+                where answerIdSet.Contains(c.AIAnswerId)
+                    && bsc.SourceType == SourceType.Owned
+                    && trackedBrandIds.Contains(bsc.BrandId)
+                select c.AIAnswerId)
+                .Distinct()
+                .ToListAsync(ct);
+            var presentAnswerIds = new HashSet<Guid>(brandMentionedAnswerIdSet);
+            foreach (var id in ownedCitedAnswerIds) presentAnswerIds.Add(id);
+            var absentCount = answerIdSet.Count - presentAnswerIds.Count;
+            brandAbsenceRate = (double)absentCount / answerIdSet.Count;
+        }
+
+        // BrandFirstMentionRate: among answers with ≥1 mention, fraction
+        // where a tracked brand was the first-named entity by
+        // FirstMentionPosition. Aggregates the per-mention positions in
+        // memory because EF's window-function support is uneven.
+        double? brandFirstMentionRate = null;
+        if (answerIdSet.Count > 0)
+        {
+            var mentionMinPositions = await _db.Mentions.AsNoTracking()
+                .Where(m => answerIdSet.Contains(m.AIAnswerId))
+                .Select(m => new
+                {
+                    m.AIAnswerId,
+                    m.EntityType,
+                    m.EntityId,
+                    m.FirstMentionPosition,
+                })
+                .ToListAsync(ct);
+            var byAnswer = mentionMinPositions
+                .GroupBy(m => m.AIAnswerId)
+                .ToList();
+            if (byAnswer.Count > 0)
+            {
+                var firstNamedBrandCount = byAnswer.Count(g =>
+                {
+                    var winner = g.OrderBy(m => m.FirstMentionPosition).First();
+                    return winner.EntityType == MentionEntityType.Brand
+                        && trackedBrandIds.Contains(winner.EntityId);
+                });
+                brandFirstMentionRate = (double)firstNamedBrandCount / byAnswer.Count;
+            }
+        }
+
+        return new WorkspaceHeroDto(
+            queries, mentions, citations, brandMentionRate, brandAbsenceRate, brandFirstMentionRate);
     }
 
     // -----------------------------------------------------------------
