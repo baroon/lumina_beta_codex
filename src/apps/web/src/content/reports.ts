@@ -506,6 +506,7 @@ export const REPORTS_COPY = {
       noClaimsForFilter: "No claims match the current filter.",
       notFound: "Scan not found.",
     },
+    verdictError: "Save failed — try again.",
   },
   sources: {
     title: "Sources",

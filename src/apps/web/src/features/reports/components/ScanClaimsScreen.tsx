@@ -11,7 +11,9 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { cn } from "@/lib/utils";
 import { useScanClaims } from "@/features/reports/hooks/useScanClaims";
+import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
+import type { FactualClaimDto } from "@/types/api";
 
 interface ScanClaimsScreenProps {
   scanRunId: string;
@@ -23,13 +25,14 @@ type ReviewFilter = (typeof REVIEW_STATUS_FILTERS)[number];
 /**
  * Scan-scoped factual-claims inbox (Phase 4 measurement-model expansion,
  * item #14). Lets a reviewer skim every check-able claim the AI made
- * about the brand on this scan, filter by review status, and (in a
- * future slice) dispute / verify each one.
+ * about the brand on this scan, filter by review status, and flip the
+ * verdict (Pending / Verified / Disputed) on each one inline.
  */
 export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
   const [filter, setFilter] = useState<ReviewFilter>("All");
   const apiFilter = filter === "All" ? undefined : filter;
   const { data, isLoading, isError, error, refetch } = useScanClaims(scanRunId, apiFilter);
+  const update = useUpdateFactualClaimReviewStatus();
   const copy = REPORTS_COPY.claims;
 
   if (isLoading) return <LoadingPage />;
@@ -93,56 +96,127 @@ export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
         </Card>
       ) : (
         <ul className="space-y-3" role="list">
-          {claims.map((c) => (
-            <li key={c.id}>
-              <Card>
-                <CardContent className="space-y-3 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-neutral-900">{c.claimText}</p>
-                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500">
-                        <span>
-                          {copy.row.about}{" "}
-                          <strong className="text-neutral-700">{c.entityName}</strong>
-                        </span>
-                        <span>
-                          {copy.row.subject}{" "}
-                          <code className="rounded bg-neutral-100 px-1 py-0.5 text-[11px] text-neutral-700">
-                            {c.subject}
-                          </code>
-                        </span>
-                        <span>
-                          {copy.row.value}{" "}
-                          <strong className="text-neutral-700">{c.assertedValue}</strong>
-                        </span>
+          {claims.map((c) => {
+            const failedHere = update.isError && update.variables?.claimId === c.id;
+            return (
+              <li key={c.id}>
+                <Card>
+                  <CardContent className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-neutral-900">{c.claimText}</p>
+                        <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-500">
+                          <span>
+                            {copy.row.about}{" "}
+                            <strong className="text-neutral-700">{c.entityName}</strong>
+                          </span>
+                          <span>
+                            {copy.row.subject}{" "}
+                            <code className="rounded bg-neutral-100 px-1 py-0.5 text-[11px] text-neutral-700">
+                              {c.subject}
+                            </code>
+                          </span>
+                          <span>
+                            {copy.row.value}{" "}
+                            <strong className="text-neutral-700">{c.assertedValue}</strong>
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <Badge variant={verifiabilityVariant(c.verifiability)} className="text-xs">
+                          {copy.verifiabilityLabels[c.verifiability] ?? c.verifiability}
+                        </Badge>
+                        <ClaimVerdictToggle
+                          claim={c}
+                          disabled={update.isPending}
+                          onChange={(next) => update.mutate({ claimId: c.id, reviewStatus: next })}
+                        />
+                      </div>
+                    </div>
+                    {c.evidenceSnippet && (
+                      <p
+                        className={cn(
+                          "rounded-md border-l-2 border-neutral-200 bg-neutral-50 px-3 py-2 text-xs italic text-neutral-600",
+                        )}
+                      >
+                        &ldquo;{c.evidenceSnippet}&rdquo;
                       </p>
-                    </div>
-                    <div className="flex shrink-0 gap-1.5">
-                      <Badge variant={verifiabilityVariant(c.verifiability)} className="text-xs">
-                        {copy.verifiabilityLabels[c.verifiability] ?? c.verifiability}
-                      </Badge>
-                      <Badge variant={statusVariant(c.reviewStatus)} className="text-xs">
-                        {copy.statusLabels[c.reviewStatus] ?? c.reviewStatus}
-                      </Badge>
-                    </div>
-                  </div>
-                  {c.evidenceSnippet && (
-                    <p
-                      className={cn(
-                        "rounded-md border-l-2 border-neutral-200 bg-neutral-50 px-3 py-2 text-xs italic text-neutral-600",
-                      )}
-                    >
-                      &ldquo;{c.evidenceSnippet}&rdquo;
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                    )}
+                    {failedHere && (
+                      <p className="text-xs text-semantic-error-600" role="alert">
+                        {update.error instanceof Error ? update.error.message : copy.verdictError}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
   );
+}
+
+/**
+ * 3-button verdict toggle for a single claim. Mirrors the one on the
+ * workspace FactualClaimsCard — same color semantics so users get the
+ * same affordance on both surfaces.
+ */
+function ClaimVerdictToggle({
+  claim,
+  disabled,
+  onChange,
+}: {
+  claim: FactualClaimDto;
+  disabled: boolean;
+  onChange: (next: string) => void;
+}) {
+  const copy = REPORTS_COPY.claims;
+  const options: Array<{ value: string; label: string }> = [
+    { value: "Pending", label: copy.statusLabels.Pending ?? "Pending" },
+    { value: "Verified", label: copy.statusLabels.Verified ?? "Verified" },
+    { value: "Disputed", label: copy.statusLabels.Disputed ?? "Disputed" },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label={`Review verdict for ${claim.id}`}
+      className="inline-flex rounded-md border border-neutral-200 bg-white p-0.5"
+    >
+      {options.map((opt) => {
+        const isActive = opt.value === claim.reviewStatus;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(opt.value)}
+            aria-pressed={isActive}
+            className={cn(
+              "rounded px-2 py-0.5 text-[11px] font-medium transition",
+              isActive ? verdictActiveClass(opt.value) : "text-neutral-500 hover:bg-neutral-100",
+              disabled && "opacity-60",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function verdictActiveClass(status: string): string {
+  switch (status) {
+    case "Verified":
+      return "bg-semantic-success-100 text-semantic-success-700";
+    case "Disputed":
+      return "bg-semantic-error-100 text-semantic-error-700";
+    case "Pending":
+    default:
+      return "bg-semantic-warning-100 text-semantic-warning-700";
+  }
 }
 
 function verifiabilityVariant(
@@ -156,19 +230,5 @@ function verifiabilityVariant(
     case "Unverifiable":
     default:
       return "secondary";
-  }
-}
-
-function statusVariant(
-  status: string,
-): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
-  switch (status) {
-    case "Verified":
-      return "success";
-    case "Disputed":
-      return "destructive";
-    case "Pending":
-    default:
-      return "outline";
   }
 }

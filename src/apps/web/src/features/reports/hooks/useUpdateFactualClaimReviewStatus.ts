@@ -8,11 +8,11 @@ interface UpdateInput {
 }
 
 /**
- * Mutation hook for the FactualClaimsCard verdict buttons (item #14
- * write action). Invalidates the workspace-overview cache on success
- * so the badge color flips alongside any FE that consumes the same
- * key. No optimistic update — the workspace overview is the only
- * surface today, and a refetch round-trip is cheap on click.
+ * Mutation hook for the verdict buttons on both the workspace
+ * FactualClaimsCard and the per-scan ScanClaimsScreen (item #14
+ * write action). Invalidates both caches on success so the new
+ * status reflects on whichever surface the user is looking at.
+ * No optimistic update — the refetch round-trip is cheap on click.
  */
 export function useUpdateFactualClaimReviewStatus() {
   const queryClient = useQueryClient();
@@ -22,6 +22,7 @@ export function useUpdateFactualClaimReviewStatus() {
       factualClaimsApi.updateReviewStatus(claimId, { reviewStatus }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["workspace-overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["scan-claims"] });
     },
   });
 }
