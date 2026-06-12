@@ -67,6 +67,7 @@ import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
@@ -1848,12 +1849,15 @@ function riskSeverityVariant(
 /**
  * Factual-claims feed (item #14). Each claim is a checkable assertion
  * the AI made about a tracked brand — subject + asserted value plus
- * the supporting snippet. Pending claims are the actionable surface;
- * Verified/Disputed show recent context. No write action yet (the
- * review UI is queued separately).
+ * the supporting snippet. Each row carries a 3-button verdict toggle
+ * (Pending / Verified / Disputed); clicking fires the only allowed
+ * write on the otherwise append-only FactualClaim table. Workspace
+ * ownership is enforced server-side; the FE just fires the new value.
  */
 function FactualClaimsCard({ claims }: { claims: readonly WorkspaceFactualClaimDto[] }) {
   const copy = REPORTS_COPY.overview.factualClaims;
+  const update = useUpdateFactualClaimReviewStatus();
+
   if (claims.length === 0) {
     return (
       <CollapsibleCard icon={Quote} title={copy.title} tooltip={copy.tooltip}>
@@ -1865,52 +1869,109 @@ function FactualClaimsCard({ claims }: { claims: readonly WorkspaceFactualClaimD
     <CollapsibleCard icon={Quote} title={copy.title} tooltip={copy.tooltip}>
       <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
       <ul className="space-y-2" role="list">
-        {claims.map((c) => (
-          <li key={c.claimId} className="rounded-lg border border-neutral-200 bg-white p-3 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
-              <span className="font-medium text-neutral-700">{c.brandName}</span>
-              <Badge variant={reviewStatusVariant(c.reviewStatus)} className="text-[10px]">
-                {reviewStatusLabel(c.reviewStatus, copy)}
-              </Badge>
-            </div>
-            <p className="mt-1 text-sm text-neutral-900">{c.claimText}</p>
-            <p className="mt-2 text-xs uppercase tracking-wide text-neutral-500">
-              {c.subject.replace(/_/g, " ")}
-              <span className="ml-2 normal-case text-neutral-700">{c.assertedValue}</span>
-            </p>
-          </li>
-        ))}
+        {claims.map((c) => {
+          const failedHere = update.isError && update.variables?.claimId === c.claimId;
+          return (
+            <li
+              key={c.claimId}
+              className="rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+                <span className="font-medium text-neutral-700">{c.brandName}</span>
+                <VerdictToggle
+                  claimId={c.claimId}
+                  current={c.reviewStatus}
+                  copy={copy}
+                  onChange={(next) => update.mutate({ claimId: c.claimId, reviewStatus: next })}
+                  disabled={update.isPending}
+                />
+              </div>
+              <p className="mt-1 text-sm text-neutral-900">{c.claimText}</p>
+              <p className="mt-2 text-xs uppercase tracking-wide text-neutral-500">
+                {c.subject.replace(/_/g, " ")}
+                <span className="ml-2 normal-case text-neutral-700">{c.assertedValue}</span>
+              </p>
+              {failedHere && (
+                <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+                  {update.error instanceof Error ? update.error.message : copy.verdictError}
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </CollapsibleCard>
   );
 }
 
-function reviewStatusVariant(
-  status: string,
-): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
-  switch (status) {
-    case "Verified":
-      return "success";
-    case "Disputed":
-      return "destructive";
-    case "Pending":
-    default:
-      return "warning";
-  }
+/**
+ * 3-button verdict toggle for a single factual claim. The active
+ * status is styled as a colored chip; the other two read as muted
+ * buttons. Clicking the currently-active one is a no-op (the BE
+ * short-circuits same-value writes) but the user can revise back to
+ * Pending if they want to re-queue.
+ */
+function VerdictToggle({
+  claimId,
+  current,
+  copy,
+  onChange,
+  disabled,
+}: {
+  claimId: string;
+  current: string;
+  copy: {
+    statusPending: string;
+    statusVerified: string;
+    statusDisputed: string;
+    verdictGroupLabel: string;
+  };
+  onChange: (next: string) => void;
+  disabled: boolean;
+}) {
+  const options: Array<{ value: string; label: string }> = [
+    { value: "Pending", label: copy.statusPending },
+    { value: "Verified", label: copy.statusVerified },
+    { value: "Disputed", label: copy.statusDisputed },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label={`${copy.verdictGroupLabel} for ${claimId}`}
+      className="inline-flex rounded-md border border-neutral-200 bg-white p-0.5"
+    >
+      {options.map((opt) => {
+        const isActive = opt.value === current;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(opt.value)}
+            aria-pressed={isActive}
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-medium transition",
+              isActive ? verdictActiveClass(opt.value) : "text-neutral-500 hover:bg-neutral-100",
+              disabled && "opacity-60",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
-function reviewStatusLabel(
-  status: string,
-  copy: { statusPending: string; statusVerified: string; statusDisputed: string },
-): string {
+function verdictActiveClass(status: string): string {
   switch (status) {
     case "Verified":
-      return copy.statusVerified;
+      return "bg-semantic-success-100 text-semantic-success-700";
     case "Disputed":
-      return copy.statusDisputed;
+      return "bg-semantic-error-100 text-semantic-error-700";
     case "Pending":
     default:
-      return copy.statusPending;
+      return "bg-semantic-warning-100 text-semantic-warning-700";
   }
 }
 

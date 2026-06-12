@@ -1354,6 +1354,15 @@ export interface WorkspaceFactualClaimDto {
   createdAt: string;
 }
 
+export interface UpdateFactualClaimReviewStatusRequest {
+  /** Enum name: "Pending" | "Verified" | "Disputed". Server parses case-insensitively. */
+  reviewStatus: string;
+}
+
+export interface UpdateFactualClaimReviewStatusResult {
+  reviewStatus: string;
+}
+
 export interface TrackedBrandDto {
   brandId: string;
   name: string;

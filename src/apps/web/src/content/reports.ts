@@ -326,6 +326,8 @@ export const REPORTS_COPY = {
       statusPending: "Pending",
       statusVerified: "Verified",
       statusDisputed: "Disputed",
+      verdictGroupLabel: "Review verdict",
+      verdictError: "Save failed — try again.",
     },
     topicCoverage: {
       title: "Topic coverage",

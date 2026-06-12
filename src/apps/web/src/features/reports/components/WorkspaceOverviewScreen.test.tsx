@@ -47,6 +47,22 @@ vi.mock("../hooks/useDiscoverySummary", () => ({
   useDiscoverySummary: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
+// Factual-claim review mutation. Default: idle no-op; tests that need
+// to assert on the call shape override `updateClaimReviewMutate` below.
+let updateClaimReviewMutate: ReturnType<typeof vi.fn> = vi.fn();
+let updateClaimReviewState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+  variables?: { claimId: string; reviewStatus: string };
+} = { isPending: false, isError: false };
+vi.mock("../hooks/useUpdateFactualClaimReviewStatus", () => ({
+  useUpdateFactualClaimReviewStatus: () => ({
+    mutate: updateClaimReviewMutate,
+    ...updateClaimReviewState,
+  }),
+}));
+
 // Slice B competitive sections fetched separately. Default: no data.
 let competitiveState: {
   data?: import("@/types/api").WorkspaceCompetitiveDto;
@@ -482,16 +498,51 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
   });
 
-  it("renders the factual claims feed with claim text and status badges", () => {
+  it("renders the factual claims feed with claim text and verdict toggles", () => {
+    updateClaimReviewMutate = vi.fn();
+    updateClaimReviewState = { isPending: false, isError: false };
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
     expect(screen.getByText(/factual claims to review/i)).toBeInTheDocument();
     expect(screen.getByText("Acme is headquartered in San Francisco.")).toBeInTheDocument();
     expect(screen.getByText("Acme was founded in 1975.")).toBeInTheDocument();
-    // Status badges from the fixture (one Pending, one Disputed).
-    expect(screen.getByText(/^Pending$/)).toBeInTheDocument();
-    expect(screen.getByText(/^Disputed$/)).toBeInTheDocument();
+    // Each claim renders a verdict toggle group with 3 buttons (Pending /
+    // Verified / Disputed). 2 claims × 3 = 6 verdict buttons total.
+    const verdictGroups = screen.getAllByRole("group", { name: /Review verdict for/i });
+    expect(verdictGroups).toHaveLength(2);
+  });
+
+  it("clicking a verdict button fires the mutation with claimId + new status", async () => {
+    updateClaimReviewMutate = vi.fn();
+    updateClaimReviewState = { isPending: false, isError: false };
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    // Click "Verified" on the first claim (fixture[0] is c1, Pending).
+    const firstGroup = screen.getAllByRole("group", { name: /Review verdict for/i })[0];
+    const verifiedBtn = within(firstGroup).getByRole("button", { name: /^Verified$/ });
+    await userEvent.click(verifiedBtn);
+
+    expect(updateClaimReviewMutate).toHaveBeenCalledOnce();
+    const [args] = updateClaimReviewMutate.mock.calls[0];
+    expect(args.claimId).toBe("c1");
+    expect(args.reviewStatus).toBe("Verified");
+  });
+
+  it("server-error message renders on the claim row that failed", () => {
+    updateClaimReviewMutate = vi.fn();
+    updateClaimReviewState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Factual claim does not belong to the current workspace."),
+      variables: { claimId: "c2", reviewStatus: "Pending" },
+    };
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    // Error renders only on the failing claim, not on every row.
+    expect(screen.getAllByText(/does not belong to the current workspace/i)).toHaveLength(1);
   });
 
   it("renders the topic ownership card with prompt counts and ownership percent", () => {
