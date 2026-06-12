@@ -96,7 +96,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             TrackerConfiguration tracker, DateTime startedAt, Brand brand,
             bool mentionsBrand, string sentimentCategory = "Positive",
             (string Name, AttributePolarity Polarity)[]? brandAttributes = null,
-            Guid[]? competitorMentions = null)
+            Guid[]? competitorMentions = null,
+            (string FlagType, RiskSeverity Severity)[]? brandRiskFlags = null)
         {
             var prompt = new Prompt
             {
@@ -152,6 +153,21 @@ public class GetWorkspaceOverviewQueryHandlerTests
                         });
                     }
                 }
+                if (brandRiskFlags is { Length: > 0 })
+                {
+                    foreach (var (flagType, severity) in brandRiskFlags)
+                    {
+                        ctx.MentionRiskFlags.Add(new MentionRiskFlag
+                        {
+                            Id = Guid.NewGuid(),
+                            MentionId = mention.Id,
+                            FlagType = flagType,
+                            Severity = severity,
+                            EvidenceSnippet = "e",
+                            CreatedAt = startedAt,
+                        });
+                    }
+                }
             }
 
             if (competitorMentions is { Length: > 0 })
@@ -193,6 +209,12 @@ public class GetWorkspaceOverviewQueryHandlerTests
         // Expected workspace rollup (sorted by CO desc, then name asc):
         //   Glassdoor: CO=1, total=1
         //   Indeed   : CO=1, total=2
+        // Risk-flag fixture (item #11): two flag types over 3 brand mentions.
+        //   "layoffs": Medium (Acme@-14d) + High (Acme@-1d) → mode High,
+        //              count 2 (tied severity counts; High wins via enum
+        //              ordering in the tie-break).
+        //   "outage" : Low (Beta@-1d) → mode Low, count 1.
+        // Expected order: layoffs (2), outage (1).
         SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme,
             mentionsBrand: true, sentimentCategory: "Negative",
             brandAttributes: new[]
@@ -200,7 +222,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 ("trustworthy", AttributePolarity.Positive),
                 ("in-depth", AttributePolarity.Positive),
             },
-            competitorMentions: new[] { sharedId });
+            competitorMentions: new[] { sharedId },
+            brandRiskFlags: new[] { ("layoffs", RiskSeverity.Medium) });
         SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -208,7 +231,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 ("trustworthy", AttributePolarity.Positive),
                 ("slow", AttributePolarity.Negative),
             },
-            competitorMentions: new[] { glassdoor.Id });
+            competitorMentions: new[] { glassdoor.Id },
+            brandRiskFlags: new[] { ("layoffs", RiskSeverity.High) });
         SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta,
             mentionsBrand: false, sentimentCategory: "Neutral",
             competitorMentions: new[] { sharedId });
@@ -217,7 +241,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             brandAttributes: new[]
             {
                 ("trustworthy", AttributePolarity.Negative),
-            });
+            },
+            brandRiskFlags: new[] { ("outage", RiskSeverity.Low) });
 
         // Competitor trend points only on Acme's tracker for the shared competitor.
         var acmeScans = scansByTracker[acmeTracker.Id].OrderBy(s => s.StartedAt).ToList();
@@ -393,6 +418,32 @@ public class GetWorkspaceOverviewQueryHandlerTests
             CancellationToken.None);
 
         result.CoMentions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task TopBrandRiskFlags_CountsAndOrdersFlagsWithModeSeverity()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Seed: layoffs×2 (Medium, High → mode High via ordinal tie-break),
+        //       outage×1 (Low).
+        result.TopBrandRiskFlags.Should().HaveCount(2);
+
+        var first = result.TopBrandRiskFlags[0];
+        first.Rank.Should().Be(1);
+        first.FlagType.Should().Be("layoffs");
+        first.Severity.Should().Be(nameof(RiskSeverity.High));
+        first.MentionCount.Should().Be(2);
+
+        result.TopBrandRiskFlags[1].FlagType.Should().Be("outage");
+        result.TopBrandRiskFlags[1].Severity.Should().Be(nameof(RiskSeverity.Low));
+        result.TopBrandRiskFlags[1].MentionCount.Should().Be(1);
     }
 
     [Fact]

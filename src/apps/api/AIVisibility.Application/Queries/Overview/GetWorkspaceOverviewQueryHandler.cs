@@ -126,6 +126,8 @@ public class GetWorkspaceOverviewQueryHandler
             scanIds, trackedBrandIds, cancellationToken);
         var coMentions = await BuildCoMentionsAsync(
             scanIds, trackedBrandIds, competitorRows, cancellationToken);
+        var topBrandRiskFlags = await BuildTopBrandRiskFlagsAsync(
+            scanIds, trackedBrandIds, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -139,7 +141,8 @@ public class GetWorkspaceOverviewQueryHandler
             Series: series,
             TopEntities: topEntities,
             TopBrandAttributes: topBrandAttributes,
-            CoMentions: coMentions);
+            CoMentions: coMentions,
+            TopBrandRiskFlags: topBrandRiskFlags);
     }
 
     /// <summary>
@@ -176,7 +179,8 @@ public class GetWorkspaceOverviewQueryHandler
             Array.Empty<EntityTrendSeriesDto>(),
             Array.Empty<WorkspaceTopEntityRowDto>(),
             Array.Empty<WorkspaceBrandAttributeDto>(),
-            Array.Empty<WorkspaceCoMentionDto>());
+            Array.Empty<WorkspaceCoMentionDto>(),
+            Array.Empty<WorkspaceBrandRiskFlagDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -418,6 +422,66 @@ public class GetWorkspaceOverviewQueryHandler
             .Take(10)
             .Select((r, i) => new WorkspaceBrandAttributeDto(
                 Rank: i + 1, Name: r.Name, Polarity: r.Polarity, MentionCount: r.MentionCount))
+            .ToList();
+
+        return grouped;
+    }
+
+    // -----------------------------------------------------------------
+    // Top brand risk flags (Phase 4 measurement-model expansion, item #11)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Workspace-wide rollup of the AI-extracted risk language attached
+    /// to any tracked brand. Joins MentionRiskFlag → Mention → AIAnswer
+    /// → PromptRun → ScanRun so the scope mirrors the hero counts.
+    /// Aggregates from the leaf rows rather than re-summing the per-scan
+    /// <c>BrandRiskFlagCount</c> ScanMetric — that metric is a single
+    /// integer that loses the (flag type, severity) detail this card
+    /// surfaces. Severity at the workspace grain = mode severity per
+    /// flag type; ties on count fall back to alphabetical for
+    /// determinism. Top 10.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceBrandRiskFlagDto>> BuildTopBrandRiskFlagsAsync(
+        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+    {
+        if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandRiskFlagDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+
+        var rows = await (
+            from rf in _db.MentionRiskFlags.AsNoTracking()
+            join m in _db.Mentions.AsNoTracking() on rf.MentionId equals m.Id
+            join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
+            join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
+            where m.EntityType == MentionEntityType.Brand
+                && trackedBrandIds.Contains(m.EntityId)
+                && scanIdSet.Contains(pr.ScanRunId)
+            select new { rf.FlagType, rf.Severity })
+            .ToListAsync(ct);
+
+        if (rows.Count == 0) return Array.Empty<WorkspaceBrandRiskFlagDto>();
+
+        var grouped = rows
+            .GroupBy(r => r.FlagType)
+            .Select(g =>
+            {
+                var modeSeverity = g.GroupBy(r => r.Severity)
+                    .OrderByDescending(sg => sg.Count())
+                    .ThenByDescending(sg => (int)sg.Key) // High wins ties over Low
+                    .First().Key;
+                return new
+                {
+                    FlagType = g.Key,
+                    Severity = modeSeverity.ToString(),
+                    MentionCount = g.Count(),
+                };
+            })
+            .OrderByDescending(r => r.MentionCount)
+            .ThenBy(r => r.FlagType, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .Select((r, i) => new WorkspaceBrandRiskFlagDto(
+                Rank: i + 1, FlagType: r.FlagType, Severity: r.Severity, MentionCount: r.MentionCount))
             .ToList();
 
         return grouped;

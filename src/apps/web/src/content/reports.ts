@@ -291,6 +291,12 @@ export const REPORTS_COPY = {
       tooltip: TBD_TOOLTIP,
       noData: "No brand attributes extracted in this window yet.",
     },
+    brandRiskFlags: {
+      title: "Risk flags",
+      tooltip: TBD_TOOLTIP,
+      subline: "Risk language the AI surfaced about our brand. Severity is the dominant level.",
+      noData: "No risk flags raised against the brand in this window.",
+    },
     topicCoverage: {
       title: "Topic coverage",
       tooltip: TBD_TOOLTIP,

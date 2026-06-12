@@ -78,7 +78,17 @@ public sealed record WorkspaceOverviewDto(
     /// competitor's mentions share the conversation with us." Rows
     /// with zero competitor mentions are omitted.
     /// </summary>
-    IReadOnlyList<WorkspaceCoMentionDto> CoMentions);
+    IReadOnlyList<WorkspaceCoMentionDto> CoMentions,
+    /// <summary>
+    /// Top-N risk flags the AI attached to any tracked brand across the
+    /// window (Phase 4 measurement-model expansion, item #11).
+    /// Aggregated from <c>MentionRiskFlag</c> rows joined to brand-typed
+    /// Mentions. Severity at the workspace grain = mode severity across
+    /// the flag type's mentions. Ordered by count desc, then by
+    /// alphabetical flag type. 10-row cap. Empty when no risk flags
+    /// were extracted in scope.
+    /// </summary>
+    IReadOnlyList<WorkspaceBrandRiskFlagDto> TopBrandRiskFlags);
 
 /// <summary>
 /// One attribute the AI ascribed to a tracked brand across the workspace.
@@ -107,6 +117,21 @@ public sealed record WorkspaceCoMentionDto(
     int CoMentionCount,
     /// <summary>Distinct in-scope answers where this competitor was mentioned (regardless of any brand mention).</summary>
     int CompetitorMentionCount);
+
+/// <summary>
+/// One risk flag attached to a tracked brand across the workspace —
+/// type, mode severity, and how many mentions carry it. Captures the
+/// "did the AI surface concerns about us?" signal independent of the
+/// sentiment enum (a Positive-sentiment mention can still carry a
+/// risk flag like "recent layoffs" or "outage history").
+/// </summary>
+public sealed record WorkspaceBrandRiskFlagDto(
+    int Rank,
+    string FlagType,
+    /// <summary>"Low" / "Medium" / "High" — mode severity across the flag type's mentions.</summary>
+    string Severity,
+    /// <summary>Distinct mentions tagged with this risk flag type in scope.</summary>
+    int MentionCount);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

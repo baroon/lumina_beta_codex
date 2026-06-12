@@ -1259,6 +1259,12 @@ export interface WorkspaceOverviewDto {
    * omitted.
    */
   coMentions: WorkspaceCoMentionDto[];
+  /**
+   * Top-N risk flags (rank ≤10) the AI attached to any tracked brand
+   * across the window. Severity = mode severity per flag type. Empty
+   * when no risk flags were extracted in scope.
+   */
+  topBrandRiskFlags: WorkspaceBrandRiskFlagDto[];
 }
 
 export interface WorkspaceBrandAttributeDto {
@@ -1278,6 +1284,16 @@ export interface WorkspaceCoMentionDto {
   coMentionCount: number;
   /** Distinct in-scope answers where this competitor was mentioned (regardless of brand). */
   competitorMentionCount: number;
+}
+
+/** One row in the workspace risk-flag rollup (Phase 4 measurement-model item #11). */
+export interface WorkspaceBrandRiskFlagDto {
+  rank: number;
+  flagType: string;
+  /** "Low" | "Medium" | "High" — mode severity across the flag type's mentions. */
+  severity: string;
+  /** Distinct mentions tagged with this risk flag type in scope. */
+  mentionCount: number;
 }
 
 export interface TrackedBrandDto {

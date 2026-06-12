@@ -325,6 +325,10 @@ const fixture: WorkspaceOverviewDto = {
       competitorMentionCount: 10,
     },
   ],
+  topBrandRiskFlags: [
+    { rank: 1, flagType: "layoffs", severity: "High", mentionCount: 3 },
+    { rank: 2, flagType: "outage", severity: "Medium", mentionCount: 1 },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -440,6 +444,17 @@ describe("WorkspaceOverviewScreen", () => {
     // Per-competitor row: "6 / 10 (60% of competitor's mentions)"
     expect(screen.getByText(/6 \/ 10/)).toBeInTheDocument();
     expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
+  });
+
+  it("renders the workspace top risk flags as severity-colored chips", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    expect(screen.getByText(/risk flags/i)).toBeInTheDocument();
+    expect(screen.getByText("layoffs")).toBeInTheDocument();
+    expect(screen.getByText("outage")).toBeInTheDocument();
+    expect(screen.getByText("×3")).toBeInTheDocument();
+    expect(screen.getByText("×1")).toBeInTheDocument();
   });
 
   it("renders the workspace top brand attributes as polarity-colored chips", () => {

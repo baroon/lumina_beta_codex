@@ -102,7 +102,8 @@ public class GenerateInsightsNarrativeQueryHandlerTests
                 Sentiment: "Neutral", SentimentDelta: 0),
         },
         TopBrandAttributes: Array.Empty<WorkspaceBrandAttributeDto>(),
-        CoMentions: Array.Empty<WorkspaceCoMentionDto>());
+        CoMentions: Array.Empty<WorkspaceCoMentionDto>(),
+        TopBrandRiskFlags: Array.Empty<WorkspaceBrandRiskFlagDto>());
 
     [Fact]
     public async Task Generate_ReturnsNarrativeText_AndPlatformCode_OnHappyPath()

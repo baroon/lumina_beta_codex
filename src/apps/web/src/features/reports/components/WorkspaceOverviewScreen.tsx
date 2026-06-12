@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   BarChart3,
@@ -82,6 +83,7 @@ import type {
   PlatformMentionDto,
   SentimentSliceDto,
   WorkspaceBrandAttributeDto,
+  WorkspaceBrandRiskFlagDto,
   WorkspaceCoMentionDto,
   WorkspaceHeroDto,
   WorkspaceOverviewDto,
@@ -482,6 +484,7 @@ function CategorizedOverview({
           {trendCard("sentiment")}
           {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
           <BrandAttributesCard attributes={data.topBrandAttributes} />
+          <BrandRiskFlagsCard flags={data.topBrandRiskFlags} />
           {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
         </div>
       ),
@@ -1649,6 +1652,52 @@ function BrandAttributesCard({
       )}
     </CollapsibleCard>
   );
+}
+
+/**
+ * Risk-flag rollup card — the AI-surfaced concerns about a tracked
+ * brand (item #11). Independent of sentiment: a positive answer can
+ * still flag a recent layoff. Severity colors mirror the standard
+ * severity scale (Low=secondary, Medium=warning, High=destructive)
+ * so a glance at the chips reads urgency without reading labels.
+ */
+function BrandRiskFlagsCard({ flags }: { flags: readonly WorkspaceBrandRiskFlagDto[] }) {
+  const copy = REPORTS_COPY.overview.brandRiskFlags;
+  return (
+    <CollapsibleCard icon={AlertTriangle} title={copy.title} tooltip={copy.tooltip}>
+      {flags.length === 0 ? (
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      ) : (
+        <>
+          <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
+          <ul className="flex flex-wrap gap-2" role="list">
+            {flags.map((f) => (
+              <li key={`${f.rank}:${f.flagType}`}>
+                <Badge variant={riskSeverityVariant(f.severity)} className="gap-1 text-xs">
+                  <span>{f.flagType}</span>
+                  <span className="opacity-70">×{f.mentionCount}</span>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+function riskSeverityVariant(
+  severity: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (severity) {
+    case "High":
+      return "destructive";
+    case "Medium":
+      return "warning";
+    case "Low":
+    default:
+      return "secondary";
+  }
 }
 
 function attributePolarityVariant(
