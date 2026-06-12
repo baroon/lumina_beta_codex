@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Activity,
   ArrowDown,
   ArrowUp,
   Calendar,
+  ChevronDown,
+  ChevronRight,
   Eye,
   MessageSquare,
   Play,
@@ -25,6 +27,7 @@ import {
 } from "@/components/atoms/select";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
+import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -40,9 +43,11 @@ import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
 import { useTrackerLensesSetup } from "@/features/trackers/hooks/useTrackerLenses";
 import { useTrackerOverview } from "@/features/trackers/hooks/useTrackerOverview";
+import { findEntityTrend } from "@/lib/entityTrend";
 import { buildSignalHighlights } from "@/lib/signalHighlights";
 import { cn } from "@/lib/utils";
 import type {
+  EntityTrendSeriesDto,
   PromptDto,
   ScanListItemDto,
   TrackerScheduleSetup,
@@ -253,7 +258,7 @@ function OverviewTab({ trackerId }: { trackerId: string }) {
           </CardContent>
         </Card>
       )}
-      <TopEntitiesCard rows={rankedEntities} />
+      <TopEntitiesCard rows={rankedEntities} series={data.series} />
     </div>
   );
 }
@@ -347,7 +352,15 @@ function HeroDelta({ current, previous }: { current: number | null; previous: nu
   );
 }
 
-function TopEntitiesCard({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }) {
+function TopEntitiesCard({
+  rows,
+  series,
+}: {
+  rows: readonly WorkspaceTopEntityRowDto[];
+  series: readonly EntityTrendSeriesDto[];
+}) {
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
   if (rows.length === 0) {
     return (
       <Card>
@@ -366,6 +379,7 @@ function TopEntitiesCard({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }
         <table className="w-full text-xs">
           <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
             <tr>
+              <th scope="col" className="w-6 px-2 py-1.5 text-[10px]"></th>
               <th scope="col" className="w-8 px-2 py-1.5 text-right text-[10px]">
                 #
               </th>
@@ -381,38 +395,65 @@ function TopEntitiesCard({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {rows.map((row, index) => (
-              <tr
-                key={`${row.entityType}:${row.entityId}`}
-                className={cn(row.isTrackedBrand && "bg-primary-50/40")}
-              >
-                <td className="w-8 px-2 py-1.5 text-right text-neutral-500 tabular-nums">
-                  {index + 1}
-                </td>
-                <td className="px-2 py-1.5">
-                  <span className="font-medium text-neutral-900">{row.name}</span>
-                  {row.isTrackedBrand && (
-                    <Badge variant="secondary" className="ml-2 text-[10px]">
-                      You
-                    </Badge>
+            {rows.map((row, index) => {
+              const key = `${row.entityType}:${row.entityId}`;
+              const isExpanded = expandedKey === key;
+              const trend = findEntityTrend(series, row.entityType, row.entityId);
+              return (
+                <Fragment key={key}>
+                  <tr
+                    className={cn(
+                      "cursor-pointer transition hover:bg-neutral-50",
+                      row.isTrackedBrand && "bg-primary-50/40",
+                      isExpanded && "bg-neutral-50",
+                    )}
+                    onClick={() => setExpandedKey(isExpanded ? null : key)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`tracker-drill-${key}`}
+                  >
+                    <td className="w-6 px-2 py-1.5 text-neutral-400">
+                      {isExpanded ? (
+                        <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                      )}
+                    </td>
+                    <td className="w-8 px-2 py-1.5 text-right text-neutral-500 tabular-nums">
+                      {index + 1}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <span className="font-medium text-neutral-900">{row.name}</span>
+                      {row.isTrackedBrand && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          You
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {row.visibility == null ? (
+                        <span className="text-neutral-400">—</span>
+                      ) : (
+                        `${Math.round(row.visibility * 100)}%`
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {row.shareOfVoice == null ? (
+                        <span className="text-neutral-400">—</span>
+                      ) : (
+                        `${Math.round(row.shareOfVoice * 100)}%`
+                      )}
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr id={`tracker-drill-${key}`}>
+                      <td colSpan={5} className="bg-neutral-50 p-4">
+                        <EntityTrendDrillDown name={row.name} trend={trend} />
+                      </td>
+                    </tr>
                   )}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">
-                  {row.visibility == null ? (
-                    <span className="text-neutral-400">—</span>
-                  ) : (
-                    `${Math.round(row.visibility * 100)}%`
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-right tabular-nums">
-                  {row.shareOfVoice == null ? (
-                    <span className="text-neutral-400">—</span>
-                  ) : (
-                    `${Math.round(row.shareOfVoice * 100)}%`
-                  )}
-                </td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </CardContent>

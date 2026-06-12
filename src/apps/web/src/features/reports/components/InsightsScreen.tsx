@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
-import { LineChartWrapper } from "@/components/charts/LineChartWrapper";
+import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -21,6 +21,7 @@ import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicke
 import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { useGenerateInsightsNarrative } from "@/features/reports/hooks/useInsightsNarrative";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
+import { findEntityTrend } from "@/lib/entityTrend";
 import { buildSignalHighlights } from "@/lib/signalHighlights";
 import { cn } from "@/lib/utils";
 import type { EntityTrendSeriesDto, WorkspaceTopEntityRowDto } from "@/types/api";
@@ -201,11 +202,7 @@ function RankingTable({
           {rows.map((row, index) => {
             const key = `${row.entityType}:${row.entityId}`;
             const isExpanded = expandedKey === key;
-            const visibilityMetric =
-              row.entityType === "Brand" ? "BrandMentionRate" : "MentionRate";
-            const trend = series.find(
-              (s) => s.entityId === row.entityId && s.metricName === visibilityMetric,
-            );
+            const trend = findEntityTrend(series, row.entityType, row.entityId);
             return (
               <Fragment key={key}>
                 <tr
@@ -262,51 +259,6 @@ function RankingTable({
           })}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-/**
- * Drill-down for one row of the ranking table. Renders a small line
- * chart of the entity's per-scan visibility across the window. Falls
- * back to a soft hint when no numeric points landed (single scan, all
- * nulls, missing series).
- */
-function EntityTrendDrillDown({
-  name,
-  trend,
-}: {
-  name: string;
-  trend: EntityTrendSeriesDto | undefined;
-}) {
-  const points = (trend?.points ?? []).filter((p) => p.value != null);
-  if (points.length === 0) {
-    return (
-      <p className="text-xs text-neutral-500">
-        Not enough per-scan data to plot {name}'s trend in this window.
-      </p>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] uppercase tracking-wide text-neutral-500">
-        Visibility per scan — {name}
-      </p>
-      <LineChartWrapper
-        data={points.map((p) => ({ x: p.capturedAt, y: p.value }))}
-        formatValue={(v) => `${Math.round(v * 100)}%`}
-        formatX={(iso) => {
-          try {
-            return new Date(iso).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            });
-          } catch {
-            return iso;
-          }
-        }}
-        height={160}
-      />
     </div>
   );
 }

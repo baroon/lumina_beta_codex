@@ -495,4 +495,53 @@ describe("TrackerHubScreen", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     expect(screen.queryByText(/Signal highlights/i)).not.toBeInTheDocument();
   });
+
+  // -------------------------------------------------------------------
+  // Top-entities drill-down — click expands the per-scan trend chart
+  // -------------------------------------------------------------------
+
+  it("Overview tab — clicking a top-entity row toggles the per-scan trend panel", async () => {
+    overviewState = {
+      data: {
+        ...overviewFixture,
+        series: [
+          {
+            entityType: "Brand",
+            entityId: "b1",
+            entityName: "Acme",
+            metricName: "BrandMentionRate",
+            seriesKind: "Numeric",
+            points: [
+              { scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 0.4, category: null },
+              { scanRunId: "s2", capturedAt: "2026-05-21T00:00:00Z", value: 0.5, category: null },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+
+    // "Acme" appears in the header, breadcrumb, AND the table — scope to the table.
+    const table = screen.getByRole("table");
+    const acmeRow = within(table).getByText("Acme").closest("tr");
+    expect(acmeRow).not.toBeNull();
+    await userEvent.click(acmeRow!);
+    expect(screen.getByText(/Visibility per scan — Acme/i)).toBeInTheDocument();
+
+    await userEvent.click(acmeRow!);
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+  });
+
+  it("Overview tab — drill-down falls back to a hint when the entity has no per-scan trend", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    const table = screen.getByRole("table");
+    const canvaRow = within(table).getByText("Canva").closest("tr");
+    expect(canvaRow).not.toBeNull();
+    await userEvent.click(canvaRow!);
+    expect(screen.getByText(/Not enough per-scan data to plot Canva's trend/i)).toBeInTheDocument();
+  });
 });
