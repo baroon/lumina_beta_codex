@@ -1,7 +1,18 @@
-import { ArrowDown, ArrowUp, Loader2, Minus, Sparkles, TrendingUp } from "lucide-react";
+import { Fragment, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Minus,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
+import { LineChartWrapper } from "@/components/charts/LineChartWrapper";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
@@ -12,7 +23,7 @@ import { useGenerateInsightsNarrative } from "@/features/reports/hooks/useInsigh
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { buildSignalHighlights } from "@/lib/signalHighlights";
 import { cn } from "@/lib/utils";
-import type { WorkspaceTopEntityRowDto } from "@/types/api";
+import type { EntityTrendSeriesDto, WorkspaceTopEntityRowDto } from "@/types/api";
 
 /**
  * Insights screen (BETA). v1: templated narrative from existing
@@ -100,7 +111,7 @@ export function InsightsScreen() {
           {rankedEntities.length === 0 ? (
             <p className="text-xs text-neutral-500">No entities in scope yet.</p>
           ) : (
-            <RankingTable rows={rankedEntities} />
+            <RankingTable rows={rankedEntities} series={overview.data.series} />
           )}
         </CardContent>
       </Card>
@@ -154,12 +165,31 @@ function formatPercentagePoints(diff: number): string {
 // Ranking table
 // ---------------------------------------------------------------------------
 
-function RankingTable({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }) {
+/**
+ * Performance ranking table with click-to-expand drill-down. Selected
+ * row renders an extra <tr> below showing the entity's per-scan
+ * visibility trend from <c>overview.series</c>. No new BE work — the
+ * series points are already on the workspace overview DTO.
+ *
+ * The expanded row uses the same metric name the table column does
+ * (BrandMentionRate for tracked brands, MentionRate for competitors)
+ * so the drill-down number matches the row's headline value.
+ */
+function RankingTable({
+  rows,
+  series,
+}: {
+  rows: readonly WorkspaceTopEntityRowDto[];
+  series: readonly EntityTrendSeriesDto[];
+}) {
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
           <tr>
+            <Th className="w-6"></Th>
             <Th className="w-10 text-right">#</Th>
             <Th>Entity</Th>
             <Th className="text-right">Visibility</Th>
@@ -168,44 +198,120 @@ function RankingTable({ rows }: { rows: readonly WorkspaceTopEntityRowDto[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100">
-          {rows.map((row, index) => (
-            <tr
-              key={`${row.entityType}:${row.entityId}`}
-              className={cn(row.isTrackedBrand && "bg-primary-50/40")}
-            >
-              <Td className="w-10 text-right text-neutral-500 tabular-nums">{index + 1}</Td>
-              <Td>
-                <span className="font-medium text-neutral-900">{row.name}</span>
-                {row.isTrackedBrand && (
-                  <Badge variant="secondary" className="ml-2 text-[10px]">
-                    You
-                  </Badge>
+          {rows.map((row, index) => {
+            const key = `${row.entityType}:${row.entityId}`;
+            const isExpanded = expandedKey === key;
+            const visibilityMetric =
+              row.entityType === "Brand" ? "BrandMentionRate" : "MentionRate";
+            const trend = series.find(
+              (s) => s.entityId === row.entityId && s.metricName === visibilityMetric,
+            );
+            return (
+              <Fragment key={key}>
+                <tr
+                  className={cn(
+                    "cursor-pointer transition hover:bg-neutral-50",
+                    row.isTrackedBrand && "bg-primary-50/40",
+                    isExpanded && "bg-neutral-50",
+                  )}
+                  onClick={() => setExpandedKey(isExpanded ? null : key)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`drill-${key}`}
+                >
+                  <Td className="w-6 text-neutral-400">
+                    {isExpanded ? (
+                      <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                  </Td>
+                  <Td className="w-10 text-right text-neutral-500 tabular-nums">{index + 1}</Td>
+                  <Td>
+                    <span className="font-medium text-neutral-900">{row.name}</span>
+                    {row.isTrackedBrand && (
+                      <Badge variant="secondary" className="ml-2 text-[10px]">
+                        You
+                      </Badge>
+                    )}
+                  </Td>
+                  <Td className="text-right tabular-nums">
+                    <MetricCell value={row.visibility} delta={row.visibilityDelta} />
+                  </Td>
+                  <Td className="text-right tabular-nums">
+                    <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
+                  </Td>
+                  <Td>
+                    {row.sentiment ? (
+                      <Badge variant={sentimentVariant(row.sentiment)} className="text-[10px]">
+                        {row.sentiment}
+                      </Badge>
+                    ) : (
+                      <span className="text-neutral-400">—</span>
+                    )}
+                  </Td>
+                </tr>
+                {isExpanded && (
+                  <tr id={`drill-${key}`}>
+                    <Td colSpan={6} className="bg-neutral-50 p-4">
+                      <EntityTrendDrillDown name={row.name} trend={trend} />
+                    </Td>
+                  </tr>
                 )}
-              </Td>
-              <Td className="text-right tabular-nums">
-                <MetricCell value={row.visibility} delta={row.visibilityDelta} />
-              </Td>
-              <Td className="text-right tabular-nums">
-                <MetricCell value={row.shareOfVoice} delta={row.shareOfVoiceDelta} />
-              </Td>
-              <Td>
-                {row.sentiment ? (
-                  <Badge variant={sentimentVariant(row.sentiment)} className="text-[10px]">
-                    {row.sentiment}
-                  </Badge>
-                ) : (
-                  <span className="text-neutral-400">—</span>
-                )}
-              </Td>
-            </tr>
-          ))}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-function Th({ children, className }: { children: React.ReactNode; className?: string }) {
+/**
+ * Drill-down for one row of the ranking table. Renders a small line
+ * chart of the entity's per-scan visibility across the window. Falls
+ * back to a soft hint when no numeric points landed (single scan, all
+ * nulls, missing series).
+ */
+function EntityTrendDrillDown({
+  name,
+  trend,
+}: {
+  name: string;
+  trend: EntityTrendSeriesDto | undefined;
+}) {
+  const points = (trend?.points ?? []).filter((p) => p.value != null);
+  if (points.length === 0) {
+    return (
+      <p className="text-xs text-neutral-500">
+        Not enough per-scan data to plot {name}'s trend in this window.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] uppercase tracking-wide text-neutral-500">
+        Visibility per scan — {name}
+      </p>
+      <LineChartWrapper
+        data={points.map((p) => ({ x: p.capturedAt, y: p.value }))}
+        formatValue={(v) => `${Math.round(v * 100)}%`}
+        formatX={(iso) => {
+          try {
+            return new Date(iso).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            });
+          } catch {
+            return iso;
+          }
+        }}
+        height={160}
+      />
+    </div>
+  );
+}
+
+function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
     <th scope="col" className={cn("px-3 py-2 text-left text-[10px] font-medium", className)}>
       {children}
@@ -213,8 +319,20 @@ function Th({ children, className }: { children: React.ReactNode; className?: st
   );
 }
 
-function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={cn("px-3 py-2 align-middle text-neutral-700", className)}>{children}</td>;
+function Td({
+  children,
+  className,
+  colSpan,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  colSpan?: number;
+}) {
+  return (
+    <td colSpan={colSpan} className={cn("px-3 py-2 align-middle text-neutral-700", className)}>
+      {children}
+    </td>
+  );
 }
 
 function MetricCell({ value, delta }: { value: number | null; delta: number | null }) {

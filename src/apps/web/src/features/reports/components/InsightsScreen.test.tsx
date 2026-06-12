@@ -283,6 +283,66 @@ describe("InsightsScreen", () => {
   });
 
   // -------------------------------------------------------------------
+  // Ranking-row drill-down — click expands the entity's per-scan trend
+  // -------------------------------------------------------------------
+
+  it("clicking a ranking row toggles a drill-down panel with the entity's per-scan trend", async () => {
+    overviewState = {
+      data: {
+        ...overview([
+          row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+          row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+        ]),
+        series: [
+          {
+            entityType: "Brand",
+            entityId: "tracked",
+            entityName: "Acme",
+            metricName: "BrandMentionRate",
+            seriesKind: "Numeric",
+            points: [
+              { scanRunId: "s1", capturedAt: "2026-05-01T00:00:00Z", value: 0.4, category: null },
+              { scanRunId: "s2", capturedAt: "2026-05-21T00:00:00Z", value: 0.5, category: null },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+
+    // Not expanded initially.
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+
+    // Each data row in the ranking table is a clickable button via aria-expanded.
+    const acmeRow = screen.getByText("Acme").closest("tr");
+    expect(acmeRow).not.toBeNull();
+    await userEvent.click(acmeRow!);
+    expect(screen.getByText(/Visibility per scan — Acme/i)).toBeInTheDocument();
+
+    // Second click collapses.
+    await userEvent.click(acmeRow!);
+    expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+  });
+
+  it("drill-down falls back to a hint when the entity has no per-scan trend points", async () => {
+    overviewState = {
+      data: overview([
+        row({ entityId: "leader", name: "Canva", visibility: 0.8 }),
+        row({ entityId: "tracked", name: "Acme", isTrackedBrand: true, visibility: 0.5 }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<InsightsScreen />);
+
+    const acmeRow = screen.getByText("Acme").closest("tr");
+    await userEvent.click(acmeRow!);
+    expect(screen.getByText(/Not enough per-scan data to plot Acme's trend/i)).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
   // AI summary section
   // -------------------------------------------------------------------
 
