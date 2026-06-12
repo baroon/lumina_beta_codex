@@ -212,6 +212,14 @@ export interface UpdateBrandProductDescriptionResult {
   description: string | null;
 }
 
+export interface UpdateBrandTrustSignalDescriptionRequest {
+  description: string | null;
+}
+
+export interface UpdateBrandTrustSignalDescriptionResult {
+  description: string | null;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;

@@ -334,6 +334,24 @@ export function useUpdateBrandTrustSignalType(brandId: string) {
 }
 
 /**
+ * Mutates a trust signal's prose description. Mirror of the
+ * competitor/product description hooks — user-facing note, BE
+ * trims, null-coerces empty, and caps at 2000 chars.
+ */
+export function useUpdateBrandTrustSignalDescription(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { trustSignalId: string; description: string | null }) =>
+      brandsApi.updateTrustSignalDescription(brandId, vars.trustSignalId, {
+        description: vars.description,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Recategorizes a product into one of the six ProductType buckets.
  * Discovery and AddBrandProduct both default user-added rows to
  * <c>Product</c>, so this is the canonical way to move them out.

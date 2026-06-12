@@ -682,6 +682,32 @@ public class BrandsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
     }
 
+    [HttpPut("{id:guid}/trust-signals/{trustSignalId:guid}/description")]
+    [ProducesResponseType(typeof(UpdateBrandTrustSignalDescriptionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTrustSignalDescription(
+        Guid id, Guid trustSignalId,
+        [FromBody] UpdateBrandTrustSignalDescriptionRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandTrustSignalDescriptionCommand(id, trustSignalId, request.Description),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/trust-signals/{trustSignalId:guid}/type")]
     [ProducesResponseType(typeof(UpdateBrandTrustSignalTypeResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -68,6 +68,7 @@ import {
   useUpdateBrandProductAliases,
   useUpdateBrandProductDescription,
   useUpdateBrandProductType,
+  useUpdateBrandTrustSignalDescription,
   useUpdateBrandTrustSignalType,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
@@ -1238,12 +1239,13 @@ function TrustSignalsSection({
 }
 
 /**
- * Per-trust-signal deeper-edit dialog. The signal type bucket is the
- * load-bearing field here — discovery defaults user-added rows to
- * AwardsAndRecognitions, and the LLM frequently gets categorization
- * wrong (Inc. 5000 is an Award, ISO 27001 is a Certification, a
- * positive Trustpilot quote is a Testimonial — all visually similar
- * names). The Select holds the seven enum values; Save commits.
+ * Per-trust-signal deeper-edit dialog. Two fields the chip rename
+ * can't carry: <strong>SignalType</strong> (one of seven buckets;
+ * defaults to AwardsAndRecognitions on user-add and the LLM
+ * frequently miscategorizes) and <strong>Description</strong> (a
+ * user-facing note). Save fires only the mutations whose value
+ * changed, type before description so a rejection isn't masked by
+ * a successful description write.
  */
 function TrustSignalDetailsDialog({
   brandId,
@@ -1256,28 +1258,43 @@ function TrustSignalDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const update = useUpdateBrandTrustSignalType(brandId);
+  const updateType = useUpdateBrandTrustSignalType(brandId);
+  const updateDescription = useUpdateBrandTrustSignalDescription(brandId);
+
   const originalType = trustSignal.metadata?.signalType ?? "AwardsAndRecognitions";
+  const originalDescription = trustSignal.description ?? "";
+
   const [signalType, setSignalType] = useState<string>(originalType);
+  const [description, setDescription] = useState<string>(originalDescription);
 
   useEffect(() => {
     setSignalType(trustSignal.metadata?.signalType ?? "AwardsAndRecognitions");
-  }, [trustSignal.id, trustSignal.metadata?.signalType]);
+    setDescription(trustSignal.description ?? "");
+  }, [trustSignal.id, trustSignal.metadata?.signalType, trustSignal.description]);
 
-  const dirty = signalType !== originalType;
+  const typeDirty = signalType !== originalType;
+  const descriptionDirty = description.trim() !== originalDescription.trim();
+  const dirty = typeDirty || descriptionDirty;
+  const pending = updateType.isPending || updateDescription.isPending;
 
   const errorMessage =
-    update.isError && update.error instanceof Error
-      ? update.error.message
-      : update.isError
-        ? "Save failed — try again."
-        : null;
+    formatDialogError(updateType.error) ?? formatDialogError(updateDescription.error);
 
-  function save() {
-    update.mutate(
-      { trustSignalId: trustSignal.id, signalType },
-      { onSuccess: () => onOpenChange(false) },
-    );
+  async function save() {
+    try {
+      if (typeDirty) {
+        await updateType.mutateAsync({ trustSignalId: trustSignal.id, signalType });
+      }
+      if (descriptionDirty) {
+        await updateDescription.mutateAsync({
+          trustSignalId: trustSignal.id,
+          description: description.trim() === "" ? null : description.trim(),
+        });
+      }
+      onOpenChange(false);
+    } catch {
+      // Errors surface inline via errorMessage; the dialog stays open.
+    }
   }
 
   return (
@@ -1305,7 +1322,8 @@ function TrustSignalDetailsDialog({
                 {trustSignal.name}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
-                Recategorize this signal into the bucket it belongs in.
+                Recategorize this signal into the bucket it belongs in; description is a note for
+                your team.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -1319,30 +1337,49 @@ function TrustSignalDetailsDialog({
             </Dialog.Close>
           </div>
 
-          <div className="mt-4">
-            <label
-              htmlFor={`trust-signal-type-${trustSignal.id}`}
-              className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
-            >
-              Signal type
-            </label>
-            <Select value={signalType} onValueChange={setSignalType}>
-              <SelectTrigger
-                id={`trust-signal-type-${trustSignal.id}`}
-                selectSize="sm"
-                className="w-full"
-                aria-label="Trust signal type"
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor={`trust-signal-type-${trustSignal.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRUST_SIGNAL_TYPE_LABELS.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                Signal type
+              </label>
+              <Select value={signalType} onValueChange={setSignalType}>
+                <SelectTrigger
+                  id={`trust-signal-type-${trustSignal.id}`}
+                  selectSize="sm"
+                  className="w-full"
+                  aria-label="Trust signal type"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRUST_SIGNAL_TYPE_LABELS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label
+                htmlFor={`trust-signal-description-${trustSignal.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+              >
+                Description
+              </label>
+              <textarea
+                id={`trust-signal-description-${trustSignal.id}`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder="Notes about this trust signal…"
+                aria-label="Trust signal description"
+                className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              />
+            </div>
           </div>
 
           {errorMessage && (
@@ -1353,12 +1390,12 @@ function TrustSignalDetailsDialog({
 
           <div className="mt-5 flex items-center justify-end gap-2">
             <Dialog.Close asChild>
-              <Button variant="outline" size="sm" disabled={update.isPending}>
+              <Button variant="outline" size="sm" disabled={pending}>
                 Cancel
               </Button>
             </Dialog.Close>
-            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
-              {update.isPending ? "Saving…" : "Save type"}
+            <Button size="sm" onClick={save} disabled={!dirty || pending}>
+              {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </Dialog.Content>

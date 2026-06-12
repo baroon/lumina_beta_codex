@@ -102,7 +102,15 @@ let updateMarketCountryCodeState: {
   error?: Error;
 } = { isPending: false, isError: false };
 let updateTrustSignalTypeMutate: ReturnType<typeof vi.fn>;
+let updateTrustSignalTypeMutateAsync: ReturnType<typeof vi.fn>;
 let updateTrustSignalTypeState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
+let updateTrustSignalDescriptionMutate: ReturnType<typeof vi.fn>;
+let updateTrustSignalDescriptionMutateAsync: ReturnType<typeof vi.fn>;
+let updateTrustSignalDescriptionState: {
   isPending: boolean;
   isError: boolean;
   error?: Error;
@@ -172,7 +180,13 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   }),
   useUpdateBrandTrustSignalType: () => ({
     mutate: updateTrustSignalTypeMutate,
+    mutateAsync: updateTrustSignalTypeMutateAsync,
     ...updateTrustSignalTypeState,
+  }),
+  useUpdateBrandTrustSignalDescription: () => ({
+    mutate: updateTrustSignalDescriptionMutate,
+    mutateAsync: updateTrustSignalDescriptionMutateAsync,
+    ...updateTrustSignalDescriptionState,
   }),
 }));
 
@@ -319,7 +333,11 @@ describe("BrandProfileScreen", () => {
     updateMarketCountryCodeMutate = vi.fn();
     updateMarketCountryCodeState = { isPending: false, isError: false };
     updateTrustSignalTypeMutate = vi.fn();
+    updateTrustSignalTypeMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateTrustSignalTypeState = { isPending: false, isError: false };
+    updateTrustSignalDescriptionMutate = vi.fn();
+    updateTrustSignalDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
+    updateTrustSignalDescriptionState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -1393,7 +1411,7 @@ describe("BrandProfileScreen", () => {
       }),
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: /^Save type$/ })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /^Save changes$/ })).toBeDisabled();
   });
 
   it("renders a server-error message when the trust-signal type save fails", async () => {
@@ -1439,5 +1457,97 @@ describe("BrandProfileScreen", () => {
     const dialog = screen.getByRole("dialog");
     // Radix Select renders the current value text inside the trigger.
     expect(within(dialog).getByText(/Testimonials & Reviews/i)).toBeInTheDocument();
+  });
+
+  it("prefills the trust-signal description textarea from trustSignal.description", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        trustSignals: [
+          {
+            ...discoveryFixture.trustSignals[0],
+            id: "ts1",
+            name: "Trustpilot reviews",
+            description: "Independent customer-review platform with 4.7 stars.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(/trust signal description/i),
+    ).toHaveValue("Independent customer-review platform with 4.7 stars.");
+  });
+
+  it("Save changes fires the trust-signal description mutation with the trimmed value when only description is dirty", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.type(
+      within(dialog).getByLabelText(/trust signal description/i),
+      "  Strong signal.  ",
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateTrustSignalDescriptionMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateTrustSignalDescriptionMutateAsync.mock.calls[0];
+    expect(args.trustSignalId).toBe("ts1");
+    expect(args.description).toBe("Strong signal.");
+    // Type wasn't touched — no type call.
+    expect(updateTrustSignalTypeMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("clearing the trust-signal description textarea passes null to the mutation", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        trustSignals: [
+          {
+            ...discoveryFixture.trustSignals[0],
+            id: "ts1",
+            name: "Trustpilot reviews",
+            description: "Existing note.",
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(/trust signal description/i));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateTrustSignalDescriptionMutateAsync).toHaveBeenCalledOnce();
+    expect(updateTrustSignalDescriptionMutateAsync.mock.calls[0][0].description).toBeNull();
+  });
+
+  it("renders a server-error message when the trust-signal description save fails", async () => {
+    updateTrustSignalDescriptionState = {
+      isPending: false,
+      isError: true,
+      error: new Error("Description must be 2000 characters or fewer (got 2001)."),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/2000 characters or fewer/i),
+    ).toBeInTheDocument();
   });
 });

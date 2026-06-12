@@ -35,6 +35,8 @@ import type {
   UpdateBrandProductDescriptionResult,
   UpdateBrandProductTypeRequest,
   UpdateBrandProductTypeResult,
+  UpdateBrandTrustSignalDescriptionRequest,
+  UpdateBrandTrustSignalDescriptionResult,
   UpdateBrandTrustSignalTypeRequest,
   UpdateBrandTrustSignalTypeResult,
   UpdateBrandProfileRequest,
@@ -193,6 +195,16 @@ export const brandsApi = {
   ) =>
     apiClient.put<UpdateBrandTrustSignalTypeResult>(
       `/api/brands/${id}/trust-signals/${trustSignalId}/type`,
+      data,
+    ),
+
+  updateTrustSignalDescription: (
+    id: string,
+    trustSignalId: string,
+    data: UpdateBrandTrustSignalDescriptionRequest,
+  ) =>
+    apiClient.put<UpdateBrandTrustSignalDescriptionResult>(
+      `/api/brands/${id}/trust-signals/${trustSignalId}/description`,
       data,
     ),
 };
