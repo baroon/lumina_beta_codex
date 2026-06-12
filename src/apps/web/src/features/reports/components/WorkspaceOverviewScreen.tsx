@@ -86,6 +86,7 @@ import type {
   WorkspaceBrandComparisonDto,
   WorkspaceBrandRiskFlagDto,
   WorkspaceCoMentionDto,
+  WorkspaceFactualClaimDto,
   WorkspaceHeroDto,
   WorkspaceTopicOwnershipDto,
   WorkspaceOverviewDto,
@@ -488,6 +489,7 @@ function CategorizedOverview({
           {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
           <BrandAttributesCard attributes={data.topBrandAttributes} />
           <BrandRiskFlagsCard flags={data.topBrandRiskFlags} />
+          <FactualClaimsCard claims={data.recentFactualClaims} />
           {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
         </div>
       ),
@@ -1840,6 +1842,75 @@ function riskSeverityVariant(
     case "Low":
     default:
       return "secondary";
+  }
+}
+
+/**
+ * Factual-claims feed (item #14). Each claim is a checkable assertion
+ * the AI made about a tracked brand — subject + asserted value plus
+ * the supporting snippet. Pending claims are the actionable surface;
+ * Verified/Disputed show recent context. No write action yet (the
+ * review UI is queued separately).
+ */
+function FactualClaimsCard({ claims }: { claims: readonly WorkspaceFactualClaimDto[] }) {
+  const copy = REPORTS_COPY.overview.factualClaims;
+  if (claims.length === 0) {
+    return (
+      <CollapsibleCard icon={Quote} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
+    );
+  }
+  return (
+    <CollapsibleCard icon={Quote} title={copy.title} tooltip={copy.tooltip}>
+      <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
+      <ul className="space-y-2" role="list">
+        {claims.map((c) => (
+          <li key={c.claimId} className="rounded-lg border border-neutral-200 bg-white p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+              <span className="font-medium text-neutral-700">{c.brandName}</span>
+              <Badge variant={reviewStatusVariant(c.reviewStatus)} className="text-[10px]">
+                {reviewStatusLabel(c.reviewStatus, copy)}
+              </Badge>
+            </div>
+            <p className="mt-1 text-sm text-neutral-900">{c.claimText}</p>
+            <p className="mt-2 text-xs uppercase tracking-wide text-neutral-500">
+              {c.subject.replace(/_/g, " ")}
+              <span className="ml-2 normal-case text-neutral-700">{c.assertedValue}</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </CollapsibleCard>
+  );
+}
+
+function reviewStatusVariant(
+  status: string,
+): "default" | "secondary" | "outline" | "success" | "warning" | "destructive" {
+  switch (status) {
+    case "Verified":
+      return "success";
+    case "Disputed":
+      return "destructive";
+    case "Pending":
+    default:
+      return "warning";
+  }
+}
+
+function reviewStatusLabel(
+  status: string,
+  copy: { statusPending: string; statusVerified: string; statusDisputed: string },
+): string {
+  switch (status) {
+    case "Verified":
+      return copy.statusVerified;
+    case "Disputed":
+      return copy.statusDisputed;
+    case "Pending":
+    default:
+      return copy.statusPending;
   }
 }
 

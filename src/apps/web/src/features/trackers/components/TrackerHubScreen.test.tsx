@@ -200,6 +200,7 @@ const overviewFixture: WorkspaceOverviewDto = {
   topBrandRiskFlags: [],
   topBrandComparisons: [],
   topicOwnership: [],
+  recentFactualClaims: [],
 };
 
 const lensesFixture: TrackerLensesSetupDto = {

@@ -337,6 +337,32 @@ const fixture: WorkspaceOverviewDto = {
     { rank: 1, topicName: "Career advice", promptCount: 10, brandMentionedPromptCount: 8 },
     { rank: 2, topicName: "Industry news", promptCount: 6, brandMentionedPromptCount: 1 },
   ],
+  recentFactualClaims: [
+    {
+      claimId: "c1",
+      brandId: acmeId,
+      brandName: "Acme",
+      subject: "headquarters",
+      assertedValue: "San Francisco",
+      claimText: "Acme is headquartered in San Francisco.",
+      evidenceSnippet: "Acme is headquartered in San Francisco.",
+      verifiability: "Verifiable",
+      reviewStatus: "Pending",
+      createdAt: "2026-05-21T00:00:00Z",
+    },
+    {
+      claimId: "c2",
+      brandId: acmeId,
+      brandName: "Acme",
+      subject: "founding_year",
+      assertedValue: "1975",
+      claimText: "Acme was founded in 1975.",
+      evidenceSnippet: "Acme was founded in 1975.",
+      verifiability: "Verifiable",
+      reviewStatus: "Disputed",
+      createdAt: "2026-05-01T00:00:00Z",
+    },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -454,6 +480,18 @@ describe("WorkspaceOverviewScreen", () => {
     // Per-competitor row: "6 / 10 (60% of competitor's mentions)"
     expect(screen.getByText(/6 \/ 10/)).toBeInTheDocument();
     expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
+  });
+
+  it("renders the factual claims feed with claim text and status badges", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    expect(screen.getByText(/factual claims to review/i)).toBeInTheDocument();
+    expect(screen.getByText("Acme is headquartered in San Francisco.")).toBeInTheDocument();
+    expect(screen.getByText("Acme was founded in 1975.")).toBeInTheDocument();
+    // Status badges from the fixture (one Pending, one Disputed).
+    expect(screen.getByText(/^Pending$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Disputed$/)).toBeInTheDocument();
   });
 
   it("renders the topic ownership card with prompt counts and ownership percent", () => {

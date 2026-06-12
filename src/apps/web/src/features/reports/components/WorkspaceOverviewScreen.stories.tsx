@@ -175,6 +175,32 @@ const overviewFixture: WorkspaceOverviewDto = {
     { rank: 3, topicName: "Interview prep", promptCount: 12, brandMentionedPromptCount: 5 },
     { rank: 4, topicName: "Industry news", promptCount: 8, brandMentionedPromptCount: 1 },
   ],
+  recentFactualClaims: [
+    {
+      claimId: "c1",
+      brandId: acmeId,
+      brandName: "Acme Corp",
+      subject: "headquarters",
+      assertedValue: "San Francisco",
+      claimText: "Acme Corp is headquartered in San Francisco.",
+      evidenceSnippet: "Acme Corp is headquartered in San Francisco.",
+      verifiability: "Verifiable",
+      reviewStatus: "Pending",
+      createdAt: "2026-05-21T00:00:00Z",
+    },
+    {
+      claimId: "c2",
+      brandId: betaId,
+      brandName: "Beta Co",
+      subject: "founding_year",
+      assertedValue: "2002",
+      claimText: "Beta Co was founded in 2002.",
+      evidenceSnippet: "Beta Co was founded in 2002.",
+      verifiability: "Verifiable",
+      reviewStatus: "Disputed",
+      createdAt: "2026-05-15T00:00:00Z",
+    },
+  ],
 };
 
 const competitiveFixture: WorkspaceCompetitiveDto = {
@@ -452,6 +478,7 @@ export const EmptyWorkspace: Story = {
         topBrandRiskFlags: [],
         topBrandComparisons: [],
         topicOwnership: [],
+        recentFactualClaims: [],
       } satisfies WorkspaceOverviewDto);
       return (
         <QueryClientProvider client={queryClient}>

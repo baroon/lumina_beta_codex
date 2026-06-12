@@ -113,7 +113,17 @@ public sealed record WorkspaceOverviewDto(
     /// count desc, then alphabetical topic for determinism. 10-row
     /// cap. Empty when no topics are tagged on any in-scope prompt.
     /// </summary>
-    IReadOnlyList<WorkspaceTopicOwnershipDto> TopicOwnership);
+    IReadOnlyList<WorkspaceTopicOwnershipDto> TopicOwnership,
+    /// <summary>
+    /// Recent factual claims the AI asserted about any tracked brand
+    /// in scope (Phase 4 measurement-model expansion, item #14).
+    /// Surfaces the actual claim text + subject + asserted value so a
+    /// human can review for accuracy — this is the "what is AI saying
+    /// about us that we can fact-check?" surface no per-scan metric
+    /// carries. Ordered by CreatedAt desc (newest first). 10-row cap.
+    /// Empty when no factual claims were extracted in scope.
+    /// </summary>
+    IReadOnlyList<WorkspaceFactualClaimDto> RecentFactualClaims);
 
 /// <summary>
 /// One attribute the AI ascribed to a tracked brand across the workspace.
@@ -189,6 +199,30 @@ public sealed record WorkspaceTopicOwnershipDto(
     int PromptCount,
     /// <summary>Distinct in-scope prompts tagged with this topic where ≥1 answer mentioned a tracked brand.</summary>
     int BrandMentionedPromptCount);
+
+/// <summary>
+/// One row in the workspace recent-factual-claims feed. Carries the
+/// raw claim plus enough metadata for the FE to render a review-able
+/// card (subject + asserted value + evidence snippet + status).
+/// </summary>
+public sealed record WorkspaceFactualClaimDto(
+    Guid ClaimId,
+    /// <summary>Tracked brand the claim is asserted about.</summary>
+    Guid BrandId,
+    string BrandName,
+    /// <summary>Free-text category (e.g. "founding_year", "headquarters").</summary>
+    string Subject,
+    /// <summary>The specific value asserted (e.g. "1975", "Living Media India").</summary>
+    string AssertedValue,
+    /// <summary>Full claim as a sentence — what the AI asserted.</summary>
+    string ClaimText,
+    /// <summary>Quoted text from the answer supporting the claim.</summary>
+    string EvidenceSnippet,
+    /// <summary>"Verifiable" / "Subjective" / etc.</summary>
+    string Verifiability,
+    /// <summary>"Pending" / "Verified" / "Disputed".</summary>
+    string ReviewStatus,
+    DateTime CreatedAt);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

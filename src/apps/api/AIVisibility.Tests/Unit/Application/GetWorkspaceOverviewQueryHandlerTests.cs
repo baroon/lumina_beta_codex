@@ -109,7 +109,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             Guid[]? competitorMentions = null,
             (string FlagType, RiskSeverity Severity)[]? brandRiskFlags = null,
             (string Aspect, bool WinnerIsThisMention)[]? brandComparisons = null,
-            Guid[]? topicIds = null)
+            Guid[]? topicIds = null,
+            (string Subject, string AssertedValue, string ClaimText)[]? brandFactualClaims = null)
         {
             var prompt = new Prompt
             {
@@ -209,6 +210,25 @@ public class GetWorkspaceOverviewQueryHandlerTests
                         });
                     }
                 }
+                if (brandFactualClaims is { Length: > 0 })
+                {
+                    foreach (var (subject, assertedValue, claimText) in brandFactualClaims)
+                    {
+                        ctx.FactualClaims.Add(new FactualClaim
+                        {
+                            Id = Guid.NewGuid(),
+                            MentionId = mention.Id,
+                            Subject = subject,
+                            AssertedValue = assertedValue,
+                            ClaimText = claimText,
+                            EvidenceSnippet = claimText,
+                            Verifiability = ClaimVerifiability.Verifiable,
+                            ReviewStatus = ClaimReviewStatus.Pending,
+                            ConfidenceScore = 0.9,
+                            CreatedAt = startedAt,
+                        });
+                    }
+                }
             }
 
             if (competitorMentions is { Length: > 0 })
@@ -276,7 +296,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             competitorMentions: new[] { sharedId },
             brandRiskFlags: new[] { ("layoffs", RiskSeverity.Medium) },
             brandComparisons: new[] { ("price", true) },
-            topicIds: new[] { acmeCareerTopic.Id });
+            topicIds: new[] { acmeCareerTopic.Id },
+            brandFactualClaims: new[] { ("founding_year", "1975", "Acme was founded in 1975.") });
         SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -287,7 +308,11 @@ public class GetWorkspaceOverviewQueryHandlerTests
             competitorMentions: new[] { glassdoor.Id },
             brandRiskFlags: new[] { ("layoffs", RiskSeverity.High) },
             brandComparisons: new[] { ("price", false), ("support_quality", true) },
-            topicIds: new[] { acmeCareerTopic.Id, acmeIndustryTopic.Id });
+            topicIds: new[] { acmeCareerTopic.Id, acmeIndustryTopic.Id },
+            brandFactualClaims: new[]
+            {
+                ("headquarters", "San Francisco", "Acme is headquartered in San Francisco."),
+            });
         SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta,
             mentionsBrand: false, sentimentCategory: "Neutral",
             competitorMentions: new[] { sharedId },
@@ -528,6 +553,32 @@ public class GetWorkspaceOverviewQueryHandlerTests
         second.Aspect.Should().Be("support_quality");
         second.WinCount.Should().Be(1);
         second.LossCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RecentFactualClaims_ReturnsBrandClaimsNewestFirst()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Two claims seeded — both on Acme. Newest (headquarters @ -1d)
+        // comes first; older (founding_year @ -14d) follows.
+        result.RecentFactualClaims.Should().HaveCount(2);
+
+        var first = result.RecentFactualClaims[0];
+        first.Subject.Should().Be("headquarters");
+        first.AssertedValue.Should().Be("San Francisco");
+        first.BrandName.Should().Be("Acme");
+        first.ReviewStatus.Should().Be(nameof(ClaimReviewStatus.Pending));
+
+        var second = result.RecentFactualClaims[1];
+        second.Subject.Should().Be("founding_year");
+        second.AssertedValue.Should().Be("1975");
     }
 
     [Fact]

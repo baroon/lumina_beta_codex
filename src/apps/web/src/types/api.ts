@@ -1279,6 +1279,12 @@ export interface WorkspaceOverviewDto {
    * prompt was tagged with any topic.
    */
   topicOwnership: WorkspaceTopicOwnershipDto[];
+  /**
+   * Recent factual claims the AI asserted about tracked brands.
+   * Newest first, capped at 10. Empty when no factual claims were
+   * extracted in scope.
+   */
+  recentFactualClaims: WorkspaceFactualClaimDto[];
 }
 
 export interface WorkspaceBrandAttributeDto {
@@ -1330,6 +1336,22 @@ export interface WorkspaceTopicOwnershipDto {
   promptCount: number;
   /** Distinct in-scope prompts tagged with this topic where the tracked brand was mentioned. */
   brandMentionedPromptCount: number;
+}
+
+/** One row in the workspace recent-factual-claims feed (Phase 4 measurement-model item #14). */
+export interface WorkspaceFactualClaimDto {
+  claimId: string;
+  brandId: string;
+  brandName: string;
+  subject: string;
+  assertedValue: string;
+  claimText: string;
+  evidenceSnippet: string;
+  /** "Verifiable" | "Subjective" | etc. */
+  verifiability: string;
+  /** "Pending" | "Verified" | "Disputed". */
+  reviewStatus: string;
+  createdAt: string;
 }
 
 export interface TrackedBrandDto {

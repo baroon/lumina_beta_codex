@@ -132,6 +132,9 @@ public class GetWorkspaceOverviewQueryHandler
             scanIds, trackedBrandIds, cancellationToken);
         var topicOwnership = await BuildTopicOwnershipAsync(
             scanIds, trackedBrandIds, cancellationToken);
+        var trackedBrandsById = trackedBrands.ToDictionary(b => b.Id, b => b.Name);
+        var recentFactualClaims = await BuildRecentFactualClaimsAsync(
+            scanIds, trackedBrandsById, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -148,7 +151,8 @@ public class GetWorkspaceOverviewQueryHandler
             CoMentions: coMentions,
             TopBrandRiskFlags: topBrandRiskFlags,
             TopBrandComparisons: topBrandComparisons,
-            TopicOwnership: topicOwnership);
+            TopicOwnership: topicOwnership,
+            RecentFactualClaims: recentFactualClaims);
     }
 
     /// <summary>
@@ -188,7 +192,8 @@ public class GetWorkspaceOverviewQueryHandler
             Array.Empty<WorkspaceCoMentionDto>(),
             Array.Empty<WorkspaceBrandRiskFlagDto>(),
             Array.Empty<WorkspaceBrandComparisonDto>(),
-            Array.Empty<WorkspaceTopicOwnershipDto>());
+            Array.Empty<WorkspaceTopicOwnershipDto>(),
+            Array.Empty<WorkspaceFactualClaimDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -433,6 +438,61 @@ public class GetWorkspaceOverviewQueryHandler
             .ToList();
 
         return grouped;
+    }
+
+    // -----------------------------------------------------------------
+    // Recent factual claims (Phase 4 measurement-model expansion, item #14)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Recent factual claims the AI asserted about any tracked brand
+    /// in scope. Joins FactualClaim → Mention → AIAnswer → PromptRun
+    /// → ScanRun so the scope matches the rest of the workspace
+    /// counts. Returns the latest 10 by CreatedAt desc — the surface
+    /// is meant for reviewer triage ("here's what the AI claimed
+    /// most recently; is it true?"), so the all-statuses view is
+    /// useful: even Verified / Disputed claims show recent context.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceFactualClaimDto>> BuildRecentFactualClaimsAsync(
+        IReadOnlyList<Guid> scanIds,
+        Dictionary<Guid, string> trackedBrandsById,
+        CancellationToken ct)
+    {
+        if (scanIds.Count == 0) return Array.Empty<WorkspaceFactualClaimDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+        var trackedBrandIdSet = trackedBrandsById.Keys.ToHashSet();
+
+        var rows = await (
+            from fc in _db.FactualClaims.AsNoTracking()
+            join m in _db.Mentions.AsNoTracking() on fc.MentionId equals m.Id
+            join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
+            join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
+            where m.EntityType == MentionEntityType.Brand
+                && trackedBrandIdSet.Contains(m.EntityId)
+                && scanIdSet.Contains(pr.ScanRunId)
+            orderby fc.CreatedAt descending
+            select new
+            {
+                fc.Id, BrandId = m.EntityId, fc.Subject, fc.AssertedValue,
+                fc.ClaimText, fc.EvidenceSnippet, fc.Verifiability, fc.ReviewStatus, fc.CreatedAt,
+            })
+            .Take(10)
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new WorkspaceFactualClaimDto(
+                ClaimId: r.Id,
+                BrandId: r.BrandId,
+                BrandName: trackedBrandsById.TryGetValue(r.BrandId, out var name) ? name : string.Empty,
+                Subject: r.Subject,
+                AssertedValue: r.AssertedValue,
+                ClaimText: r.ClaimText,
+                EvidenceSnippet: r.EvidenceSnippet,
+                Verifiability: r.Verifiability.ToString(),
+                ReviewStatus: r.ReviewStatus.ToString(),
+                CreatedAt: r.CreatedAt))
+            .ToList();
     }
 
     // -----------------------------------------------------------------

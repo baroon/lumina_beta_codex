@@ -317,6 +317,16 @@ export const REPORTS_COPY = {
       subline: "Risk language the AI surfaced about our brand. Severity is the dominant level.",
       noData: "No risk flags raised against the brand in this window.",
     },
+    factualClaims: {
+      title: "Factual claims to review",
+      tooltip: TBD_TOOLTIP,
+      subline:
+        "Recent claims the AI asserted about a tracked brand. Verify against your source of truth.",
+      noData: "No factual claims extracted in this window.",
+      statusPending: "Pending",
+      statusVerified: "Verified",
+      statusDisputed: "Disputed",
+    },
     topicCoverage: {
       title: "Topic coverage",
       tooltip: TBD_TOOLTIP,
