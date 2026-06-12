@@ -1,17 +1,8 @@
 import { Fragment, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  Minus,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Minus, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
+import { AiNarrativeSection } from "@/components/molecules/AiNarrativeSection";
 import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
@@ -19,7 +10,6 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
-import { useGenerateInsightsNarrative } from "@/features/reports/hooks/useInsightsNarrative";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { findEntityTrend } from "@/lib/entityTrend";
 import { buildSignalHighlights } from "@/lib/signalHighlights";
@@ -326,94 +316,4 @@ function sentimentVariant(
     default:
       return "secondary";
   }
-}
-
-// ---------------------------------------------------------------------------
-// AI-generated narrative section
-// ---------------------------------------------------------------------------
-
-/**
- * Optional LLM-authored narrative below the templated one. Hidden when
- * there's no scan data yet (nothing for the model to summarize); shows
- * a single button until clicked, then surfaces the response inline with
- * a "Regenerate" affordance. The mutation result lives in the hook so
- * filter changes don't blow it away — the user has to click Regenerate
- * to refresh after a scope change.
- */
-function AiNarrativeSection({
-  selection,
-  trackerIds,
-  hasData,
-}: {
-  selection: ReturnType<typeof defaultDateRangeSelection>;
-  trackerIds: readonly string[];
-  hasData: boolean;
-}) {
-  const generate = useGenerateInsightsNarrative();
-
-  if (!hasData) return null;
-
-  function fire() {
-    generate.mutate({ selection, trackerIds });
-  }
-
-  const errorMessage =
-    generate.isError && generate.error instanceof Error
-      ? generate.error.message
-      : generate.isError
-        ? "Could not generate the AI summary. Try again."
-        : null;
-
-  if (!generate.data && !generate.isPending && !generate.isError) {
-    return (
-      <div className="border-t border-neutral-100 pt-3">
-        <Button variant="outline" size="sm" onClick={fire}>
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          Generate AI summary
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2 border-t border-neutral-100 pt-3">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-neutral-500">
-        <Sparkles className="h-3 w-3" aria-hidden />
-        AI summary
-        {generate.data && (
-          <Badge variant="outline" className="text-[10px]">
-            via {generate.data.platformCode}
-          </Badge>
-        )}
-      </div>
-
-      {generate.isPending && (
-        <div
-          className="flex items-center gap-2 text-xs text-neutral-500"
-          role="status"
-          aria-live="polite"
-        >
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          Asking the model…
-        </div>
-      )}
-
-      {generate.data && !generate.isPending && (
-        <p className="whitespace-pre-wrap text-sm text-neutral-700">{generate.data.narrative}</p>
-      )}
-
-      {errorMessage && (
-        <p className="text-xs text-semantic-error-600" role="alert">
-          {errorMessage}
-        </p>
-      )}
-
-      <div>
-        <Button variant="outline" size="sm" onClick={fire} disabled={generate.isPending}>
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          {generate.data || generate.isError ? "Regenerate" : "Generate AI summary"}
-        </Button>
-      </div>
-    </div>
-  );
 }

@@ -84,6 +84,11 @@ vi.mock("@/features/trackers/hooks/useTrackerLenses", () => ({
 vi.mock("@/features/trackers/hooks/useTrackerOverview", () => ({
   useTrackerOverview: () => overviewState,
 }));
+let narrativeMutate: ReturnType<typeof vi.fn>;
+const narrativeState = { isPending: false, isError: false } as const;
+vi.mock("@/hooks/useAiNarrative", () => ({
+  useGenerateAiNarrative: () => ({ mutate: narrativeMutate, ...narrativeState }),
+}));
 
 import { TrackerHubScreen } from "./TrackerHubScreen";
 
@@ -263,6 +268,7 @@ beforeEach(() => {
   addPromptMutate = vi.fn();
   updatePromptMutate = vi.fn();
   removePromptMutate = vi.fn();
+  narrativeMutate = vi.fn();
 });
 
 describe("TrackerHubScreen", () => {
@@ -534,6 +540,34 @@ describe("TrackerHubScreen", () => {
 
     await userEvent.click(acmeRow!);
     expect(screen.queryByText(/Visibility per scan — Acme/i)).not.toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // AI summary — Generate button + mutation wiring scoped to this tracker
+  // -------------------------------------------------------------------
+
+  it("Overview tab — renders the Generate AI summary button when the tracker has scans", () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.getByRole("button", { name: /Generate AI summary/i })).toBeInTheDocument();
+  });
+
+  it("Overview tab — hides the Generate AI summary button when the tracker has no scans", () => {
+    overviewState = {
+      data: { ...overviewFixture, scanCount: 0 },
+      isLoading: false,
+      isError: false,
+    };
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    expect(screen.queryByRole("button", { name: /Generate AI summary/i })).not.toBeInTheDocument();
+  });
+
+  it("Overview tab — clicking Generate fires the mutation with the current trackerId", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Generate AI summary/i }));
+    expect(narrativeMutate).toHaveBeenCalledOnce();
+    const [args] = narrativeMutate.mock.calls[0];
+    expect(args).toHaveProperty("selection");
+    expect(args.trackerIds).toEqual(["t1"]);
   });
 
   it("Overview tab — drill-down falls back to a hint when the entity has no per-scan trend", async () => {

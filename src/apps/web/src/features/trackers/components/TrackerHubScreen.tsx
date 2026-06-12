@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/atoms/select";
+import { AiNarrativeSection } from "@/components/molecules/AiNarrativeSection";
 import { Breadcrumb } from "@/components/molecules/Breadcrumb";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
@@ -199,7 +200,8 @@ function RunScanButton({ trackerId }: { trackerId: string }) {
 // ---------------------------------------------------------------------------
 
 function OverviewTab({ trackerId }: { trackerId: string }) {
-  const overview = useTrackerOverview(defaultDateRangeSelection(), trackerId);
+  const selection = defaultDateRangeSelection();
+  const overview = useTrackerOverview(selection, trackerId);
 
   if (overview.isLoading) {
     return (
@@ -259,6 +261,15 @@ function OverviewTab({ trackerId }: { trackerId: string }) {
         </Card>
       )}
       <TopEntitiesCard rows={rankedEntities} series={data.series} />
+      <Card>
+        <CardContent className="p-4">
+          <AiNarrativeSection
+            selection={selection}
+            trackerIds={[trackerId]}
+            hasData={data.scanCount > 0}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

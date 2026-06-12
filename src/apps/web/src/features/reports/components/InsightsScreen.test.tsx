@@ -28,8 +28,8 @@ vi.mock("@/hooks/useTrackerScope", () => ({
 vi.mock("@/features/reports/hooks/useWorkspaceOverview", () => ({
   useWorkspaceOverview: () => ({ ...overviewState, refetch: vi.fn() }),
 }));
-vi.mock("@/features/reports/hooks/useInsightsNarrative", () => ({
-  useGenerateInsightsNarrative: () => ({ mutate: narrativeMutate, ...narrativeState }),
+vi.mock("@/hooks/useAiNarrative", () => ({
+  useGenerateAiNarrative: () => ({ mutate: narrativeMutate, ...narrativeState }),
 }));
 
 import { InsightsScreen } from "./InsightsScreen";

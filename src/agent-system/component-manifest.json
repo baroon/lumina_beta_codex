@@ -509,6 +509,15 @@
           "notes": "Single ⓘ + hover/focus tooltip used by every chart-card title and KPI tile label across the app. Trigger is a focusable `<span role=button>` rather than a real `<button>` so it can be safely nested inside a clickable parent (HeroTile renders as a button when its tile is clickable). Click + keyDown propagation stopped so activating the icon doesn't also fire the parent's onClick. `body` defaults to `INFO_TOOLTIP_PLACEHOLDER` (\"Description coming soon.\") so callers can drop the icon in before real copy is authored. Consumed by ChartCardHeader (renders only when its `tooltip` prop is non-empty), ScanResultsScreen ChartTitle + MetricTile, and WorkspaceOverviewScreen HeroTile."
         },
         {
+          "name": "AiNarrativeSection",
+          "category": "Molecules",
+          "path": "src/components/molecules/AiNarrativeSection.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "Button", "useGenerateAiNarrative", "lucide-react"],
+          "notes": "On-demand LLM-authored narrative panel. Single Generate button until clicked, then surfaces the model response inline with a 'via {platform}' byline and a Regenerate affordance. Hidden entirely when `hasData=false` so empty trackers/workspaces don't show a button that calls a paid endpoint to summarize nothing. Mutation state lives in the underlying hook (`useGenerateAiNarrative` in `hooks/useAiNarrative.ts`) so filter/scope changes don't blow the result away — the user clicks Regenerate explicitly. Used by InsightsScreen (workspace scope) and TrackerHubScreen Overview tab (single-tracker scope, threading `trackerIds={[trackerId]}`)."
+        },
+        {
           "name": "EntityTrendDrillDown",
           "category": "Molecules",
           "path": "src/components/molecules/EntityTrendDrillDown.tsx",
