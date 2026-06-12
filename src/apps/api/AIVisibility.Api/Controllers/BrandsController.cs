@@ -1,6 +1,7 @@
 using AIVisibility.Api.DTOs;
 using AIVisibility.Application.Commands.Brands;
 using AIVisibility.Application.Queries.Brands;
+using AIVisibility.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -620,6 +621,39 @@ public class BrandsController : ControllerBase
             return Ok(result);
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
+    [HttpPut("{id:guid}/trust-signals/{trustSignalId:guid}/type")]
+    [ProducesResponseType(typeof(UpdateBrandTrustSignalTypeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTrustSignalType(
+        Guid id, Guid trustSignalId,
+        [FromBody] UpdateBrandTrustSignalTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<TrustSignalType>(request.SignalType, ignoreCase: true, out var parsed))
+            return BadRequest(new
+            {
+                error = $"'{request.SignalType}' is not a valid TrustSignalType. " +
+                    "Expected one of: " + string.Join(", ", Enum.GetNames<TrustSignalType>()),
+            });
+
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandTrustSignalTypeCommand(id, trustSignalId, parsed),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}/profile")]

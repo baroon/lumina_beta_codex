@@ -31,6 +31,8 @@ import type {
   UpdateBrandMarketCountryCodeResult,
   UpdateBrandProductAliasesRequest,
   UpdateBrandProductAliasesResult,
+  UpdateBrandTrustSignalTypeRequest,
+  UpdateBrandTrustSignalTypeResult,
   UpdateBrandProfileRequest,
   UpdateBrandProfileResult,
   UpdateBrandWebsiteUrlRequest,
@@ -161,6 +163,16 @@ export const brandsApi = {
   renameTrustSignal: (id: string, trustSignalId: string, data: RenameBrandDimensionRequest) =>
     apiClient.put<RenameBrandDimensionResult>(
       `/api/brands/${id}/trust-signals/${trustSignalId}`,
+      data,
+    ),
+
+  updateTrustSignalType: (
+    id: string,
+    trustSignalId: string,
+    data: UpdateBrandTrustSignalTypeRequest,
+  ) =>
+    apiClient.put<UpdateBrandTrustSignalTypeResult>(
+      `/api/brands/${id}/trust-signals/${trustSignalId}/type`,
       data,
     ),
 };

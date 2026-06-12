@@ -315,6 +315,25 @@ export function useUpdateBrandMarketCountryCode(brandId: string) {
 }
 
 /**
+ * Recategorizes a trust signal into one of the seven TrustSignalType
+ * buckets. The Discovery wizard's AddBrandTrustSignal handler always
+ * starts user-added rows in <c>AwardsAndRecognitions</c>, so this is
+ * the canonical way to move them out of the default bucket.
+ */
+export function useUpdateBrandTrustSignalType(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { trustSignalId: string; signalType: string }) =>
+      brandsApi.updateTrustSignalType(brandId, vars.trustSignalId, {
+        signalType: vars.signalType,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Mutates a single competitor's prose description. User-facing note —
  * not a signal-extraction input — so the BE just trims, null-coerces
  * empty, and caps length. Invalidates the discovery cache so the

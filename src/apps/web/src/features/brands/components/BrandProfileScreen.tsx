@@ -20,6 +20,13 @@ import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { InlineEdit } from "@/components/atoms/inline-edit";
 import { Input } from "@/components/atoms/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/atoms/select";
 import * as Dialog from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { AliasEditor } from "@/components/molecules/AliasEditor";
@@ -59,6 +66,7 @@ import {
   useUpdateBrandCompetitorDomain,
   useUpdateBrandMarketCountryCode,
   useUpdateBrandProductAliases,
+  useUpdateBrandTrustSignalType,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
@@ -77,6 +85,20 @@ const SECTION_ICON: Record<string, LucideIcon> = {
   competitors: Swords,
   trustSignals: ShieldCheck,
 };
+
+// Display labels for the seven TrustSignalType enum values. Mirrors
+// `DISCOVERY_COPY.trustSignalTypes` — inlined here because the
+// cross-feature lint rule bans `brands` from importing `discovery`.
+// Keep in sync if either changes; the ordering drives picker order.
+const TRUST_SIGNAL_TYPE_LABELS: readonly { value: string; label: string }[] = [
+  { value: "AwardsAndRecognitions", label: "Awards & Recognitions" },
+  { value: "CertificationsAndAccreditations", label: "Certifications & Accreditations" },
+  { value: "PressAndMediaMentions", label: "Press & Media Mentions" },
+  { value: "TestimonialsAndReviews", label: "Testimonials & Reviews" },
+  { value: "ExpertEndorsements", label: "Expert Endorsements" },
+  { value: "CaseStudiesAndSuccessMetrics", label: "Case Studies & Success Metrics" },
+  { value: "ClientAndPartnerLogos", label: "Client & Partner Logos" },
+];
 
 interface BrandProfileScreenProps {
   brandId: string;
@@ -1091,18 +1113,165 @@ function TrustSignalsSection({
   brandId: string;
   trustSignals: readonly CandidateDto[];
 }) {
+  const [openTrustSignalId, setOpenTrustSignalId] = useState<string | null>(null);
+  const openSignal = trustSignals.find((ts) => ts.id === openTrustSignalId) ?? null;
+
   return (
-    <DimensionEditCard
-      icon={SECTION_ICON.trustSignals}
-      title={DISCOVERY_COPY.sections.trustSignals.title}
-      items={trustSignals}
-      addPlaceholder="Add a trust signal…"
-      addLabel="Add trust signal"
-      removeAriaSingular="trust signal"
-      add={useAddBrandTrustSignal(brandId)}
-      remove={useRemoveBrandTrustSignal(brandId)}
-      rename={useRenameBrandTrustSignal(brandId)}
-    />
+    <>
+      <DimensionEditCard
+        icon={SECTION_ICON.trustSignals}
+        title={DISCOVERY_COPY.sections.trustSignals.title}
+        items={trustSignals}
+        addPlaceholder="Add a trust signal…"
+        addLabel="Add trust signal"
+        removeAriaSingular="trust signal"
+        add={useAddBrandTrustSignal(brandId)}
+        remove={useRemoveBrandTrustSignal(brandId)}
+        rename={useRenameBrandTrustSignal(brandId)}
+        onEditDetails={(id) => setOpenTrustSignalId(id)}
+        detailsAriaSingular="trust signal"
+      />
+      {openSignal && (
+        <TrustSignalDetailsDialog
+          brandId={brandId}
+          trustSignal={openSignal}
+          open
+          onOpenChange={(next) => {
+            if (!next) setOpenTrustSignalId(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Per-trust-signal deeper-edit dialog. The signal type bucket is the
+ * load-bearing field here — discovery defaults user-added rows to
+ * AwardsAndRecognitions, and the LLM frequently gets categorization
+ * wrong (Inc. 5000 is an Award, ISO 27001 is a Certification, a
+ * positive Trustpilot quote is a Testimonial — all visually similar
+ * names). The Select holds the seven enum values; Save commits.
+ */
+function TrustSignalDetailsDialog({
+  brandId,
+  trustSignal,
+  open,
+  onOpenChange,
+}: {
+  brandId: string;
+  trustSignal: CandidateDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const update = useUpdateBrandTrustSignalType(brandId);
+  const originalType = trustSignal.metadata?.signalType ?? "AwardsAndRecognitions";
+  const [signalType, setSignalType] = useState<string>(originalType);
+
+  useEffect(() => {
+    setSignalType(trustSignal.metadata?.signalType ?? "AwardsAndRecognitions");
+  }, [trustSignal.id, trustSignal.metadata?.signalType]);
+
+  const dirty = signalType !== originalType;
+
+  const errorMessage =
+    update.isError && update.error instanceof Error
+      ? update.error.message
+      : update.isError
+        ? "Save failed — try again."
+        : null;
+
+  function save() {
+    update.mutate(
+      { trustSignalId: trustSignal.id, signalType },
+      { onSuccess: () => onOpenChange(false) },
+    );
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                {trustSignal.name}
+              </Dialog.Title>
+              <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
+                Recategorize this signal into the bucket it belongs in.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4">
+            <label
+              htmlFor={`trust-signal-type-${trustSignal.id}`}
+              className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+            >
+              Signal type
+            </label>
+            <Select value={signalType} onValueChange={setSignalType}>
+              <SelectTrigger
+                id={`trust-signal-type-${trustSignal.id}`}
+                selectSize="sm"
+                className="w-full"
+                aria-label="Trust signal type"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRUST_SIGNAL_TYPE_LABELS.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {errorMessage && (
+            <p className="mt-2 text-xs text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={update.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
+              {update.isPending ? "Saving…" : "Save type"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

@@ -86,6 +86,12 @@ let updateMarketCountryCodeState: {
   isError: boolean;
   error?: Error;
 } = { isPending: false, isError: false };
+let updateTrustSignalTypeMutate: ReturnType<typeof vi.fn>;
+let updateTrustSignalTypeState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
 
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
@@ -137,6 +143,10 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   useUpdateBrandMarketCountryCode: () => ({
     mutate: updateMarketCountryCodeMutate,
     ...updateMarketCountryCodeState,
+  }),
+  useUpdateBrandTrustSignalType: () => ({
+    mutate: updateTrustSignalTypeMutate,
+    ...updateTrustSignalTypeState,
   }),
 }));
 
@@ -275,6 +285,8 @@ describe("BrandProfileScreen", () => {
     updateProductAliasesState = { isPending: false, isError: false };
     updateMarketCountryCodeMutate = vi.fn();
     updateMarketCountryCodeState = { isPending: false, isError: false };
+    updateTrustSignalTypeMutate = vi.fn();
+    updateTrustSignalTypeState = { isPending: false, isError: false };
   });
 
   it("renders the brand name in the page header", () => {
@@ -1180,5 +1192,91 @@ describe("BrandProfileScreen", () => {
     expect(
       within(screen.getByRole("dialog")).getByText(/ISO 3166-1 alpha-2 code/i),
     ).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Trust signal type dialog
+  // -------------------------------------------------------------------
+
+  it("clicking the details ⋯ on a trust signal opens the type dialog", async () => {
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(/trust signal type/i),
+    ).toBeInTheDocument();
+  });
+
+  it("Save is disabled until the picked trust-signal type differs from the server", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        trustSignals: [
+          {
+            ...discoveryFixture.trustSignals[0],
+            id: "ts1",
+            name: "Trustpilot reviews",
+            metadata: { signalType: "TestimonialsAndReviews" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: /^Save type$/ })).toBeDisabled();
+  });
+
+  it("renders a server-error message when the trust-signal type save fails", async () => {
+    updateTrustSignalTypeState = {
+      isPending: false,
+      isError: true,
+      error: new Error(
+        "'NotAType' is not a valid TrustSignalType. Expected one of: AwardsAndRecognitions",
+      ),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/not a valid TrustSignalType/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the type Select from metadata.signalType (default AwardsAndRecognitions when absent)", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        trustSignals: [
+          {
+            ...discoveryFixture.trustSignals[0],
+            id: "ts1",
+            name: "Trustpilot reviews",
+            metadata: { signalType: "TestimonialsAndReviews" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: /Edit details for trust signal Trustpilot reviews/i,
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    // Radix Select renders the current value text inside the trigger.
+    expect(within(dialog).getByText(/Testimonials & Reviews/i)).toBeInTheDocument();
   });
 });

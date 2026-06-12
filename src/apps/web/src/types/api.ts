@@ -186,6 +186,15 @@ export interface UpdateBrandMarketCountryCodeResult {
   countryCode: string | null;
 }
 
+export interface UpdateBrandTrustSignalTypeRequest {
+  /** Enum name, e.g. "CertificationsAndAccreditations". Server parses case-insensitively. */
+  signalType: string;
+}
+
+export interface UpdateBrandTrustSignalTypeResult {
+  signalType: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
