@@ -333,6 +333,10 @@ const fixture: WorkspaceOverviewDto = {
     { rank: 1, aspect: "price", winCount: 4, lossCount: 2 },
     { rank: 2, aspect: "support_quality", winCount: 2, lossCount: 1 },
   ],
+  topicOwnership: [
+    { rank: 1, topicName: "Career advice", promptCount: 10, brandMentionedPromptCount: 8 },
+    { rank: 2, topicName: "Industry news", promptCount: 6, brandMentionedPromptCount: 1 },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -450,6 +454,18 @@ describe("WorkspaceOverviewScreen", () => {
     // Per-competitor row: "6 / 10 (60% of competitor's mentions)"
     expect(screen.getByText(/6 \/ 10/)).toBeInTheDocument();
     expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
+  });
+
+  it("renders the topic ownership card with prompt counts and ownership percent", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    expect(screen.getByText(/topic ownership/i)).toBeInTheDocument();
+    expect(screen.getByText("Career advice")).toBeInTheDocument();
+    expect(screen.getByText("Industry news")).toBeInTheDocument();
+    // Career advice = 8/10 = 80% (green); Industry news = 1/6 = 17% (red).
+    expect(screen.getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText("17%")).toBeInTheDocument();
   });
 
   it("renders the head-to-head card with aspect, wins, losses, and a net column", () => {

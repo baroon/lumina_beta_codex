@@ -262,6 +262,17 @@ export const REPORTS_COPY = {
       lossesHeader: "Losses",
       netHeader: "Net",
     },
+    topicOwnership: {
+      title: "Topic ownership",
+      tooltip: TBD_TOOLTIP,
+      subline:
+        "Per-topic prompt volume in scope and the share where a tracked brand was mentioned.",
+      noData: "No topics tagged on any in-scope prompt.",
+      topicHeader: "Topic",
+      promptsHeader: "Prompts",
+      mentionedHeader: "We were mentioned",
+      shareHeader: "Ownership",
+    },
     recommendationRate: {
       title: "Recommendation rate by entity",
       tooltip: TBD_TOOLTIP,

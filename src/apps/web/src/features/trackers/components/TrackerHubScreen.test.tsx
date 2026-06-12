@@ -199,6 +199,7 @@ const overviewFixture: WorkspaceOverviewDto = {
   coMentions: [],
   topBrandRiskFlags: [],
   topBrandComparisons: [],
+  topicOwnership: [],
 };
 
 const lensesFixture: TrackerLensesSetupDto = {

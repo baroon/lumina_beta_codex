@@ -1272,6 +1272,13 @@ export interface WorkspaceOverviewDto {
    * comparisons were extracted in scope.
    */
   topBrandComparisons: WorkspaceBrandComparisonDto[];
+  /**
+   * Top-N topics by prompt volume (rank ≤10). Each row carries the
+   * total prompts tagged with the topic in scope and the subset
+   * where a tracked brand was mentioned. Empty when no in-scope
+   * prompt was tagged with any topic.
+   */
+  topicOwnership: WorkspaceTopicOwnershipDto[];
 }
 
 export interface WorkspaceBrandAttributeDto {
@@ -1312,6 +1319,17 @@ export interface WorkspaceBrandComparisonDto {
   winCount: number;
   /** Comparisons in scope where the tracked brand was the loser on this aspect. */
   lossCount: number;
+}
+
+/** One row in the workspace topic-ownership rollup (Phase 4 measurement-model item #18). */
+export interface WorkspaceTopicOwnershipDto {
+  rank: number;
+  /** Topic name (deduped across per-brand Topic rows by display name). */
+  topicName: string;
+  /** Distinct in-scope prompts tagged with this topic. */
+  promptCount: number;
+  /** Distinct in-scope prompts tagged with this topic where the tracked brand was mentioned. */
+  brandMentionedPromptCount: number;
 }
 
 export interface TrackedBrandDto {

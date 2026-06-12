@@ -130,6 +130,8 @@ public class GetWorkspaceOverviewQueryHandler
             scanIds, trackedBrandIds, cancellationToken);
         var topBrandComparisons = await BuildTopBrandComparisonsAsync(
             scanIds, trackedBrandIds, cancellationToken);
+        var topicOwnership = await BuildTopicOwnershipAsync(
+            scanIds, trackedBrandIds, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -145,7 +147,8 @@ public class GetWorkspaceOverviewQueryHandler
             TopBrandAttributes: topBrandAttributes,
             CoMentions: coMentions,
             TopBrandRiskFlags: topBrandRiskFlags,
-            TopBrandComparisons: topBrandComparisons);
+            TopBrandComparisons: topBrandComparisons,
+            TopicOwnership: topicOwnership);
     }
 
     /// <summary>
@@ -184,7 +187,8 @@ public class GetWorkspaceOverviewQueryHandler
             Array.Empty<WorkspaceBrandAttributeDto>(),
             Array.Empty<WorkspaceCoMentionDto>(),
             Array.Empty<WorkspaceBrandRiskFlagDto>(),
-            Array.Empty<WorkspaceBrandComparisonDto>());
+            Array.Empty<WorkspaceBrandComparisonDto>(),
+            Array.Empty<WorkspaceTopicOwnershipDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -429,6 +433,85 @@ public class GetWorkspaceOverviewQueryHandler
             .ToList();
 
         return grouped;
+    }
+
+    // -----------------------------------------------------------------
+    // Topic ownership (Phase 4 measurement-model expansion, item #18)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Workspace-wide topic-ownership rollup. For each topic name a
+    /// scoped prompt is tagged with, returns the prompt count and the
+    /// subset where ≥1 answer mentioned any tracked brand. The FE
+    /// derives "ownership" = brandMentionedPromptCount / promptCount.
+    /// Grouped by topic NAME (not Topic.Id) because per-brand Topic
+    /// rows dedupe by display name at the FE picker — "Career advice"
+    /// surfaces as one topic even when Acme and Beta each have their
+    /// own Topic row. Ordered by total prompt count desc, then
+    /// alphabetical for determinism. Top 10.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceTopicOwnershipDto>> BuildTopicOwnershipAsync(
+        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+    {
+        if (scanIds.Count == 0) return Array.Empty<WorkspaceTopicOwnershipDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+
+        // Distinct in-scope prompts (one row per (promptId, scoped at
+        // least once) — the PromptRuns within scan window pin the
+        // denominator universe).
+        var promptIdsInScope = await _db.PromptRuns.AsNoTracking()
+            .Where(pr => scanIdSet.Contains(pr.ScanRunId))
+            .Select(pr => pr.PromptId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (promptIdsInScope.Count == 0) return Array.Empty<WorkspaceTopicOwnershipDto>();
+        var promptIdSet = promptIdsInScope.ToHashSet();
+
+        // For each (prompt, topic name) pair the prompt is tagged with.
+        var promptTopicNames = await (
+            from pt in _db.PromptTopics.AsNoTracking()
+            join t in _db.Topics.AsNoTracking() on pt.TopicId equals t.Id
+            where promptIdSet.Contains(pt.PromptId)
+            select new { pt.PromptId, t.Name })
+            .ToListAsync(ct);
+        if (promptTopicNames.Count == 0) return Array.Empty<WorkspaceTopicOwnershipDto>();
+
+        // In-scope prompts where ≥1 answer mentioned a tracked brand —
+        // the numerator universe. Pull once and intersect per-topic.
+        var brandMentionedPromptIds = await (
+            from m in _db.Mentions.AsNoTracking()
+            join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
+            join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
+            where m.EntityType == MentionEntityType.Brand
+                && trackedBrandIds.Contains(m.EntityId)
+                && scanIdSet.Contains(pr.ScanRunId)
+            select pr.PromptId)
+            .Distinct()
+            .ToListAsync(ct);
+        var brandMentionedPromptIdSet = brandMentionedPromptIds.ToHashSet();
+
+        return promptTopicNames
+            .GroupBy(pt => pt.Name)
+            .Select(g =>
+            {
+                var distinctPrompts = g.Select(pt => pt.PromptId).Distinct().ToList();
+                return new
+                {
+                    TopicName = g.Key,
+                    PromptCount = distinctPrompts.Count,
+                    BrandMentionedPromptCount = distinctPrompts.Count(brandMentionedPromptIdSet.Contains),
+                };
+            })
+            .OrderByDescending(r => r.PromptCount)
+            .ThenBy(r => r.TopicName, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .Select((r, i) => new WorkspaceTopicOwnershipDto(
+                Rank: i + 1,
+                TopicName: r.TopicName,
+                PromptCount: r.PromptCount,
+                BrandMentionedPromptCount: r.BrandMentionedPromptCount))
+            .ToList();
     }
 
     // -----------------------------------------------------------------

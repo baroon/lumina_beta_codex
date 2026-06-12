@@ -84,6 +84,16 @@ public class GetWorkspaceOverviewQueryHandlerTests
         ctx.AIPlatforms.Add(platform);
         ctx.Lenses.Add(lens);
 
+        // Per-brand topic rows that dedupe by name at the workspace grain.
+        // "Career advice" is shared (both brands have a row); "Industry
+        // news" is Acme-only and gets tagged on specific prompts below.
+        var acmeCareerTopic = new Topic { Id = Guid.NewGuid(), BrandId = acme.Id, Name = "Career advice" };
+        var betaCareerTopic = new Topic { Id = Guid.NewGuid(), BrandId = beta.Id, Name = "Career advice" };
+        var acmeIndustryTopic = new Topic { Id = Guid.NewGuid(), BrandId = acme.Id, Name = "Industry news" };
+        ctx.Topics.Add(acmeCareerTopic);
+        ctx.Topics.Add(betaCareerTopic);
+        ctx.Topics.Add(acmeIndustryTopic);
+
         // Helper to seed one scan with one prompt-run + one answer + a brand mention.
         // Records seeded scans by tracker so the caller can later seed
         // competitor trend points without re-querying the in-memory store.
@@ -98,7 +108,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             (string Name, AttributePolarity Polarity)[]? brandAttributes = null,
             Guid[]? competitorMentions = null,
             (string FlagType, RiskSeverity Severity)[]? brandRiskFlags = null,
-            (string Aspect, bool WinnerIsThisMention)[]? brandComparisons = null)
+            (string Aspect, bool WinnerIsThisMention)[]? brandComparisons = null,
+            Guid[]? topicIds = null)
         {
             var prompt = new Prompt
             {
@@ -127,6 +138,18 @@ public class GetWorkspaceOverviewQueryHandlerTests
             ctx.PromptRuns.Add(run);
             ctx.AIAnswers.Add(answer);
             scansByTracker[tracker.Id].Add(scan);
+
+            if (topicIds is { Length: > 0 })
+            {
+                foreach (var topicId in topicIds)
+                {
+                    ctx.PromptTopics.Add(new PromptTopic
+                    {
+                        PromptId = prompt.Id,
+                        TopicId = topicId,
+                    });
+                }
+            }
             if (mentionsBrand)
             {
                 var mention = new Mention
@@ -237,6 +260,12 @@ public class GetWorkspaceOverviewQueryHandlerTests
         //   "price"          : 2 wins + 1 loss (across Acme×2 + Beta@-1d)
         //   "support_quality": 1 win               (Acme@-1d)
         // Expected order by total desc: price (3), support_quality (1).
+        // Topic fixture (item #18) — tags every prompt with "Career advice"
+        // (each brand's own Topic row; the workspace dedupes by name);
+        // adds "Industry news" on Acme@-1d and Beta@-14d only.
+        // Expected workspace rollup:
+        //   "Career advice": 4 prompts, 3 brand-mentioned (Acme×2 + Beta@-1d)
+        //   "Industry news": 2 prompts, 1 brand-mentioned (Acme@-1d only)
         SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme,
             mentionsBrand: true, sentimentCategory: "Negative",
             brandAttributes: new[]
@@ -246,7 +275,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             },
             competitorMentions: new[] { sharedId },
             brandRiskFlags: new[] { ("layoffs", RiskSeverity.Medium) },
-            brandComparisons: new[] { ("price", true) });
+            brandComparisons: new[] { ("price", true) },
+            topicIds: new[] { acmeCareerTopic.Id });
         SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -256,10 +286,12 @@ public class GetWorkspaceOverviewQueryHandlerTests
             },
             competitorMentions: new[] { glassdoor.Id },
             brandRiskFlags: new[] { ("layoffs", RiskSeverity.High) },
-            brandComparisons: new[] { ("price", false), ("support_quality", true) });
+            brandComparisons: new[] { ("price", false), ("support_quality", true) },
+            topicIds: new[] { acmeCareerTopic.Id, acmeIndustryTopic.Id });
         SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta,
             mentionsBrand: false, sentimentCategory: "Neutral",
-            competitorMentions: new[] { sharedId });
+            competitorMentions: new[] { sharedId },
+            topicIds: new[] { betaCareerTopic.Id, acmeIndustryTopic.Id });
         SeedScanWithAnswer(betaTracker, now.AddDays(-1), beta,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -267,7 +299,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 ("trustworthy", AttributePolarity.Negative),
             },
             brandRiskFlags: new[] { ("outage", RiskSeverity.Low) },
-            brandComparisons: new[] { ("price", true) });
+            brandComparisons: new[] { ("price", true) },
+            topicIds: new[] { betaCareerTopic.Id });
 
         // Competitor trend points only on Acme's tracker for the shared competitor.
         var acmeScans = scansByTracker[acmeTracker.Id].OrderBy(s => s.StartedAt).ToList();
@@ -495,6 +528,32 @@ public class GetWorkspaceOverviewQueryHandlerTests
         second.Aspect.Should().Be("support_quality");
         second.WinCount.Should().Be(1);
         second.LossCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TopicOwnership_GroupsByNameAcrossBrandsAndCountsBrandMentions()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Seed: Career advice 4 prompts (3 brand-mentioned); Industry news 2 prompts (1).
+        result.TopicOwnership.Should().HaveCount(2);
+
+        var first = result.TopicOwnership[0];
+        first.Rank.Should().Be(1);
+        first.TopicName.Should().Be("Career advice");
+        first.PromptCount.Should().Be(4);
+        first.BrandMentionedPromptCount.Should().Be(3);
+
+        var second = result.TopicOwnership[1];
+        second.TopicName.Should().Be("Industry news");
+        second.PromptCount.Should().Be(2);
+        second.BrandMentionedPromptCount.Should().Be(1);
     }
 
     [Fact]

@@ -101,7 +101,19 @@ public sealed record WorkspaceOverviewDto(
     /// determinism. 10-row cap. Empty when no comparisons were
     /// extracted in scope.
     /// </summary>
-    IReadOnlyList<WorkspaceBrandComparisonDto> TopBrandComparisons);
+    IReadOnlyList<WorkspaceBrandComparisonDto> TopBrandComparisons,
+    /// <summary>
+    /// Per-topic ownership rollup across the window (Phase 4
+    /// measurement-model expansion, item #18). For each topic the
+    /// workspace's prompts touch, the row carries the number of
+    /// prompts tagged with it and the subset where ≥1 answer
+    /// mentioned a tracked brand. The FE divides them to surface the
+    /// "You own X (8/10 prompts), you lose Y (1/10)" insight that no
+    /// scan-grain metric carries on its own. Sorted by total prompt
+    /// count desc, then alphabetical topic for determinism. 10-row
+    /// cap. Empty when no topics are tagged on any in-scope prompt.
+    /// </summary>
+    IReadOnlyList<WorkspaceTopicOwnershipDto> TopicOwnership);
 
 /// <summary>
 /// One attribute the AI ascribed to a tracked brand across the workspace.
@@ -161,6 +173,22 @@ public sealed record WorkspaceBrandComparisonDto(
     int WinCount,
     /// <summary>Comparisons in scope where the tracked brand was the loser on this aspect.</summary>
     int LossCount);
+
+/// <summary>
+/// One row in the workspace topic-ownership rollup. Lets the FE
+/// surface "You own X but lose Y" without computing it per-scan and
+/// re-summing — denominator stability matters because per-scan
+/// rollups can lose a topic entirely when the scan happens to have
+/// no answers from prompts tagged with it.
+/// </summary>
+public sealed record WorkspaceTopicOwnershipDto(
+    int Rank,
+    /// <summary>Topic name (deduped across per-brand Topic rows by display name).</summary>
+    string TopicName,
+    /// <summary>Distinct in-scope prompts tagged with this topic.</summary>
+    int PromptCount,
+    /// <summary>Distinct in-scope prompts tagged with this topic where ≥1 answer mentioned a tracked brand.</summary>
+    int BrandMentionedPromptCount);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

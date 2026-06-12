@@ -87,6 +87,7 @@ import type {
   WorkspaceBrandRiskFlagDto,
   WorkspaceCoMentionDto,
   WorkspaceHeroDto,
+  WorkspaceTopicOwnershipDto,
   WorkspaceOverviewDto,
   WorkspaceRecentChatDto,
   WorkspaceTopEntityRowDto,
@@ -456,6 +457,7 @@ function CategorizedOverview({
           {trendCard("sov")}
           {depthData && <MentionsByPlatformCard rows={depthData.mentionsByPlatform} />}
           <TopEntitiesCard rows={data.topEntities} selectedKeys={selectedKeys} />
+          <TopicOwnershipCard rows={data.topicOwnership} />
         </div>
       ),
     },
@@ -1566,6 +1568,74 @@ function TopEntitiesCard({
           </table>
         </div>
       )}
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Topic ownership (Phase 4 measurement-model item #18). Table view:
+// topic | prompts | brand-mentioned | ownership rate. Rate is colored
+// success-green when ≥66% (we own it), error-red when ≤33% (we lose it),
+// neutral otherwise so a glance shows which conversations we dominate vs
+// which we're absent from.
+// ---------------------------------------------------------------------------
+
+function TopicOwnershipCard({ rows }: { rows: readonly WorkspaceTopicOwnershipDto[] }) {
+  const copy = REPORTS_COPY.overview.topicOwnership;
+  if (rows.length === 0) {
+    return (
+      <CollapsibleCard icon={MessageSquare} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
+    );
+  }
+  return (
+    <CollapsibleCard icon={MessageSquare} title={copy.title} tooltip={copy.tooltip}>
+      <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left font-medium">
+                {copy.topicHeader}
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.promptsHeader}
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.mentionedHeader}
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.shareHeader}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {rows.map((r) => {
+              const share = r.promptCount === 0 ? 0 : r.brandMentionedPromptCount / r.promptCount;
+              const pct = Math.round(share * 100);
+              const colorClass =
+                share >= 2 / 3
+                  ? "text-semantic-success-700"
+                  : share <= 1 / 3
+                    ? "text-semantic-error-700"
+                    : "text-neutral-700";
+              return (
+                <tr key={`${r.rank}:${r.topicName}`}>
+                  <td className="px-3 py-2 font-medium text-neutral-900">{r.topicName}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{r.promptCount}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.brandMentionedPromptCount}
+                  </td>
+                  <td className={cn("px-3 py-2 text-right tabular-nums font-medium", colorClass)}>
+                    {pct}%
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </CollapsibleCard>
   );
 }
