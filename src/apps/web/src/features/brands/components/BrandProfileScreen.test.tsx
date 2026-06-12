@@ -75,7 +75,15 @@ let updateCompetitorDescriptionState: {
   error?: Error;
 } = { isPending: false, isError: false };
 let updateProductAliasesMutate: ReturnType<typeof vi.fn>;
+let updateProductAliasesMutateAsync: ReturnType<typeof vi.fn>;
 let updateProductAliasesState: {
+  isPending: boolean;
+  isError: boolean;
+  error?: Error;
+} = { isPending: false, isError: false };
+let updateProductTypeMutate: ReturnType<typeof vi.fn>;
+let updateProductTypeMutateAsync: ReturnType<typeof vi.fn>;
+let updateProductTypeState: {
   isPending: boolean;
   isError: boolean;
   error?: Error;
@@ -138,7 +146,13 @@ vi.mock("@/features/brands/hooks/useBrands", () => ({
   }),
   useUpdateBrandProductAliases: () => ({
     mutate: updateProductAliasesMutate,
+    mutateAsync: updateProductAliasesMutateAsync,
     ...updateProductAliasesState,
+  }),
+  useUpdateBrandProductType: () => ({
+    mutate: updateProductTypeMutate,
+    mutateAsync: updateProductTypeMutateAsync,
+    ...updateProductTypeState,
   }),
   useUpdateBrandMarketCountryCode: () => ({
     mutate: updateMarketCountryCodeMutate,
@@ -282,7 +296,11 @@ describe("BrandProfileScreen", () => {
     updateCompetitorDescriptionMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateCompetitorDescriptionState = { isPending: false, isError: false };
     updateProductAliasesMutate = vi.fn();
+    updateProductAliasesMutateAsync = vi.fn().mockResolvedValue(undefined);
     updateProductAliasesState = { isPending: false, isError: false };
+    updateProductTypeMutate = vi.fn();
+    updateProductTypeMutateAsync = vi.fn().mockResolvedValue(undefined);
+    updateProductTypeState = { isPending: false, isError: false };
     updateMarketCountryCodeMutate = vi.fn();
     updateMarketCountryCodeState = { isPending: false, isError: false };
     updateTrustSignalTypeMutate = vi.fn();
@@ -1030,7 +1048,7 @@ describe("BrandProfileScreen", () => {
     expect(within(screen.getByRole("dialog")).getByText(/AI Resume Builder/i)).toBeInTheDocument();
   });
 
-  it("Save aliases on the product dialog fires the product mutation with staged list", async () => {
+  it("Save changes on the product dialog fires the alias mutation with the staged list", async () => {
     discoveryState = {
       data: {
         ...discoveryFixture,
@@ -1055,14 +1073,16 @@ describe("BrandProfileScreen", () => {
       within(dialog).getByPlaceholderText(/Type and press Enter/i),
       "ResumeAI Pro{enter}",
     );
-    await userEvent.click(within(dialog).getByRole("button", { name: /^Save aliases$/ }));
-    expect(updateProductAliasesMutate).toHaveBeenCalledOnce();
-    const [args] = updateProductAliasesMutate.mock.calls[0];
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Save changes$/ }));
+    expect(updateProductAliasesMutateAsync).toHaveBeenCalledOnce();
+    const [args] = updateProductAliasesMutateAsync.mock.calls[0];
     expect(args.productId).toBe("pr1");
     expect(args.aliases).toEqual(["Resume AI", "ResumeAI Pro"]);
+    // Type wasn't touched — no type call.
+    expect(updateProductTypeMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("Save is disabled until the staged product aliases differ from the server", async () => {
+  it("Save is disabled until either aliases or product type differ from the server", async () => {
     discoveryState = {
       data: {
         ...discoveryFixture,
@@ -1072,6 +1092,7 @@ describe("BrandProfileScreen", () => {
             id: "pr1",
             name: "AI Resume Builder",
             aliases: ["Resume AI"],
+            metadata: { productType: "Tool" },
           },
         ],
       },
@@ -1082,7 +1103,7 @@ describe("BrandProfileScreen", () => {
       screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: /^Save aliases$/ })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /^Save changes$/ })).toBeDisabled();
   });
 
   it("renders a server-error message when the product-aliases save fails", async () => {
@@ -1097,6 +1118,46 @@ describe("BrandProfileScreen", () => {
     );
     expect(
       within(screen.getByRole("dialog")).getByText(/collides with the product's primary name/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefills the product-type Select from metadata.productType (default Product when absent)", async () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        products: [
+          {
+            ...discoveryFixture.products[0],
+            id: "pr1",
+            name: "AI Resume Builder",
+            metadata: { productType: "Tool" },
+          },
+        ],
+      },
+      isLoading: false,
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText(/product type/i)).toBeInTheDocument();
+    // Radix Select renders the current value text inside the trigger.
+    expect(within(dialog).getByText(/^Tool$/)).toBeInTheDocument();
+  });
+
+  it("renders a server-error message when the product-type save fails", async () => {
+    updateProductTypeState = {
+      isPending: false,
+      isError: true,
+      error: new Error("'NotAType' is not a valid ProductType. Expected one of: Product, Service"),
+    };
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Edit details for product AI Resume Builder/i }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByText(/not a valid ProductType/i),
     ).toBeInTheDocument();
   });
 

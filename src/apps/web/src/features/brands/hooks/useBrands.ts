@@ -334,6 +334,24 @@ export function useUpdateBrandTrustSignalType(brandId: string) {
 }
 
 /**
+ * Recategorizes a product into one of the six ProductType buckets.
+ * Discovery and AddBrandProduct both default user-added rows to
+ * <c>Product</c>, so this is the canonical way to move them out.
+ */
+export function useUpdateBrandProductType(brandId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { productId: string; productType: string }) =>
+      brandsApi.updateProductType(brandId, vars.productId, {
+        productType: vars.productType,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["discovery", brandId] });
+    },
+  });
+}
+
+/**
  * Mutates a single competitor's prose description. User-facing note —
  * not a signal-extraction input — so the BE just trims, null-coerces
  * empty, and caps length. Invalidates the discovery cache so the

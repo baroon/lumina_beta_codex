@@ -605,6 +605,39 @@ public class BrandsController : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/products/{productId:guid}/type")]
+    [ProducesResponseType(typeof(UpdateBrandProductTypeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateProductType(
+        Guid id, Guid productId,
+        [FromBody] UpdateBrandProductTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<ProductType>(request.ProductType, ignoreCase: true, out var parsed))
+            return BadRequest(new
+            {
+                error = $"'{request.ProductType}' is not a valid ProductType. " +
+                    "Expected one of: " + string.Join(", ", Enum.GetNames<ProductType>()),
+            });
+
+        try
+        {
+            var result = await _mediator.Send(
+                new UpdateBrandProductTypeCommand(id, productId, parsed),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/trust-signals/{trustSignalId:guid}")]
     [ProducesResponseType(typeof(RenameBrandTrustSignalResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

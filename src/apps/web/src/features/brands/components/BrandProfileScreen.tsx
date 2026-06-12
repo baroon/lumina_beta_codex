@@ -66,6 +66,7 @@ import {
   useUpdateBrandCompetitorDomain,
   useUpdateBrandMarketCountryCode,
   useUpdateBrandProductAliases,
+  useUpdateBrandProductType,
   useUpdateBrandTrustSignalType,
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
@@ -98,6 +99,18 @@ const TRUST_SIGNAL_TYPE_LABELS: readonly { value: string; label: string }[] = [
   { value: "ExpertEndorsements", label: "Expert Endorsements" },
   { value: "CaseStudiesAndSuccessMetrics", label: "Case Studies & Success Metrics" },
   { value: "ClientAndPartnerLogos", label: "Client & Partner Logos" },
+];
+
+// Display labels for the six ProductType enum values. Mirrors
+// `DISCOVERY_COPY.productTypes` — same cross-feature-lint reason as
+// TRUST_SIGNAL_TYPE_LABELS.
+const PRODUCT_TYPE_LABELS: readonly { value: string; label: string }[] = [
+  { value: "Product", label: "Product" },
+  { value: "Service", label: "Service" },
+  { value: "Feature", label: "Feature" },
+  { value: "Solution", label: "Solution" },
+  { value: "Tool", label: "Tool" },
+  { value: "Resource", label: "Resource" },
 ];
 
 interface BrandProfileScreenProps {
@@ -997,10 +1010,14 @@ function ProductsSection({
 }
 
 /**
- * Per-product deeper-edit dialog. Aliases drive mention detection —
- * same shape and downstream wiring as competitor aliases. The chip
- * click-to-rename handles the primary name; this dialog handles the
- * alias list. Description/ProductType are out of scope for this slice.
+ * Per-product deeper-edit dialog. Two fields the chip rename can't
+ * carry: <strong>ProductType</strong> (one of six buckets; defaults
+ * to Product on user-add and frequently miscategorized by the LLM)
+ * and <strong>Aliases</strong> (drive mention detection — wrong
+ * aliases mean an AI answer's "Photoshop" never attributes to "Adobe
+ * Photoshop"). Save fires only the mutations whose value changed,
+ * type before aliases so a controller rejection isn't masked by a
+ * successful alias write.
  */
 function ProductDetailsDialog({
   brandId,
@@ -1013,26 +1030,41 @@ function ProductDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const update = useUpdateBrandProductAliases(brandId);
+  const updateAliases = useUpdateBrandProductAliases(brandId);
+  const updateType = useUpdateBrandProductType(brandId);
+
   const originalAliases = product.aliases ?? [];
+  const originalType = product.metadata?.productType ?? "Product";
+
   const [aliases, setAliases] = useState<string[]>(originalAliases);
+  const [productType, setProductType] = useState<string>(originalType);
 
   useEffect(() => {
     setAliases(product.aliases ?? []);
-  }, [product.id, product.aliases]);
+    setProductType(product.metadata?.productType ?? "Product");
+  }, [product.id, product.aliases, product.metadata?.productType]);
 
-  const dirty =
+  const aliasesDirty =
     aliases.length !== originalAliases.length || aliases.some((a, i) => a !== originalAliases[i]);
+  const typeDirty = productType !== originalType;
+  const dirty = aliasesDirty || typeDirty;
+  const pending = updateAliases.isPending || updateType.isPending;
 
   const errorMessage =
-    update.isError && update.error instanceof Error
-      ? update.error.message
-      : update.isError
-        ? "Save failed — try again."
-        : null;
+    formatDialogError(updateType.error) ?? formatDialogError(updateAliases.error);
 
-  function save() {
-    update.mutate({ productId: product.id, aliases }, { onSuccess: () => onOpenChange(false) });
+  async function save() {
+    try {
+      if (typeDirty) {
+        await updateType.mutateAsync({ productId: product.id, productType });
+      }
+      if (aliasesDirty) {
+        await updateAliases.mutateAsync({ productId: product.id, aliases });
+      }
+      onOpenChange(false);
+    } catch {
+      // Errors surface inline via errorMessage; the dialog stays open.
+    }
   }
 
   return (
@@ -1060,7 +1092,7 @@ function ProductDetailsDialog({
                 {product.name}
               </Dialog.Title>
               <Dialog.Description className="mt-0.5 text-[11px] text-neutral-500">
-                Aliases drive mention detection. Add the variants AI answers actually use.
+                Type buckets the product; aliases drive mention detection.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -1074,7 +1106,32 @@ function ProductDetailsDialog({
             </Dialog.Close>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor={`product-type-${product.id}`}
+                className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-neutral-500"
+              >
+                Type
+              </label>
+              <Select value={productType} onValueChange={setProductType}>
+                <SelectTrigger
+                  id={`product-type-${product.id}`}
+                  selectSize="sm"
+                  className="w-full"
+                  aria-label="Product type"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_TYPE_LABELS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <AliasEditor
               aliases={aliases}
               onChange={setAliases}
@@ -1092,12 +1149,12 @@ function ProductDetailsDialog({
 
           <div className="mt-5 flex items-center justify-end gap-2">
             <Dialog.Close asChild>
-              <Button variant="outline" size="sm" disabled={update.isPending}>
+              <Button variant="outline" size="sm" disabled={pending}>
                 Cancel
               </Button>
             </Dialog.Close>
-            <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
-              {update.isPending ? "Saving…" : "Save aliases"}
+            <Button size="sm" onClick={save} disabled={!dirty || pending}>
+              {pending ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </Dialog.Content>

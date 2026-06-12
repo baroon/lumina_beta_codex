@@ -195,6 +195,15 @@ export interface UpdateBrandTrustSignalTypeResult {
   signalType: string;
 }
 
+export interface UpdateBrandProductTypeRequest {
+  /** Enum name, e.g. "Service". Server parses case-insensitively. */
+  productType: string;
+}
+
+export interface UpdateBrandProductTypeResult {
+  productType: string;
+}
+
 export interface LatestDiscoveryDto {
   id: string;
   status: DiscoveryStatus;
