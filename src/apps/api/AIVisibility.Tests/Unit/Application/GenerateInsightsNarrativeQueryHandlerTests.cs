@@ -203,4 +203,116 @@ public class GenerateInsightsNarrativeQueryHandlerTests
         var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(empty);
         prompt.Should().Contain("no entities ranked yet");
     }
+
+    [Fact]
+    public void BuildPrompt_OmitsOptionalSections_WhenSignalsHaveNoData()
+    {
+        // Default SampleOverview() has empty arrays for every new
+        // measurement-model field — none of the optional headers
+        // should appear so the LLM isn't given "Top attributes: (none)"
+        // and similar noise.
+        var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(SampleOverview());
+
+        prompt.Should().NotContain("Top attributes the AI ascribes");
+        prompt.Should().NotContain("Risk flags raised");
+        prompt.Should().NotContain("Head-to-head comparisons");
+        prompt.Should().NotContain("Topic ownership");
+        prompt.Should().NotContain("Competitor co-mentions");
+        prompt.Should().NotContain("Recent factual claims");
+    }
+
+    [Fact]
+    public void BuildPrompt_IncludesAbsenceAndFirstMentionRates_WhenPresent()
+    {
+        var dto = SampleOverview() with
+        {
+            Hero = SampleOverview().Hero with
+            {
+                BrandAbsenceRate = 0.4,
+                BrandFirstMentionRate = 0.3,
+            },
+        };
+
+        var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(dto);
+
+        prompt.Should().Contain("Brand absence rate: 40%");
+        prompt.Should().Contain("Brand first-mention rate: 30%");
+    }
+
+    [Fact]
+    public void BuildPrompt_IncludesAttributes_WithPolarityAndCount()
+    {
+        var dto = SampleOverview() with
+        {
+            TopBrandAttributes = new[]
+            {
+                new WorkspaceBrandAttributeDto(1, "trustworthy", "Positive", 8),
+                new WorkspaceBrandAttributeDto(2, "slow", "Negative", 3),
+            },
+        };
+
+        var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(dto);
+
+        prompt.Should().Contain("Top attributes the AI ascribes to your brand:");
+        prompt.Should().Contain("\"trustworthy\" (Positive) — 8 mentions");
+        prompt.Should().Contain("\"slow\" (Negative) — 3 mentions");
+    }
+
+    [Fact]
+    public void BuildPrompt_IncludesRiskFlags_WithSeverity()
+    {
+        var dto = SampleOverview() with
+        {
+            TopBrandRiskFlags = new[]
+            {
+                new WorkspaceBrandRiskFlagDto(1, "layoffs", "High", 3),
+                new WorkspaceBrandRiskFlagDto(2, "outage", "Low", 1),
+            },
+        };
+
+        var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(dto);
+
+        prompt.Should().Contain("Risk flags raised against your brand:");
+        prompt.Should().Contain("layoffs (High) — 3 mentions");
+        prompt.Should().Contain("outage (Low) — 1 mentions");
+    }
+
+    [Fact]
+    public void BuildPrompt_IncludesHeadToHead_AndTopicOwnership_AndClaims()
+    {
+        var dto = SampleOverview() with
+        {
+            TopBrandComparisons = new[]
+            {
+                new WorkspaceBrandComparisonDto(1, "price", 4, 1),
+                new WorkspaceBrandComparisonDto(2, "support_quality", 0, 3),
+            },
+            TopicOwnership = new[]
+            {
+                new WorkspaceTopicOwnershipDto(1, "Career advice", 10, 8),
+                new WorkspaceTopicOwnershipDto(2, "Industry news", 6, 1),
+            },
+            RecentFactualClaims = new[]
+            {
+                new WorkspaceFactualClaimDto(
+                    Guid.NewGuid(), Guid.NewGuid(), "Acme",
+                    "founding_year", "1975",
+                    "Acme was founded in 1975.", "evidence",
+                    "Verifiable", "Disputed", DateTime.UtcNow),
+            },
+        };
+
+        var prompt = GenerateInsightsNarrativeQueryHandler.BuildPrompt(dto);
+
+        prompt.Should().Contain("Head-to-head comparisons (per aspect):");
+        prompt.Should().Contain("price: 4 wins, 1 losses");
+        prompt.Should().Contain("support_quality: 0 wins, 3 losses");
+
+        prompt.Should().Contain("Topic ownership");
+        prompt.Should().Contain("\"Career advice\": 8 / 10");
+        prompt.Should().Contain("\"Industry news\": 1 / 6");
+
+        prompt.Should().Contain("Recent factual claims");
+        prompt.Should().Contain("[Disputed] founding_year = \"1975\" (Acme)");
+    }
 }

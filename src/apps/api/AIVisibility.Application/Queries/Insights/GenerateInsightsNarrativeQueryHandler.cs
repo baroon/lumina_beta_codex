@@ -52,6 +52,8 @@ public class GenerateInsightsNarrativeQueryHandler
             "You are an analyst writing a short executive summary of an AI brand-visibility snapshot. " +
             "Write 2-3 sentences in plain language. No bullet points. No greetings. " +
             "Focus on the tracked brand's position, the gap to the leader if any, and one actionable observation. " +
+            "Use the optional sections below (absence, attributes, risk flags, comparisons, topic ownership, claims) " +
+            "to pick the actionable observation — they only appear when the signal has data. " +
             "Speak in second person ('you') when referring to the tracked brand.");
         sb.AppendLine();
         sb.AppendLine($"Window: {FormatWindow(overview.From, overview.To)}");
@@ -61,6 +63,12 @@ public class GenerateInsightsNarrativeQueryHandler
         sb.AppendLine($"Total citations: {overview.Hero.Citations}");
         sb.AppendLine(
             $"Brand mention rate: {FormatPercentage(overview.Hero.BrandMentionRate)}");
+        if (overview.Hero.BrandAbsenceRate is not null)
+            sb.AppendLine(
+                $"Brand absence rate: {FormatPercentage(overview.Hero.BrandAbsenceRate)} (fraction of answers with no brand mention AND no owned citation)");
+        if (overview.Hero.BrandFirstMentionRate is not null)
+            sb.AppendLine(
+                $"Brand first-mention rate: {FormatPercentage(overview.Hero.BrandFirstMentionRate)} (fraction of answers where you are named first)");
         sb.AppendLine();
 
         var ranked = overview.TopEntities
@@ -79,6 +87,60 @@ public class GenerateInsightsNarrativeQueryHandler
 
         if (ranked.Count == 0)
             sb.AppendLine("  (no entities ranked yet — the workspace has no scan data in window)");
+
+        // Optional measurement-model sections. Each one is silently
+        // omitted when the underlying list is empty so the LLM isn't
+        // distracted by "Top attributes: (none)" framings.
+        if (overview.TopBrandAttributes.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Top attributes the AI ascribes to your brand:");
+            foreach (var a in overview.TopBrandAttributes)
+                sb.AppendLine($"  - \"{a.Name}\" ({a.Polarity}) — {a.MentionCount} mentions");
+        }
+
+        if (overview.TopBrandRiskFlags.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Risk flags raised against your brand:");
+            foreach (var f in overview.TopBrandRiskFlags)
+                sb.AppendLine($"  - {f.FlagType} ({f.Severity}) — {f.MentionCount} mentions");
+        }
+
+        if (overview.TopBrandComparisons.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Head-to-head comparisons (per aspect):");
+            foreach (var c in overview.TopBrandComparisons)
+                sb.AppendLine($"  - {c.Aspect}: {c.WinCount} wins, {c.LossCount} losses");
+        }
+
+        if (overview.TopicOwnership.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Topic ownership (brand-mentioned prompts / total prompts on topic):");
+            foreach (var t in overview.TopicOwnership)
+                sb.AppendLine(
+                    $"  - \"{t.TopicName}\": {t.BrandMentionedPromptCount} / {t.PromptCount}");
+        }
+
+        if (overview.CoMentions.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Competitor co-mentions (answers where both you and the competitor appeared):");
+            foreach (var co in overview.CoMentions)
+                sb.AppendLine(
+                    $"  - {co.CompetitorName}: {co.CoMentionCount} co-mentions / {co.CompetitorMentionCount} competitor mentions");
+        }
+
+        if (overview.RecentFactualClaims.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Recent factual claims the AI made about you (newest first):");
+            foreach (var fc in overview.RecentFactualClaims)
+                sb.AppendLine(
+                    $"  - [{fc.ReviewStatus}] {fc.Subject} = \"{fc.AssertedValue}\" ({fc.BrandName})");
+        }
 
         return sb.ToString();
     }
