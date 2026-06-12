@@ -3,29 +3,51 @@ import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/atoms/select";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { SectionHeader } from "@/components/molecules/SectionHeader";
+import { SourceTypeDropdown } from "@/components/molecules/SourceTypeDropdown";
 import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { useSourceTypes } from "@/features/reports/hooks/useSourceTypes";
+import {
+  useUpdateWorkspaceSourceClassification,
+  useWorkspaceBrandsForClassification,
+} from "@/features/reports/hooks/useUpdateWorkspaceSourceClassification";
 import { useWorkspaceUrls } from "@/features/reports/hooks/useWorkspaceUrls";
 import { cn } from "@/lib/utils";
-import type { WorkspaceUrlRowDto } from "@/types/api";
+import type { SourceTypeReferenceDto, WorkspaceUrlRowDto } from "@/types/api";
 
 /**
  * Workspace-wide URL-level citation source view at /sources/urls.
  * v1: per-URL table with citation count, scans count, source type,
  * and last seen. Same shape as DomainsScreen but at URL granularity —
  * mentioned-source citations without a URL only appear on the domains
- * page.
+ * page. Source-type editing mutates the underlying Source (not the
+ * URL), so multiple URL rows sharing a Source flip together after
+ * the cache invalidates.
  */
 export function SourceUrlsScreen() {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const urlsQuery = useWorkspaceUrls(defaultDateRangeSelection(), trackerIds);
+  const brands = useWorkspaceBrandsForClassification();
+  const sourceTypes = useSourceTypes();
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [classifyingBrandId, setClassifyingBrandId] = useState<string | null>(null);
+
+  const brandsList = brands.data ?? [];
+  const effectiveClassifyingBrandId =
+    classifyingBrandId ?? (brandsList.length > 0 ? brandsList[0].id : null);
 
   const allRows = urlsQuery.data?.urls ?? [];
   const typeCounts = useMemo(() => countByType(allRows), [allRows]);
@@ -76,6 +98,13 @@ export function SourceUrlsScreen() {
               selected={typeFilter}
               onSelect={(t) => setTypeFilter((current) => (current === t ? null : t))}
             />
+            {brandsList.length > 1 && (
+              <ClassifyingBrandPicker
+                brands={brandsList.map((b) => ({ id: b.id, name: b.name }))}
+                value={effectiveClassifyingBrandId}
+                onChange={setClassifyingBrandId}
+              />
+            )}
           </div>
 
           {filteredRows.length === 0 ? (
@@ -85,7 +114,11 @@ export function SourceUrlsScreen() {
                 : "No URLs match your filter."}
             </p>
           ) : (
-            <UrlsTable rows={filteredRows} />
+            <UrlsTable
+              rows={filteredRows}
+              classifyingBrandId={effectiveClassifyingBrandId}
+              sourceTypes={sourceTypes.data ?? []}
+            />
           )}
         </CardContent>
       </Card>
@@ -126,6 +159,34 @@ export function countByType(rows: readonly WorkspaceUrlRowDto[]): Record<string,
 // Sub-components
 // ---------------------------------------------------------------------------
 
+function ClassifyingBrandPicker({
+  brands,
+  value,
+  onChange,
+}: {
+  brands: readonly { id: string; name: string }[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-wide text-neutral-500">Classifying for</span>
+      <Select value={value ?? undefined} onValueChange={onChange}>
+        <SelectTrigger selectSize="sm" className="w-[160px]" aria-label="Classifying for brand">
+          <SelectValue placeholder="Pick a brand" />
+        </SelectTrigger>
+        <SelectContent>
+          {brands.map((b) => (
+            <SelectItem key={b.id} value={b.id}>
+              {b.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function TypeFilterPills({
   counts,
   selected,
@@ -163,7 +224,15 @@ function TypeFilterPills({
   );
 }
 
-function UrlsTable({ rows }: { rows: readonly WorkspaceUrlRowDto[] }) {
+function UrlsTable({
+  rows,
+  classifyingBrandId,
+  sourceTypes,
+}: {
+  rows: readonly WorkspaceUrlRowDto[];
+  classifyingBrandId: string | null;
+  sourceTypes: readonly SourceTypeReferenceDto[];
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
@@ -178,7 +247,12 @@ function UrlsTable({ rows }: { rows: readonly WorkspaceUrlRowDto[] }) {
         </thead>
         <tbody className="divide-y divide-neutral-100">
           {rows.map((row) => (
-            <UrlRow key={row.sourceUrlId} row={row} />
+            <UrlRow
+              key={row.sourceUrlId}
+              row={row}
+              classifyingBrandId={classifyingBrandId}
+              sourceTypes={sourceTypes}
+            />
           ))}
         </tbody>
       </table>
@@ -186,7 +260,28 @@ function UrlsTable({ rows }: { rows: readonly WorkspaceUrlRowDto[] }) {
   );
 }
 
-function UrlRow({ row }: { row: WorkspaceUrlRowDto }) {
+function UrlRow({
+  row,
+  classifyingBrandId,
+  sourceTypes,
+}: {
+  row: WorkspaceUrlRowDto;
+  classifyingBrandId: string | null;
+  sourceTypes: readonly SourceTypeReferenceDto[];
+}) {
+  const update = useUpdateWorkspaceSourceClassification(classifyingBrandId);
+  // Match by sourceId — multiple URL rows share a Source. The error
+  // surfaces on every URL row backed by the failing Source, which is
+  // correct: the user knows the Source-level mutation failed.
+  const errorMessage =
+    update.isError && update.variables?.sourceId === row.sourceId
+      ? update.error instanceof Error
+        ? update.error.message
+        : "Save failed — try again."
+      : null;
+
+  const canEdit = classifyingBrandId != null && sourceTypes.length > 0;
+
   return (
     <tr>
       <Td>
@@ -205,11 +300,26 @@ function UrlRow({ row }: { row: WorkspaceUrlRowDto }) {
         </div>
       </Td>
       <Td>
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-1">
           <span className="text-neutral-900">{row.normalizedDomain ?? row.sourceName}</span>
-          <Badge variant="secondary" className="mt-1 self-start text-[10px]">
-            {row.sourceType}
-          </Badge>
+          {canEdit ? (
+            <SourceTypeDropdown
+              value={row.sourceType}
+              onChange={(next) => update.mutate({ sourceId: row.sourceId, sourceType: next })}
+              sourceTypes={sourceTypes}
+              disabled={update.isPending}
+              ariaLabel={`Source type for ${row.sourceName}`}
+            />
+          ) : (
+            <Badge variant="secondary" className="self-start text-[10px]">
+              {row.sourceType}
+            </Badge>
+          )}
+          {errorMessage && (
+            <p className="text-[10px] text-semantic-error-600" role="alert">
+              {errorMessage}
+            </p>
+          )}
         </div>
       </Td>
       <Td className="text-right tabular-nums">{row.citationCount}</Td>
