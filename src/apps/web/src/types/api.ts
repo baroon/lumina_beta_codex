@@ -1265,6 +1265,13 @@ export interface WorkspaceOverviewDto {
    * when no risk flags were extracted in scope.
    */
   topBrandRiskFlags: WorkspaceBrandRiskFlagDto[];
+  /**
+   * Top-N head-to-head comparison aspects (rank ≤10). Each row is a
+   * specific aspect (price, speed, etc.) with the workspace wins and
+   * losses. Ordered by total comparisons desc. Empty when no
+   * comparisons were extracted in scope.
+   */
+  topBrandComparisons: WorkspaceBrandComparisonDto[];
 }
 
 export interface WorkspaceBrandAttributeDto {
@@ -1294,6 +1301,17 @@ export interface WorkspaceBrandRiskFlagDto {
   severity: string;
   /** Distinct mentions tagged with this risk flag type in scope. */
   mentionCount: number;
+}
+
+/** One row in the workspace head-to-head comparison rollup (Phase 4 measurement-model item #15). */
+export interface WorkspaceBrandComparisonDto {
+  rank: number;
+  /** Canonical snake_case aspect (e.g. "price", "support_quality"). */
+  aspect: string;
+  /** Comparisons in scope where the tracked brand was the winner on this aspect. */
+  winCount: number;
+  /** Comparisons in scope where the tracked brand was the loser on this aspect. */
+  lossCount: number;
 }
 
 export interface TrackedBrandDto {

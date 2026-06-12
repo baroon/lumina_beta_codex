@@ -128,6 +128,8 @@ public class GetWorkspaceOverviewQueryHandler
             scanIds, trackedBrandIds, competitorRows, cancellationToken);
         var topBrandRiskFlags = await BuildTopBrandRiskFlagsAsync(
             scanIds, trackedBrandIds, cancellationToken);
+        var topBrandComparisons = await BuildTopBrandComparisonsAsync(
+            scanIds, trackedBrandIds, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -142,7 +144,8 @@ public class GetWorkspaceOverviewQueryHandler
             TopEntities: topEntities,
             TopBrandAttributes: topBrandAttributes,
             CoMentions: coMentions,
-            TopBrandRiskFlags: topBrandRiskFlags);
+            TopBrandRiskFlags: topBrandRiskFlags,
+            TopBrandComparisons: topBrandComparisons);
     }
 
     /// <summary>
@@ -180,7 +183,8 @@ public class GetWorkspaceOverviewQueryHandler
             Array.Empty<WorkspaceTopEntityRowDto>(),
             Array.Empty<WorkspaceBrandAttributeDto>(),
             Array.Empty<WorkspaceCoMentionDto>(),
-            Array.Empty<WorkspaceBrandRiskFlagDto>());
+            Array.Empty<WorkspaceBrandRiskFlagDto>(),
+            Array.Empty<WorkspaceBrandComparisonDto>());
 
     // -----------------------------------------------------------------
     // Hero counts (D11) — workspace-wide totals + cross-brand mention rate
@@ -422,6 +426,59 @@ public class GetWorkspaceOverviewQueryHandler
             .Take(10)
             .Select((r, i) => new WorkspaceBrandAttributeDto(
                 Rank: i + 1, Name: r.Name, Polarity: r.Polarity, MentionCount: r.MentionCount))
+            .ToList();
+
+        return grouped;
+    }
+
+    // -----------------------------------------------------------------
+    // Top brand comparisons (Phase 4 measurement-model expansion, item #15)
+    // -----------------------------------------------------------------
+
+    /// <summary>
+    /// Workspace-wide rollup of head-to-head comparisons the AI drew
+    /// for any tracked brand. Per-aspect: count of wins (where the
+    /// brand was the comparison's winner) and losses (where the vs
+    /// entity won). Ties / unclear judgments aren't stored at
+    /// extraction so they don't reach here. Joined source-side
+    /// (MentionComparison → Mention → AIAnswer → PromptRun → ScanRun)
+    /// so the scope matches the rest of the workspace counts. Sorted
+    /// by total comparisons desc, then alphabetical aspect for
+    /// determinism. Top 10.
+    /// </summary>
+    private async Task<IReadOnlyList<WorkspaceBrandComparisonDto>> BuildTopBrandComparisonsAsync(
+        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+    {
+        if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandComparisonDto>();
+
+        var scanIdSet = scanIds.ToHashSet();
+
+        var rows = await (
+            from cmp in _db.MentionComparisons.AsNoTracking()
+            join m in _db.Mentions.AsNoTracking() on cmp.MentionId equals m.Id
+            join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
+            join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
+            where m.EntityType == MentionEntityType.Brand
+                && trackedBrandIds.Contains(m.EntityId)
+                && scanIdSet.Contains(pr.ScanRunId)
+            select new { cmp.OnAspect, cmp.WinnerIsThisMention })
+            .ToListAsync(ct);
+
+        if (rows.Count == 0) return Array.Empty<WorkspaceBrandComparisonDto>();
+
+        var grouped = rows
+            .GroupBy(r => r.OnAspect)
+            .Select(g => new
+            {
+                Aspect = g.Key,
+                WinCount = g.Count(r => r.WinnerIsThisMention),
+                LossCount = g.Count(r => !r.WinnerIsThisMention),
+            })
+            .OrderByDescending(r => r.WinCount + r.LossCount)
+            .ThenBy(r => r.Aspect, StringComparer.OrdinalIgnoreCase)
+            .Take(10)
+            .Select((r, i) => new WorkspaceBrandComparisonDto(
+                Rank: i + 1, Aspect: r.Aspect, WinCount: r.WinCount, LossCount: r.LossCount))
             .ToList();
 
         return grouped;

@@ -163,6 +163,12 @@ const overviewFixture: WorkspaceOverviewDto = {
     { rank: 2, flagType: "outage", severity: "Medium", mentionCount: 3 },
     { rank: 3, flagType: "controversy", severity: "Low", mentionCount: 1 },
   ],
+  topBrandComparisons: [
+    { rank: 1, aspect: "price", winCount: 7, lossCount: 4 },
+    { rank: 2, aspect: "ease_of_use", winCount: 5, lossCount: 2 },
+    { rank: 3, aspect: "support_quality", winCount: 2, lossCount: 4 },
+    { rank: 4, aspect: "depth_of_coverage", winCount: 1, lossCount: 0 },
+  ],
 };
 
 const competitiveFixture: WorkspaceCompetitiveDto = {
@@ -438,6 +444,7 @@ export const EmptyWorkspace: Story = {
         topBrandAttributes: [],
         coMentions: [],
         topBrandRiskFlags: [],
+        topBrandComparisons: [],
       } satisfies WorkspaceOverviewDto);
       return (
         <QueryClientProvider client={queryClient}>

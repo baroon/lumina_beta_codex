@@ -83,6 +83,7 @@ import type {
   PlatformMentionDto,
   SentimentSliceDto,
   WorkspaceBrandAttributeDto,
+  WorkspaceBrandComparisonDto,
   WorkspaceBrandRiskFlagDto,
   WorkspaceCoMentionDto,
   WorkspaceHeroDto,
@@ -520,6 +521,7 @@ function CategorizedOverview({
             />
           )}
           <CoMentionLandscapeCard rows={data.coMentions} selectedKeys={selectedKeys} />
+          <HeadToHeadCard rows={data.topBrandComparisons} />
           {depthData && <TopicHeatmapCard heatmap={depthData.topicHeatmap} />}
         </div>
       ),
@@ -801,6 +803,77 @@ function CoMentionLandscapeCard({
           );
         })}
       </ul>
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Head-to-head wins/losses by aspect (Phase 4 measurement-model item #15).
+// Compact table: aspect | wins | losses | net. The net column is colored
+// success-green when positive and error-red when negative so a glance
+// shows which dimensions the brand is dominant on vs trailing on.
+// ---------------------------------------------------------------------------
+
+function HeadToHeadCard({ rows }: { rows: readonly WorkspaceBrandComparisonDto[] }) {
+  const copy = REPORTS_COPY.overview.headToHead;
+  if (rows.length === 0) {
+    return (
+      <CollapsibleCard icon={Swords} title={copy.title} tooltip={copy.tooltip}>
+        <p className="text-sm text-neutral-500">{copy.noData}</p>
+      </CollapsibleCard>
+    );
+  }
+  return (
+    <CollapsibleCard icon={Swords} title={copy.title} tooltip={copy.tooltip}>
+      <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left font-medium">
+                Aspect
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.winsHeader}
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.lossesHeader}
+              </th>
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                {copy.netHeader}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {rows.map((r) => {
+              const net = r.winCount - r.lossCount;
+              return (
+                <tr key={`${r.rank}:${r.aspect}`}>
+                  <td className="px-3 py-2 font-medium text-neutral-900">{r.aspect}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-semantic-success-700">
+                    {r.winCount}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-semantic-error-700">
+                    {r.lossCount}
+                  </td>
+                  <td
+                    className={cn(
+                      "px-3 py-2 text-right tabular-nums",
+                      net > 0
+                        ? "text-semantic-success-700"
+                        : net < 0
+                          ? "text-semantic-error-700"
+                          : "text-neutral-500",
+                    )}
+                  >
+                    {net > 0 ? `+${net}` : net}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </CollapsibleCard>
   );
 }

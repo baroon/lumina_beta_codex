@@ -329,6 +329,10 @@ const fixture: WorkspaceOverviewDto = {
     { rank: 1, flagType: "layoffs", severity: "High", mentionCount: 3 },
     { rank: 2, flagType: "outage", severity: "Medium", mentionCount: 1 },
   ],
+  topBrandComparisons: [
+    { rank: 1, aspect: "price", winCount: 4, lossCount: 2 },
+    { rank: 2, aspect: "support_quality", winCount: 2, lossCount: 1 },
+  ],
 };
 
 describe("WorkspaceOverviewScreen", () => {
@@ -383,7 +387,9 @@ describe("WorkspaceOverviewScreen", () => {
     // Both tracked brands carry the "You" chip in the Top Entities table.
     expect(screen.getAllByText(/^You$/)).toHaveLength(2);
 
-    const table = screen.getByRole("table");
+    // First table on the page is Top Entities (rendered in the Visibility
+    // section, which comes before the Competitive section's Head-to-head).
+    const table = screen.getAllByRole("table")[0];
 
     // Acme's sentiment moved Negative → Positive in the fixture → +2pts
     // chip rendered next to the Positive badge.
@@ -444,6 +450,19 @@ describe("WorkspaceOverviewScreen", () => {
     // Per-competitor row: "6 / 10 (60% of competitor's mentions)"
     expect(screen.getByText(/6 \/ 10/)).toBeInTheDocument();
     expect(screen.getByText(/60%.*of competitor's mentions/i)).toBeInTheDocument();
+  });
+
+  it("renders the head-to-head card with aspect, wins, losses, and a net column", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    expect(screen.getByText(/where we win and lose/i)).toBeInTheDocument();
+    // Aspects.
+    expect(screen.getByText("price")).toBeInTheDocument();
+    expect(screen.getByText("support_quality")).toBeInTheDocument();
+    // Net = wins - losses; price: 4-2 = +2; support_quality: 2-1 = +1.
+    expect(screen.getByText("+2")).toBeInTheDocument();
+    expect(screen.getByText("+1")).toBeInTheDocument();
   });
 
   it("renders the workspace top risk flags as severity-colored chips", () => {
@@ -531,7 +550,7 @@ describe("WorkspaceOverviewScreen", () => {
     // (the Mention rate card was the only one with a competitor line).
     expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
     // Indeed's row in Top Entities is also gone — Acme + Beta remain.
-    const table = screen.getByRole("table");
+    const table = screen.getAllByRole("table")[0];
     expect(within(table).queryByText("Indeed")).not.toBeInTheDocument();
   });
 

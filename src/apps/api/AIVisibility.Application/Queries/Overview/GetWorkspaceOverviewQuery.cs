@@ -88,7 +88,20 @@ public sealed record WorkspaceOverviewDto(
     /// alphabetical flag type. 10-row cap. Empty when no risk flags
     /// were extracted in scope.
     /// </summary>
-    IReadOnlyList<WorkspaceBrandRiskFlagDto> TopBrandRiskFlags);
+    IReadOnlyList<WorkspaceBrandRiskFlagDto> TopBrandRiskFlags,
+    /// <summary>
+    /// Top-N head-to-head comparison aspects the AI judged for any
+    /// tracked brand (Phase 4 measurement-model expansion, item #15).
+    /// Each row carries the aspect (price, support_quality, etc.) plus
+    /// the win and loss counts at the workspace grain — wins where the
+    /// brand was named winner, losses where it lost to the vs entity.
+    /// Ties / unclear judgments are skipped at extraction so they
+    /// don't show up here. Ordered by total comparisons desc (most
+    /// contested aspects first), then alphabetical aspect for
+    /// determinism. 10-row cap. Empty when no comparisons were
+    /// extracted in scope.
+    /// </summary>
+    IReadOnlyList<WorkspaceBrandComparisonDto> TopBrandComparisons);
 
 /// <summary>
 /// One attribute the AI ascribed to a tracked brand across the workspace.
@@ -132,6 +145,22 @@ public sealed record WorkspaceBrandRiskFlagDto(
     string Severity,
     /// <summary>Distinct mentions tagged with this risk flag type in scope.</summary>
     int MentionCount);
+
+/// <summary>
+/// One row in the workspace head-to-head comparison rollup. Carries
+/// the aspect (price, speed, etc.) plus win/loss counts at the
+/// workspace grain. The FE renders these as a "where we win, where
+/// we lose" grid so users can see which dimensions the AI judges in
+/// our favor and which it doesn't.
+/// </summary>
+public sealed record WorkspaceBrandComparisonDto(
+    int Rank,
+    /// <summary>Canonical snake_case aspect (e.g. "price", "support_quality").</summary>
+    string Aspect,
+    /// <summary>Comparisons in scope where the tracked brand was the winner on this aspect.</summary>
+    int WinCount,
+    /// <summary>Comparisons in scope where the tracked brand was the loser on this aspect.</summary>
+    int LossCount);
 
 public sealed record TrackedBrandDto(Guid BrandId, string Name);
 

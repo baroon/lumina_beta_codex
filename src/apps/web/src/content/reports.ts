@@ -253,6 +253,15 @@ export const REPORTS_COPY = {
       axisLabel: "Co-mentioned answers",
       shareSuffix: "of competitor's mentions",
     },
+    headToHead: {
+      title: "Where we win and lose",
+      tooltip: TBD_TOOLTIP,
+      subline: "Head-to-head dimensions the AI judged. Ties / unclear judgments aren't counted.",
+      noData: "No head-to-head comparisons drawn against the brand in this window.",
+      winsHeader: "Wins",
+      lossesHeader: "Losses",
+      netHeader: "Net",
+    },
     recommendationRate: {
       title: "Recommendation rate by entity",
       tooltip: TBD_TOOLTIP,

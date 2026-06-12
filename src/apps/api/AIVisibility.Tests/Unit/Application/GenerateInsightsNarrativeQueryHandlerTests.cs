@@ -103,7 +103,8 @@ public class GenerateInsightsNarrativeQueryHandlerTests
         },
         TopBrandAttributes: Array.Empty<WorkspaceBrandAttributeDto>(),
         CoMentions: Array.Empty<WorkspaceCoMentionDto>(),
-        TopBrandRiskFlags: Array.Empty<WorkspaceBrandRiskFlagDto>());
+        TopBrandRiskFlags: Array.Empty<WorkspaceBrandRiskFlagDto>(),
+        TopBrandComparisons: Array.Empty<WorkspaceBrandComparisonDto>());
 
     [Fact]
     public async Task Generate_ReturnsNarrativeText_AndPlatformCode_OnHappyPath()

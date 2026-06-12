@@ -72,6 +72,7 @@ function overview(topEntities: WorkspaceTopEntityRowDto[]): WorkspaceOverviewDto
     topBrandAttributes: [],
     coMentions: [],
     topBrandRiskFlags: [],
+    topBrandComparisons: [],
   };
 }
 

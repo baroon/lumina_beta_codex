@@ -97,7 +97,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             bool mentionsBrand, string sentimentCategory = "Positive",
             (string Name, AttributePolarity Polarity)[]? brandAttributes = null,
             Guid[]? competitorMentions = null,
-            (string FlagType, RiskSeverity Severity)[]? brandRiskFlags = null)
+            (string FlagType, RiskSeverity Severity)[]? brandRiskFlags = null,
+            (string Aspect, bool WinnerIsThisMention)[]? brandComparisons = null)
         {
             var prompt = new Prompt
             {
@@ -168,6 +169,23 @@ public class GetWorkspaceOverviewQueryHandlerTests
                         });
                     }
                 }
+                if (brandComparisons is { Length: > 0 })
+                {
+                    foreach (var (aspect, winnerIsThisMention) in brandComparisons)
+                    {
+                        ctx.MentionComparisons.Add(new MentionComparison
+                        {
+                            Id = Guid.NewGuid(),
+                            MentionId = mention.Id,
+                            VsEntityName = "Rival",
+                            VsEntityNormalized = "rival",
+                            OnAspect = aspect,
+                            WinnerIsThisMention = winnerIsThisMention,
+                            EvidenceSnippet = "e",
+                            CreatedAt = startedAt,
+                        });
+                    }
+                }
             }
 
             if (competitorMentions is { Length: > 0 })
@@ -215,6 +233,10 @@ public class GetWorkspaceOverviewQueryHandlerTests
         //              ordering in the tie-break).
         //   "outage" : Low (Beta@-1d) → mode Low, count 1.
         // Expected order: layoffs (2), outage (1).
+        // Comparison fixture (item #15) — per-aspect wins/losses:
+        //   "price"          : 2 wins + 1 loss (across Acme×2 + Beta@-1d)
+        //   "support_quality": 1 win               (Acme@-1d)
+        // Expected order by total desc: price (3), support_quality (1).
         SeedScanWithAnswer(acmeTracker, now.AddDays(-14), acme,
             mentionsBrand: true, sentimentCategory: "Negative",
             brandAttributes: new[]
@@ -223,7 +245,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 ("in-depth", AttributePolarity.Positive),
             },
             competitorMentions: new[] { sharedId },
-            brandRiskFlags: new[] { ("layoffs", RiskSeverity.Medium) });
+            brandRiskFlags: new[] { ("layoffs", RiskSeverity.Medium) },
+            brandComparisons: new[] { ("price", true) });
         SeedScanWithAnswer(acmeTracker, now.AddDays(-1), acme,
             mentionsBrand: true, sentimentCategory: "Positive",
             brandAttributes: new[]
@@ -232,7 +255,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
                 ("slow", AttributePolarity.Negative),
             },
             competitorMentions: new[] { glassdoor.Id },
-            brandRiskFlags: new[] { ("layoffs", RiskSeverity.High) });
+            brandRiskFlags: new[] { ("layoffs", RiskSeverity.High) },
+            brandComparisons: new[] { ("price", false), ("support_quality", true) });
         SeedScanWithAnswer(betaTracker, now.AddDays(-14), beta,
             mentionsBrand: false, sentimentCategory: "Neutral",
             competitorMentions: new[] { sharedId });
@@ -242,7 +266,8 @@ public class GetWorkspaceOverviewQueryHandlerTests
             {
                 ("trustworthy", AttributePolarity.Negative),
             },
-            brandRiskFlags: new[] { ("outage", RiskSeverity.Low) });
+            brandRiskFlags: new[] { ("outage", RiskSeverity.Low) },
+            brandComparisons: new[] { ("price", true) });
 
         // Competitor trend points only on Acme's tracker for the shared competitor.
         var acmeScans = scansByTracker[acmeTracker.Id].OrderBy(s => s.StartedAt).ToList();
@@ -444,6 +469,32 @@ public class GetWorkspaceOverviewQueryHandlerTests
         result.TopBrandRiskFlags[1].FlagType.Should().Be("outage");
         result.TopBrandRiskFlags[1].Severity.Should().Be(nameof(RiskSeverity.Low));
         result.TopBrandRiskFlags[1].MentionCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task TopBrandComparisons_AggregatesWinsAndLossesPerAspect()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        var result = await sut.Handle(
+            new GetWorkspaceOverviewQuery(DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null),
+            CancellationToken.None);
+
+        // Seed: price 3 total (2W,1L), support_quality 1 total (1W,0L).
+        result.TopBrandComparisons.Should().HaveCount(2);
+
+        var first = result.TopBrandComparisons[0];
+        first.Rank.Should().Be(1);
+        first.Aspect.Should().Be("price");
+        first.WinCount.Should().Be(2);
+        first.LossCount.Should().Be(1);
+
+        var second = result.TopBrandComparisons[1];
+        second.Aspect.Should().Be("support_quality");
+        second.WinCount.Should().Be(1);
+        second.LossCount.Should().Be(0);
     }
 
     [Fact]
