@@ -135,13 +135,20 @@ export function TopicSelector({
           </div>
           <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
             <span>Topics</span>
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
-            >
-              {allSelected ? "Clear" : "Select all"}
-            </button>
+            {/* Hidden in the "all selected" default state — the empty
+                selection sentinel already represents "no filter", so a
+                Clear/Reset action would be a visual no-op there. The
+                link only appears once a subset is selected and clicking
+                it restores the empty-sentinel default. */}
+            {!allSelected && (
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
           <div className="max-h-72 overflow-y-auto">
             {visibleGroups.length === 0 ? (

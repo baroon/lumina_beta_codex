@@ -115,13 +115,15 @@ export function AudienceSelector({
           </div>
           <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
             <span>Audiences</span>
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
-            >
-              {allSelected ? "Clear" : "Select all"}
-            </button>
+            {!allSelected && (
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
           <div className="max-h-72 overflow-y-auto">
             {visibleGroups.length === 0 ? (

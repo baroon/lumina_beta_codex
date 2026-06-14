@@ -82,9 +82,15 @@ export function FiltersPopover({
         <div
           role="dialog"
           aria-label="Discovery filters"
-          className="absolute right-0 top-[calc(100%+4px)] z-30 w-80 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl"
+          className="absolute right-0 top-[calc(100%+4px)] z-30 w-80 rounded-lg border border-neutral-200 bg-white shadow-xl"
         >
-          <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+          {/* `overflow-hidden` was the obvious way to clip the header's
+              neutral-50 fill to the panel's rounded corners, but it also
+              clips the nested selector popovers (TopicSelector,
+              MarketSelector, etc.) when they open inside this panel. We
+              round the header explicitly with `rounded-t-lg` instead so
+              the panel itself can stay overflow-visible. */}
+          <div className="flex items-center justify-between rounded-t-lg border-b border-neutral-200 bg-neutral-50 px-3 py-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
               <SlidersHorizontal size={12} className="text-primary-500" aria-hidden />
               Discovery filters
