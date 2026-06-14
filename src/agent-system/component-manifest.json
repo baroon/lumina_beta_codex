@@ -308,7 +308,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["lucide-react"],
-          "notes": "Row of 6 toggle chips for filtering the Workspace Overview by Visibility Lens — one chip per lens (Discovery, Buying Intent, Competitor Comparison, Sentiment & Trust, Citation Visibility, Content Gaps). Each chip shows the lens name + a mention-count badge from `/api/overview/lens-counts` and toggles include/exclude in place. Empty-array selection reads as 'all selected' so the BE call shape matches the trackers' multi-selects. Replaces the earlier LensSelector dropdown — at dashboard widths each lens is more discoverable as its own chip than as a dropdown row."
+          "notes": "Row of 6 chips — one per Visibility Lens (Discovery, Buying Intent, Competitor Comparison, Sentiment & Trust, Citation Visibility, Content Gaps) — that doubles as both lens selector AND section anchor on the Workspace Overview. Default state: all 6 codes in selectedCodes (every chip pressed); clicking a chip narrows to just that one via onChange (and emits onActivate so the host can scrollTo the section). Clicking the only-selected chip a second time toggles back to all 6. Each chip shows a lens-specific icon + a mention-count badge from `/api/overview/lens-counts`. The host filters its rendered sections by the same selection set, so isolating one lens collapses the page to just that section."
         },
         {
           "name": "DateGranularityToggle",
@@ -530,7 +530,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": [],
-          "notes": "Categorized dashboard scaffold: optional status + controls strips, sticky pill-style category nav, stacked sections. IntersectionObserver-driven scroll-spy highlights the section in view; clicking a pill scrolls + syncs the URL hash for shareable deep links. Used by ScanResultsScreen and WorkspaceOverviewScreen to group metrics into Visibility / Recommendation / Sentiment / Competitive / Citations & Sources."
+          "notes": "Categorized dashboard scaffold: optional status + controls strips, sticky underline-style category nav, stacked sections. IntersectionObserver-driven scroll-spy highlights the section in view; clicking a tab scrolls + syncs the URL hash for shareable deep links. The default underline nav can be replaced via the `renderNav` prop (called with activeId + scrollTo) — the Workspace Overview uses this escape hatch to render its lens chip row as the section nav. `showSectionHeadings` toggles the per-section h2 above each section body."
         },
         {
           "name": "InfoTooltip",

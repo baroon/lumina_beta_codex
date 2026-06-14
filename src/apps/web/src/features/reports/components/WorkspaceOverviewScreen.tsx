@@ -6,10 +6,8 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
-  Eye,
   Globe,
   Grid3X3,
-  Heart,
   Layers,
   Loader2,
   MessageSquare,
@@ -103,6 +101,23 @@ import type {
 // resolved yet.
 const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
 
+// Same trick for the lens-codes argument fed to the overview hooks
+// when the user has "all 6 selected" — passing the stable empty array
+// signals "no filter" to the BE without an extra branch in the hook.
+const NO_LENS_FILTER: readonly string[] = [];
+
+// Canonical lens codes in render order. Matches the `Lens.Code` values
+// returned by the BE. Used both as the default selection set and as
+// the section render order.
+const ALL_LENS_CODES = [
+  "Discovery",
+  "BuyingIntent",
+  "CompetitorComparison",
+  "SentimentAndTrust",
+  "CitationVisibility",
+  "ContentGaps",
+] as const;
+
 // Stable per-entity palette. First tracked brand picks index 0 (primary
 // brand color); each subsequent entity rotates through.
 const ENTITY_PALETTE = [
@@ -192,10 +207,14 @@ export function WorkspaceOverviewScreen() {
   // Lifted from the old DepthSections wrapper so the chats card +
   // drawer can live in different parts of the category layout.
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
-  // FE-only lens-filter state — both variants below write to this list.
-  // No data fetch honors it yet; once we settle on one variant we will
-  // wire `?lensCodes=` through the overview endpoints.
-  const [selectedLensCodes, setSelectedLensCodes] = useState<string[]>([]);
+  // Lens chips are selectors AND section anchors. Default = all 6 lens
+  // codes (cross-lens summary view); clicking one chip narrows to that
+  // lens (and the row scrolls to that section) — clicking the only-
+  // selected chip a second time toggles back to "all 6". When the size
+  // is 6, we pass NO_LENS_FILTER to the BE so it returns cross-lens
+  // data; otherwise we pass the narrowed set. Sections render in the
+  // order of `ALL_LENS_CODES`, filtered to whichever are selected.
+  const [selectedLenses, setSelectedLenses] = useState<readonly string[]>(ALL_LENS_CODES);
   const [selectedTopicNames, setSelectedTopicNames] = useState<string[]>([]);
   const [selectedProductNames, setSelectedProductNames] = useState<string[]>([]);
   const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
@@ -213,9 +232,14 @@ export function WorkspaceOverviewScreen() {
   // explicit subset → only those trackers feed the analytics queries.
   const { scope: trackerScope } = useTrackerScope();
   const trackerIds = trackerScope === "all" ? [] : trackerScope;
+  // Pass NO_LENS_FILTER when every lens is selected so the BE knows it
+  // is unfiltered (and React Query's cache key matches the "no filter"
+  // default). Narrowed selections flow through verbatim.
+  const allLensesSelected = selectedLenses.length === ALL_LENS_CODES.length;
+  const effectiveLensCodes = allLensesSelected ? NO_LENS_FILTER : selectedLenses;
   const { data, isLoading, isFetching, isError, error, refetch } = useWorkspaceOverview(
     range,
-    selectedLensCodes,
+    effectiveLensCodes,
     selectedTopicNames,
     selectedProductNames,
     selectedMarketNames,
@@ -227,7 +251,7 @@ export function WorkspaceOverviewScreen() {
   // each card can live in its own metric category.
   const { data: competitiveData } = useWorkspaceCompetitive(
     range,
-    selectedLensCodes,
+    effectiveLensCodes,
     selectedTopicNames,
     selectedProductNames,
     selectedMarketNames,
@@ -236,7 +260,7 @@ export function WorkspaceOverviewScreen() {
   );
   const { data: depthData } = useWorkspaceDepth(
     range,
-    selectedLensCodes,
+    effectiveLensCodes,
     selectedTopicNames,
     selectedProductNames,
     selectedMarketNames,
@@ -331,8 +355,8 @@ export function WorkspaceOverviewScreen() {
     <ComparisonControlsRow
       entityScope={entityScope}
       onEntityScopeChange={setEntityScope}
-      selectedLensCodes={selectedLensCodes}
-      onSelectedLensCodesChange={setSelectedLensCodes}
+      selectedLenses={selectedLenses}
+      onSelectedLensesChange={setSelectedLenses}
       lensCountsByCode={lensCountsByCode}
       topicsByBrand={topicsByBrand}
       selectedTopicNames={selectedTopicNames}
@@ -395,6 +419,7 @@ export function WorkspaceOverviewScreen() {
             granularity={granularity}
             chartRefs={chartRefs}
             controlsStrip={controlsStrip}
+            selectedLenses={selectedLenses}
             onDrillDown={handleHeroDrillDown}
             onSelectChat={setSelectedChat}
           />
@@ -420,6 +445,9 @@ interface CategorizedOverviewProps {
   chartRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
   /** Filter row forwarded to MetricCategoryLayout's sticky stack. */
   controlsStrip: ReactNode;
+  /** Currently-selected lens codes. Drives which sections render — chip
+   *  selection state itself lives inside controlsStrip. */
+  selectedLenses: readonly string[];
   onDrillDown: (metricValue: string) => void;
   onSelectChat: (chat: WorkspaceRecentChatDto) => void;
 }
@@ -432,6 +460,7 @@ function CategorizedOverview({
   granularity,
   chartRefs,
   controlsStrip,
+  selectedLenses,
   onDrillDown,
   onSelectChat,
 }: CategorizedOverviewProps) {
@@ -456,11 +485,14 @@ function CategorizedOverview({
     );
   }
 
+  // Sections are now keyed by lens code so the lens chip nav (rendered
+  // via `renderNav` below) can drive scroll-spy directly. Each section
+  // is implicitly scoped to its lens — when the BE wires `?lensCodes=`
+  // through, charts inside each section will narrow automatically.
   const sections: MetricCategorySection[] = [
     {
-      id: "visibility",
-      label: "Visibility",
-      icon: Eye,
+      id: "Discovery",
+      label: "Discovery",
       children: (
         <div className="space-y-4">
           {trendCard("mention")}
@@ -472,13 +504,13 @@ function CategorizedOverview({
             selectedKeys={selectedKeys}
           />
           <TopicOwnershipCard rows={data.topicOwnership} />
+          {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
         </div>
       ),
     },
     {
-      id: "recommendation",
-      label: "Recommendation",
-      icon: ThumbsUp,
+      id: "BuyingIntent",
+      label: "Buying Intent",
       children: (
         <div className="space-y-4">
           {trendCard("rec")}
@@ -493,24 +525,8 @@ function CategorizedOverview({
       ),
     },
     {
-      id: "sentiment",
-      label: "Sentiment & Trust",
-      icon: Heart,
-      children: (
-        <div className="space-y-4">
-          {trendCard("sentiment")}
-          {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
-          <BrandAttributesCard attributes={data.topBrandAttributes} />
-          <BrandRiskFlagsCard flags={data.topBrandRiskFlags} />
-          <FactualClaimsCard claims={data.recentFactualClaims} />
-          {depthData && <RecentChatsCard chats={depthData.recentChats} onSelect={onSelectChat} />}
-        </div>
-      ),
-    },
-    {
-      id: "competitive",
-      label: "Competitive",
-      icon: Swords,
+      id: "CompetitorComparison",
+      label: "Competitor Comparison",
       children: (
         <div className="space-y-4">
           {competitiveData && (
@@ -539,14 +555,25 @@ function CategorizedOverview({
           )}
           <CoMentionLandscapeCard rows={data.coMentions} selectedKeys={selectedKeys} />
           <HeadToHeadCard rows={data.topBrandComparisons} />
-          {depthData && <TopicHeatmapCard heatmap={depthData.topicHeatmap} />}
         </div>
       ),
     },
     {
-      id: "citations",
-      label: "Citations & Sources",
-      icon: Quote,
+      id: "SentimentAndTrust",
+      label: "Sentiment & Trust",
+      children: (
+        <div className="space-y-4">
+          {trendCard("sentiment")}
+          {depthData && <SentimentDistributionCard slices={depthData.sentimentDistribution} />}
+          <BrandAttributesCard attributes={data.topBrandAttributes} />
+          <BrandRiskFlagsCard flags={data.topBrandRiskFlags} />
+          <FactualClaimsCard claims={data.recentFactualClaims} />
+        </div>
+      ),
+    },
+    {
+      id: "CitationVisibility",
+      label: "Citation Visibility",
       children: (
         <div className="space-y-4">
           {trendCard("owned")}
@@ -555,7 +582,22 @@ function CategorizedOverview({
         </div>
       ),
     },
+    {
+      id: "ContentGaps",
+      label: "Content Gaps",
+      children: (
+        <div className="space-y-4">
+          {depthData && <TopicHeatmapCard heatmap={depthData.topicHeatmap} />}
+        </div>
+      ),
+    },
   ];
+
+  // Filter sections by the currently-selected lens codes. The chip row
+  // (now living inside controlsStrip) is the only thing that mutates
+  // this list, and its toggle-back semantics guarantee we never end up
+  // with zero visible sections.
+  const visibleSections = sections.filter((s) => selectedLenses.includes(s.id));
 
   return (
     <MetricCategoryLayout
@@ -563,7 +605,10 @@ function CategorizedOverview({
         <HeroRow hero={data.hero} previousHero={data.previousHero} onDrillDown={onDrillDown} />
       }
       controlsStrip={controlsStrip}
-      sections={sections}
+      sections={visibleSections}
+      // Lens chips moved into controlsStrip, so we suppress the default
+      // pill nav by returning null from renderNav.
+      renderNav={() => null}
     />
   );
 }
@@ -991,8 +1036,10 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 interface ComparisonControlsRowProps {
   entityScope: EntityScope;
   onEntityScopeChange: (next: EntityScope) => void;
-  selectedLensCodes: readonly string[];
-  onSelectedLensCodesChange: (next: string[]) => void;
+  /** Currently-selected lens codes — drives both the chip pressed state and which sections render. */
+  selectedLenses: readonly string[];
+  onSelectedLensesChange: (next: string[]) => void;
+  /** Per-lens mention counts; powers the count badges on the lens chips. */
   lensCountsByCode?: Readonly<Record<string, number>>;
   /** Workspace's topics, grouped per brand for the dropdown sections. */
   topicsByBrand: readonly BrandedDimensionGroupDto[];
@@ -1022,8 +1069,8 @@ interface ComparisonControlsRowProps {
 function ComparisonControlsRow({
   entityScope,
   onEntityScopeChange,
-  selectedLensCodes,
-  onSelectedLensCodesChange,
+  selectedLenses,
+  onSelectedLensesChange,
   lensCountsByCode,
   topicsByBrand,
   selectedTopicNames,
@@ -1061,18 +1108,29 @@ function ComparisonControlsRow({
     onSelectedAudienceNamesChange([]);
   }
 
-  // Single sticky row. Lens chips on the left (compact toggle pills with
-  // per-lens counts — doubles as a mini distribution view). On the right:
-  // brand selector + coverage Filters popover that wraps the 4 multi-
-  // selects + the informational trust-signals pill. Date + granularity
-  // live in the PageHeader so they're not duplicated here.
+  // Click handler for the lens chips' onActivate — scrolls to the
+  // selected section. Direct DOM lookup because the section IDs the
+  // host registered with MetricCategoryLayout match the lens codes
+  // verbatim, and the per-section `scrollMarginTop` set by the layout
+  // means we land just below the sticky strip without extra math.
+  function scrollToLensSection(code: string) {
+    const el = document.getElementById(code);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  // Single sticky row. Lens chips on the left (selectors + section
+  // anchors), entity-scope toggle + coverage Filters popover on the
+  // right. Date + granularity live in the PageHeader.
   //
   // Sticky behavior is owned by the outer MetricCategoryLayout.
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
       <LensChipRow
-        selectedCodes={selectedLensCodes}
-        onChange={onSelectedLensCodesChange}
+        selectedCodes={selectedLenses}
+        onChange={onSelectedLensesChange}
+        onActivate={scrollToLensSection}
         countsByCode={lensCountsByCode}
       />
       {isRefreshing && (

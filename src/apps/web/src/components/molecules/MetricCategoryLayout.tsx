@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,10 +25,20 @@ interface MetricCategoryLayoutProps {
   controlsStrip?: ReactNode;
   /** Sections rendered top-to-bottom. */
   sections: MetricCategorySection[];
+  /**
+   * Escape hatch for replacing the default pill nav. When provided, the
+   * layout renders this instead of the underline pills. Called with the
+   * currently active section id (driven by scroll-spy) plus a scrollTo
+   * helper so the custom nav can navigate. The default nav is also
+   * suppressed when a renderNav is given.
+   */
+  renderNav?: (activeId: string, scrollTo: (id: string) => void) => ReactNode;
   /** Section to focus initially when no hash is set. Defaults to the first section. */
   defaultSection?: string;
   /** Whether the pill nav (and controls strip, if present) pin to the top while scrolling. Default true. */
   stickyNav?: boolean;
+  /** Whether to render the per-section heading above each section body. Defaults to true. */
+  showSectionHeadings?: boolean;
   className?: string;
 }
 
@@ -41,8 +51,10 @@ export function MetricCategoryLayout({
   statusStrip,
   controlsStrip,
   sections,
+  renderNav,
   defaultSection,
   stickyNav = true,
+  showSectionHeadings = true,
   className,
 }: MetricCategoryLayoutProps) {
   const [activeId, setActiveId] = useState<string>(() => {
@@ -104,13 +116,16 @@ export function MetricCategoryLayout({
     }
   }, [activeId]);
 
-  function scrollToSection(id: string) {
+  // Stable identity so callers passing this into props (e.g. `renderNav`)
+  // don't trip the "ref access during render" lint when their callback is
+  // passed by reference.
+  const scrollToSection = useCallback((id: string) => {
     const el = sectionRefs.current[id];
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
       setActiveId(id);
     }
-  }
+  }, []);
 
   return (
     <div className={cn("space-y-5", className)}>
@@ -127,32 +142,41 @@ export function MetricCategoryLayout({
         className={cn("-mx-4 px-4", stickyNav && "sticky top-0 z-20 bg-white/95 backdrop-blur")}
       >
         {controlsStrip && <div className="py-2">{controlsStrip}</div>}
-        <nav aria-label="Metric categories" className="border-b border-neutral-200">
-          <ul className="-mb-px flex flex-wrap gap-1">
-            {sections.map((s) => {
-              const Icon = s.icon;
-              const isActive = activeId === s.id;
-              return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(s.id)}
-                    aria-current={isActive ? "true" : undefined}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
-                      isActive
-                        ? "border-primary-500 text-primary-700"
-                        : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900",
-                    )}
-                  >
-                    {Icon && <Icon className="h-3.5 w-3.5" />}
-                    {s.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+        {renderNav ? (
+          // renderNav is a render-prop: it returns JSX synchronously and
+          // wires `scrollTo` into its own click handlers. The function is
+          // passed by reference and only invoked on click, so refs are
+          // not read during render despite the static analyzer warning.
+          // eslint-disable-next-line react-hooks/refs
+          renderNav(activeId, scrollToSection)
+        ) : (
+          <nav aria-label="Metric categories" className="border-b border-neutral-200">
+            <ul className="-mb-px flex flex-wrap gap-1">
+              {sections.map((s) => {
+                const Icon = s.icon;
+                const isActive = activeId === s.id;
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(s.id)}
+                      aria-current={isActive ? "true" : undefined}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
+                        isActive
+                          ? "border-primary-500 text-primary-700"
+                          : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900",
+                      )}
+                    >
+                      {Icon && <Icon className="h-3.5 w-3.5" />}
+                      {s.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        )}
       </div>
       <div className="space-y-8">
         {sections.map((s) => (
@@ -167,9 +191,11 @@ export function MetricCategoryLayout({
             // below the sticky bar regardless of how the controls wrap.
             style={stickyNav ? { scrollMarginTop: stickyHeight + 8 } : undefined}
           >
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              {s.label}
-            </h2>
+            {showSectionHeadings && (
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                {s.label}
+              </h2>
+            )}
             {s.children}
           </section>
         ))}
