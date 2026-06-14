@@ -127,8 +127,8 @@ export function MetricCategoryLayout({
         className={cn("-mx-4 px-4", stickyNav && "sticky top-0 z-20 bg-white/95 backdrop-blur")}
       >
         {controlsStrip && <div className="py-2">{controlsStrip}</div>}
-        <nav aria-label="Metric categories" className="border-b border-neutral-200 py-1.5">
-          <ul className="flex flex-wrap gap-1">
+        <nav aria-label="Metric categories" className="border-b border-neutral-200">
+          <ul className="-mb-px flex flex-wrap gap-1">
             {sections.map((s) => {
               const Icon = s.icon;
               const isActive = activeId === s.id;
@@ -139,10 +139,10 @@ export function MetricCategoryLayout({
                     onClick={() => scrollToSection(s.id)}
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                      "inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors",
                       isActive
-                        ? "bg-primary-100 text-primary-700"
-                        : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
+                        ? "border-primary-500 text-primary-700"
+                        : "border-transparent text-neutral-600 hover:border-neutral-300 hover:text-neutral-900",
                     )}
                   >
                     {Icon && <Icon className="h-3.5 w-3.5" />}

@@ -128,12 +128,12 @@ export function BrandSelector({
         aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center justify-between gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
+          "inline-flex items-center justify-between gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
         )}
       >
         <span>{buttonLabel}</span>
         <ChevronDown
-          className={cn("h-4 w-4 text-neutral-400 transition", open && "rotate-180")}
+          className={cn("h-3.5 w-3.5 text-neutral-400 transition", open && "rotate-180")}
           aria-hidden="true"
         />
       </button>

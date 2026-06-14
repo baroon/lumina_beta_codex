@@ -290,7 +290,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "Checkbox", "Input"],
-          "notes": "Phase 4 v3 multi-select dropdown for the Workspace Overview. Two sections (Tracked brand[s] / All brands) each with a master checkbox + per-entity rows, client-side substring search, click-outside dismiss. Controlled — caller owns the selectedKeys (formatted as `<entityType>:<id>`)."
+          "notes": "Phase 4 v3 multi-select dropdown — two sections (Tracked brand[s] / All brands) each with a master checkbox + per-entity rows, client-side substring search, click-outside dismiss. Controlled — caller owns the selectedKeys (formatted as `<entityType>:<id>`). Used by Insights / Trackers / Prompts / Domains / SourceUrls / Competitors screens; the Workspace Overview moved to EntityScopeToggle, deriving selectedKeys from a simpler 3-option scope chip."
         },
         {
           "name": "DateRangePicker",
@@ -317,7 +317,40 @@
           "status": "implemented",
           "variants": [],
           "dependencies": [],
-          "notes": "Day / Week / Month aggregation toggle that lives next to the DateRangePicker in the date bar of the Workspace Overview. Currently presentational only — the BE still returns scan-level points; wire bucketing through once a chart needs it."
+          "notes": "Day / Week / Month aggregation toggle that lives next to the DateRangePicker. Now wrapped by DateRangeGranularityPicker on the Workspace Overview to collapse both controls into a single trigger; still used standalone elsewhere."
+        },
+        {
+          "name": "DateRangeGranularityPicker",
+          "category": "Molecules",
+          "path": "src/components/molecules/DateRangeGranularityPicker.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "DateRangePicker",
+            "DateGranularityToggle",
+            "react-day-picker",
+            "date-fns",
+            "lucide-react"
+          ],
+          "notes": "Single compact trigger that combines the date range + chart granularity for the Workspace Overview page header. Trigger reads 'Last 30 days · Weekly'; popover stacks a D/W/M segmented control above the standard preset list + react-day-picker calendar. Replaces the previous two-control card (DateGranularityToggle stacked over DateRangePicker) to shrink the controls strip from 4 rows to 2."
+        },
+        {
+          "name": "FiltersPopover",
+          "category": "Molecules",
+          "path": "src/components/molecules/FiltersPopover.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["lucide-react"],
+          "notes": "Compact Filters trigger + slide-down panel that consolidates several selectors behind one chip on the Workspace Overview controls strip. Exports FiltersPopover + FiltersPopoverRow for labeled-row composition. Trigger shows a primary count badge when any filter is applied; the panel does NOT auto-close on click within itself so each child's own popover (TopicSelector, ProductSelector, etc.) can open without conflict — close on Escape, the X button, or a re-click of the trigger."
+        },
+        {
+          "name": "EntityScopeToggle",
+          "category": "Molecules",
+          "path": "src/components/molecules/EntityScopeToggle.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [],
+          "notes": "3-option segmented chip (All / Tracked / Top 5) that replaces the multi-select BrandSelector on the Workspace Overview controls strip. Caller derives the actual selectedKeys list from this value + workspace data — `top5` ranks by mentionCount from the competitive payload. The sidebar tracker scope owns the brand filter; this control just picks the entity slice."
         },
         {
           "name": "OnboardingStepper",

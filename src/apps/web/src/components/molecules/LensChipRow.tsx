@@ -1,4 +1,3 @@
-import { Eye } from "lucide-react";
 import { VISIBILITY_LENSES } from "@/content/lenses";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +38,7 @@ export function LensChipRow({ selectedCodes, onChange, countsByCode }: LensChipR
 
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className="flex flex-wrap items-center gap-1"
       role="group"
       aria-label="Visibility lens filter"
     >
@@ -47,6 +46,7 @@ export function LensChipRow({ selectedCodes, onChange, countsByCode }: LensChipR
         <LensChip
           key={lens.code}
           name={lens.name}
+          shortName={LENS_SHORT_NAMES[lens.code] ?? lens.name}
           selected={isSelected(lens.code)}
           count={countsByCode?.[lens.code]}
           onClick={() => toggle(lens.code)}
@@ -57,30 +57,44 @@ export function LensChipRow({ selectedCodes, onChange, countsByCode }: LensChipR
   );
 }
 
+// Short display labels for the lens chips. Trades off two long labels
+// ("Competitor Comparison", "Citation Visibility") so all six chips +
+// the right-side scope toggle + Filters chip fit on a single row at
+// typical workspace widths. Full name still flows through aria-label
+// and the chip title for screen readers + tooltips.
+const LENS_SHORT_NAMES: Record<string, string> = {
+  CompetitorComparison: "Comparison",
+  CitationVisibility: "Citations",
+  SentimentAndTrust: "Sentiment",
+};
+
 interface LensChipProps {
+  /** Full lens name — used for aria-label + title (hover tooltip). */
   name: string;
+  /** Compact label rendered on the chip. May equal `name`. */
+  shortName: string;
   selected: boolean;
   count?: number;
   onClick: () => void;
   ariaPressed: boolean;
 }
 
-function LensChip({ name, selected, count, onClick, ariaPressed }: LensChipProps) {
+function LensChip({ name, shortName, selected, count, onClick, ariaPressed }: LensChipProps) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={ariaPressed}
       aria-label={name}
+      title={name}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition",
         selected
           ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
           : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50",
       )}
     >
-      <Eye size={12} aria-hidden className={selected ? "text-primary-500" : "text-neutral-400"} />
-      <span>{name}</span>
+      <span>{shortName}</span>
       {count !== undefined && <LensCountBadge count={count} selected={selected} />}
     </button>
   );
@@ -91,7 +105,7 @@ function LensCountBadge({ count, selected }: { count: number; selected: boolean 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+        "inline-flex items-center rounded-full px-1 py-0 text-[10px] font-semibold tabular-nums",
         empty
           ? "bg-neutral-100 text-neutral-400"
           : selected

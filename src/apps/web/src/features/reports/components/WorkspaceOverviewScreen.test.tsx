@@ -445,10 +445,12 @@ describe("WorkspaceOverviewScreen", () => {
     expect(within(table).getByText("Indeed")).toBeInTheDocument();
   });
 
-  it("brand selector defaults to all-selected and shows 'All brands' label", () => {
+  it("entity scope toggle defaults to All", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
-    expect(screen.getByRole("button", { name: /brand selector/i })).toHaveTextContent("All brands");
+    expect(
+      screen.getByRole("button", { name: /all tracked brands \+ competitors/i }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("Hero tile drill-down scrolls to the matching trend card via aria-label", async () => {
@@ -643,15 +645,13 @@ describe("WorkspaceOverviewScreen", () => {
     expect(within(ownedCard).queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
   });
 
-  it("deselecting an entity drops its series from every trend card + table row", async () => {
+  it("switching scope to Tracked drops competitor series + table rows", async () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    // Open the selector and uncheck Indeed.
-    await userEvent.click(screen.getByRole("button", { name: /brand selector/i }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "Indeed" }));
+    await userEvent.click(screen.getByRole("button", { name: /tracked brands only/i }));
 
-    // Indeed series is dropped from every trend card it appeared in
+    // Indeed (a competitor) is dropped from every trend card it appeared in
     // (the Mention rate card was the only one with a competitor line).
     expect(screen.queryByTestId(`series-${indeedId}`)).not.toBeInTheDocument();
     // Indeed's row in Top Entities is also gone — Acme + Beta remain.

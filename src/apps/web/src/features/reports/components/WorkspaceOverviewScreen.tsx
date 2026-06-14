@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -31,10 +31,9 @@ import { Card, CardContent } from "@/components/atoms/card";
 import { AudienceSelector } from "@/components/molecules/AudienceSelector";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
 import { EntityTrendDrillDown } from "@/components/molecules/EntityTrendDrillDown";
-import {
-  DateGranularityToggle,
-  type DateGranularity,
-} from "@/components/molecules/DateGranularityToggle";
+import type { DateGranularity } from "@/components/molecules/DateGranularityToggle";
+import { DateRangeGranularityPicker } from "@/components/molecules/DateRangeGranularityPicker";
+import { FiltersPopover, FiltersPopoverRow } from "@/components/molecules/FiltersPopover";
 import { LensChipRow } from "@/components/molecules/LensChipRow";
 import {
   MetricCategoryLayout,
@@ -49,7 +48,6 @@ import { HeatmapWrapper, type HeatmapData } from "@/components/charts/HeatmapWra
 import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
 import { RadarChartWrapper, type RadarChartDatum } from "@/components/charts/RadarChartWrapper";
 import {
-  DateRangePicker,
   defaultDateRangeSelection,
   type DateRangeSelection,
 } from "@/components/molecules/DateRangePicker";
@@ -59,7 +57,7 @@ import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
-import { BrandSelector, type BrandSelectorEntity } from "@/components/molecules/BrandSelector";
+import { EntityScopeToggle, type EntityScope } from "@/components/molecules/EntityScopeToggle";
 import { REPORTS_COPY } from "@/content/reports";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
@@ -185,7 +183,12 @@ const METRIC_OPTIONS: MetricOption[] = [
  */
 export function WorkspaceOverviewScreen() {
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Entity scope drives which entities flow through the per-series cards
+  // (TrendCard, Top entities, ShareOfVoice, Brand-vs-competitor, etc.).
+  // Replaces the old per-entity BrandSelector — the sidebar's tracker
+  // scope already owns the brand-level filter, so this control just
+  // picks the slice (all / tracked-only / top 5 by mention count).
+  const [entityScope, setEntityScope] = useState<EntityScope>("all");
   // Lifted from the old DepthSections wrapper so the chats card +
   // drawer can live in different parts of the category layout.
   const [selectedChat, setSelectedChat] = useState<WorkspaceRecentChatDto | null>(null);
@@ -203,7 +206,6 @@ export function WorkspaceOverviewScreen() {
   // 30-day default window typically holds ~4 scans, and weekly buckets
   // read cleaner than per-scan points at that range.
   const [granularity, setGranularity] = useState<DateGranularity>("week");
-  const [allSelectedInit, setAllSelectedInit] = useState(false);
   // Per-metric refs let hero tiles scroll to the matching trend card.
   const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
   // Tracker-scope filter from the sidebar's TrackerSelector. `"all"` →
@@ -291,16 +293,28 @@ export function WorkspaceOverviewScreen() {
     }
   }
 
-  // Default selection — all entities when data first lands.
-  useEffect(() => {
-    if (!data || allSelectedInit) return;
-    const keys = [
-      ...data.trackedBrands.map((b) => `Brand:${b.brandId}`),
-      ...data.competitors.map((c) => `Competitor:${c.competitorId}`),
-    ];
-    setSelectedKeys(keys);
-    setAllSelectedInit(true);
-  }, [data, allSelectedInit]);
+  // Derive selectedKeys from the entity scope + workspace data. Empty
+  // when data hasn't landed yet; downstream filtering is no-op on []. The
+  // "top5" branch ranks by mentionCount from the competitive payload and
+  // falls back to "all" until that payload arrives so the page doesn't
+  // briefly render with zero series.
+  const selectedKeys = useMemo<string[]>(() => {
+    if (!data) return [];
+    const trackedKeys = data.trackedBrands.map((b) => `Brand:${b.brandId}`);
+    const competitorKeys = data.competitors.map((c) => `Competitor:${c.competitorId}`);
+    switch (entityScope) {
+      case "all":
+        return [...trackedKeys, ...competitorKeys];
+      case "tracked":
+        return trackedKeys;
+      case "top5":
+        if (!competitiveData) return [...trackedKeys, ...competitorKeys];
+        return [...competitiveData.mentionDistribution]
+          .sort((a, b) => b.mentionCount - a.mentionCount)
+          .slice(0, 5)
+          .map((m) => `${m.entityType}:${m.entityId}`);
+    }
+  }, [data, competitiveData, entityScope]);
 
   if (isLoading) return <LoadingPage />;
   if (isError) {
@@ -313,27 +327,10 @@ export function WorkspaceOverviewScreen() {
   }
   if (!data) return null;
 
-  const trackedBrandsEntities: BrandSelectorEntity[] = data.trackedBrands.map((b) => ({
-    id: b.brandId,
-    entityType: "Brand",
-    name: b.name,
-  }));
-  const competitorEntities: BrandSelectorEntity[] = data.competitors.map((c) => ({
-    id: c.competitorId,
-    entityType: "Competitor",
-    name: c.name,
-  }));
-
   const controlsStrip = (
     <ComparisonControlsRow
-      range={range}
-      onRangeChange={setRange}
-      granularity={granularity}
-      onGranularityChange={setGranularity}
-      trackedBrands={trackedBrandsEntities}
-      competitors={competitorEntities}
-      selectedKeys={selectedKeys}
-      onSelectedKeysChange={setSelectedKeys}
+      entityScope={entityScope}
+      onEntityScopeChange={setEntityScope}
       selectedLensCodes={selectedLensCodes}
       onSelectedLensCodesChange={setSelectedLensCodes}
       lensCountsByCode={lensCountsByCode}
@@ -360,7 +357,14 @@ export function WorkspaceOverviewScreen() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={copy.title} description={copy.subtitle} />
+      <PageHeader title={copy.title}>
+        <DateRangeGranularityPicker
+          range={range}
+          onRangeChange={setRange}
+          granularity={granularity}
+          onGranularityChange={setGranularity}
+        />
+      </PageHeader>
 
       {data.trackedBrands.length === 0 ? (
         <>
@@ -985,14 +989,8 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
 // ---------------------------------------------------------------------------
 
 interface ComparisonControlsRowProps {
-  range: DateRangeSelection;
-  onRangeChange: (next: DateRangeSelection) => void;
-  granularity: DateGranularity;
-  onGranularityChange: (next: DateGranularity) => void;
-  trackedBrands: readonly BrandSelectorEntity[];
-  competitors: readonly BrandSelectorEntity[];
-  selectedKeys: readonly string[];
-  onSelectedKeysChange: (next: string[]) => void;
+  entityScope: EntityScope;
+  onEntityScopeChange: (next: EntityScope) => void;
   selectedLensCodes: readonly string[];
   onSelectedLensCodesChange: (next: string[]) => void;
   lensCountsByCode?: Readonly<Record<string, number>>;
@@ -1022,14 +1020,8 @@ interface ComparisonControlsRowProps {
 }
 
 function ComparisonControlsRow({
-  range,
-  onRangeChange,
-  granularity,
-  onGranularityChange,
-  trackedBrands,
-  competitors,
-  selectedKeys,
-  onSelectedKeysChange,
+  entityScope,
+  onEntityScopeChange,
   selectedLensCodes,
   onSelectedLensCodesChange,
   lensCountsByCode,
@@ -1052,79 +1044,86 @@ function ComparisonControlsRow({
   trustSignalsByBrand,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
+  // Coverage filters (Topics/Products/Markets/Audiences) drive the count
+  // badge on the Filters chip. Trust signals are informational and don't
+  // count. An "active" group is one with any selection — the empty
+  // sentinel means "all", which doesn't filter anything.
+  const activeFilterCount =
+    (selectedTopicNames.length > 0 ? 1 : 0) +
+    (selectedProductNames.length > 0 ? 1 : 0) +
+    (selectedMarketNames.length > 0 ? 1 : 0) +
+    (selectedAudienceNames.length > 0 ? 1 : 0);
+
+  function clearAllFilters() {
+    onSelectedTopicNamesChange([]);
+    onSelectedProductNamesChange([]);
+    onSelectedMarketNamesChange([]);
+    onSelectedAudienceNamesChange([]);
+  }
+
+  // Single sticky row. Lens chips on the left (compact toggle pills with
+  // per-lens counts — doubles as a mini distribution view). On the right:
+  // brand selector + coverage Filters popover that wraps the 4 multi-
+  // selects + the informational trust-signals pill. Date + granularity
+  // live in the PageHeader so they're not duplicated here.
+  //
+  // Sticky behavior is owned by the outer MetricCategoryLayout.
   return (
-    // Two side-by-side columns: a narrow Time column on the left (D/W/M
-    // toggle + date-range picker, stretched to match) and a flex-1 right
-    // column that stacks the Lenses row above the Trackers row so both
-    // dimension groups share the same horizontal space. Both wrap
-    // internally so the page never needs a horizontal scrollbar.
-    //
-    // Sticky behavior is owned by the outer MetricCategoryLayout — this
-    // row + the pill nav stick together as a single block.
-    <div className="flex flex-wrap items-stretch gap-2">
-      <div className="flex shrink-0 flex-col items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-        <DateGranularityToggle value={granularity} onChange={onGranularityChange} />
-        <DateRangePicker value={range} onChange={onRangeChange} />
-      </div>
-
-      <div className="flex min-w-[24rem] flex-1 flex-col gap-2">
-        <div className="flex flex-1 flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 shadow-sm">
-          <span className="shrink-0 pr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Lenses
-          </span>
-          <LensChipRow
-            selectedCodes={selectedLensCodes}
-            onChange={onSelectedLensCodesChange}
-            countsByCode={lensCountsByCode}
-          />
-          {isRefreshing && (
-            <span
-              aria-live="polite"
-              aria-label="Refreshing"
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs text-neutral-500"
-            >
-              <Loader2 size={14} className="animate-spin text-primary-500" aria-hidden />
-              Refreshing…
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-1 flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 shadow-sm">
-          <span className="shrink-0 pr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Trackers
-          </span>
-          <BrandSelector
-            trackedBrands={trackedBrands}
-            competitors={competitors}
-            selectedKeys={selectedKeys}
-            onChange={onSelectedKeysChange}
-          />
-          <TopicSelector
-            topicsByBrand={topicsByBrand}
-            selectedNames={selectedTopicNames}
-            onChange={onSelectedTopicNamesChange}
-            countsByName={topicCountsByName}
-          />
-          <ProductSelector
-            productsByBrand={productsByBrand}
-            selectedNames={selectedProductNames}
-            onChange={onSelectedProductNamesChange}
-            countsByName={productCountsByName}
-          />
-          <MarketSelector
-            marketsByBrand={marketsByBrand}
-            selectedNames={selectedMarketNames}
-            onChange={onSelectedMarketNamesChange}
-            countsByName={marketCountsByName}
-          />
-          <AudienceSelector
-            audiencesByBrand={audiencesByBrand}
-            selectedNames={selectedAudienceNames}
-            onChange={onSelectedAudienceNamesChange}
-            countsByName={audienceCountsByName}
-          />
-          <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
-        </div>
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+      <LensChipRow
+        selectedCodes={selectedLensCodes}
+        onChange={onSelectedLensCodesChange}
+        countsByCode={lensCountsByCode}
+      />
+      {isRefreshing && (
+        <span
+          aria-live="polite"
+          aria-label="Refreshing"
+          className="inline-flex shrink-0 items-center gap-1.5 text-xs text-neutral-500"
+        >
+          <Loader2 size={14} className="animate-spin text-primary-500" aria-hidden />
+          Refreshing…
+        </span>
+      )}
+      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+        <EntityScopeToggle value={entityScope} onChange={onEntityScopeChange} />
+        <FiltersPopover activeCount={activeFilterCount} onClearAll={clearAllFilters}>
+          <FiltersPopoverRow label="Topics">
+            <TopicSelector
+              topicsByBrand={topicsByBrand}
+              selectedNames={selectedTopicNames}
+              onChange={onSelectedTopicNamesChange}
+              countsByName={topicCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Products">
+            <ProductSelector
+              productsByBrand={productsByBrand}
+              selectedNames={selectedProductNames}
+              onChange={onSelectedProductNamesChange}
+              countsByName={productCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Markets">
+            <MarketSelector
+              marketsByBrand={marketsByBrand}
+              selectedNames={selectedMarketNames}
+              onChange={onSelectedMarketNamesChange}
+              countsByName={marketCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Audiences">
+            <AudienceSelector
+              audiencesByBrand={audiencesByBrand}
+              selectedNames={selectedAudienceNames}
+              onChange={onSelectedAudienceNamesChange}
+              countsByName={audienceCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Trust signals (reference)">
+            <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
+          </FiltersPopoverRow>
+        </FiltersPopover>
       </div>
     </div>
   );
