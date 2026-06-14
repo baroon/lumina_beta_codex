@@ -35,7 +35,7 @@ describe("FiltersPopover", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(screen.getByRole("button", { name: /^Filters$/i }));
-    expect(screen.getByRole("dialog", { name: /coverage filters/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /discovery filters/i })).toBeInTheDocument();
     expect(screen.getByText("Topics")).toBeInTheDocument();
     expect(screen.getByText("Markets")).toBeInTheDocument();
   });

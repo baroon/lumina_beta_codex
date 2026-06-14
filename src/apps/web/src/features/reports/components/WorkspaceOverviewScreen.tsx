@@ -1088,7 +1088,7 @@ function ComparisonControlsRow({
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
         <EntityScopeToggle value={entityScope} onChange={onEntityScopeChange} />
         <FiltersPopover activeCount={activeFilterCount} onClearAll={clearAllFilters}>
-          <FiltersPopoverRow label="Topics">
+          <FiltersPopoverRow label="Topics" active={selectedTopicNames.length > 0}>
             <TopicSelector
               topicsByBrand={topicsByBrand}
               selectedNames={selectedTopicNames}
@@ -1096,7 +1096,7 @@ function ComparisonControlsRow({
               countsByName={topicCountsByName}
             />
           </FiltersPopoverRow>
-          <FiltersPopoverRow label="Products">
+          <FiltersPopoverRow label="Products & Services" active={selectedProductNames.length > 0}>
             <ProductSelector
               productsByBrand={productsByBrand}
               selectedNames={selectedProductNames}
@@ -1104,7 +1104,7 @@ function ComparisonControlsRow({
               countsByName={productCountsByName}
             />
           </FiltersPopoverRow>
-          <FiltersPopoverRow label="Markets">
+          <FiltersPopoverRow label="Markets" active={selectedMarketNames.length > 0}>
             <MarketSelector
               marketsByBrand={marketsByBrand}
               selectedNames={selectedMarketNames}
@@ -1112,7 +1112,7 @@ function ComparisonControlsRow({
               countsByName={marketCountsByName}
             />
           </FiltersPopoverRow>
-          <FiltersPopoverRow label="Audiences">
+          <FiltersPopoverRow label="Audiences" active={selectedAudienceNames.length > 0}>
             <AudienceSelector
               audiencesByBrand={audiencesByBrand}
               selectedNames={selectedAudienceNames}
@@ -1120,7 +1120,7 @@ function ComparisonControlsRow({
               countsByName={audienceCountsByName}
             />
           </FiltersPopoverRow>
-          <FiltersPopoverRow label="Trust signals (reference)">
+          <FiltersPopoverRow label="Trust signals" variant="reference">
             <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
           </FiltersPopoverRow>
         </FiltersPopover>

@@ -1,5 +1,27 @@
+import {
+  AlertCircle,
+  Heart,
+  Quote,
+  Search,
+  ShoppingCart,
+  Swords,
+  type LucideIcon,
+} from "lucide-react";
 import { VISIBILITY_LENSES } from "@/content/lenses";
 import { cn } from "@/lib/utils";
+
+// Per-lens glyph. Mirrors the metric-category icons used by the section
+// pills above (Heart for sentiment, Quote for citations, Swords for
+// competitive) so the lens chips read as a denser, color-coded version
+// of the same taxonomy.
+const LENS_ICONS: Record<string, LucideIcon> = {
+  Discovery: Search,
+  BuyingIntent: ShoppingCart,
+  CompetitorComparison: Swords,
+  SentimentAndTrust: Heart,
+  CitationVisibility: Quote,
+  ContentGaps: AlertCircle,
+};
 
 interface LensChipRowProps {
   /** Currently-selected lens codes. Empty array = no filter = all lenses on. */
@@ -47,6 +69,7 @@ export function LensChipRow({ selectedCodes, onChange, countsByCode }: LensChipR
           key={lens.code}
           name={lens.name}
           shortName={LENS_SHORT_NAMES[lens.code] ?? lens.name}
+          Icon={LENS_ICONS[lens.code]}
           selected={isSelected(lens.code)}
           count={countsByCode?.[lens.code]}
           onClick={() => toggle(lens.code)}
@@ -73,13 +96,15 @@ interface LensChipProps {
   name: string;
   /** Compact label rendered on the chip. May equal `name`. */
   shortName: string;
+  /** Lens-specific glyph rendered to the left of the label. */
+  Icon?: LucideIcon;
   selected: boolean;
   count?: number;
   onClick: () => void;
   ariaPressed: boolean;
 }
 
-function LensChip({ name, shortName, selected, count, onClick, ariaPressed }: LensChipProps) {
+function LensChip({ name, shortName, Icon, selected, count, onClick, ariaPressed }: LensChipProps) {
   return (
     <button
       type="button"
@@ -94,6 +119,13 @@ function LensChip({ name, shortName, selected, count, onClick, ariaPressed }: Le
           : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50",
       )}
     >
+      {Icon && (
+        <Icon
+          size={12}
+          aria-hidden
+          className={selected ? "text-primary-500" : "text-neutral-400"}
+        />
+      )}
       <span>{shortName}</span>
       {count !== undefined && <LensCountBadge count={count} selected={selected} />}
     </button>

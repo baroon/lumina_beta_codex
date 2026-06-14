@@ -41,14 +41,14 @@ function Harness({
 }
 
 describe("ProductSelector", () => {
-  it("trigger reads 'N products' on the empty-sentinel default", () => {
+  it("trigger reads 'N products & services' on the empty-sentinel default", () => {
     render(<Harness initial={[]} />);
     expect(screen.getByRole("button", { name: /product selector/i })).toHaveTextContent(
-      "3 products",
+      "3 products & services",
     );
   });
 
-  it("trigger reads 'No products' when the workspace has no products", () => {
+  it("trigger reads 'No products & services' when the workspace has none", () => {
     render(<Harness groups={[]} />);
     expect(screen.getByRole("button", { name: /product selector/i })).toBeDisabled();
   });
@@ -73,7 +73,7 @@ describe("ProductSelector", () => {
   it("substring search filters options and hides empty sections", async () => {
     render(<Harness initial={[]} />);
     await userEvent.click(screen.getByRole("button", { name: /product selector/i }));
-    await userEvent.type(screen.getByPlaceholderText(/search products/i), "premium");
+    await userEvent.type(screen.getByPlaceholderText(/search products & services/i), "premium");
     expect(screen.getByText("Indeed Premium")).toBeInTheDocument();
     expect(screen.queryByText("Resume Builder")).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Gensler" })).not.toBeInTheDocument();

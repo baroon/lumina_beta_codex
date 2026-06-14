@@ -29,8 +29,8 @@ export const Empty: Story = {
         <FiltersPopoverRow label="Topics">
           <StubSelector label="All topics" />
         </FiltersPopoverRow>
-        <FiltersPopoverRow label="Products">
-          <StubSelector label="All products" />
+        <FiltersPopoverRow label="Products & Services">
+          <StubSelector label="All products & services" />
         </FiltersPopoverRow>
         <FiltersPopoverRow label="Markets">
           <StubSelector label="All markets" />
@@ -38,7 +38,7 @@ export const Empty: Story = {
         <FiltersPopoverRow label="Audiences">
           <StubSelector label="All audiences" />
         </FiltersPopoverRow>
-        <FiltersPopoverRow label="Trust signals">
+        <FiltersPopoverRow label="Trust signals" variant="reference">
           <StubSelector label="6 signals" />
         </FiltersPopoverRow>
       </FiltersPopover>
@@ -50,19 +50,19 @@ export const WithActiveFilters: Story = {
   render: () => (
     <div className="p-8">
       <FiltersPopover activeCount={3} onClearAll={() => undefined}>
-        <FiltersPopoverRow label="Topics">
+        <FiltersPopoverRow label="Topics" active>
           <StubSelector label="2 of 12 topics" />
         </FiltersPopoverRow>
-        <FiltersPopoverRow label="Products">
-          <StubSelector label="1 of 10 products" />
+        <FiltersPopoverRow label="Products & Services" active>
+          <StubSelector label="1 of 10 products & services" />
         </FiltersPopoverRow>
         <FiltersPopoverRow label="Markets">
           <StubSelector label="All markets" />
         </FiltersPopoverRow>
-        <FiltersPopoverRow label="Audiences">
-          <StubSelector label="All audiences" />
+        <FiltersPopoverRow label="Audiences" active>
+          <StubSelector label="3 of 8 audiences" />
         </FiltersPopoverRow>
-        <FiltersPopoverRow label="Trust signals">
+        <FiltersPopoverRow label="Trust signals" variant="reference">
           <StubSelector label="6 signals" />
         </FiltersPopoverRow>
       </FiltersPopover>

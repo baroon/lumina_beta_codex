@@ -62,15 +62,15 @@ export function TrustSignalsPill({
         aria-label={ariaLabel}
         title="Workspace trust signals (informational, not a filter)"
         className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
+          "inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-xs font-medium text-neutral-500 transition hover:bg-neutral-50",
           empty && "cursor-default opacity-60 hover:bg-white",
         )}
       >
-        <ShieldCheck size={14} className="text-neutral-500" aria-hidden />
+        <ShieldCheck size={12} className="text-neutral-400" aria-hidden />
         <span>{empty ? "No trust signals" : label}</span>
         {!empty && (
           <ChevronDown
-            size={16}
+            size={12}
             className={cn("text-neutral-400 transition", open && "rotate-180")}
             aria-hidden
           />

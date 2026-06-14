@@ -81,19 +81,28 @@ export function FiltersPopover({
       {open && (
         <div
           role="dialog"
-          aria-label="Coverage filters"
-          className="absolute right-0 top-[calc(100%+4px)] z-30 w-80 rounded-lg border border-neutral-200 bg-white shadow-xl"
+          aria-label="Discovery filters"
+          className="absolute right-0 top-[calc(100%+4px)] z-30 w-80 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl"
         >
-          <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-              Coverage filters
+          <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
+              <SlidersHorizontal size={12} className="text-primary-500" aria-hidden />
+              Discovery filters
+              {activeCount > 0 && (
+                <span
+                  aria-label={`${activeCount} ${activeCount === 1 ? "filter" : "filters"} applied`}
+                  className="ml-0.5 inline-flex items-center rounded-full bg-primary-100 px-1.5 py-0 text-[10px] font-semibold tabular-nums text-primary-700"
+                >
+                  {activeCount}
+                </span>
+              )}
             </span>
             <div className="flex items-center gap-2">
               {activeCount > 0 && onClearAll && (
                 <button
                   type="button"
                   onClick={onClearAll}
-                  className="text-[11px] font-medium text-primary-600 hover:text-primary-700"
+                  className="text-[11px] font-medium normal-case tracking-normal text-primary-600 hover:text-primary-700"
                 >
                   Clear all
                 </button>
@@ -108,7 +117,7 @@ export function FiltersPopover({
               </button>
             </div>
           </div>
-          <div className="space-y-3 p-3">{children}</div>
+          <div className="space-y-2 p-2">{children}</div>
         </div>
       )}
     </div>
@@ -117,6 +126,17 @@ export function FiltersPopover({
 
 interface FiltersPopoverRowProps {
   label: string;
+  /** When true, the row is highlighted as "currently filtering" — primary dot
+   *  + darker label. */
+  active?: boolean;
+  /**
+   * - "filter" (default): a normal multi-select row that drives an active filter.
+   * - "reference": a visually demoted row for read-only / informational entries
+   *   that look like filters but don't filter (e.g. trust signals). Renders on a
+   *   subdued card with a "REFERENCE" caption, separated from real filters by a
+   *   thin divider above.
+   */
+  variant?: "filter" | "reference";
   children: ReactNode;
 }
 
@@ -125,11 +145,41 @@ interface FiltersPopoverRowProps {
  * selector so each row reads cleanly even when the selector trigger
  * has its own count text.
  */
-export function FiltersPopoverRow({ label, children }: FiltersPopoverRowProps) {
+export function FiltersPopoverRow({
+  label,
+  active = false,
+  variant = "filter",
+  children,
+}: FiltersPopoverRowProps) {
+  if (variant === "reference") {
+    return (
+      <div className="mt-1 border-t border-neutral-100 pt-2">
+        <div className="rounded-md bg-neutral-50 px-2.5 py-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+              Reference
+            </span>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+              {label}
+            </span>
+          </div>
+          <div className="mt-1 flex items-center">{children}</div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="space-y-1">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-        {label}
+    <div className="rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-50/60">
+      <div
+        className={cn(
+          "mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide",
+          active ? "text-primary-700" : "text-neutral-600",
+        )}
+      >
+        {active && (
+          <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500" />
+        )}
+        <span>{label}</span>
       </div>
       <div className="flex items-center">{children}</div>
     </div>

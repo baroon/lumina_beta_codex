@@ -58,7 +58,9 @@ export function ProductSelector({
   const total = allNames.length;
   const selected = selectedNames.length;
   const allSelected = selected === 0 || selected === total;
-  const buttonLabel = allSelected ? `${total} products` : `${selected} of ${total} products`;
+  const buttonLabel = allSelected
+    ? `${total} products & services`
+    : `${selected} of ${total} products & services`;
 
   function isChecked(name: string): boolean {
     return selectedNames.length === 0 || selectedNames.includes(name);
@@ -85,15 +87,15 @@ export function ProductSelector({
         onClick={() => setOpen((v) => !v)}
         disabled={total === 0}
         className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
-          total === 0 && "cursor-default opacity-60 hover:bg-white",
+          "inline-flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 transition hover:bg-primary-100",
+          total === 0 && "cursor-default opacity-60 hover:bg-primary-50",
         )}
       >
-        <Box size={14} className="text-neutral-500" aria-hidden />
-        <span>{total === 0 ? "No products" : buttonLabel}</span>
+        <Box size={12} aria-hidden className="text-primary-500" />
+        <span>{total === 0 ? "No products & services" : buttonLabel}</span>
         {total > 0 && (
           <ChevronDown
-            className={cn("h-4 w-4 text-neutral-400 transition", open && "rotate-180")}
+            className={cn("h-3 w-3 text-neutral-400 transition", open && "rotate-180")}
             aria-hidden="true"
           />
         )}
@@ -110,12 +112,12 @@ export function ProductSelector({
               inputSize="sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products…"
-              aria-label="Search products"
+              placeholder="Search products & services…"
+              aria-label="Search products & services"
             />
           </div>
           <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
-            <span>Products</span>
+            <span>Products &amp; Services</span>
             <button
               type="button"
               onClick={() => onChange([])}
@@ -127,7 +129,7 @@ export function ProductSelector({
           <div className="max-h-72 overflow-y-auto">
             {visibleGroups.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-neutral-500">
-                No products match &ldquo;{query}&rdquo;.
+                No products &amp; services match &ldquo;{query}&rdquo;.
               </p>
             ) : (
               visibleGroups.map((group) => (

@@ -84,15 +84,15 @@ export function AudienceSelector({
         onClick={() => setOpen((v) => !v)}
         disabled={total === 0}
         className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50",
-          total === 0 && "cursor-default opacity-60 hover:bg-white",
+          "inline-flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 transition hover:bg-primary-100",
+          total === 0 && "cursor-default opacity-60 hover:bg-primary-50",
         )}
       >
-        <Users size={14} className="text-neutral-500" aria-hidden />
+        <Users size={12} aria-hidden className="text-primary-500" />
         <span>{total === 0 ? "No audiences" : buttonLabel}</span>
         {total > 0 && (
           <ChevronDown
-            className={cn("h-4 w-4 text-neutral-400 transition", open && "rotate-180")}
+            className={cn("h-3 w-3 text-neutral-400 transition", open && "rotate-180")}
             aria-hidden="true"
           />
         )}
