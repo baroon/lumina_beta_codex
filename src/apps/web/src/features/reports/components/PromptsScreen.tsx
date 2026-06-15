@@ -27,6 +27,11 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
+import {
+  InlineChipFilter,
+  platformLabel,
+  SENTIMENT_ORDER,
+} from "@/features/reports/components/FilterChips";
 import { PromptAnswerHistoryDrawer } from "@/features/reports/components/PromptAnswerHistoryDrawer";
 import { countryCodeToFlagUrl } from "@/lib/flag";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
@@ -68,28 +73,6 @@ const VISIBILITY_BUCKETS: ReadonlyArray<{ label: string; min: number; max: numbe
 ];
 
 const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
-
-// Friendly display labels for AI platform codes. Falls back to the raw
-// code for any platform we don't have a label for yet (e.g. a future
-// provider added on the BE before the FE catalog catches up).
-const PLATFORM_LABELS: Readonly<Record<string, string>> = {
-  openai: "ChatGPT",
-  "chatgpt-search": "ChatGPT Search",
-  gemini: "Gemini",
-  claude: "Claude",
-  perplexity: "Perplexity",
-  grok: "Grok",
-};
-
-function platformLabel(code: string): string {
-  return PLATFORM_LABELS[code] ?? code;
-}
-
-// Canonical order of the dominantSentiment values from the BE Sentiment
-// enum. Drives the Sentiment chip-filter row so the user sees the
-// values in a stable gradient (positive → negative) regardless of
-// which subset is present in the current scope.
-const SENTIMENT_ORDER: readonly string[] = ["Positive", "Neutral", "Mixed", "Negative", "Unknown"];
 
 type SortKey = "default" | "visibility" | "mentions" | "scans" | "lastScan";
 type SortDir = "asc" | "desc";
@@ -386,17 +369,20 @@ export function PromptsScreen() {
             />
           </div>
           <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
-            <PlatformChipFilter
-              availableCodes={availablePlatformCodes}
-              selectedCodes={selectedPlatformCodes}
+            <InlineChipFilter
+              available={availablePlatformCodes}
+              selected={selectedPlatformCodes}
               onChange={setSelectedPlatformCodes}
+              labelFor={platformLabel}
+              emptyLabel="No models in scope."
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
-            <SentimentChipFilter
+            <InlineChipFilter
               available={availableSentiments}
               selected={selectedSentiments}
               onChange={setSelectedSentiments}
+              emptyLabel="No sentiments in scope."
             />
           </FiltersPopoverRow>
         </FiltersPopover>
@@ -542,129 +528,6 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
           )}
         </CollapsibleCard>
       </div>
-    </div>
-  );
-}
-
-// Inline chip multi-select for the Models filter row inside the
-// FiltersPopover. The platform universe is small (~4–6 in practice)
-// so a chip strip reads cleaner than a search-able dropdown like the
-// TopicSelector.
-//
-// UX (matches LensChipRow on /overview):
-//   - Empty `selectedCodes` = "no narrowing": every chip is visually
-//     pressed and the filter passes all rows through.
-//   - Clicking a chip when nothing is explicitly selected narrows to
-//     just that chip.
-//   - Subsequent clicks ADD to the selection (multi-select).
-//   - Clicking an already-selected chip is a no-op (we deliberately
-//     do not unselect on a second click; the Clear link below resets).
-function PlatformChipFilter({
-  availableCodes,
-  selectedCodes,
-  onChange,
-}: {
-  availableCodes: readonly string[];
-  selectedCodes: readonly string[];
-  onChange: (next: string[]) => void;
-}) {
-  if (availableCodes.length === 0) {
-    return <span className="text-xs text-neutral-400">No models in scope.</span>;
-  }
-  const selectedSet = new Set(selectedCodes);
-  const allSelectedVisually = selectedCodes.length === 0;
-  function add(code: string) {
-    if (selectedSet.has(code)) return; // explicit don't-unselect rule
-    onChange([...selectedCodes, code]);
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {availableCodes.map((code) => {
-        const label = platformLabel(code);
-        const pressed = allSelectedVisually || selectedSet.has(code);
-        return (
-          <button
-            key={code}
-            type="button"
-            onClick={() => add(code)}
-            aria-pressed={pressed}
-            aria-label={`Filter by ${label}`}
-            className={cn(
-              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition",
-              pressed
-                ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
-                : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
-            )}
-          >
-            {label}
-          </button>
-        );
-      })}
-      {!allSelectedVisually && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className="ml-1 text-[11px] font-medium text-primary-600 hover:text-primary-700"
-        >
-          Clear
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Inline chip multi-select for the Sentiment filter row. Same UX as
-// PlatformChipFilter — see its doc-comment for the empty-selection /
-// don't-unselect rules.
-function SentimentChipFilter({
-  available,
-  selected,
-  onChange,
-}: {
-  available: readonly string[];
-  selected: readonly string[];
-  onChange: (next: string[]) => void;
-}) {
-  if (available.length === 0) {
-    return <span className="text-xs text-neutral-400">No sentiments in scope.</span>;
-  }
-  const selectedSet = new Set(selected);
-  const allSelectedVisually = selected.length === 0;
-  function add(value: string) {
-    if (selectedSet.has(value)) return;
-    onChange([...selected, value]);
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {available.map((value) => {
-        const pressed = allSelectedVisually || selectedSet.has(value);
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => add(value)}
-            aria-pressed={pressed}
-            aria-label={`Filter by ${value}`}
-            className={cn(
-              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition",
-              pressed
-                ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
-                : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
-            )}
-          >
-            {value}
-          </button>
-        );
-      })}
-      {!allSelectedVisually && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className="ml-1 text-[11px] font-medium text-primary-600 hover:text-primary-700"
-        >
-          Clear
-        </button>
-      )}
     </div>
   );
 }

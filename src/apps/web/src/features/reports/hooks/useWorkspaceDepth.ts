@@ -22,6 +22,8 @@ export function useWorkspaceDepth(
   marketNames: readonly string[],
   audienceNames: readonly string[],
   trackerIds: readonly string[] = [],
+  sentimentValues: readonly string[] = [],
+  platformCodes: readonly string[] = [],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
@@ -29,6 +31,8 @@ export function useWorkspaceDepth(
   const marketKey = [...marketNames].sort().join(",");
   const audienceKey = [...audienceNames].sort().join(",");
   const trackerKey = [...trackerIds].sort().join(",");
+  const sentimentKey = [...sentimentValues].sort().join(",");
+  const platformKey = [...platformCodes].sort().join(",");
   return useQuery({
     queryKey: [
       "workspace-depth",
@@ -39,6 +43,8 @@ export function useWorkspaceDepth(
       marketKey,
       audienceKey,
       trackerKey,
+      sentimentKey,
+      platformKey,
     ],
     queryFn: () =>
       overviewApi.depth(
@@ -49,6 +55,8 @@ export function useWorkspaceDepth(
         marketNames,
         audienceNames,
         trackerIds,
+        sentimentValues,
+        platformCodes,
       ),
     placeholderData: keepPreviousData,
   });

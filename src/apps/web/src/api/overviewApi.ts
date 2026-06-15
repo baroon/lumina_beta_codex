@@ -28,6 +28,8 @@ function buildOverviewQuery(
   marketNames: readonly string[] = [],
   audienceNames: readonly string[] = [],
   trackerIds: readonly string[] = [],
+  sentimentValues: readonly string[] = [],
+  platformCodes: readonly string[] = [],
 ): string {
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from.toISOString());
@@ -39,6 +41,8 @@ function buildOverviewQuery(
   for (const name of marketNames) params.append("marketNames", name);
   for (const name of audienceNames) params.append("audienceNames", name);
   for (const id of trackerIds) params.append("trackerIds", id);
+  for (const value of sentimentValues) params.append("sentimentValues", value);
+  for (const code of platformCodes) params.append("platformCodes", code);
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -57,9 +61,11 @@ export const overviewApi = {
     marketNames: readonly string[],
     audienceNames: readonly string[],
     trackerIds: readonly string[] = [],
+    sentimentValues: readonly string[] = [],
+    platformCodes: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceOverviewDto>(
-      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
+      `/api/overview${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds, sentimentValues, platformCodes)}`,
     ),
   competitive: (
     range: DateRange,
@@ -69,9 +75,11 @@ export const overviewApi = {
     marketNames: readonly string[],
     audienceNames: readonly string[],
     trackerIds: readonly string[] = [],
+    sentimentValues: readonly string[] = [],
+    platformCodes: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceCompetitiveDto>(
-      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
+      `/api/overview/competitive${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds, sentimentValues, platformCodes)}`,
     ),
   depth: (
     range: DateRange,
@@ -81,9 +89,11 @@ export const overviewApi = {
     marketNames: readonly string[],
     audienceNames: readonly string[],
     trackerIds: readonly string[] = [],
+    sentimentValues: readonly string[] = [],
+    platformCodes: readonly string[] = [],
   ) =>
     apiClient.get<WorkspaceDepthDto>(
-      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds)}`,
+      `/api/overview/depth${buildOverviewQuery(range, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds, sentimentValues, platformCodes)}`,
     ),
   /**
    * Per-lens mention counts for the current window. Deliberately

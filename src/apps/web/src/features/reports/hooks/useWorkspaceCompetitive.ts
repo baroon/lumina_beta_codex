@@ -20,6 +20,8 @@ export function useWorkspaceCompetitive(
   marketNames: readonly string[],
   audienceNames: readonly string[],
   trackerIds: readonly string[] = [],
+  sentimentValues: readonly string[] = [],
+  platformCodes: readonly string[] = [],
 ) {
   const lensKey = [...lensCodes].sort().join(",");
   const topicKey = [...topicNames].sort().join(",");
@@ -27,6 +29,8 @@ export function useWorkspaceCompetitive(
   const marketKey = [...marketNames].sort().join(",");
   const audienceKey = [...audienceNames].sort().join(",");
   const trackerKey = [...trackerIds].sort().join(",");
+  const sentimentKey = [...sentimentValues].sort().join(",");
+  const platformKey = [...platformCodes].sort().join(",");
   return useQuery({
     queryKey: [
       "workspace-competitive",
@@ -37,6 +41,8 @@ export function useWorkspaceCompetitive(
       marketKey,
       audienceKey,
       trackerKey,
+      sentimentKey,
+      platformKey,
     ],
     queryFn: () =>
       overviewApi.competitive(
@@ -47,6 +53,8 @@ export function useWorkspaceCompetitive(
         marketNames,
         audienceNames,
         trackerIds,
+        sentimentValues,
+        platformCodes,
       ),
     placeholderData: keepPreviousData,
   });

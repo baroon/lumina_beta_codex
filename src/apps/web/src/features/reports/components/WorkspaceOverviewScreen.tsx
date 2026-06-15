@@ -57,6 +57,12 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { EntityScopeToggle, type EntityScope } from "@/components/molecules/EntityScopeToggle";
 import { REPORTS_COPY } from "@/content/reports";
+import {
+  InlineChipFilter,
+  PLATFORM_LABELS,
+  platformLabel,
+  SENTIMENT_ORDER,
+} from "@/features/reports/components/FilterChips";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
@@ -117,6 +123,16 @@ const ALL_LENS_CODES = [
   "CitationVisibility",
   "ContentGaps",
 ] as const;
+
+// Canonical platform-code set for the Models chip filter. Derived from
+// the shared PLATFORM_LABELS lookup so the FE knows every code we have
+// a friendly label for; future providers added on the BE before the FE
+// catalog catches up still render via the platformLabel fallback.
+// Unlike /prompts (which derives availability from the in-view prompt
+// set), /overview uses the canonical list directly — the overview data
+// aggregates across the workspace, so the alternative would require a
+// separate unfiltered count source.
+const AVAILABLE_PLATFORM_CODES: readonly string[] = Object.keys(PLATFORM_LABELS);
 
 // Stable per-entity palette. First tracked brand picks index 0 (primary
 // brand color); each subsequent entity rotates through.
@@ -219,6 +235,8 @@ export function WorkspaceOverviewScreen() {
   const [selectedProductNames, setSelectedProductNames] = useState<string[]>([]);
   const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
   const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>([]);
+  const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
   // Chart-granularity toggle (D/W/M). The BE returns per-scan points;
   // we re-bucket them FE-side in `TrendCard` via `bucketTrendPoints` so
   // flipping D/W/M is instant and doesn't refetch. Default = Week: the
@@ -245,6 +263,8 @@ export function WorkspaceOverviewScreen() {
     selectedMarketNames,
     selectedAudienceNames,
     trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
   );
   // Slice B + C data fetched separately so a failure in one doesn't
   // blank the whole page. Lifted out of the old wrapper components so
@@ -257,6 +277,8 @@ export function WorkspaceOverviewScreen() {
     selectedMarketNames,
     selectedAudienceNames,
     trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
   );
   const { data: depthData } = useWorkspaceDepth(
     range,
@@ -266,6 +288,8 @@ export function WorkspaceOverviewScreen() {
     selectedMarketNames,
     selectedAudienceNames,
     trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
   );
   // Per-lens mention counts for the chip in the LensSelector. Unscoped
   // from `selectedLensCodes` on purpose so the chip stays stable as the
@@ -375,6 +399,10 @@ export function WorkspaceOverviewScreen() {
       onSelectedAudienceNamesChange={setSelectedAudienceNames}
       audienceCountsByName={audienceCountsByName}
       trustSignalsByBrand={trustSignalsByBrand}
+      selectedSentiments={selectedSentiments}
+      onSelectedSentimentsChange={setSelectedSentiments}
+      selectedPlatformCodes={selectedPlatformCodes}
+      onSelectedPlatformCodesChange={setSelectedPlatformCodes}
       isRefreshing={isFetching && !isLoading}
     />
   );
@@ -1060,6 +1088,12 @@ interface ComparisonControlsRowProps {
   audienceCountsByName?: Readonly<Record<string, number>>;
   /** Workspace's trust signals grouped per brand — informational only. */
   trustSignalsByBrand: readonly BrandedDimensionGroupDto[];
+  /** Selected Sentiment enum values (Positive / Neutral / Mixed / Negative / Unknown). Empty = no filter. */
+  selectedSentiments: readonly string[];
+  onSelectedSentimentsChange: (next: string[]) => void;
+  /** Selected AI-platform codes (openai / claude / gemini / perplexity / …). Empty = no filter. */
+  selectedPlatformCodes: readonly string[];
+  onSelectedPlatformCodesChange: (next: string[]) => void;
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -1089,23 +1123,32 @@ function ComparisonControlsRow({
   onSelectedAudienceNamesChange,
   audienceCountsByName,
   trustSignalsByBrand,
+  selectedSentiments,
+  onSelectedSentimentsChange,
+  selectedPlatformCodes,
+  onSelectedPlatformCodesChange,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
-  // Coverage filters (Topics/Products/Markets/Audiences) drive the count
-  // badge on the Filters chip. Trust signals are informational and don't
-  // count. An "active" group is one with any selection — the empty
-  // sentinel means "all", which doesn't filter anything.
+  // Coverage filters (Topics/Products/Markets/Audiences + Sentiment +
+  // Models) drive the count badge on the Filters chip. Trust signals
+  // are informational and don't count. An "active" group is one with
+  // any selection — the empty sentinel means "all", which doesn't
+  // filter anything.
   const activeFilterCount =
     (selectedTopicNames.length > 0 ? 1 : 0) +
     (selectedProductNames.length > 0 ? 1 : 0) +
     (selectedMarketNames.length > 0 ? 1 : 0) +
-    (selectedAudienceNames.length > 0 ? 1 : 0);
+    (selectedAudienceNames.length > 0 ? 1 : 0) +
+    (selectedSentiments.length > 0 ? 1 : 0) +
+    (selectedPlatformCodes.length > 0 ? 1 : 0);
 
   function clearAllFilters() {
     onSelectedTopicNamesChange([]);
     onSelectedProductNamesChange([]);
     onSelectedMarketNamesChange([]);
     onSelectedAudienceNamesChange([]);
+    onSelectedSentimentsChange([]);
+    onSelectedPlatformCodesChange([]);
   }
 
   // Click handler for the lens chips' onActivate — scrolls to the
@@ -1179,6 +1222,23 @@ function ComparisonControlsRow({
               countsByName={audienceCountsByName}
             />
           </div>
+          <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
+            <InlineChipFilter
+              available={AVAILABLE_PLATFORM_CODES}
+              selected={selectedPlatformCodes}
+              onChange={onSelectedPlatformCodesChange}
+              labelFor={platformLabel}
+              emptyLabel="No models in scope."
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
+            <InlineChipFilter
+              available={SENTIMENT_ORDER}
+              selected={selectedSentiments}
+              onChange={onSelectedSentimentsChange}
+              emptyLabel="No sentiments in scope."
+            />
+          </FiltersPopoverRow>
           <FiltersPopoverRow label="Trust signals" variant="reference">
             <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
           </FiltersPopoverRow>
