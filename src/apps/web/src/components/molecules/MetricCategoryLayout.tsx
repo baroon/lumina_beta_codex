@@ -108,28 +108,15 @@ export function MetricCategoryLayout({
     return () => observer.disconnect();
   }, [sections, stickyHeight, stickyNav]);
 
-  // Mirror the active section in the URL hash for shareable deep links.
-  // The first section is treated as "effectively top of page" — when it's
-  // active we strip any hash from the URL instead of pinning it. That way:
-  //   - Initial load lands on /prompts, not /prompts#Discovery.
-  //   - Scrolling to the second section pins #BuyingIntent.
-  //   - Scrolling back to the first section clears the hash again.
-  // Inbound deep links still resolve because useState's lazy init has
-  // already consumed the inbound hash before this effect runs.
-  useEffect(() => {
-    if (!activeId || typeof window === "undefined") return;
-    const isFirstSection = sections[0]?.id === activeId;
-    const currentHash = window.location.hash.slice(1);
-    if (isFirstSection) {
-      if (currentHash) {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      }
-      return;
-    }
-    if (currentHash !== activeId) {
-      window.history.replaceState(null, "", `#${activeId}`);
-    }
-  }, [activeId, sections]);
+  // Inbound deep links (`/prompts#BuyingIntent`) still resolve because
+  // useState's lazy init above reads the hash on mount and uses it as
+  // the initial activeId. Outbound hash mirroring (writing the active
+  // section back to the URL as the user scrolls) is intentionally
+  // disabled — when it was on, every IntersectionObserver tick wrote
+  // via history.replaceState, and on /prompts that introduced a
+  // visible scroll-snap-back where the page jumped to whichever
+  // section had just been pinned mid-scroll. Cost / benefit didn't
+  // justify a URL that updates while you scroll.
 
   // Stable identity so callers passing this into props (e.g. `renderNav`)
   // don't trip the "ref access during render" lint when their callback is

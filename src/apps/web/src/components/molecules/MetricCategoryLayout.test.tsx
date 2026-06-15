@@ -74,14 +74,18 @@ describe("MetricCategoryLayout", () => {
     );
   });
 
-  it("clicking a pill updates the active section + URL hash", async () => {
+  it("clicking a pill updates the active section (does not write the URL hash mid-scroll)", async () => {
     render(<MetricCategoryLayout sections={SECTIONS} />);
     await userEvent.click(screen.getByRole("button", { name: "Sentiment & Trust" }));
     expect(screen.getByRole("button", { name: "Sentiment & Trust" })).toHaveAttribute(
       "aria-current",
       "true",
     );
-    expect(window.location.hash).toBe("#sentiment");
+    // Outbound hash mirroring is disabled — the URL stays at whatever
+    // the user navigated in with. Inbound deep links still resolve via
+    // useState's lazy init (covered by the "restores the active section
+    // from URL hash on mount" test above).
+    expect(window.location.hash).toBe("");
   });
 
   it("renders optional status and controls strips above the nav", () => {
