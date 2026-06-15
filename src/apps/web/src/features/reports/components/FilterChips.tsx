@@ -1,15 +1,18 @@
 import { cn } from "@/lib/utils";
 
-// Friendly display labels for AI platform codes. Falls back to the raw
-// code for any platform we don't have a label for yet (e.g. a future
-// provider added on the BE before the FE catalog catches up).
+// Friendly display labels for AI platform codes. Keys must match the
+// `AIPlatform.Code` values seeded in AIPlatformConfiguration (PascalCase).
+// Falls back to the raw code for any platform we don't have a label for
+// yet (e.g. a future provider added on the BE before the FE catalog
+// catches up).
 export const PLATFORM_LABELS: Readonly<Record<string, string>> = {
-  openai: "ChatGPT",
-  "chatgpt-search": "ChatGPT Search",
-  gemini: "Gemini",
-  claude: "Claude",
-  perplexity: "Perplexity",
-  grok: "Grok",
+  ChatGpt: "ChatGPT",
+  ChatGptSearch: "ChatGPT Search",
+  Gemini: "Gemini",
+  Claude: "Claude",
+  Grok: "Grok",
+  Perplexity: "Perplexity",
+  Copilot: "Copilot",
 };
 
 export function platformLabel(code: string): string {

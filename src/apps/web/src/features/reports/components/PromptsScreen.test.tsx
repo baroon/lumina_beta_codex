@@ -94,7 +94,7 @@ function row(overrides: Partial<WorkspacePromptRowDto>): WorkspacePromptRowDto {
     brandName: "Acme",
     scanCount: 3,
     lastScanAt: "2026-06-09T08:00:00Z",
-    platformCodes: ["openai"],
+    platformCodes: ["ChatGpt"],
     visibilityRate: 0.5,
     brandMentionCount: 4,
     dominantSentiment: "Positive",
@@ -231,7 +231,7 @@ describe("PromptsScreen", () => {
           trackerName: "Acme · US",
           brandName: "Acme",
           scanCount: 3,
-          platformCodes: ["openai"],
+          platformCodes: ["ChatGpt"],
         }),
       ]),
       isLoading: false,
@@ -244,7 +244,7 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("Resume builders")).toBeInTheDocument();
     expect(within(table).getByText("Acme")).toBeInTheDocument();
     expect(within(table).getByText("Acme · US")).toBeInTheDocument();
-    expect(within(table).getByText(/3 scans · openai/)).toBeInTheDocument();
+    expect(within(table).getByText(/3 scans · ChatGpt/)).toBeInTheDocument();
   });
 
   it("renders analytical columns (visibility, sentiment, mentions)", () => {
@@ -467,8 +467,8 @@ describe("PromptsScreen", () => {
   it("filters the table when a Models chip is selected, and clears with 'Clear all'", async () => {
     promptsState = {
       data: payload([
-        row({ promptId: "a", text: "ChatGPT-only prompt", platformCodes: ["openai"] }),
-        row({ promptId: "b", text: "Gemini-only prompt", platformCodes: ["gemini"] }),
+        row({ promptId: "a", text: "ChatGPT-only prompt", platformCodes: ["ChatGpt"] }),
+        row({ promptId: "b", text: "Gemini-only prompt", platformCodes: ["Gemini"] }),
       ]),
       isLoading: false,
       isError: false,
@@ -529,9 +529,9 @@ describe("PromptsScreen", () => {
   it("inline chip filters accumulate multi-selection and never unselect on a second click", async () => {
     promptsState = {
       data: payload([
-        row({ promptId: "a", text: "ChatGPT prompt", platformCodes: ["openai"] }),
-        row({ promptId: "b", text: "Gemini prompt", platformCodes: ["gemini"] }),
-        row({ promptId: "c", text: "Claude prompt", platformCodes: ["claude"] }),
+        row({ promptId: "a", text: "ChatGPT prompt", platformCodes: ["ChatGpt"] }),
+        row({ promptId: "b", text: "Gemini prompt", platformCodes: ["Gemini"] }),
+        row({ promptId: "c", text: "Claude prompt", platformCodes: ["Claude"] }),
       ]),
       isLoading: false,
       isError: false,

@@ -59,7 +59,6 @@ import { EntityScopeToggle, type EntityScope } from "@/components/molecules/Enti
 import { REPORTS_COPY } from "@/content/reports";
 import {
   InlineChipFilter,
-  PLATFORM_LABELS,
   platformLabel,
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
@@ -123,16 +122,6 @@ const ALL_LENS_CODES = [
   "CitationVisibility",
   "ContentGaps",
 ] as const;
-
-// Canonical platform-code set for the Models chip filter. Derived from
-// the shared PLATFORM_LABELS lookup so the FE knows every code we have
-// a friendly label for; future providers added on the BE before the FE
-// catalog catches up still render via the platformLabel fallback.
-// Unlike /prompts (which derives availability from the in-view prompt
-// set), /overview uses the canonical list directly — the overview data
-// aggregates across the workspace, so the alternative would require a
-// separate unfiltered count source.
-const AVAILABLE_PLATFORM_CODES: readonly string[] = Object.keys(PLATFORM_LABELS);
 
 // Stable per-entity palette. First tracked brand picks index 0 (primary
 // brand color); each subsequent entity rotates through.
@@ -355,15 +344,26 @@ export function WorkspaceOverviewScreen() {
     if (!depthData) return {};
     return Object.fromEntries(depthData.sentimentDistribution.map((s) => [s.sentiment, s.count]));
   }, [depthData]);
-  // Available chip lists are derived from the count maps — a value with
-  // zero (or missing) count is dropped entirely so the row stays clean.
-  // Same philosophy as /prompts (which derives availability from the
-  // in-view prompt set). Sentiments stay in canonical SENTIMENT_ORDER
-  // when present so the chip strip still reads as a Positive → Negative
-  // gradient.
+  // Available chip lists are derived from the data — a value with zero
+  // (or missing) count is dropped entirely so the row stays clean.
+  // Same philosophy as /prompts.
+  //
+  // Platform codes come from depthData.mentionsByPlatform directly
+  // (ordered by DisplayOrder via the BE). Crucially we do NOT filter
+  // against a hardcoded PLATFORM_LABELS keyset — the BE seeds platforms
+  // in PascalCase ("ChatGpt", "Claude" etc.), so the FE adapts to
+  // whatever codes the workspace actually has answers on.
+  // PLATFORM_LABELS still drives display labels via platformLabel with
+  // a raw-code fallback.
+  //
+  // Sentiments stay in canonical SENTIMENT_ORDER when present so the
+  // chip strip reads as a Positive → Negative gradient.
   const availablePlatformCodes = useMemo<string[]>(
-    () => AVAILABLE_PLATFORM_CODES.filter((code) => (platformCountsByCode[code] ?? 0) > 0),
-    [platformCountsByCode],
+    () =>
+      depthData
+        ? depthData.mentionsByPlatform.filter((p) => p.answerCount > 0).map((p) => p.platformCode)
+        : [],
+    [depthData],
   );
   const availableSentiments = useMemo<string[]>(
     () => SENTIMENT_ORDER.filter((value) => (sentimentCountsByValue[value] ?? 0) > 0),

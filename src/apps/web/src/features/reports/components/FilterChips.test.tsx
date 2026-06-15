@@ -5,8 +5,11 @@ import { InlineChipFilter, platformLabel, PLATFORM_LABELS, SENTIMENT_ORDER } fro
 
 describe("platformLabel", () => {
   it("returns the friendly label for known codes", () => {
-    expect(platformLabel("openai")).toBe(PLATFORM_LABELS.openai);
-    expect(platformLabel("claude")).toBe(PLATFORM_LABELS.claude);
+    // PLATFORM_LABELS keys mirror the BE AIPlatform.Code values
+    // (PascalCase). See AIPlatformConfiguration on the BE side.
+    expect(platformLabel("ChatGpt")).toBe(PLATFORM_LABELS.ChatGpt);
+    expect(platformLabel("Claude")).toBe(PLATFORM_LABELS.Claude);
+    expect(platformLabel("ChatGptSearch")).toBe(PLATFORM_LABELS.ChatGptSearch);
   });
 
   it("falls back to the raw code for unknown platforms", () => {
@@ -36,7 +39,7 @@ describe("InlineChipFilter", () => {
   it("renders every available value pressed when nothing is explicitly selected", () => {
     render(
       <InlineChipFilter
-        available={["openai", "claude"]}
+        available={["ChatGpt", "Claude"]}
         selected={[]}
         onChange={vi.fn()}
         labelFor={platformLabel}
@@ -57,7 +60,7 @@ describe("InlineChipFilter", () => {
     const onChange = vi.fn();
     render(
       <InlineChipFilter
-        available={["openai", "claude"]}
+        available={["ChatGpt", "Claude"]}
         selected={[]}
         onChange={onChange}
         labelFor={platformLabel}
@@ -65,30 +68,30 @@ describe("InlineChipFilter", () => {
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
-    expect(onChange).toHaveBeenCalledWith(["openai"]);
+    expect(onChange).toHaveBeenCalledWith(["ChatGpt"]);
   });
 
   it("adds to the selection on subsequent clicks (multi-select)", async () => {
     const onChange = vi.fn();
     render(
       <InlineChipFilter
-        available={["openai", "claude", "gemini"]}
-        selected={["openai"]}
+        available={["ChatGpt", "Claude", "Gemini"]}
+        selected={["ChatGpt"]}
         onChange={onChange}
         labelFor={platformLabel}
         emptyLabel="empty"
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: /Filter by Claude/i }));
-    expect(onChange).toHaveBeenCalledWith(["openai", "claude"]);
+    expect(onChange).toHaveBeenCalledWith(["ChatGpt", "Claude"]);
   });
 
   it("does NOT unselect on a second click of an already-selected chip", async () => {
     const onChange = vi.fn();
     render(
       <InlineChipFilter
-        available={["openai", "claude"]}
-        selected={["openai"]}
+        available={["ChatGpt", "Claude"]}
+        selected={["ChatGpt"]}
         onChange={onChange}
         labelFor={platformLabel}
         emptyLabel="empty"
@@ -101,20 +104,20 @@ describe("InlineChipFilter", () => {
   it("renders per-chip count badges when countsByValue is supplied", () => {
     render(
       <InlineChipFilter
-        available={["openai", "claude", "gemini"]}
+        available={["ChatGpt", "Claude", "Gemini"]}
         selected={[]}
         onChange={vi.fn()}
         labelFor={platformLabel}
         emptyLabel="empty"
-        countsByValue={{ openai: 12, claude: 3, gemini: 0 }}
+        countsByValue={{ ChatGpt: 12, Claude: 3, Gemini: 0 }}
       />,
     );
     const chatgpt = screen.getByRole("button", { name: /Filter by ChatGPT/i });
     expect(chatgpt).toHaveTextContent("ChatGPT");
     expect(chatgpt).toHaveTextContent("12");
     expect(screen.getByRole("button", { name: /Filter by Claude/i })).toHaveTextContent("3");
-    // Zero count still renders the badge (muted) — empty entries are
-    // honest signal, not hidden.
+    // Zero count still renders the badge (muted) — caller decides
+    // whether to filter the value out of `available` upstream.
     expect(screen.getByRole("button", { name: /Filter by Gemini/i })).toHaveTextContent("0");
   });
 
@@ -141,7 +144,7 @@ describe("InlineChipFilter", () => {
   it("omits count badges when countsByValue is not supplied", () => {
     render(
       <InlineChipFilter
-        available={["openai"]}
+        available={["ChatGpt"]}
         selected={[]}
         onChange={vi.fn()}
         labelFor={platformLabel}
@@ -158,7 +161,7 @@ describe("InlineChipFilter", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <InlineChipFilter
-        available={["openai", "claude"]}
+        available={["ChatGpt", "Claude"]}
         selected={[]}
         onChange={onChange}
         emptyLabel="empty"
@@ -168,8 +171,8 @@ describe("InlineChipFilter", () => {
 
     rerender(
       <InlineChipFilter
-        available={["openai", "claude"]}
-        selected={["openai"]}
+        available={["ChatGpt", "Claude"]}
+        selected={["ChatGpt"]}
         onChange={onChange}
         emptyLabel="empty"
       />,
