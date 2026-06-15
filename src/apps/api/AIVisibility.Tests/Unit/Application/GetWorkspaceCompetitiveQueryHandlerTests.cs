@@ -282,4 +282,68 @@ public class GetWorkspaceCompetitiveQueryHandlerTests
         matched.MentionDistribution.Sum(m => m.MentionCount).Should().BeGreaterThan(0);
         matched.TopDomains.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task PlatformFilter_RestrictsTheAnswerSet_AndDerivedSections()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // The fixture seeds all PromptRuns on "openai". A claude filter
+        // drops every answer (and every downstream section) because no
+        // run survives the AIPlatformId predicate.
+        var emptyFilter = await sut.Handle(
+            new GetWorkspaceCompetitiveQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "claude" }),
+            CancellationToken.None);
+        emptyFilter.TopDomains.Should().BeEmpty();
+        emptyFilter.MentionDistribution.Sum(m => m.MentionCount).Should().Be(0);
+
+        var matched = await sut.Handle(
+            new GetWorkspaceCompetitiveQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "openai" }),
+            CancellationToken.None);
+        matched.MentionDistribution.Sum(m => m.MentionCount).Should().BeGreaterThan(0);
+        matched.TopDomains.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task SentimentFilter_RestrictsMentionRollups_NotTheAnswerSet()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // All seeded mentions default to Sentiment.Unknown. A "Positive"
+        // filter drops the mention rollups but leaves the answer set
+        // intact, so TopDomains (citation-level) is unaffected while
+        // MentionDistribution + RecommendationRates collapse to zero.
+        var sentimentMiss = await sut.Handle(
+            new GetWorkspaceCompetitiveQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: new[] { "Positive" },
+                PlatformCodes: null),
+            CancellationToken.None);
+        sentimentMiss.MentionDistribution.Sum(m => m.MentionCount).Should().Be(0);
+        sentimentMiss.RecommendationRates.Sum(r => r.MentionCount).Should().Be(0);
+        // Citations are scoped to the answer set, not narrowed by sentiment.
+        sentimentMiss.TopDomains.Should().NotBeEmpty();
+
+        var sentimentHit = await sut.Handle(
+            new GetWorkspaceCompetitiveQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: new[] { "Unknown" },
+                PlatformCodes: null),
+            CancellationToken.None);
+        sentimentHit.MentionDistribution.Sum(m => m.MentionCount).Should().BeGreaterThan(0);
+    }
 }

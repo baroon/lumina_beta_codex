@@ -260,4 +260,76 @@ public class GetWorkspaceDepthQueryHandlerTests
         long_.AnswerSnippet.Should().EndWith("…");
         long_.AnswerSnippet.Length.Should().BeLessOrEqualTo(201);
     }
+
+    [Fact]
+    public async Task PlatformFilter_RestrictsTheRunsAndBrandMentions()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Filter to gemini only: the openai answers (2 of 3) drop out via
+        // the runs query's AIPlatformId predicate, leaving Gemini's
+        // single Acme answer with its single brand mention.
+        var geminiOnly = await sut.Handle(
+            new GetWorkspaceDepthQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "gemini" }),
+            CancellationToken.None);
+
+        geminiOnly.MentionsByPlatform.Should().ContainSingle();
+        var gemini = geminiOnly.MentionsByPlatform.Single();
+        gemini.PlatformCode.Should().Be("gemini");
+        gemini.AnswerCount.Should().Be(1);
+        gemini.BrandMentionCount.Should().Be(1);
+
+        // Filtering to a platform the workspace doesn't use drops every
+        // run and yields an empty depth payload.
+        var empty = await sut.Handle(
+            new GetWorkspaceDepthQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "claude" }),
+            CancellationToken.None);
+        empty.MentionsByPlatform.Should().BeEmpty();
+        empty.SentimentDistribution.Should().BeEmpty();
+        empty.RecentChats.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SentimentFilter_RestrictsBrandMentions_NotTheAnswerSet()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Seeded brand mentions: Positive x2 + Negative x1. Filtering to
+        // Positive narrows the brandMentions query but the runs (and
+        // therefore the per-platform answer counts) stay intact.
+        var positiveOnly = await sut.Handle(
+            new GetWorkspaceDepthQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: new[] { "Positive" },
+                PlatformCodes: null),
+            CancellationToken.None);
+
+        // SentimentDistribution narrows to just Positive (2 mentions).
+        positiveOnly.SentimentDistribution.Should().ContainSingle()
+            .Which.Sentiment.Should().Be("Positive");
+        positiveOnly.SentimentDistribution.Single().Count.Should().Be(2);
+
+        // Per-platform answer counts stay the same (filter is mention-
+        // level, not answer-level), but BrandMentionCount drops because
+        // some answers' brand mentions got filtered out.
+        var openai = positiveOnly.MentionsByPlatform.Single(p => p.PlatformCode == "openai");
+        openai.AnswerCount.Should().Be(2);
+        openai.BrandMentionCount.Should().Be(2); // both openai brand mentions are Positive
+
+        // RecentChats list is answer-scoped; not narrowed by sentiment.
+        positiveOnly.RecentChats.Should().HaveCount(3);
+    }
 }

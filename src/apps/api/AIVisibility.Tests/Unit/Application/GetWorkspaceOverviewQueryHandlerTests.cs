@@ -844,4 +844,78 @@ public class GetWorkspaceOverviewQueryHandlerTests
         withNull.ScanCount.Should().Be(4);
         withEmpty.ScanCount.Should().Be(4);
     }
+
+    [Fact]
+    public async Task PlatformFilter_NarrowsHero_PromptRunSource()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // The seed runs every PromptRun on "openai" — filtering to
+        // "claude" drops every run from the hero source and collapses
+        // every count to zero. ScanCount is window-derived (not
+        // platform-narrowed), so it stays at 4.
+        var claude = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "claude" }),
+            CancellationToken.None);
+        claude.ScanCount.Should().Be(4);
+        claude.Hero.Queries.Should().Be(0);
+        claude.Hero.Mentions.Should().Be(0);
+        claude.Hero.BrandMentionRate.Should().BeNull();
+
+        // Filtering to the seeded platform matches everything.
+        var openai = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: null,
+                PlatformCodes: new[] { "openai" }),
+            CancellationToken.None);
+        openai.Hero.Queries.Should().Be(4);
+        openai.Hero.Mentions.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task SentimentFilter_NarrowsHero_MentionsButNotAnswerSet()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+        var sut = NewHandler(ctx);
+
+        // Brand mentions are seeded with Sentiment.Positive; competitor
+        // mentions with Sentiment.Neutral. Filtering to Positive should
+        // keep brand mentions (3) and drop competitor mentions, so
+        // Hero.Mentions = 3 and BrandMentionRate is unchanged (the
+        // brand-mentioned answer set is built from the same Positive
+        // mentions). Queries (PromptRun count) is unaffected.
+        var positive = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: new[] { "Positive" },
+                PlatformCodes: null),
+            CancellationToken.None);
+        positive.Hero.Queries.Should().Be(4);
+        positive.Hero.Mentions.Should().Be(3);
+        positive.Hero.BrandMentionRate.Should().BeApproximately(3.0 / 4.0, 1e-9);
+
+        // Filtering to Neutral keeps competitor mentions (3) and drops
+        // brand mentions, so Hero.Mentions = 3 again but
+        // BrandMentionRate = 0 (no Neutral brand mentions).
+        var neutral = await sut.Handle(
+            new GetWorkspaceOverviewQuery(
+                DateTime.UtcNow.AddDays(-30), null, null, null, null, null, null,
+                TrackerIds: null,
+                SentimentValues: new[] { "Neutral" },
+                PlatformCodes: null),
+            CancellationToken.None);
+        neutral.Hero.Queries.Should().Be(4);
+        neutral.Hero.Mentions.Should().Be(3);
+        neutral.Hero.BrandMentionRate.Should().Be(0.0);
+    }
 }
