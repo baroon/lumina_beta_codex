@@ -54,6 +54,13 @@ interface InlineChipFilterProps {
   emptyLabel: string;
   /** Aria-label prefix on each chip (e.g. "Filter by"). */
   ariaLabelPrefix?: string;
+  /**
+   * Optional per-value count map. When provided, each chip gets a small
+   * trailing badge with the count (styled to match the `MentionChip` in
+   * TopicSelector etc.). A value with count 0 renders the badge in a
+   * muted neutral tint so empty entries read as "nothing in scope".
+   */
+  countsByValue?: Readonly<Record<string, number>>;
 }
 
 export function InlineChipFilter({
@@ -63,6 +70,7 @@ export function InlineChipFilter({
   labelFor = (v) => v,
   emptyLabel,
   ariaLabelPrefix = "Filter by",
+  countsByValue,
 }: InlineChipFilterProps) {
   if (available.length === 0) {
     return <span className="text-xs text-neutral-400">{emptyLabel}</span>;
@@ -78,6 +86,7 @@ export function InlineChipFilter({
       {available.map((value) => {
         const label = labelFor(value);
         const pressed = allSelectedVisually || selectedSet.has(value);
+        const count = countsByValue?.[value];
         return (
           <button
             key={value}
@@ -92,7 +101,23 @@ export function InlineChipFilter({
                 : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
             )}
           >
-            {label}
+            <span>{label}</span>
+            {count !== undefined && (
+              <span
+                aria-hidden
+                title={`${count} in this window`}
+                className={cn(
+                  "ml-1 inline-flex shrink-0 items-center rounded-full px-1.5 py-0 text-[10px] font-semibold tabular-nums",
+                  count === 0
+                    ? "bg-neutral-100 text-neutral-400"
+                    : pressed
+                      ? "bg-primary-100 text-primary-700"
+                      : "bg-neutral-100 text-neutral-600",
+                )}
+              >
+                {count}
+              </span>
+            )}
           </button>
         );
       })}

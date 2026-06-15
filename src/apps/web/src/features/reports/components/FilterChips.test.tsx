@@ -98,6 +98,42 @@ describe("InlineChipFilter", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("renders per-chip count badges when countsByValue is supplied", () => {
+    render(
+      <InlineChipFilter
+        available={["openai", "claude", "gemini"]}
+        selected={[]}
+        onChange={vi.fn()}
+        labelFor={platformLabel}
+        emptyLabel="empty"
+        countsByValue={{ openai: 12, claude: 3, gemini: 0 }}
+      />,
+    );
+    const chatgpt = screen.getByRole("button", { name: /Filter by ChatGPT/i });
+    expect(chatgpt).toHaveTextContent("ChatGPT");
+    expect(chatgpt).toHaveTextContent("12");
+    expect(screen.getByRole("button", { name: /Filter by Claude/i })).toHaveTextContent("3");
+    // Zero count still renders the badge (muted) — empty entries are
+    // honest signal, not hidden.
+    expect(screen.getByRole("button", { name: /Filter by Gemini/i })).toHaveTextContent("0");
+  });
+
+  it("omits count badges when countsByValue is not supplied", () => {
+    render(
+      <InlineChipFilter
+        available={["openai"]}
+        selected={[]}
+        onChange={vi.fn()}
+        labelFor={platformLabel}
+        emptyLabel="empty"
+      />,
+    );
+    // Chip contains only the label, no trailing digit.
+    expect(screen.getByRole("button", { name: /Filter by ChatGPT/i })).toHaveTextContent(
+      /^ChatGPT$/,
+    );
+  });
+
   it("renders the Clear link only when non-empty, and resets on click", async () => {
     const onChange = vi.fn();
     const { rerender } = render(

@@ -331,6 +331,23 @@ export function WorkspaceOverviewScreen() {
   const marketsByBrand = discoverySummary?.markets ?? EMPTY_GROUPS;
   const audiencesByBrand = discoverySummary?.audiences ?? EMPTY_GROUPS;
   const trustSignalsByBrand = discoverySummary?.trustSignals ?? EMPTY_GROUPS;
+  // Per-platform + per-sentiment counts for the chip badges next to the
+  // Models / Sentiment filter rows. Sourced from depthData which is
+  // already filtered by every selection — so the badges reflect the
+  // *currently filtered* slice rather than unfiltered totals. That's
+  // less precise than the dropdown-selector chip counts (which use
+  // dedicated unfiltered endpoints), but adding parallel endpoints
+  // here is more BE work than the affordance is worth right now.
+  const platformCountsByCode = useMemo<Record<string, number>>(() => {
+    if (!depthData) return {};
+    return Object.fromEntries(
+      depthData.mentionsByPlatform.map((p) => [p.platformCode, p.brandMentionCount]),
+    );
+  }, [depthData]);
+  const sentimentCountsByValue = useMemo<Record<string, number>>(() => {
+    if (!depthData) return {};
+    return Object.fromEntries(depthData.sentimentDistribution.map((s) => [s.sentiment, s.count]));
+  }, [depthData]);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -401,8 +418,10 @@ export function WorkspaceOverviewScreen() {
       trustSignalsByBrand={trustSignalsByBrand}
       selectedSentiments={selectedSentiments}
       onSelectedSentimentsChange={setSelectedSentiments}
+      sentimentCountsByValue={sentimentCountsByValue}
       selectedPlatformCodes={selectedPlatformCodes}
       onSelectedPlatformCodesChange={setSelectedPlatformCodes}
+      platformCountsByCode={platformCountsByCode}
       isRefreshing={isFetching && !isLoading}
     />
   );
@@ -1091,9 +1110,13 @@ interface ComparisonControlsRowProps {
   /** Selected Sentiment enum values (Positive / Neutral / Mixed / Negative / Unknown). Empty = no filter. */
   selectedSentiments: readonly string[];
   onSelectedSentimentsChange: (next: string[]) => void;
+  /** Per-sentiment count map for the chip badges. Sourced from filtered depth data — see WorkspaceOverviewScreen for the gotcha. */
+  sentimentCountsByValue?: Readonly<Record<string, number>>;
   /** Selected AI-platform codes (openai / claude / gemini / perplexity / …). Empty = no filter. */
   selectedPlatformCodes: readonly string[];
   onSelectedPlatformCodesChange: (next: string[]) => void;
+  /** Per-platform count map for the chip badges. Same source + gotcha as sentimentCountsByValue. */
+  platformCountsByCode?: Readonly<Record<string, number>>;
   /** True while a new date range is fetching (placeholderData kept the
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
@@ -1125,8 +1148,10 @@ function ComparisonControlsRow({
   trustSignalsByBrand,
   selectedSentiments,
   onSelectedSentimentsChange,
+  sentimentCountsByValue,
   selectedPlatformCodes,
   onSelectedPlatformCodesChange,
+  platformCountsByCode,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
   // Coverage filters (Topics/Products/Markets/Audiences + Sentiment +
@@ -1229,6 +1254,7 @@ function ComparisonControlsRow({
               onChange={onSelectedPlatformCodesChange}
               labelFor={platformLabel}
               emptyLabel="No models in scope."
+              countsByValue={platformCountsByCode}
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
@@ -1237,6 +1263,7 @@ function ComparisonControlsRow({
               selected={selectedSentiments}
               onChange={onSelectedSentimentsChange}
               emptyLabel="No sentiments in scope."
+              countsByValue={sentimentCountsByValue}
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Trust signals" variant="reference">

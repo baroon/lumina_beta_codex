@@ -210,6 +210,18 @@ export function PromptsScreen() {
     return Array.from(set).sort((a, b) => platformLabel(a).localeCompare(platformLabel(b)));
   }, [prompts.data]);
 
+  // Per-platform prompt counts feed the chip badges next to each Models
+  // chip. Each prompt counts once per platform it ran on (set semantics
+  // via `platformCodes`).
+  const promptCountsByPlatformCode = useMemo<Record<string, number>>(() => {
+    if (!prompts.data) return {};
+    const counts: Record<string, number> = {};
+    for (const p of prompts.data.prompts) {
+      for (const c of p.platformCodes) counts[c] = (counts[c] ?? 0) + 1;
+    }
+    return counts;
+  }, [prompts.data]);
+
   // Distinct dominantSentiment values across the unfiltered prompt set,
   // ordered canonically (Positive → Neutral → Mixed → Negative → Unknown)
   // so the chip strip reads as a sentiment gradient. Rows with null
@@ -221,6 +233,20 @@ export function PromptsScreen() {
       if (p.dominantSentiment != null) present.add(p.dominantSentiment);
     }
     return SENTIMENT_ORDER.filter((s) => present.has(s));
+  }, [prompts.data]);
+
+  // Per-sentiment prompt counts feed the chip badges next to each
+  // Sentiment chip. Only prompts with a measured dominantSentiment
+  // contribute; null-sentiment rows are excluded.
+  const promptCountsBySentiment = useMemo<Record<string, number>>(() => {
+    if (!prompts.data) return {};
+    const counts: Record<string, number> = {};
+    for (const p of prompts.data.prompts) {
+      if (p.dominantSentiment != null) {
+        counts[p.dominantSentiment] = (counts[p.dominantSentiment] ?? 0) + 1;
+      }
+    }
+    return counts;
   }, [prompts.data]);
 
   // Per-lens prompt counts feed both the lens chip badges and the
@@ -375,6 +401,7 @@ export function PromptsScreen() {
               onChange={setSelectedPlatformCodes}
               labelFor={platformLabel}
               emptyLabel="No models in scope."
+              countsByValue={promptCountsByPlatformCode}
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
@@ -383,6 +410,7 @@ export function PromptsScreen() {
               selected={selectedSentiments}
               onChange={setSelectedSentiments}
               emptyLabel="No sentiments in scope."
+              countsByValue={promptCountsBySentiment}
             />
           </FiltersPopoverRow>
         </FiltersPopover>
