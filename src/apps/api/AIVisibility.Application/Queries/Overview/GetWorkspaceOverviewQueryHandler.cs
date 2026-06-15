@@ -40,6 +40,13 @@ public class GetWorkspaceOverviewQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
+        // Sentiment + Platform filter resolution — present so the API
+        // surface is in place; not yet applied to the underlying queries
+        // (deliberate scope split — predicate wiring lands in a follow-up).
+        var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
+        var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
+        _ = sentimentFilter;
+        _ = platformIdFilter;
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -939,6 +946,45 @@ public class GetWorkspaceOverviewQueryHandler
             .Where(a => names.Contains(a.Name)
                 && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
             .Select(a => a.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    /// <summary>
+    /// Resolve Sentiment-enum names ("Positive" / "Neutral" / etc.) to a
+    /// HashSet of the enum values. Null / empty input ⇒ null out, meaning
+    /// "no sentiment filter". Unknown strings are dropped silently — the
+    /// FE shouldn't be able to send them, but a stale URL link or typo
+    /// shouldn't 500 the API. Pure (no DB hit).
+    /// </summary>
+    private static HashSet<Sentiment>? ResolveSentimentSet(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Count == 0) return null;
+        var set = new HashSet<Sentiment>();
+        foreach (var v in values)
+        {
+            if (Enum.TryParse<Sentiment>(v, ignoreCase: false, out var parsed))
+            {
+                set.Add(parsed);
+            }
+        }
+        return set;
+    }
+
+    /// <summary>
+    /// Resolve AIPlatform.Code strings ("openai" / "claude" / "gemini" /
+    /// "perplexity" / etc.) to a HashSet of AIPlatform.Id. Null / empty
+    /// input ⇒ null out, meaning "no platform filter". Codes that don't
+    /// match a platform row are dropped silently for the same reason as
+    /// {@link ResolveSentimentSet}.
+    /// </summary>
+    private async Task<HashSet<Guid>?> ResolvePlatformIdSetAsync(
+        IReadOnlyList<string>? codes, CancellationToken ct)
+    {
+        if (codes is null || codes.Count == 0) return null;
+        var ids = await _db.AIPlatforms.AsNoTracking()
+            .Where(p => codes.Contains(p.Code))
+            .Select(p => p.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }

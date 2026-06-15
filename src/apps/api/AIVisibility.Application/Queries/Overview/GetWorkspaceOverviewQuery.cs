@@ -30,7 +30,24 @@ public record GetWorkspaceOverviewQuery(
     /// (intersected with workspace membership for safety) are included.
     /// Drives the FE TrackerSelector's `?trackers=` URL param.
     /// </summary>
-    IReadOnlyList<Guid>? TrackerIds = null) : IRequest<WorkspaceOverviewDto>;
+    IReadOnlyList<Guid>? TrackerIds = null,
+    /// <summary>
+    /// Optional Sentiment-enum filter — when null or empty, no sentiment
+    /// predicate is applied. When non-empty, only Mentions whose
+    /// <c>Sentiment</c> is in the set count toward Mention-derived metrics
+    /// (Hero counts that aggregate mentions, brand attribute rollups, risk
+    /// flags, etc.). Values are the enum names: "Positive" / "Neutral" /
+    /// "Mixed" / "Negative" / "Unknown". Unknown values are dropped silently.
+    /// </summary>
+    IReadOnlyList<string>? SentimentValues = null,
+    /// <summary>
+    /// Optional AI-platform filter (Mention/PromptRun grain) — when null or
+    /// empty, no platform predicate is applied. When non-empty, only
+    /// PromptRuns whose <c>AIPlatform.Code</c> is in the set count toward
+    /// the metrics. Values are the BE platform codes: "openai", "claude",
+    /// "gemini", "perplexity", etc. Unknown codes are dropped silently.
+    /// </summary>
+    IReadOnlyList<string>? PlatformCodes = null) : IRequest<WorkspaceOverviewDto>;
 
 public sealed record WorkspaceOverviewDto(
     Guid WorkspaceId,

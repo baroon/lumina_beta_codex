@@ -23,7 +23,11 @@ public record GetWorkspaceCompetitiveQuery(
     /// <summary>
     /// Optional tracker-scope filter — see <see cref="GetWorkspaceOverviewQuery.TrackerIds"/>.
     /// </summary>
-    IReadOnlyList<Guid>? TrackerIds = null)
+    IReadOnlyList<Guid>? TrackerIds = null,
+    /// <summary>Optional Sentiment-enum filter — see <see cref="GetWorkspaceOverviewQuery.SentimentValues"/>.</summary>
+    IReadOnlyList<string>? SentimentValues = null,
+    /// <summary>Optional AI-platform filter — see <see cref="GetWorkspaceOverviewQuery.PlatformCodes"/>.</summary>
+    IReadOnlyList<string>? PlatformCodes = null)
     : IRequest<WorkspaceCompetitiveDto>;
 
 public sealed record WorkspaceCompetitiveDto(

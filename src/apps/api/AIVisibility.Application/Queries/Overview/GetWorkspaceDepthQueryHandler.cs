@@ -88,6 +88,13 @@ public class GetWorkspaceDepthQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
+        // Sentiment + Platform resolution — API surface only; predicate
+        // wiring lands in a follow-up. See the matching note in
+        // GetWorkspaceOverviewQueryHandler.
+        var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
+        var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
+        _ = sentimentFilter;
+        _ = platformIdFilter;
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -417,6 +424,33 @@ public class GetWorkspaceDepthQueryHandler
             .Where(a => names.Contains(a.Name)
                 && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
             .Select(a => a.Id)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    /// <summary>Sentiment-enum names → HashSet&lt;Sentiment&gt;. Mirrors the Overview handler.</summary>
+    private static HashSet<Sentiment>? ResolveSentimentSet(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Count == 0) return null;
+        var set = new HashSet<Sentiment>();
+        foreach (var v in values)
+        {
+            if (Enum.TryParse<Sentiment>(v, ignoreCase: false, out var parsed))
+            {
+                set.Add(parsed);
+            }
+        }
+        return set;
+    }
+
+    /// <summary>AIPlatform.Code → HashSet&lt;Guid&gt;. Mirrors the Overview handler.</summary>
+    private async Task<HashSet<Guid>?> ResolvePlatformIdSetAsync(
+        IReadOnlyList<string>? codes, CancellationToken ct)
+    {
+        if (codes is null || codes.Count == 0) return null;
+        var ids = await _db.AIPlatforms.AsNoTracking()
+            .Where(p => codes.Contains(p.Code))
+            .Select(p => p.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();
     }
