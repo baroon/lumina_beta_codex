@@ -1146,38 +1146,39 @@ function ComparisonControlsRow({
       <div className="ml-auto flex flex-wrap items-center gap-1.5">
         <EntityScopeToggle value={entityScope} onChange={onEntityScopeChange} />
         <FiltersPopover activeCount={activeFilterCount} onClearAll={clearAllFilters}>
-          <FiltersPopoverRow label="Topics" active={selectedTopicNames.length > 0}>
+          {/* Trigger-pill selectors collapsed into a single flex-wrap
+              group — each pill already names the dimension, so per-row
+              labels + dividers were just repeating the same info. */}
+          <div
+            role="group"
+            aria-label="Discovery filters"
+            className="flex flex-wrap items-center gap-1.5 px-2 py-1"
+          >
             <TopicSelector
               topicsByBrand={topicsByBrand}
               selectedNames={selectedTopicNames}
               onChange={onSelectedTopicNamesChange}
               countsByName={topicCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Products & Services" active={selectedProductNames.length > 0}>
             <ProductSelector
               productsByBrand={productsByBrand}
               selectedNames={selectedProductNames}
               onChange={onSelectedProductNamesChange}
               countsByName={productCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Markets" active={selectedMarketNames.length > 0}>
             <MarketSelector
               marketsByBrand={marketsByBrand}
               selectedNames={selectedMarketNames}
               onChange={onSelectedMarketNamesChange}
               countsByName={marketCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Audiences" active={selectedAudienceNames.length > 0}>
             <AudienceSelector
               audiencesByBrand={audiencesByBrand}
               selectedNames={selectedAudienceNames}
               onChange={onSelectedAudienceNamesChange}
               countsByName={audienceCountsByName}
             />
-          </FiltersPopoverRow>
+          </div>
           <FiltersPopoverRow label="Trust signals" variant="reference">
             <TrustSignalsPill trustSignalsByBrand={trustSignalsByBrand} />
           </FiltersPopoverRow>

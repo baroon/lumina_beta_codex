@@ -123,7 +123,10 @@ export function FiltersPopover({
               </button>
             </div>
           </div>
-          <div className="space-y-2 p-2">{children}</div>
+          {/* Rows own their own vertical spacing via py-1 + a top-border
+              divider, so no `space-y-*` here — adding one stacks gaps
+              with the divider and bloats the panel. */}
+          <div className="p-2">{children}</div>
         </div>
       )}
     </div>
@@ -147,9 +150,15 @@ interface FiltersPopoverRowProps {
 }
 
 /**
- * Labeled row inside a FiltersPopover. The label stacks above the
- * selector so each row reads cleanly even when the selector trigger
- * has its own count text.
+ * Labelled row inside a FiltersPopover. Drives selectors whose chips
+ * show individual values (not the dimension name) — e.g. Models or
+ * Sentiment, where the row label is the only place the dimension is
+ * named. Trigger-pill selectors that already carry the dimension name
+ * inside their pill should NOT use this wrapper; they should sit
+ * together in a single flex group at the top of the popover.
+ *
+ * Renders with a top divider so adjacent rows read as separate
+ * groupings.
  */
 export function FiltersPopoverRow({
   label,
@@ -175,7 +184,20 @@ export function FiltersPopoverRow({
     );
   }
   return (
-    <div className="rounded-md px-2 py-1.5 transition-colors hover:bg-neutral-50/60">
+    <div
+      role="group"
+      aria-label={label}
+      className={cn(
+        "rounded-md px-2 py-1 transition-colors hover:bg-neutral-50/60",
+        // Top divider on every row so adjacent groups read as separate
+        // sections without needing a header on each. Hosts typically
+        // render labelled rows after a sibling element (a flex group
+        // of trigger pills) so the top border serves as the divider
+        // between groups; standalone usage gets a faint inner divider
+        // 8px below the panel header which still reads correctly.
+        "border-t border-neutral-100",
+      )}
+    >
       <div
         className={cn(
           "mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide",

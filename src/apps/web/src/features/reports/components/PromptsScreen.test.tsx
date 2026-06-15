@@ -427,6 +427,74 @@ describe("PromptsScreen", () => {
   });
 
   // -------------------------------------------------------------------
+  // Sentiment filter — inline chip strip in the FiltersPopover, mirrors
+  // the Models filter shape but keyed off the row's dominantSentiment.
+  // -------------------------------------------------------------------
+
+  it("filters the table when a Sentiment chip is selected, and clears with 'Clear all'", async () => {
+    promptsState = {
+      data: payload([
+        row({ promptId: "a", text: "Positive prompt", dominantSentiment: "Positive" }),
+        row({ promptId: "b", text: "Negative prompt", dominantSentiment: "Negative" }),
+        row({ promptId: "c", text: "Unmeasured prompt", dominantSentiment: null }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    expect(screen.getByText("Positive prompt")).toBeInTheDocument();
+    expect(screen.getByText("Negative prompt")).toBeInTheDocument();
+    expect(screen.getByText("Unmeasured prompt")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Filter by Positive/i }));
+
+    expect(screen.getByText("Positive prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Negative prompt")).not.toBeInTheDocument();
+    // Prompts with no measured sentiment are filtered out when a sentiment
+    // filter is active — they don't claim a sentiment to match against.
+    expect(screen.queryByText("Unmeasured prompt")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Clear all/i }));
+    expect(screen.getByText("Positive prompt")).toBeInTheDocument();
+    expect(screen.getByText("Negative prompt")).toBeInTheDocument();
+    expect(screen.getByText("Unmeasured prompt")).toBeInTheDocument();
+  });
+
+  it("inline chip filters accumulate multi-selection and never unselect on a second click", async () => {
+    promptsState = {
+      data: payload([
+        row({ promptId: "a", text: "ChatGPT prompt", platformCodes: ["openai"] }),
+        row({ promptId: "b", text: "Gemini prompt", platformCodes: ["gemini"] }),
+        row({ promptId: "c", text: "Claude prompt", platformCodes: ["claude"] }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
+
+    // First click narrows: pick ChatGPT → only ChatGPT row visible.
+    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
+    expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Gemini prompt")).not.toBeInTheDocument();
+    expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
+
+    // Second click ADDS to the selection (multi-select), it does NOT
+    // replace. Both ChatGPT and Gemini rows should now be visible.
+    await userEvent.click(screen.getByRole("button", { name: /Filter by Gemini/i }));
+    expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
+    expect(screen.getByText("Gemini prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
+
+    // Clicking an already-selected chip is a no-op (don't-unselect rule).
+    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
+    expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
+    expect(screen.getByText("Gemini prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
   // Markets filter — proxies for Products / Audiences too since all three
   // share the same intersection + selector wiring. Exercises the full
   // path: discoverySummary → MarketSelector → row filter.

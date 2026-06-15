@@ -85,6 +85,12 @@ function platformLabel(code: string): string {
   return PLATFORM_LABELS[code] ?? code;
 }
 
+// Canonical order of the dominantSentiment values from the BE Sentiment
+// enum. Drives the Sentiment chip-filter row so the user sees the
+// values in a stable gradient (positive → negative) regardless of
+// which subset is present in the current scope.
+const SENTIMENT_ORDER: readonly string[] = ["Positive", "Neutral", "Mixed", "Negative", "Unknown"];
+
 type SortKey = "default" | "visibility" | "mentions" | "scans" | "lastScan";
 type SortDir = "asc" | "desc";
 
@@ -110,6 +116,7 @@ export function PromptsScreen() {
   const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
   const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
   const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("default");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -176,6 +183,15 @@ export function PromptsScreen() {
       const platformSet = new Set(selectedPlatformCodes);
       rows = rows.filter((r) => r.platformCodes.some((c) => platformSet.has(c)));
     }
+    if (selectedSentiments.length > 0) {
+      // Sentiment narrows to rows whose dominantSentiment matches one of
+      // the selected values. Rows with no measured sentiment (null) are
+      // excluded — they have nothing to match against.
+      const sentimentSet = new Set(selectedSentiments);
+      rows = rows.filter(
+        (r) => r.dominantSentiment != null && sentimentSet.has(r.dominantSentiment),
+      );
+    }
     if (query.trim() !== "") {
       rows = filterRows(rows, query);
     }
@@ -188,6 +204,7 @@ export function PromptsScreen() {
     selectedMarketNames,
     selectedAudienceNames,
     selectedPlatformCodes,
+    selectedSentiments,
     query,
   ]);
 
@@ -199,6 +216,19 @@ export function PromptsScreen() {
     const set = new Set<string>();
     for (const p of prompts.data.prompts) for (const c of p.platformCodes) set.add(c);
     return Array.from(set).sort((a, b) => platformLabel(a).localeCompare(platformLabel(b)));
+  }, [prompts.data]);
+
+  // Distinct dominantSentiment values across the unfiltered prompt set,
+  // ordered canonically (Positive → Neutral → Mixed → Negative → Unknown)
+  // so the chip strip reads as a sentiment gradient. Rows with null
+  // sentiment (no measured mentions) don't contribute a chip.
+  const availableSentiments = useMemo<string[]>(() => {
+    if (!prompts.data) return [];
+    const present = new Set<string>();
+    for (const p of prompts.data.prompts) {
+      if (p.dominantSentiment != null) present.add(p.dominantSentiment);
+    }
+    return SENTIMENT_ORDER.filter((s) => present.has(s));
   }, [prompts.data]);
 
   // Per-lens prompt counts feed both the lens chip badges and the
@@ -265,7 +295,8 @@ export function PromptsScreen() {
     (selectedProductNames.length > 0 ? 1 : 0) +
     (selectedMarketNames.length > 0 ? 1 : 0) +
     (selectedAudienceNames.length > 0 ? 1 : 0) +
-    (selectedPlatformCodes.length > 0 ? 1 : 0);
+    (selectedPlatformCodes.length > 0 ? 1 : 0) +
+    (selectedSentiments.length > 0 ? 1 : 0);
 
   const controlsStrip = (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
@@ -297,45 +328,57 @@ export function PromptsScreen() {
             setSelectedMarketNames([]);
             setSelectedAudienceNames([]);
             setSelectedPlatformCodes([]);
+            setSelectedSentiments([]);
           }}
         >
-          <FiltersPopoverRow label="Topics" active={selectedTopicNames.length > 0}>
+          {/* Trigger-pill selectors live in one flex-wrap group — each
+              pill already carries the dimension name ("12 topics", "5
+              markets", etc.), so a per-row label + divider would only
+              repeat the same information. Models and Sentiment below
+              keep their own rows because their chips show individual
+              values without the dimension name. */}
+          <div
+            role="group"
+            aria-label="Discovery filters"
+            className="flex flex-wrap items-center gap-1.5 px-2 py-1"
+          >
             <TopicSelector
               topicsByBrand={topicsByBrand}
               selectedNames={selectedTopicNames}
               onChange={setSelectedTopicNames}
               countsByName={topicCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Products & Services" active={selectedProductNames.length > 0}>
             <ProductSelector
               productsByBrand={productsByBrand}
               selectedNames={selectedProductNames}
               onChange={setSelectedProductNames}
               countsByName={productCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Markets" active={selectedMarketNames.length > 0}>
             <MarketSelector
               marketsByBrand={marketsByBrand}
               selectedNames={selectedMarketNames}
               onChange={setSelectedMarketNames}
               countsByName={marketCountsByName}
             />
-          </FiltersPopoverRow>
-          <FiltersPopoverRow label="Audiences" active={selectedAudienceNames.length > 0}>
             <AudienceSelector
               audiencesByBrand={audiencesByBrand}
               selectedNames={selectedAudienceNames}
               onChange={setSelectedAudienceNames}
               countsByName={audienceCountsByName}
             />
-          </FiltersPopoverRow>
+          </div>
           <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
             <PlatformChipFilter
               availableCodes={availablePlatformCodes}
               selectedCodes={selectedPlatformCodes}
               onChange={setSelectedPlatformCodes}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
+            <SentimentChipFilter
+              available={availableSentiments}
+              selected={selectedSentiments}
+              onChange={setSelectedSentiments}
             />
           </FiltersPopoverRow>
         </FiltersPopover>
@@ -488,7 +531,16 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
 // Inline chip multi-select for the Models filter row inside the
 // FiltersPopover. The platform universe is small (~4–6 in practice)
 // so a chip strip reads cleaner than a search-able dropdown like the
-// TopicSelector. Empty selection = "no filter applied".
+// TopicSelector.
+//
+// UX (matches LensChipRow on /overview):
+//   - Empty `selectedCodes` = "no narrowing": every chip is visually
+//     pressed and the filter passes all rows through.
+//   - Clicking a chip when nothing is explicitly selected narrows to
+//     just that chip.
+//   - Subsequent clicks ADD to the selection (multi-select).
+//   - Clicking an already-selected chip is a no-op (we deliberately
+//     do not unselect on a second click; the Clear link below resets).
 function PlatformChipFilter({
   availableCodes,
   selectedCodes,
@@ -502,20 +554,21 @@ function PlatformChipFilter({
     return <span className="text-xs text-neutral-400">No models in scope.</span>;
   }
   const selectedSet = new Set(selectedCodes);
-  function toggle(code: string) {
-    if (selectedSet.has(code)) onChange(selectedCodes.filter((c) => c !== code));
-    else onChange([...selectedCodes, code]);
+  const allSelectedVisually = selectedCodes.length === 0;
+  function add(code: string) {
+    if (selectedSet.has(code)) return; // explicit don't-unselect rule
+    onChange([...selectedCodes, code]);
   }
   return (
     <div className="flex flex-wrap items-center gap-1">
       {availableCodes.map((code) => {
         const label = platformLabel(code);
-        const pressed = selectedSet.has(code);
+        const pressed = allSelectedVisually || selectedSet.has(code);
         return (
           <button
             key={code}
             type="button"
-            onClick={() => toggle(code)}
+            onClick={() => add(code)}
             aria-pressed={pressed}
             aria-label={`Filter by ${label}`}
             className={cn(
@@ -529,7 +582,63 @@ function PlatformChipFilter({
           </button>
         );
       })}
-      {selectedCodes.length > 0 && (
+      {!allSelectedVisually && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="ml-1 text-[11px] font-medium text-primary-600 hover:text-primary-700"
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Inline chip multi-select for the Sentiment filter row. Same UX as
+// PlatformChipFilter — see its doc-comment for the empty-selection /
+// don't-unselect rules.
+function SentimentChipFilter({
+  available,
+  selected,
+  onChange,
+}: {
+  available: readonly string[];
+  selected: readonly string[];
+  onChange: (next: string[]) => void;
+}) {
+  if (available.length === 0) {
+    return <span className="text-xs text-neutral-400">No sentiments in scope.</span>;
+  }
+  const selectedSet = new Set(selected);
+  const allSelectedVisually = selected.length === 0;
+  function add(value: string) {
+    if (selectedSet.has(value)) return;
+    onChange([...selected, value]);
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {available.map((value) => {
+        const pressed = allSelectedVisually || selectedSet.has(value);
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => add(value)}
+            aria-pressed={pressed}
+            aria-label={`Filter by ${value}`}
+            className={cn(
+              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition",
+              pressed
+                ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
+                : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+            )}
+          >
+            {value}
+          </button>
+        );
+      })}
+      {!allSelectedVisually && (
         <button
           type="button"
           onClick={() => onChange([])}
