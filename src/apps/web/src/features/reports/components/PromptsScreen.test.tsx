@@ -350,6 +350,71 @@ describe("PromptsScreen", () => {
     expect(screen.queryByText("Sentiment prompt")).not.toBeInTheDocument();
   });
 
+  it("keeps the section visible with an empty state when filters exclude all rows in that lens", async () => {
+    // Discovery has two prompts (one Positive, one Negative). Sentiment
+    // & Trust has one prompt with no measured sentiment. When the user
+    // filters to "Positive", Discovery should still show its single
+    // Positive row, but Sentiment & Trust should KEEP its section
+    // header visible with an empty-state message — not silently drop
+    // off the page (since unfiltered the lens has a prompt).
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          text: "Positive discovery prompt",
+          lensName: "Discovery",
+          dominantSentiment: "Positive",
+        }),
+        row({
+          promptId: "b",
+          text: "Negative discovery prompt",
+          lensName: "Discovery",
+          dominantSentiment: "Negative",
+        }),
+        row({
+          promptId: "c",
+          text: "Neutral sentiment prompt",
+          lensName: "Sentiment & Trust",
+          dominantSentiment: "Neutral",
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    // Open the filters popover and click the Positive sentiment chip.
+    await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Filter by Positive/i }));
+
+    // Discovery section keeps the row that matches.
+    expect(screen.getByText("Positive discovery prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Negative discovery prompt")).not.toBeInTheDocument();
+
+    // Sentiment & Trust section stays visible with an empty-state
+    // message; its prompt is hidden by the filter. Use the section
+    // heading element specifically (the donut-legend mock also
+    // surfaces the lens name as plain text).
+    expect(screen.queryByText("Neutral sentiment prompt")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Sentiment & Trust" })).toBeInTheDocument();
+    expect(screen.getByText(/no prompts.*match.*current filters/i)).toBeInTheDocument();
+  });
+
+  it("still drops sections that have zero in-scope prompts even before any filter is applied", () => {
+    // Only Discovery has any prompts — Sentiment & Trust has none in
+    // scope. No filter is active, so Sentiment & Trust should NOT
+    // appear at all (no header, no empty-state — the lens just has
+    // nothing here yet).
+    promptsState = {
+      data: payload([row({ promptId: "a", text: "Discovery only", lensName: "Discovery" })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    expect(screen.getByText("Discovery only")).toBeInTheDocument();
+    expect(screen.queryByText(/Sentiment & Trust/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no prompts.*match/i)).not.toBeInTheDocument();
+  });
+
   it("renders flag images in the Country column for valid alpha-2 codes", () => {
     promptsState = {
       data: payload([

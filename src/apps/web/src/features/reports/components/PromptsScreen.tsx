@@ -265,37 +265,46 @@ export function PromptsScreen() {
   }
   if (!prompts.data) return null;
 
-  // Build sections only for selected lenses. Empty lens-buckets are
-  // dropped so the page does not render placeholder gaps for lenses
-  // that have no in-scope prompts after filtering.
+  // Build sections only for selected lenses. A lens with NO in-scope
+  // prompts at all is dropped (no header, no empty state — the lens
+  // just has nothing here yet). A lens that DOES have prompts in scope
+  // but whose rows are all hidden by active filters keeps its header
+  // visible with a friendly empty-state message — the user needs to
+  // see WHY a familiar section disappeared, not have it vanish.
   const sections: MetricCategorySection[] = [];
   for (const code of ALL_LENS_CODES) {
     if (!selectedLenses.includes(code)) continue;
     const lens = VISIBILITY_LENSES.find((l) => l.code === code);
     if (!lens) continue;
+    const unfilteredCount = promptCountsByLensCode[code] ?? 0;
+    if (unfilteredCount === 0) continue;
     const rowsForLens = filteredPrompts.filter((r) => LENS_NAME_TO_CODE[r.lensName] === code);
-    if (rowsForLens.length === 0) continue;
     const sortedRows = sortPrompts(rowsForLens, sortBy, sortDir);
     sections.push({
       id: code,
       label: lens.name,
-      children: (
-        <PromptsTable
-          rows={sortedRows}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onSortChange={(key) => {
-            // Click same column = flip direction; click new column = set
-            // it and default to descending (largest first).
-            if (key === sortBy) setSortDir(sortDir === "asc" ? "desc" : "asc");
-            else {
-              setSortBy(key);
-              setSortDir("desc");
-            }
-          }}
-          onOpenAnswerHistory={setDrawerPromptId}
-        />
-      ),
+      children:
+        sortedRows.length === 0 ? (
+          <p className="rounded-md border border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-3 text-xs text-neutral-500">
+            No prompts in {lens.name} match the current filters.
+          </p>
+        ) : (
+          <PromptsTable
+            rows={sortedRows}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSortChange={(key) => {
+              // Click same column = flip direction; click new column = set
+              // it and default to descending (largest first).
+              if (key === sortBy) setSortDir(sortDir === "asc" ? "desc" : "asc");
+              else {
+                setSortBy(key);
+                setSortDir("desc");
+              }
+            }}
+            onOpenAnswerHistory={setDrawerPromptId}
+          />
+        ),
     });
   }
 
