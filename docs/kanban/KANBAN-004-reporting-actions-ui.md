@@ -99,8 +99,23 @@
 
 ## In Progress
 
-_To be filled during execution._
+### `/prompts` Phase 1 reskin (2026-06-15)
+
+- `PromptsScreen.tsx` + `PromptsScreen.test.tsx` modified, **uncommitted on `main`**.
+- Adds: lens-chip row (filter + section-anchor), status strip (4 KPI tiles + lens-distribution donut + visibility histogram), sortable columns (visibility / mentions / activity), section-per-lens layout via `MetricCategoryLayout`, Topics filter via `FiltersPopover` + `TopicSelector`, Models (platform) filter inside the same popover (inline `PlatformChipFilter`, derived from `platformCodes` on the row + a `PLATFORM_LABELS` lookup), date-range picker in the page header.
+- Pure helpers exported for test: `filterRows`, `sortPrompts`, `deriveSummary`.
+- Tests: 23/23 green for `PromptsScreen.test.tsx`; full web suite 948/948 (`pnpm test`).
+- Sibling deps verified on disk: `LensChipRow`, `MetricCategoryLayout`, `CollapsibleCard`, `FiltersPopover`, `TopicSelector`, `DonutChartWrapper`, `BarChartWrapper`, `useDiscoverySummary`, `useTopicCounts`, `content/lenses`.
+- Deferred to Phase 2 (per docstring in `PromptsScreen.tsx`): Products / Markets / Audiences filters (need BE-side lookup on the row); per-prompt drill-down drawer (needs a per-prompt scan-history endpoint).
+- Deltas vs. `docs/10-navigation-and-pages-plan.md` §`/prompts` still open: Models matrix column (the row exposes a ran/didn't-run list, not per-platform metrics — a true matrix needs BE), Tags column, Country column, and row-click answer-history drawer.
 
 ## Done
 
-_To be filled during execution._
+### `/prompts` baseline (pre-2026-06-15)
+
+- `GET /api/workspaces/{id}/prompts` aggregating endpoint wired (`useWorkspacePrompts`).
+- `PromptsScreen` + `PromptsTable` shell with columns: Prompt · Topics · Tracker · Visibility (with first-mention position) · Sentiment · Mentions · Activity (last-scan + platforms inline).
+- `?trackers=` scope respected via `useTrackerScope`.
+- Pre-Phase-1 search filter (`filterRows`) over text / lens / topic / tracker / brand.
+- Inline edit + per-row remove (`useUpdateWorkspacePrompt`, `useRemoveWorkspacePrompt`).
+- Empty state when the workspace has no in-scope prompts.
