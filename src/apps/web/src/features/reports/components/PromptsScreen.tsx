@@ -101,10 +101,19 @@ type SortDir = "asc" | "desc";
  * distribution + visibility histogram) followed by 6 lens-shaped sections,
  * each rendering the prompts in that lens.
  *
- * Phase 1 ships the chrome + section layout + sortable columns + Topics
- * filter. Phase 2 follow-ups: Products / Markets / Audiences filters
- * (need BE-side lookup on the prompt row), and per-prompt drill-down
- * (needs a per-prompt scan-history endpoint).
+ * Filter dimensions inside the FiltersPopover: Topics / Products &
+ * Services / Markets / Audiences (per-brand dropdown selectors driven
+ * by useDiscoverySummary) + Models (inline platform-code chips derived
+ * from the row's platformCodes) + Sentiment (inline chips keyed off
+ * the row's dominantSentiment).
+ *
+ * Row click opens PromptAnswerHistoryDrawer — per-prompt AI answer
+ * history across in-window scans, with brand-mention rollup per answer.
+ *
+ * Spec deltas still owed (per docs/10-navigation-and-pages-plan.md):
+ *   - Per-platform Models matrix column (needs BE-side per-platform
+ *     metrics on the row; today only ran/didn't-run is exposed).
+ *   - Tags column (no Tag domain object exists yet).
  */
 export function PromptsScreen() {
   const { scope } = useTrackerScope();

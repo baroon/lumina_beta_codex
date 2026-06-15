@@ -134,3 +134,22 @@ _Nothing in progress right now._
 - FE: new `PromptAnswerHistoryDrawer` molecule (Radix Dialog, right-slide) modeled on `SourceCitationsDrawer`. Each answer card surfaces platform badge, relative scan timestamp, sentiment badge / mention count / position chip (or a "Brand not mentioned" cue when count = 0), evidence snippet on a tinted bar, and the full answer text. Loading skeleton, error message, in-scope empty ("No answers in window"), and foreign-workspace empty ("This prompt is not in the current workspace scope") are all distinct branches.
 - FE: row click on `PromptsScreen` opens the drawer for that prompt. The InlineEdit cell and the Remove button each stop propagation so editing or removing a prompt does NOT also open the drawer. New copy section `REPORTS_COPY.prompts.answerDrawer`. Component manifest gained the new drawer entry.
 - FE tests **961/961 pass**, typecheck clean. New `PromptAnswerHistoryDrawer.test.tsx` (7 tests: closed / open / singular-vs-plural mention chip / in-scope empty / not-in-scope / error / close button). New `PromptsScreen` tests: row click opens drawer; Remove button stops propagation so the drawer doesn't open alongside the delete.
+
+### `/prompts` layout fixes — double scrollbar + URL hash (commits `1434569` + `c5f7f41`, 2026-06-15)
+
+- Recharts injects a hidden measurement `<span>` into `<body>` at `position: absolute; top: -20000px` to size tick labels. Because that span is a sibling of `#root`, AppShell's own `overflow-hidden` didn't contain it, the document scroll area grew, and the browser drew a phantom scrollbar alongside `<main>`'s real one. Locking `html` + `body` overflow in `index.css` catches sibling-of-`#root` injections; AppShell also gained `overflow-hidden` + `min-h-0` as belt-and-braces; `[scrollbar-gutter:stable]` on `<main>` was dropped (it was an earlier red-herring fix that rendered as a visible track on Windows native scrollbars).
+- `MetricCategoryLayout` outbound URL-hash mirroring disabled (commit `c5f7f41`). When it was on, every `IntersectionObserver` tick wrote via `history.replaceState`, and on /prompts that produced a visible mid-scroll snap-back. Inbound deep links (`/prompts#BuyingIntent`) still resolve via the `useState` lazy-init that reads the hash on mount.
+- 961/961 tests pass.
+
+### `/prompts` Phase 4 — Sentiment filter + FiltersPopover compaction (commit `6dbd1a8`, 2026-06-15)
+
+- New **Sentiment filter** inside `FiltersPopover` — FE-only, intersected against the row's `dominantSentiment` in the existing `useMemo` chain. New `SENTIMENT_ORDER` constant + `SentimentChipFilter` inline component mirroring `PlatformChipFilter`.
+- Inline chip filters (Models, Sentiment) picked up the **LensChipRow-style UX** from `/overview`: empty selection visually shows every chip pressed, first click narrows, subsequent clicks add to the selection (multi-select), clicking an already-selected chip is a no-op (don't-unselect rule), per-row "Clear" link appears once you've started selecting.
+- **Popover compaction** (both `/prompts` and `/overview`): the four trigger-pill selectors (Topics / Products & Services / Markets / Audiences) now float together in a single flex-wrap group — each pill already names its dimension + count, so per-row labels and dividers were just repeating the same info. Models / Sentiment / Trust signals keep their labelled rows since their chips show individual values.
+- Visual polish: thin top-border divider on each labelled row, tighter vertical padding (`py-1` + no outer `space-y`), uniform primary-tinted pressed state across both inline chip rows (Sentiment dropped its green/amber sentiment-specific colors in favor of the same purple as Models).
+- 963/963 tests pass.
+
+### `/prompts` — still owed (parked, needs BE)
+
+- **Per-platform Models matrix column** — today the row only exposes ran/didn't-run via `platformCodes`. A real matrix needs per-platform visibility / mention / sentiment columns from the BE.
+- **Tags column** — no `Tag` domain object exists; would need a new dim with tracker-level attribution before it can land on the prompt row.
