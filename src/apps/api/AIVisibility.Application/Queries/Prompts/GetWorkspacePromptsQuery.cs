@@ -31,6 +31,19 @@ public sealed record WorkspacePromptRowDto(
     string LensName,
     /// <summary>All topic names attached via PromptTopics (case-sensitive list).</summary>
     IReadOnlyList<string> Topics,
+    /// <summary>All product names attached via PromptProducts. Same shape as Topics.</summary>
+    IReadOnlyList<string> Products,
+    /// <summary>All audience names attached via PromptAudiences. Same shape as Topics.</summary>
+    IReadOnlyList<string> Audiences,
+    /// <summary>All market names attached via PromptMarkets. Same shape as Topics.</summary>
+    IReadOnlyList<string> Markets,
+    /// <summary>
+    /// Distinct ISO-3166 country codes derived from the attached markets'
+    /// <see cref="AIVisibility.Domain.Entities.Market.CountryCode"/>. Empty
+    /// when no market is attached or none of them carry a country code.
+    /// Drives the "Country" column on /prompts.
+    /// </summary>
+    IReadOnlyList<string> MarketCountryCodes,
     Guid TrackerId,
     string TrackerName,
     Guid BrandId,

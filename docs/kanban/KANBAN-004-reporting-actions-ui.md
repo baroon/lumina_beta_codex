@@ -99,15 +99,7 @@
 
 ## In Progress
 
-### `/prompts` Phase 1 reskin (2026-06-15)
-
-- `PromptsScreen.tsx` + `PromptsScreen.test.tsx` modified, **uncommitted on `main`**.
-- Adds: lens-chip row (filter + section-anchor), status strip (4 KPI tiles + lens-distribution donut + visibility histogram), sortable columns (visibility / mentions / activity), section-per-lens layout via `MetricCategoryLayout`, Topics filter via `FiltersPopover` + `TopicSelector`, Models (platform) filter inside the same popover (inline `PlatformChipFilter`, derived from `platformCodes` on the row + a `PLATFORM_LABELS` lookup), date-range picker in the page header.
-- Pure helpers exported for test: `filterRows`, `sortPrompts`, `deriveSummary`.
-- Tests: 23/23 green for `PromptsScreen.test.tsx`; full web suite 948/948 (`pnpm test`).
-- Sibling deps verified on disk: `LensChipRow`, `MetricCategoryLayout`, `CollapsibleCard`, `FiltersPopover`, `TopicSelector`, `DonutChartWrapper`, `BarChartWrapper`, `useDiscoverySummary`, `useTopicCounts`, `content/lenses`.
-- Deferred to Phase 2 (per docstring in `PromptsScreen.tsx`): Products / Markets / Audiences filters (need BE-side lookup on the row); per-prompt drill-down drawer (needs a per-prompt scan-history endpoint).
-- Deltas vs. `docs/10-navigation-and-pages-plan.md` §`/prompts` still open: Models matrix column (the row exposes a ran/didn't-run list, not per-platform metrics — a true matrix needs BE), Tags column, Country column, and row-click answer-history drawer.
+_Nothing in progress right now._
 
 ## Done
 
@@ -119,3 +111,16 @@
 - Pre-Phase-1 search filter (`filterRows`) over text / lens / topic / tracker / brand.
 - Inline edit + per-row remove (`useUpdateWorkspacePrompt`, `useRemoveWorkspacePrompt`).
 - Empty state when the workspace has no in-scope prompts.
+
+### `/prompts` Phase 1 reskin (commit `939ea83`, 2026-06-15)
+
+- Lens-chip row (filter + section-anchor), status strip (4 KPI tiles + lens-distribution donut + visibility-distribution histogram), sortable columns (visibility / mentions / activity), section-per-lens layout via `MetricCategoryLayout`, Topics filter via `FiltersPopover` + `TopicSelector`, Models (platform) filter inside the same popover (inline `PlatformChipFilter`, derived from `platformCodes` on the row + a `PLATFORM_LABELS` lookup), date-range picker in the page header.
+- Pure helpers exported for test: `filterRows`, `sortPrompts`, `deriveSummary`.
+- `InfoTooltip` (with one-liner copy) on every summary tile + chart card to match the Workspace Overview affordance.
+
+### `/prompts` Phase 2 — Products / Markets / Audiences filters + Country column (2026-06-15)
+
+- BE: `WorkspacePromptRowDto` extended with `Products`, `Audiences`, `Markets`, `MarketCountryCodes`. `GetWorkspacePromptsQueryHandler` extended with three M:N join blocks (mirroring the existing `PromptTopics` block) + a country-code derivation that drops null/empty codes. BE tests **504/504 pass** (handler test extended to assert the new fields + new `DimensionListsAreEmpty_WhenPromptHasNoAttribution` covers the no-attribution case).
+- FE: TS `WorkspacePromptRowDto` interface updated. Three new popover rows (`Products & Services`, `Markets`, `Audiences`) wired into the existing `FiltersPopover` reusing the pre-existing `ProductSelector` / `MarketSelector` / `AudienceSelector` molecules + `useProductCounts` / `useMarketCounts` / `useAudienceCounts` hooks (sourced from `discoverySummary.{products,markets,audiences}`). `activeFilterCount` + "Clear all" updated to span the new filters.
+- FE: Country column added between Topics and Tracker in the prompts table. Renders one flagcdn SVG `<img>` per ISO-3166 alpha-2 code via a new shared `@/lib/flag` helper. The helper was moved out of `features/discovery/flag` to clear the feature-isolation lint boundary; both discovery callers updated, old file + test deleted, test migrated to `lib/`.
+- FE tests **951/951 pass**, typecheck clean. New integration test for the Markets filter end-to-end (mocked `useDiscoverySummary` with two markets, exercising opt-out selector semantics); new test asserts flag images render in the Country column with em-dash fallback for empty.

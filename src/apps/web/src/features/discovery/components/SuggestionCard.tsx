@@ -3,8 +3,8 @@ import { Sparkles, UserPen, X } from "lucide-react";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { AliasEditor } from "@/components/molecules/AliasEditor";
 import { ConfidenceTag } from "./ConfidenceTag";
+import { countryCodeToFlagUrl } from "@/lib/flag";
 import { cn } from "@/lib/utils";
-import { countryCodeToFlagUrl } from "../flag";
 import type { CandidateDto } from "@/types/api";
 
 interface SuggestionCardProps {

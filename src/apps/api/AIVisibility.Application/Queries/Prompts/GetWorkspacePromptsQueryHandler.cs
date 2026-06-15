@@ -95,6 +95,52 @@ public class GetWorkspacePromptsQueryHandler
             .GroupBy(x => x.PromptId)
             .ToDictionary(g => g.Key, g => g.Select(x => x.Name).Distinct().OrderBy(n => n).ToList());
 
+        // PromptProducts → product names. Same shape as topics.
+        var productLinks = await (
+            from pp in _db.PromptProducts.AsNoTracking()
+            join pr in _db.Products.AsNoTracking() on pp.ProductId equals pr.Id
+            where promptIds.Contains(pp.PromptId)
+            select new { pp.PromptId, pr.Name }
+        ).ToListAsync(cancellationToken);
+        var productsByPrompt = productLinks
+            .GroupBy(x => x.PromptId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Name).Distinct().OrderBy(n => n).ToList());
+
+        // PromptAudiences → audience names. Same shape as topics.
+        var audienceLinks = await (
+            from pa in _db.PromptAudiences.AsNoTracking()
+            join a in _db.Audiences.AsNoTracking() on pa.AudienceId equals a.Id
+            where promptIds.Contains(pa.PromptId)
+            select new { pa.PromptId, a.Name }
+        ).ToListAsync(cancellationToken);
+        var audiencesByPrompt = audienceLinks
+            .GroupBy(x => x.PromptId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Name).Distinct().OrderBy(n => n).ToList());
+
+        // PromptMarkets → market names + country codes. Each market carries
+        // an optional CountryCode; we pull both in one shot so the row can
+        // populate both Markets and MarketCountryCodes without re-querying.
+        var marketLinks = await (
+            from pm in _db.PromptMarkets.AsNoTracking()
+            join m in _db.Markets.AsNoTracking() on pm.MarketId equals m.Id
+            where promptIds.Contains(pm.PromptId)
+            select new { pm.PromptId, m.Name, m.CountryCode }
+        ).ToListAsync(cancellationToken);
+        var marketsByPrompt = marketLinks
+            .GroupBy(x => x.PromptId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Name).Distinct().OrderBy(n => n).ToList());
+        var marketCountryCodesByPrompt = marketLinks
+            .GroupBy(x => x.PromptId)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .Select(x => x.CountryCode)
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Select(c => c!)
+                    .Distinct()
+                    .OrderBy(c => c)
+                    .ToList());
+
         // PromptRuns in window → per-prompt scan-count / last-scan / platforms.
         // Inner-join AIPlatform up-front so we have the platform code in one shot.
         var runRows = await (
@@ -170,6 +216,10 @@ public class GetWorkspacePromptsQueryHandler
                 var lensName = lensNameById.TryGetValue(p.LensId, out var ln) ? ln : "(unknown)";
                 var brandName = brandNameById.TryGetValue(tracker.BrandId, out var bn) ? bn : "(unknown)";
                 var topics = topicsByPrompt.TryGetValue(p.Id, out var t) ? t : new List<string>();
+                var products = productsByPrompt.TryGetValue(p.Id, out var pr) ? pr : new List<string>();
+                var audiences = audiencesByPrompt.TryGetValue(p.Id, out var au) ? au : new List<string>();
+                var markets = marketsByPrompt.TryGetValue(p.Id, out var mk) ? mk : new List<string>();
+                var marketCountryCodes = marketCountryCodesByPrompt.TryGetValue(p.Id, out var cc) ? cc : new List<string>();
                 runAggByPrompt.TryGetValue(p.Id, out var agg);
 
                 // Analytical columns. Mentions are filtered to the prompt's
@@ -200,6 +250,10 @@ public class GetWorkspacePromptsQueryHandler
                     LensId: p.LensId,
                     LensName: lensName,
                     Topics: topics,
+                    Products: products,
+                    Audiences: audiences,
+                    Markets: markets,
+                    MarketCountryCodes: marketCountryCodes,
                     TrackerId: tracker.Id,
                     TrackerName: tracker.Name,
                     BrandId: tracker.BrandId,

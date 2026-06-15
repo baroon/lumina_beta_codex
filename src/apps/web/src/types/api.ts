@@ -422,6 +422,14 @@ export interface WorkspacePromptRowDto {
   lensId: string;
   lensName: string;
   topics: string[];
+  /** All product names attached via PromptProducts (case-sensitive list). */
+  products: string[];
+  /** All audience names attached via PromptAudiences. */
+  audiences: string[];
+  /** All market names attached via PromptMarkets. */
+  markets: string[];
+  /** Distinct ISO-3166 country codes from the attached markets' CountryCode (drops null/empty). Drives the Country column. */
+  marketCountryCodes: string[];
   trackerId: string;
   trackerName: string;
   brandId: string;

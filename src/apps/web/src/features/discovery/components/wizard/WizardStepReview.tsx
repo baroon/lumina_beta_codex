@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { DISCOVERY_COPY } from "@/content/discovery";
 import { Pencil, X } from "lucide-react";
+import { countryCodeToFlagUrl } from "@/lib/flag";
 import { cn } from "@/lib/utils";
-import { countryCodeToFlagUrl } from "../../flag";
 import type { CandidateDto, BrandProfileDto } from "@/types/api";
 
 type SectionKey = "products" | "audiences" | "markets" | "topics" | "competitors" | "trustSignals";

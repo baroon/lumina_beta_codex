@@ -13,18 +13,25 @@ import {
   type DateRangeSelection,
 } from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
+import { AudienceSelector } from "@/components/molecules/AudienceSelector";
 import { FiltersPopover, FiltersPopoverRow } from "@/components/molecules/FiltersPopover";
 import { InfoTooltip } from "@/components/molecules/InfoTooltip";
 import { LensChipRow } from "@/components/molecules/LensChipRow";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
+import { MarketSelector } from "@/components/molecules/MarketSelector";
 import {
   MetricCategoryLayout,
   type MetricCategorySection,
 } from "@/components/molecules/MetricCategoryLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
+import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
+import { countryCodeToFlagUrl } from "@/lib/flag";
+import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
+import { useMarketCounts } from "@/features/reports/hooks/useMarketCounts";
+import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
 import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import {
   useRemoveWorkspacePrompt,
@@ -98,6 +105,9 @@ export function PromptsScreen() {
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [selectedLenses, setSelectedLenses] = useState<readonly string[]>(ALL_LENS_CODES);
   const [selectedTopicNames, setSelectedTopicNames] = useState<string[]>([]);
+  const [selectedProductNames, setSelectedProductNames] = useState<string[]>([]);
+  const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
+  const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
   const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("default");
@@ -106,11 +116,29 @@ export function PromptsScreen() {
   const prompts = useWorkspacePrompts(range, trackerIds);
   const { data: discoverySummary } = useDiscoverySummary();
   const topicsByBrand = discoverySummary?.topics ?? EMPTY_GROUPS;
+  const productsByBrand = discoverySummary?.products ?? EMPTY_GROUPS;
+  const marketsByBrand = discoverySummary?.markets ?? EMPTY_GROUPS;
+  const audiencesByBrand = discoverySummary?.audiences ?? EMPTY_GROUPS;
   const { data: topicCountsRaw } = useTopicCounts(range);
+  const { data: productCountsRaw } = useProductCounts(range);
+  const { data: marketCountsRaw } = useMarketCounts(range);
+  const { data: audienceCountsRaw } = useAudienceCounts(range);
   const topicCountsByName = useMemo<Record<string, number>>(() => {
     if (!topicCountsRaw) return {};
     return Object.fromEntries(topicCountsRaw.map((t) => [t.topicName, t.mentionCount]));
   }, [topicCountsRaw]);
+  const productCountsByName = useMemo<Record<string, number>>(() => {
+    if (!productCountsRaw) return {};
+    return Object.fromEntries(productCountsRaw.map((p) => [p.productName, p.mentionCount]));
+  }, [productCountsRaw]);
+  const marketCountsByName = useMemo<Record<string, number>>(() => {
+    if (!marketCountsRaw) return {};
+    return Object.fromEntries(marketCountsRaw.map((m) => [m.marketName, m.mentionCount]));
+  }, [marketCountsRaw]);
+  const audienceCountsByName = useMemo<Record<string, number>>(() => {
+    if (!audienceCountsRaw) return {};
+    return Object.fromEntries(audienceCountsRaw.map((a) => [a.audienceName, a.mentionCount]));
+  }, [audienceCountsRaw]);
 
   // Filter the workspace prompt list against the active controls. Lens
   // narrowing is a Set lookup on the row's lensName via the code→name
@@ -129,6 +157,18 @@ export function PromptsScreen() {
       const topicSet = new Set(selectedTopicNames);
       rows = rows.filter((r) => r.topics.some((t) => topicSet.has(t)));
     }
+    if (selectedProductNames.length > 0) {
+      const productSet = new Set(selectedProductNames);
+      rows = rows.filter((r) => r.products.some((p) => productSet.has(p)));
+    }
+    if (selectedMarketNames.length > 0) {
+      const marketSet = new Set(selectedMarketNames);
+      rows = rows.filter((r) => r.markets.some((m) => marketSet.has(m)));
+    }
+    if (selectedAudienceNames.length > 0) {
+      const audienceSet = new Set(selectedAudienceNames);
+      rows = rows.filter((r) => r.audiences.some((a) => audienceSet.has(a)));
+    }
     if (selectedPlatformCodes.length > 0) {
       const platformSet = new Set(selectedPlatformCodes);
       rows = rows.filter((r) => r.platformCodes.some((c) => platformSet.has(c)));
@@ -137,7 +177,16 @@ export function PromptsScreen() {
       rows = filterRows(rows, query);
     }
     return rows;
-  }, [prompts.data, selectedLenses, selectedTopicNames, selectedPlatformCodes, query]);
+  }, [
+    prompts.data,
+    selectedLenses,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    selectedPlatformCodes,
+    query,
+  ]);
 
   // Distinct platform codes across the unfiltered prompt set drives the
   // Models chip row. Sorted by display label so the chip order stays
@@ -208,7 +257,11 @@ export function PromptsScreen() {
   }
 
   const activeFilterCount =
-    (selectedTopicNames.length > 0 ? 1 : 0) + (selectedPlatformCodes.length > 0 ? 1 : 0);
+    (selectedTopicNames.length > 0 ? 1 : 0) +
+    (selectedProductNames.length > 0 ? 1 : 0) +
+    (selectedMarketNames.length > 0 ? 1 : 0) +
+    (selectedAudienceNames.length > 0 ? 1 : 0) +
+    (selectedPlatformCodes.length > 0 ? 1 : 0);
 
   const controlsStrip = (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
@@ -236,6 +289,9 @@ export function PromptsScreen() {
           activeCount={activeFilterCount}
           onClearAll={() => {
             setSelectedTopicNames([]);
+            setSelectedProductNames([]);
+            setSelectedMarketNames([]);
+            setSelectedAudienceNames([]);
             setSelectedPlatformCodes([]);
           }}
         >
@@ -245,6 +301,30 @@ export function PromptsScreen() {
               selectedNames={selectedTopicNames}
               onChange={setSelectedTopicNames}
               countsByName={topicCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Products & Services" active={selectedProductNames.length > 0}>
+            <ProductSelector
+              productsByBrand={productsByBrand}
+              selectedNames={selectedProductNames}
+              onChange={setSelectedProductNames}
+              countsByName={productCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Markets" active={selectedMarketNames.length > 0}>
+            <MarketSelector
+              marketsByBrand={marketsByBrand}
+              selectedNames={selectedMarketNames}
+              onChange={setSelectedMarketNames}
+              countsByName={marketCountsByName}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Audiences" active={selectedAudienceNames.length > 0}>
+            <AudienceSelector
+              audiencesByBrand={audiencesByBrand}
+              selectedNames={selectedAudienceNames}
+              onChange={setSelectedAudienceNames}
+              countsByName={audienceCountsByName}
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
@@ -599,6 +679,7 @@ function PromptsTable({ rows, sortBy, sortDir, onSortChange }: PromptsTableProps
           <tr>
             <Th>Prompt</Th>
             <Th>Topics</Th>
+            <Th>Country</Th>
             <Th>Tracker</Th>
             <SortableTh
               column="visibility"
@@ -688,6 +769,9 @@ function PromptRow({
         </div>
       </Td>
       <Td>
+        <CountryCell codes={row.marketCountryCodes} />
+      </Td>
+      <Td>
         <div className="flex flex-col">
           <span className="text-neutral-900">{row.brandName}</span>
           <span className="text-[10px] text-neutral-500">{row.trackerName}</span>
@@ -739,6 +823,41 @@ function PromptRow({
         </button>
       </Td>
     </tr>
+  );
+}
+
+// Renders one flagcdn SVG per ISO-3166 country code on the row. Country-
+// less markets (e.g. "Global") contribute no codes and fall through to
+// the em-dash placeholder. Codes that aren't valid alpha-2 fall back to
+// rendering the raw code chip so we still surface the value rather than
+// silently dropping it.
+function CountryCell({ codes }: { codes: readonly string[] }) {
+  if (codes.length === 0) return <span className="text-neutral-400">—</span>;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {codes.map((code) => {
+        const url = countryCodeToFlagUrl(code);
+        if (!url) {
+          return (
+            <span
+              key={code}
+              className="rounded bg-neutral-100 px-1 py-0.5 text-[10px] font-medium uppercase text-neutral-600"
+            >
+              {code}
+            </span>
+          );
+        }
+        return (
+          <img
+            key={code}
+            src={url}
+            alt={code.toUpperCase()}
+            title={code.toUpperCase()}
+            className="h-3 w-4 rounded-[2px] object-cover ring-1 ring-neutral-200"
+          />
+        );
+      })}
+    </div>
   );
 }
 

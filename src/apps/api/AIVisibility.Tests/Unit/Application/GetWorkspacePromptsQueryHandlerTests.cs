@@ -67,6 +67,32 @@ public class GetWorkspacePromptsQueryHandlerTests
             Name = "Resume builders", Confidence = 0.9, Source = CandidateSource.LLMSuggested,
             CreatedAt = DateTime.UtcNow,
         };
+        var product = new Product
+        {
+            Id = Guid.NewGuid(), BrandId = acme.Id, DiscoveryRunId = Guid.NewGuid(),
+            Name = "Acme Resume Builder", Confidence = 0.9, Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+        };
+        var audience = new Audience
+        {
+            Id = Guid.NewGuid(), BrandId = acme.Id, DiscoveryRunId = Guid.NewGuid(),
+            Name = "Recent grads", Confidence = 0.9, Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+        };
+        var marketUs = new Market
+        {
+            Id = Guid.NewGuid(), BrandId = acme.Id, DiscoveryRunId = Guid.NewGuid(),
+            Name = "United States", CountryCode = "US",
+            Confidence = 0.9, Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+        };
+        var marketCountryless = new Market
+        {
+            Id = Guid.NewGuid(), BrandId = acme.Id, DiscoveryRunId = Guid.NewGuid(),
+            Name = "Global", CountryCode = null,
+            Confidence = 0.9, Source = CandidateSource.LLMSuggested,
+            CreatedAt = DateTime.UtcNow,
+        };
         var openai = new AIPlatform { Id = Guid.NewGuid(), Code = "openai", Name = "ChatGPT", DisplayOrder = 1 };
         var claude = new AIPlatform { Id = Guid.NewGuid(), Code = "claude", Name = "Claude", DisplayOrder = 2 };
 
@@ -98,12 +124,20 @@ public class GetWorkspacePromptsQueryHandlerTests
         ctx.TrackerConfigurations.Add(betaTracker);
         ctx.Lenses.Add(lens);
         ctx.Topics.Add(topic);
+        ctx.Products.Add(product);
+        ctx.Audiences.Add(audience);
+        ctx.Markets.Add(marketUs);
+        ctx.Markets.Add(marketCountryless);
         ctx.AIPlatforms.Add(openai);
         ctx.AIPlatforms.Add(claude);
         ctx.Prompts.Add(promptAcmeActive);
         ctx.Prompts.Add(promptAcmeDraft);
         ctx.Prompts.Add(promptBetaActive);
         ctx.PromptTopics.Add(new PromptTopic { PromptId = promptAcmeActive.Id, TopicId = topic.Id });
+        ctx.PromptProducts.Add(new PromptProduct { PromptId = promptAcmeActive.Id, ProductId = product.Id });
+        ctx.PromptAudiences.Add(new PromptAudience { PromptId = promptAcmeActive.Id, AudienceId = audience.Id });
+        ctx.PromptMarkets.Add(new PromptMarket { PromptId = promptAcmeActive.Id, MarketId = marketUs.Id });
+        ctx.PromptMarkets.Add(new PromptMarket { PromptId = promptAcmeActive.Id, MarketId = marketCountryless.Id });
 
         var now = DateTime.UtcNow;
 
@@ -240,6 +274,33 @@ public class GetWorkspacePromptsQueryHandlerTests
         acme.BrandName.Should().Be("Acme");
         acme.LensName.Should().Be("Category Discovery");
         acme.Topics.Should().ContainSingle().Which.Should().Be("Resume builders");
+        acme.Products.Should().ContainSingle().Which.Should().Be("Acme Resume Builder");
+        acme.Audiences.Should().ContainSingle().Which.Should().Be("Recent grads");
+        acme.Markets.Should().BeEquivalentTo(new[] { "Global", "United States" });
+        // The "Global" market has no CountryCode, so the codes list only
+        // surfaces "US" — null/empty country codes are dropped, not surfaced
+        // as empty strings.
+        acme.MarketCountryCodes.Should().ContainSingle().Which.Should().Be("US");
+    }
+
+    [Fact]
+    public async Task DimensionListsAreEmpty_WhenPromptHasNoAttribution()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddDays(-30), null, null),
+            CancellationToken.None);
+
+        // Beta's prompt was seeded with NO product/audience/market links —
+        // those four lists should all be empty (not null) so the FE filter
+        // intersections don't need null-guards.
+        var beta = result.Prompts.Single(p => p.PromptId == seed.PromptBetaActiveId);
+        beta.Products.Should().BeEmpty();
+        beta.Audiences.Should().BeEmpty();
+        beta.Markets.Should().BeEmpty();
+        beta.MarketCountryCodes.Should().BeEmpty();
     }
 
     [Fact]

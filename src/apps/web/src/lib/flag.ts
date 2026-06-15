@@ -3,6 +3,9 @@
  * code, e.g. "US" -> "https://flagcdn.com/us.svg". Returns null when the code is
  * missing or not a valid two-letter code (region/global markets like "Europe"
  * or "Global" have no country code, so they get no flag).
+ *
+ * Lives in `lib/` (not in any feature folder) so multiple features can import
+ * it without crossing the ESLint feature-isolation boundary.
  */
 export function countryCodeToFlagUrl(code: string | null | undefined): string | null {
   if (!code) return null;

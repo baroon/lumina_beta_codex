@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { WorkspacePromptRowDto, WorkspacePromptsDto } from "@/types/api";
+import type { DiscoverySummaryDto, WorkspacePromptRowDto, WorkspacePromptsDto } from "@/types/api";
 
 let scopeState: { scope: "all" | string[] };
 let promptsState: {
@@ -9,6 +9,11 @@ let promptsState: {
   isLoading: boolean;
   isError: boolean;
   error?: unknown;
+};
+let discoverySummaryState: {
+  data?: DiscoverySummaryDto;
+  isLoading: boolean;
+  isError: boolean;
 };
 
 let updatePromptMutate: ReturnType<typeof vi.fn>;
@@ -24,10 +29,19 @@ vi.mock("@/features/reports/hooks/useWorkspacePrompts", () => ({
   useRemoveWorkspacePrompt: () => ({ mutate: removePromptMutate, ...idleMutation }),
 }));
 vi.mock("@/features/reports/hooks/useDiscoverySummary", () => ({
-  useDiscoverySummary: () => ({ data: undefined, isLoading: false, isError: false }),
+  useDiscoverySummary: () => discoverySummaryState,
 }));
 vi.mock("@/features/reports/hooks/useTopicCounts", () => ({
   useTopicCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+vi.mock("@/features/reports/hooks/useProductCounts", () => ({
+  useProductCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+vi.mock("@/features/reports/hooks/useMarketCounts", () => ({
+  useMarketCounts: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+vi.mock("@/features/reports/hooks/useAudienceCounts", () => ({
+  useAudienceCounts: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
 
 // Stub the chart wrappers so we can render the screen without pulling
@@ -65,6 +79,10 @@ function row(overrides: Partial<WorkspacePromptRowDto>): WorkspacePromptRowDto {
     lensId: "l1",
     lensName: "Discovery",
     topics: ["Resume builders"],
+    products: [],
+    audiences: [],
+    markets: [],
+    marketCountryCodes: [],
     trackerId: "t1",
     trackerName: "Acme · US",
     brandId: "b1",
@@ -92,6 +110,7 @@ function payload(rows: WorkspacePromptRowDto[]): WorkspacePromptsDto {
 beforeEach(() => {
   scopeState = { scope: "all" };
   promptsState = { data: payload([]), isLoading: false, isError: false };
+  discoverySummaryState = { data: undefined, isLoading: false, isError: false };
   updatePromptMutate = vi.fn();
   removePromptMutate = vi.fn();
 });
@@ -326,6 +345,32 @@ describe("PromptsScreen", () => {
     expect(screen.queryByText("Sentiment prompt")).not.toBeInTheDocument();
   });
 
+  it("renders flag images in the Country column for valid alpha-2 codes", () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          text: "Multi-country prompt",
+          marketCountryCodes: ["US", "GB"],
+        }),
+        row({
+          promptId: "b",
+          text: "Country-less prompt",
+          marketCountryCodes: [],
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    // Multi-country row: one img per code, with the uppercased code as alt.
+    expect(screen.getByRole("img", { name: "US" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "GB" })).toBeInTheDocument();
+    // Country-less row: the cell falls through to the em-dash placeholder.
+    const table = screen.getByRole("table");
+    expect(within(table).getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("renders an info-tooltip icon on every summary tile and chart card", () => {
     promptsState = {
       data: payload([row({ promptId: "a", text: "Prompt 1", visibilityRate: 0.5 })]),
@@ -374,6 +419,57 @@ describe("PromptsScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /Clear all/i }));
     expect(screen.getByText("ChatGPT-only prompt")).toBeInTheDocument();
     expect(screen.getByText("Gemini-only prompt")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Markets filter — proxies for Products / Audiences too since all three
+  // share the same intersection + selector wiring. Exercises the full
+  // path: discoverySummary → MarketSelector → row filter.
+  // -------------------------------------------------------------------
+
+  it("filters the table when a Market is selected from the FiltersPopover", async () => {
+    discoverySummaryState = {
+      data: {
+        products: [],
+        markets: [
+          {
+            brandId: "b1",
+            brandName: "Acme",
+            items: [
+              { id: "m1", name: "United States" },
+              { id: "m2", name: "United Kingdom" },
+            ],
+          },
+        ],
+        audiences: [],
+        topics: [],
+        trustSignals: [],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    promptsState = {
+      data: payload([
+        row({ promptId: "a", text: "US prompt", markets: ["United States"] }),
+        row({ promptId: "b", text: "UK prompt", markets: ["United Kingdom"] }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    expect(screen.getByText("US prompt")).toBeInTheDocument();
+    expect(screen.getByText("UK prompt")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
+    // Open the Market selector dropdown. The selector's UX is opt-OUT:
+    // empty selection means "all markets" and every checkbox is checked
+    // by default. Unchecking the UK row therefore leaves the selection
+    // = ["United States"], which is what we want.
+    await userEvent.click(screen.getByRole("button", { name: /Market selector/i }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "United Kingdom" }));
+
+    expect(screen.getByText("US prompt")).toBeInTheDocument();
+    expect(screen.queryByText("UK prompt")).not.toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------
