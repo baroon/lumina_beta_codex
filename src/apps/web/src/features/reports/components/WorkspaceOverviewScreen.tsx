@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -344,31 +344,45 @@ export function WorkspaceOverviewScreen() {
     if (!depthData) return {};
     return Object.fromEntries(depthData.sentimentDistribution.map((s) => [s.sentiment, s.count]));
   }, [depthData]);
-  // Available chip lists are derived from the data — a value with zero
-  // (or missing) count is dropped entirely so the row stays clean.
-  // Same philosophy as /prompts.
+  // Available chip lists are SNAPSHOTTED on the first non-empty
+  // depthData fetch and never recomputed thereafter. The "drop chips
+  // with count = 0" rule applies to the FIRST display only — if the
+  // user later selects Sentiment=Positive, the BE narrows depthData
+  // to Positive mentions, but the Negative / Mixed / Unknown chips
+  // must stay visible so the user can still toggle them. Without the
+  // freeze the chip strip would collapse to whatever's left after the
+  // current selection and the user could never get the others back
+  // without manually clearing.
   //
-  // Platform codes come from depthData.mentionsByPlatform directly
-  // (ordered by DisplayOrder via the BE). Crucially we do NOT filter
-  // against a hardcoded PLATFORM_LABELS keyset — the BE seeds platforms
-  // in PascalCase ("ChatGpt", "Claude" etc.), so the FE adapts to
-  // whatever codes the workspace actually has answers on.
-  // PLATFORM_LABELS still drives display labels via platformLabel with
-  // a raw-code fallback.
+  // Counts (platformCountsByCode + sentimentCountsByValue above) stay
+  // live so selected chips' badges still reflect the current scope.
+  // Frozen chips whose value drops out of the count map render with
+  // no badge — matches the molecule's "missing count = no badge" rule.
   //
-  // Sentiments stay in canonical SENTIMENT_ORDER when present so the
-  // chip strip reads as a Positive → Negative gradient.
-  const availablePlatformCodes = useMemo<string[]>(
-    () =>
-      depthData
-        ? depthData.mentionsByPlatform.filter((p) => p.answerCount > 0).map((p) => p.platformCode)
-        : [],
-    [depthData],
-  );
-  const availableSentiments = useMemo<string[]>(
-    () => SENTIMENT_ORDER.filter((value) => (sentimentCountsByValue[value] ?? 0) > 0),
-    [sentimentCountsByValue],
-  );
+  // Platform codes come from depthData.mentionsByPlatform.platformCode
+  // (BE seeds PascalCase). PLATFORM_LABELS only drives the display
+  // label via platformLabel — not the snapshot's identity.
+  //
+  // Stored as state (not useRef) because the project's lint rules ban
+  // ref access during render. The useEffects below capture once on
+  // the first non-empty payload; subsequent depthData changes don't
+  // re-fire because the length check guards re-entry.
+  const [availablePlatformCodes, setAvailablePlatformCodes] = useState<readonly string[]>([]);
+  const [availableSentiments, setAvailableSentiments] = useState<readonly string[]>([]);
+  useEffect(() => {
+    if (!depthData || availablePlatformCodes.length > 0) return;
+    const codes = depthData.mentionsByPlatform
+      .filter((p) => p.answerCount > 0)
+      .map((p) => p.platformCode);
+    if (codes.length > 0) setAvailablePlatformCodes(codes);
+  }, [depthData, availablePlatformCodes.length]);
+  useEffect(() => {
+    if (!depthData || availableSentiments.length > 0) return;
+    const sentiments = SENTIMENT_ORDER.filter((value) =>
+      depthData.sentimentDistribution.some((s) => s.sentiment === value && s.count > 0),
+    );
+    if (sentiments.length > 0) setAvailableSentiments(sentiments);
+  }, [depthData, availableSentiments.length]);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
