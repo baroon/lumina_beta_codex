@@ -109,12 +109,27 @@ export function MetricCategoryLayout({
   }, [sections, stickyHeight, stickyNav]);
 
   // Mirror the active section in the URL hash for shareable deep links.
+  // The first section is treated as "effectively top of page" — when it's
+  // active we strip any hash from the URL instead of pinning it. That way:
+  //   - Initial load lands on /prompts, not /prompts#Discovery.
+  //   - Scrolling to the second section pins #BuyingIntent.
+  //   - Scrolling back to the first section clears the hash again.
+  // Inbound deep links still resolve because useState's lazy init has
+  // already consumed the inbound hash before this effect runs.
   useEffect(() => {
     if (!activeId || typeof window === "undefined") return;
-    if (window.location.hash.slice(1) !== activeId) {
+    const isFirstSection = sections[0]?.id === activeId;
+    const currentHash = window.location.hash.slice(1);
+    if (isFirstSection) {
+      if (currentHash) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+      return;
+    }
+    if (currentHash !== activeId) {
       window.history.replaceState(null, "", `#${activeId}`);
     }
-  }, [activeId]);
+  }, [activeId, sections]);
 
   // Stable identity so callers passing this into props (e.g. `renderNav`)
   // don't trip the "ref access during render" lint when their callback is

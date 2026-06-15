@@ -14,6 +14,20 @@
     @apply border-neutral-200;
   }
 
+  /* Lock document-level scroll. AppShell owns the viewport with
+     `h-screen` and routes scroll to <main>, but third-party libs
+     (Recharts in particular) inject hidden measurement spans
+     directly into <body> at `top: -20000px`. Those spans extend
+     <body>'s scrollable area and create a phantom scrollbar on
+     <html> that sits next to <main>'s real one. Pinning overflow
+     here is the only place that catches body-sibling injections,
+     since AppShell's own `overflow-hidden` only contains its own
+     subtree. */
+  html,
+  body {
+    overflow: hidden;
+  }
+
   body {
     @apply bg-surface-page text-neutral-900 font-sans antialiased;
     font-feature-settings:
