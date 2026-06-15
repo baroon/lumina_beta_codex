@@ -88,13 +88,11 @@ public class GetWorkspaceDepthQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
-        // Sentiment + Platform resolution — API surface only; predicate
-        // wiring lands in a follow-up. See the matching note in
-        // GetWorkspaceOverviewQueryHandler.
+        // Sentiment + Platform — Platform narrows the runs query directly
+        // (via PromptRun.AIPlatformId); Sentiment narrows the brandMentions
+        // query at the mention level only.
         var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
         var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
-        _ = sentimentFilter;
-        _ = platformIdFilter;
         var runs = await (
             from pr in _db.PromptRuns.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on pr.Id equals a.PromptRunId
@@ -112,6 +110,7 @@ public class GetWorkspaceDepthQueryHandler
                     _db.PromptMarkets.Any(pm => pm.PromptId == p.Id && marketIdFilter.Contains(pm.MarketId)))
                 && (audienceIdFilter == null ||
                     _db.PromptAudiences.Any(pa => pa.PromptId == p.Id && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
             select new RunRow(
                 s.Id,
                 s.TrackerConfigurationId,
@@ -136,10 +135,14 @@ public class GetWorkspaceDepthQueryHandler
         var answerIdSet = runs.Select(r => r.AnswerId).ToHashSet();
 
         // Brand mentions — any tracked brand counts (multi-brand workspace).
+        // Sentiment filter applies here so the sentiment-distribution chart
+        // narrows to the selected set; the answer set is already platform-
+        // narrowed via the runs query upstream.
         var brandMentions = await _db.Mentions.AsNoTracking()
             .Where(m => answerIdSet.Contains(m.AIAnswerId)
                 && m.EntityType == MentionEntityType.Brand
-                && trackedBrandIds.Contains(m.EntityId))
+                && trackedBrandIds.Contains(m.EntityId)
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
             .Select(m => new BrandMentionRow(m.AIAnswerId, m.Sentiment))
             .ToListAsync(cancellationToken);
 

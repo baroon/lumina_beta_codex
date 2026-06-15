@@ -63,13 +63,12 @@ public class GetWorkspaceCompetitiveQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
-        // Sentiment + Platform resolution — API surface only; predicate
-        // wiring lands in a follow-up. See the matching note in
-        // GetWorkspaceOverviewQueryHandler.
+        // Sentiment + Platform — Platform applies at the answer/scan
+        // level (narrows the entire answer set via PromptRun.AIPlatformId);
+        // Sentiment applies at the mention level only (filters Mention.Sentiment
+        // when aggregating mention counts).
         var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
         var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
-        _ = sentimentFilter;
-        _ = platformIdFilter;
 
         // Answers in window across all trackers — joined with AnswerSignal so
         // we only include answers the signal extractor produced output for.
@@ -93,6 +92,7 @@ public class GetWorkspaceCompetitiveQueryHandler
                     _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
                 && (audienceIdFilter == null ||
                     _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
             select new AnswerRow(a.Id, s.TrackerConfigurationId)
         ).ToListAsync(cancellationToken);
 
@@ -109,11 +109,14 @@ public class GetWorkspaceCompetitiveQueryHandler
         var domainTypes = BuildDomainTypes(topDomains);
 
         // Pull all (brand + competitor) mentions across the workspace once;
-        // every downstream builder filters from this list.
+        // every downstream builder filters from this list. Sentiment filter
+        // (if any) is applied here so every mention rollup respects it —
+        // Platform was already applied upstream by narrowing allAnswerIds.
         var mentions = await _db.Mentions.AsNoTracking()
             .Where(m => allAnswerIds.Contains(m.AIAnswerId)
                 && (m.EntityType == MentionEntityType.Brand
-                    || m.EntityType == MentionEntityType.Competitor))
+                    || m.EntityType == MentionEntityType.Competitor)
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
             .ToListAsync(cancellationToken);
 
         // Resolve tracked competitor id set (de-duped by Competitor.Id) +

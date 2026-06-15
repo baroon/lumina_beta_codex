@@ -40,13 +40,17 @@ public class GetWorkspaceOverviewQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
-        // Sentiment + Platform filter resolution — present so the API
-        // surface is in place; not yet applied to the underlying queries
-        // (deliberate scope split — predicate wiring lands in a follow-up).
+        // Sentiment + Platform — Platform narrows BuildHeroAsync's
+        // PromptRun source (so every downstream count is platform-scoped);
+        // Sentiment narrows Mention-counting queries within the hero
+        // computation. Following the existing dim-filter convention,
+        // both apply ONLY to hero counts here — the trend series, top
+        // entities table, and Phase-4 measurement-model sections (brand
+        // attributes, co-mentions, risk flags, comparisons, topic
+        // ownership, factual claims) operate on workspace-wide aggregates
+        // and don't honor the dim filters either.
         var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
         var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
-        _ = sentimentFilter;
-        _ = platformIdFilter;
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -101,7 +105,7 @@ public class GetWorkspaceOverviewQueryHandler
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);
 
-        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, cancellationToken);
+        var hero = await BuildHeroAsync(scanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, platformIdFilter, sentimentFilter, cancellationToken);
 
         // Hero counts for the immediately-preceding equivalent window so
         // the FE can render an up/down delta chip on each hero tile.
@@ -116,7 +120,7 @@ public class GetWorkspaceOverviewQueryHandler
                     && s.StartedAt < prevTo)
                 .Select(s => s.Id)
                 .ToListAsync(cancellationToken);
-            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, cancellationToken);
+            previousHero = await BuildHeroAsync(prevScanIds, trackedBrandIds, lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter, platformIdFilter, sentimentFilter, cancellationToken);
         }
 
         var trendPoints = await _db.TrendPoints.AsNoTracking()
@@ -214,6 +218,8 @@ public class GetWorkspaceOverviewQueryHandler
         HashSet<Guid>? productIdFilter,
         HashSet<Guid>? marketIdFilter,
         HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0)
@@ -253,6 +259,10 @@ public class GetWorkspaceOverviewQueryHandler
             promptRunsInScope = promptRunsInScope.Where(pr =>
                 _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)));
         }
+        if (platformIdFilter is not null)
+        {
+            promptRunsInScope = promptRunsInScope.Where(pr => platformIdFilter.Contains(pr.AIPlatformId));
+        }
         var promptRunIdsInScope = promptRunsInScope.Select(pr => pr.Id);
 
         var queries = await promptRunsInScope.CountAsync(ct);
@@ -264,7 +274,10 @@ public class GetWorkspaceOverviewQueryHandler
         var answerIdSet = answerIds.ToHashSet();
 
         var mentions = answerIdSet.Count == 0 ? 0 : await _db.Mentions.AsNoTracking()
-            .CountAsync(m => answerIdSet.Contains(m.AIAnswerId), ct);
+            .CountAsync(
+                m => answerIdSet.Contains(m.AIAnswerId)
+                    && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)),
+                ct);
         var citations = answerIdSet.Count == 0 ? 0 : await _db.Citations.AsNoTracking()
             .CountAsync(c => answerIdSet.Contains(c.AIAnswerId), ct);
 
@@ -278,7 +291,8 @@ public class GetWorkspaceOverviewQueryHandler
             brandMentionedAnswerIdSet = (await _db.Mentions.AsNoTracking()
                 .Where(m => answerIdSet.Contains(m.AIAnswerId)
                     && m.EntityType == MentionEntityType.Brand
-                    && trackedBrandIds.Contains(m.EntityId))
+                    && trackedBrandIds.Contains(m.EntityId)
+                    && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
                 .Select(m => m.AIAnswerId)
                 .Distinct()
                 .ToListAsync(ct))
@@ -321,7 +335,8 @@ public class GetWorkspaceOverviewQueryHandler
         if (answerIdSet.Count > 0)
         {
             var mentionMinPositions = await _db.Mentions.AsNoTracking()
-                .Where(m => answerIdSet.Contains(m.AIAnswerId))
+                .Where(m => answerIdSet.Contains(m.AIAnswerId)
+                    && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
                 .Select(m => new
                 {
                     m.AIAnswerId,
