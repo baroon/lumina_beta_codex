@@ -338,16 +338,37 @@ export function WorkspaceOverviewScreen() {
   // less precise than the dropdown-selector chip counts (which use
   // dedicated unfiltered endpoints), but adding parallel endpoints
   // here is more BE work than the affordance is worth right now.
+  //
+  // We use `answerCount` for the platform badge rather than
+  // `brandMentionCount` because answer count is the right "what's in
+  // scope" metric — a Claude answer with no brand mention should still
+  // make the Claude chip available. The 0-count edge case (a platform
+  // with no answers in scope) is handled by filtering it out of
+  // `availablePlatformCodes` below.
   const platformCountsByCode = useMemo<Record<string, number>>(() => {
     if (!depthData) return {};
     return Object.fromEntries(
-      depthData.mentionsByPlatform.map((p) => [p.platformCode, p.brandMentionCount]),
+      depthData.mentionsByPlatform.map((p) => [p.platformCode, p.answerCount]),
     );
   }, [depthData]);
   const sentimentCountsByValue = useMemo<Record<string, number>>(() => {
     if (!depthData) return {};
     return Object.fromEntries(depthData.sentimentDistribution.map((s) => [s.sentiment, s.count]));
   }, [depthData]);
+  // Available chip lists are derived from the count maps — a value with
+  // zero (or missing) count is dropped entirely so the row stays clean.
+  // Same philosophy as /prompts (which derives availability from the
+  // in-view prompt set). Sentiments stay in canonical SENTIMENT_ORDER
+  // when present so the chip strip still reads as a Positive → Negative
+  // gradient.
+  const availablePlatformCodes = useMemo<string[]>(
+    () => AVAILABLE_PLATFORM_CODES.filter((code) => (platformCountsByCode[code] ?? 0) > 0),
+    [platformCountsByCode],
+  );
+  const availableSentiments = useMemo<string[]>(
+    () => SENTIMENT_ORDER.filter((value) => (sentimentCountsByValue[value] ?? 0) > 0),
+    [sentimentCountsByValue],
+  );
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -418,9 +439,11 @@ export function WorkspaceOverviewScreen() {
       trustSignalsByBrand={trustSignalsByBrand}
       selectedSentiments={selectedSentiments}
       onSelectedSentimentsChange={setSelectedSentiments}
+      availableSentiments={availableSentiments}
       sentimentCountsByValue={sentimentCountsByValue}
       selectedPlatformCodes={selectedPlatformCodes}
       onSelectedPlatformCodesChange={setSelectedPlatformCodes}
+      availablePlatformCodes={availablePlatformCodes}
       platformCountsByCode={platformCountsByCode}
       isRefreshing={isFetching && !isLoading}
     />
@@ -1110,11 +1133,15 @@ interface ComparisonControlsRowProps {
   /** Selected Sentiment enum values (Positive / Neutral / Mixed / Negative / Unknown). Empty = no filter. */
   selectedSentiments: readonly string[];
   onSelectedSentimentsChange: (next: string[]) => void;
+  /** Sentiment values to render as chips, in canonical order. Empty when nothing's in scope. */
+  availableSentiments: readonly string[];
   /** Per-sentiment count map for the chip badges. Sourced from filtered depth data — see WorkspaceOverviewScreen for the gotcha. */
   sentimentCountsByValue?: Readonly<Record<string, number>>;
   /** Selected AI-platform codes (openai / claude / gemini / perplexity / …). Empty = no filter. */
   selectedPlatformCodes: readonly string[];
   onSelectedPlatformCodesChange: (next: string[]) => void;
+  /** Platform codes to render as chips, in canonical order. Empty when nothing's in scope. */
+  availablePlatformCodes: readonly string[];
   /** Per-platform count map for the chip badges. Same source + gotcha as sentimentCountsByValue. */
   platformCountsByCode?: Readonly<Record<string, number>>;
   /** True while a new date range is fetching (placeholderData kept the
@@ -1148,9 +1175,11 @@ function ComparisonControlsRow({
   trustSignalsByBrand,
   selectedSentiments,
   onSelectedSentimentsChange,
+  availableSentiments,
   sentimentCountsByValue,
   selectedPlatformCodes,
   onSelectedPlatformCodesChange,
+  availablePlatformCodes,
   platformCountsByCode,
   isRefreshing = false,
 }: ComparisonControlsRowProps) {
@@ -1249,7 +1278,7 @@ function ComparisonControlsRow({
           </div>
           <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
             <InlineChipFilter
-              available={AVAILABLE_PLATFORM_CODES}
+              available={availablePlatformCodes}
               selected={selectedPlatformCodes}
               onChange={onSelectedPlatformCodesChange}
               labelFor={platformLabel}
@@ -1259,7 +1288,7 @@ function ComparisonControlsRow({
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
             <InlineChipFilter
-              available={SENTIMENT_ORDER}
+              available={availableSentiments}
               selected={selectedSentiments}
               onChange={onSelectedSentimentsChange}
               emptyLabel="No sentiments in scope."

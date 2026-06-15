@@ -118,23 +118,24 @@ describe("InlineChipFilter", () => {
     expect(screen.getByRole("button", { name: /Filter by Gemini/i })).toHaveTextContent("0");
   });
 
-  it("treats values missing from countsByValue as 0 (so Mixed/Unknown still carry a badge)", () => {
+  it("omits the badge for values absent from countsByValue (callers pre-filter available)", () => {
     render(
       <InlineChipFilter
-        available={["Positive", "Neutral", "Mixed", "Unknown"]}
+        available={["Positive", "Neutral"]}
         selected={[]}
         onChange={vi.fn()}
         emptyLabel="empty"
-        // Only Positive + Neutral have entries — Mixed/Unknown should
-        // still render a 0 badge instead of going badge-less, so the
-        // chip row reads as a uniform set.
-        countsByValue={{ Positive: 5, Neutral: 2 }}
+        countsByValue={{ Positive: 5 }}
       />,
     );
     expect(screen.getByRole("button", { name: /Filter by Positive/i })).toHaveTextContent("5");
-    expect(screen.getByRole("button", { name: /Filter by Neutral/i })).toHaveTextContent("2");
-    expect(screen.getByRole("button", { name: /Filter by Mixed/i })).toHaveTextContent("0");
-    expect(screen.getByRole("button", { name: /Filter by Unknown/i })).toHaveTextContent("0");
+    // Neutral isn't in the counts map — callers are expected to omit it
+    // from `available` entirely if it has no data. When it does appear
+    // in `available` without a count, the chip renders with just the
+    // label (no badge).
+    expect(screen.getByRole("button", { name: /Filter by Neutral/i })).toHaveTextContent(
+      /^Neutral$/,
+    );
   });
 
   it("omits count badges when countsByValue is not supplied", () => {

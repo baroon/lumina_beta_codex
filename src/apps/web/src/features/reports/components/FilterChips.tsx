@@ -86,11 +86,11 @@ export function InlineChipFilter({
       {available.map((value) => {
         const label = labelFor(value);
         const pressed = allSelectedVisually || selectedSet.has(value);
-        // When the caller supplied a counts map, treat missing entries as 0
-        // so every chip carries a badge (Mixed / Unknown / unused platforms
-        // get a muted "0" instead of vanishing). When the caller omits the
-        // map entirely, no chip gets a badge — preserves the no-counts mode.
-        const count = countsByValue ? (countsByValue[value] ?? 0) : undefined;
+        // Missing entry = no badge. Callers pre-filter `available` to
+        // values that actually have data, so a missing count here means
+        // "the caller didn't pass a counts map for this row" rather than
+        // "this value has zero". Keeps the molecule generic.
+        const count = countsByValue?.[value];
         return (
           <button
             key={value}
