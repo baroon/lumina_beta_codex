@@ -86,7 +86,11 @@ export function InlineChipFilter({
       {available.map((value) => {
         const label = labelFor(value);
         const pressed = allSelectedVisually || selectedSet.has(value);
-        const count = countsByValue?.[value];
+        // When the caller supplied a counts map, treat missing entries as 0
+        // so every chip carries a badge (Mixed / Unknown / unused platforms
+        // get a muted "0" instead of vanishing). When the caller omits the
+        // map entirely, no chip gets a badge — preserves the no-counts mode.
+        const count = countsByValue ? (countsByValue[value] ?? 0) : undefined;
         return (
           <button
             key={value}

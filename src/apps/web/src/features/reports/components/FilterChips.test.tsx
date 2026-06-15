@@ -118,6 +118,25 @@ describe("InlineChipFilter", () => {
     expect(screen.getByRole("button", { name: /Filter by Gemini/i })).toHaveTextContent("0");
   });
 
+  it("treats values missing from countsByValue as 0 (so Mixed/Unknown still carry a badge)", () => {
+    render(
+      <InlineChipFilter
+        available={["Positive", "Neutral", "Mixed", "Unknown"]}
+        selected={[]}
+        onChange={vi.fn()}
+        emptyLabel="empty"
+        // Only Positive + Neutral have entries — Mixed/Unknown should
+        // still render a 0 badge instead of going badge-less, so the
+        // chip row reads as a uniform set.
+        countsByValue={{ Positive: 5, Neutral: 2 }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Filter by Positive/i })).toHaveTextContent("5");
+    expect(screen.getByRole("button", { name: /Filter by Neutral/i })).toHaveTextContent("2");
+    expect(screen.getByRole("button", { name: /Filter by Mixed/i })).toHaveTextContent("0");
+    expect(screen.getByRole("button", { name: /Filter by Unknown/i })).toHaveTextContent("0");
+  });
+
   it("omits count badges when countsByValue is not supplied", () => {
     render(
       <InlineChipFilter
