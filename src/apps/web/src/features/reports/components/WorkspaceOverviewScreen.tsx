@@ -59,6 +59,7 @@ import { EntityScopeToggle, type EntityScope } from "@/components/molecules/Enti
 import { REPORTS_COPY } from "@/content/reports";
 import {
   InlineChipFilter,
+  PLATFORM_LABELS,
   platformLabel,
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
@@ -320,69 +321,49 @@ export function WorkspaceOverviewScreen() {
   const marketsByBrand = discoverySummary?.markets ?? EMPTY_GROUPS;
   const audiencesByBrand = discoverySummary?.audiences ?? EMPTY_GROUPS;
   const trustSignalsByBrand = discoverySummary?.trustSignals ?? EMPTY_GROUPS;
-  // Per-platform + per-sentiment counts for the chip badges next to the
-  // Models / Sentiment filter rows. Sourced from depthData which is
-  // already filtered by every selection — so the badges reflect the
-  // *currently filtered* slice rather than unfiltered totals. That's
-  // less precise than the dropdown-selector chip counts (which use
-  // dedicated unfiltered endpoints), but adding parallel endpoints
-  // here is more BE work than the affordance is worth right now.
+  // Models + Sentiment chip rows show the full canonical sets at all
+  // times — every platform code we know about + every Sentiment enum
+  // value, regardless of what's currently in scope. Predictable: a
+  // user looking at the popover at 9am sees the same chips at 5pm
+  // regardless of filter state.
   //
-  // We use `answerCount` for the platform badge rather than
-  // `brandMentionCount` because answer count is the right "what's in
-  // scope" metric — a Claude answer with no brand mention should still
-  // make the Claude chip available. The 0-count edge case (a platform
-  // with no answers in scope) is handled by filtering it out of
-  // `availablePlatformCodes` below.
-  const platformCountsByCode = useMemo<Record<string, number>>(() => {
-    if (!depthData) return {};
-    return Object.fromEntries(
-      depthData.mentionsByPlatform.map((p) => [p.platformCode, p.answerCount]),
-    );
-  }, [depthData]);
-  const sentimentCountsByValue = useMemo<Record<string, number>>(() => {
-    if (!depthData) return {};
-    return Object.fromEntries(depthData.sentimentDistribution.map((s) => [s.sentiment, s.count]));
-  }, [depthData]);
-  // Available chip lists are SNAPSHOTTED on the first non-empty
-  // depthData fetch and never recomputed thereafter. The "drop chips
-  // with count = 0" rule applies to the FIRST display only — if the
-  // user later selects Sentiment=Positive, the BE narrows depthData
-  // to Positive mentions, but the Negative / Mixed / Unknown chips
-  // must stay visible so the user can still toggle them. Without the
-  // freeze the chip strip would collapse to whatever's left after the
-  // current selection and the user could never get the others back
-  // without manually clearing.
+  // Counts on each chip ARE shown, but captured once on the first
+  // non-empty depthData fetch and frozen — they don't move as the
+  // user selects filters. The earlier "live counts" attempt confused
+  // users because counts moved on every selection. A 0 count is fine
+  // to display: users naturally skip a chip with no data.
   //
-  // Counts (platformCountsByCode + sentimentCountsByValue above) stay
-  // live so selected chips' badges still reflect the current scope.
-  // Frozen chips whose value drops out of the count map render with
-  // no badge — matches the molecule's "missing count = no badge" rule.
-  //
-  // Platform codes come from depthData.mentionsByPlatform.platformCode
-  // (BE seeds PascalCase). PLATFORM_LABELS only drives the display
-  // label via platformLabel — not the snapshot's identity.
-  //
-  // Stored as state (not useRef) because the project's lint rules ban
-  // ref access during render. The useEffects below capture once on
-  // the first non-empty payload; subsequent depthData changes don't
-  // re-fire because the length check guards re-entry.
-  const [availablePlatformCodes, setAvailablePlatformCodes] = useState<readonly string[]>([]);
-  const [availableSentiments, setAvailableSentiments] = useState<readonly string[]>([]);
+  // Captured via useState + a guarded useEffect because the project's
+  // lint rules ban ref access during render. Length check guards
+  // re-entry so subsequent depthData changes don't update the snapshot.
+  const availablePlatformCodes = useMemo<readonly string[]>(() => Object.keys(PLATFORM_LABELS), []);
+  const availableSentiments = SENTIMENT_ORDER;
+  const [platformCountsByCode, setPlatformCountsByCode] = useState<Record<string, number> | null>(
+    null,
+  );
+  const [sentimentCountsByValue, setSentimentCountsByValue] = useState<Record<
+    string,
+    number
+  > | null>(null);
   useEffect(() => {
-    if (!depthData || availablePlatformCodes.length > 0) return;
-    const codes = depthData.mentionsByPlatform
-      .filter((p) => p.answerCount > 0)
-      .map((p) => p.platformCode);
-    if (codes.length > 0) setAvailablePlatformCodes(codes);
-  }, [depthData, availablePlatformCodes.length]);
+    if (platformCountsByCode !== null || !depthData) return;
+    if (depthData.mentionsByPlatform.length === 0) return;
+    // Pre-fill every canonical code with 0 so chips that the
+    // workspace doesn't have data on still render a "0" badge
+    // (predictable signal — user sees "no data" without trying).
+    const snapshot: Record<string, number> = {};
+    for (const code of Object.keys(PLATFORM_LABELS)) snapshot[code] = 0;
+    for (const p of depthData.mentionsByPlatform) snapshot[p.platformCode] = p.answerCount;
+    setPlatformCountsByCode(snapshot);
+  }, [depthData, platformCountsByCode]);
   useEffect(() => {
-    if (!depthData || availableSentiments.length > 0) return;
-    const sentiments = SENTIMENT_ORDER.filter((value) =>
-      depthData.sentimentDistribution.some((s) => s.sentiment === value && s.count > 0),
-    );
-    if (sentiments.length > 0) setAvailableSentiments(sentiments);
-  }, [depthData, availableSentiments.length]);
+    if (sentimentCountsByValue !== null || !depthData) return;
+    if (depthData.sentimentDistribution.length === 0) return;
+    const snapshot: Record<string, number> = {};
+    for (const value of SENTIMENT_ORDER) snapshot[value] = 0;
+    for (const s of depthData.sentimentDistribution) snapshot[s.sentiment] = s.count;
+    setSentimentCountsByValue(snapshot);
+  }, [depthData, sentimentCountsByValue]);
   const copy = REPORTS_COPY.overview;
 
   /** Hero-tile drill-down. Scrolls to the trend card for the chosen metric. */
@@ -454,11 +435,11 @@ export function WorkspaceOverviewScreen() {
       selectedSentiments={selectedSentiments}
       onSelectedSentimentsChange={setSelectedSentiments}
       availableSentiments={availableSentiments}
-      sentimentCountsByValue={sentimentCountsByValue}
+      sentimentCountsByValue={sentimentCountsByValue ?? undefined}
       selectedPlatformCodes={selectedPlatformCodes}
       onSelectedPlatformCodesChange={setSelectedPlatformCodes}
       availablePlatformCodes={availablePlatformCodes}
-      platformCountsByCode={platformCountsByCode}
+      platformCountsByCode={platformCountsByCode ?? undefined}
       isRefreshing={isFetching && !isLoading}
     />
   );

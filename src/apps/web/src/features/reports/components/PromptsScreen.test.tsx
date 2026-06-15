@@ -480,7 +480,7 @@ describe("PromptsScreen", () => {
 
     // Open the FiltersPopover and pick "ChatGPT" from the Models row.
     await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
-    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Filter by ChatGPT$/i }));
 
     expect(screen.getByText("ChatGPT-only prompt")).toBeInTheDocument();
     expect(screen.queryByText("Gemini-only prompt")).not.toBeInTheDocument();
@@ -540,7 +540,7 @@ describe("PromptsScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
 
     // First click narrows: pick ChatGPT → only ChatGPT row visible.
-    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Filter by ChatGPT$/i }));
     expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
     expect(screen.queryByText("Gemini prompt")).not.toBeInTheDocument();
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
@@ -553,7 +553,7 @@ describe("PromptsScreen", () => {
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
 
     // Clicking an already-selected chip is a no-op (don't-unselect rule).
-    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Filter by ChatGPT$/i }));
     expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
     expect(screen.getByText("Gemini prompt")).toBeInTheDocument();
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();

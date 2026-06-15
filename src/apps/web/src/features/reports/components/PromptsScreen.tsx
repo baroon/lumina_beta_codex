@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowDownUp, ArrowUp, BarChart3, PieChart, X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -29,6 +29,7 @@ import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
 import {
   InlineChipFilter,
+  PLATFORM_LABELS,
   platformLabel,
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
@@ -200,54 +201,46 @@ export function PromptsScreen() {
     query,
   ]);
 
-  // Distinct platform codes across the unfiltered prompt set drives the
-  // Models chip row. Sorted by display label so the chip order stays
-  // stable as the underlying scope changes.
-  const availablePlatformCodes = useMemo<string[]>(() => {
-    if (!prompts.data) return [];
-    const set = new Set<string>();
-    for (const p of prompts.data.prompts) for (const c of p.platformCodes) set.add(c);
-    return Array.from(set).sort((a, b) => platformLabel(a).localeCompare(platformLabel(b)));
-  }, [prompts.data]);
-
-  // Per-platform prompt counts feed the chip badges next to each Models
-  // chip. Each prompt counts once per platform it ran on (set semantics
-  // via `platformCodes`).
-  const promptCountsByPlatformCode = useMemo<Record<string, number>>(() => {
-    if (!prompts.data) return {};
-    const counts: Record<string, number> = {};
+  // Models + Sentiment chip rows show the full canonical sets at all
+  // times — predictable affordance, no chips appearing/disappearing
+  // as scope or selection changes. Counts ARE shown (sourced from the
+  // first non-empty prompts payload) but frozen after capture so the
+  // badges don't move under the user. See WorkspaceOverviewScreen for
+  // the same shape.
+  const availablePlatformCodes = useMemo<readonly string[]>(() => Object.keys(PLATFORM_LABELS), []);
+  const availableSentiments = SENTIMENT_ORDER;
+  const [promptCountsByPlatformCode, setPromptCountsByPlatformCode] = useState<Record<
+    string,
+    number
+  > | null>(null);
+  const [promptCountsBySentiment, setPromptCountsBySentiment] = useState<Record<
+    string,
+    number
+  > | null>(null);
+  useEffect(() => {
+    if (promptCountsByPlatformCode !== null || !prompts.data) return;
+    if (prompts.data.prompts.length === 0) return;
+    // Pre-fill every canonical code with 0 so chips that the
+    // workspace doesn't have data on still render a "0" badge.
+    const snapshot: Record<string, number> = {};
+    for (const code of Object.keys(PLATFORM_LABELS)) snapshot[code] = 0;
     for (const p of prompts.data.prompts) {
-      for (const c of p.platformCodes) counts[c] = (counts[c] ?? 0) + 1;
+      for (const c of p.platformCodes) snapshot[c] = (snapshot[c] ?? 0) + 1;
     }
-    return counts;
-  }, [prompts.data]);
-
-  // Distinct dominantSentiment values across the unfiltered prompt set,
-  // ordered canonically (Positive → Neutral → Mixed → Negative → Unknown)
-  // so the chip strip reads as a sentiment gradient. Rows with null
-  // sentiment (no measured mentions) don't contribute a chip.
-  const availableSentiments = useMemo<string[]>(() => {
-    if (!prompts.data) return [];
-    const present = new Set<string>();
-    for (const p of prompts.data.prompts) {
-      if (p.dominantSentiment != null) present.add(p.dominantSentiment);
-    }
-    return SENTIMENT_ORDER.filter((s) => present.has(s));
-  }, [prompts.data]);
-
-  // Per-sentiment prompt counts feed the chip badges next to each
-  // Sentiment chip. Only prompts with a measured dominantSentiment
-  // contribute; null-sentiment rows are excluded.
-  const promptCountsBySentiment = useMemo<Record<string, number>>(() => {
-    if (!prompts.data) return {};
-    const counts: Record<string, number> = {};
+    setPromptCountsByPlatformCode(snapshot);
+  }, [prompts.data, promptCountsByPlatformCode]);
+  useEffect(() => {
+    if (promptCountsBySentiment !== null || !prompts.data) return;
+    if (prompts.data.prompts.length === 0) return;
+    const snapshot: Record<string, number> = {};
+    for (const value of SENTIMENT_ORDER) snapshot[value] = 0;
     for (const p of prompts.data.prompts) {
       if (p.dominantSentiment != null) {
-        counts[p.dominantSentiment] = (counts[p.dominantSentiment] ?? 0) + 1;
+        snapshot[p.dominantSentiment] = (snapshot[p.dominantSentiment] ?? 0) + 1;
       }
     }
-    return counts;
-  }, [prompts.data]);
+    setPromptCountsBySentiment(snapshot);
+  }, [prompts.data, promptCountsBySentiment]);
 
   // Per-lens prompt counts feed both the lens chip badges and the
   // distribution donut. We count on the full (unsearched) lens set so
@@ -401,7 +394,7 @@ export function PromptsScreen() {
               onChange={setSelectedPlatformCodes}
               labelFor={platformLabel}
               emptyLabel="No models in scope."
-              countsByValue={promptCountsByPlatformCode}
+              countsByValue={promptCountsByPlatformCode ?? undefined}
             />
           </FiltersPopoverRow>
           <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
@@ -410,7 +403,7 @@ export function PromptsScreen() {
               selected={selectedSentiments}
               onChange={setSelectedSentiments}
               emptyLabel="No sentiments in scope."
-              countsByValue={promptCountsBySentiment}
+              countsByValue={promptCountsBySentiment ?? undefined}
             />
           </FiltersPopoverRow>
         </FiltersPopover>
