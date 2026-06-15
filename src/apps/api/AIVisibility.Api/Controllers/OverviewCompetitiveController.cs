@@ -32,10 +32,12 @@ public class OverviewCompetitiveController : ControllerBase
         [FromQuery(Name = "marketNames")] string[]? marketNames = null,
         [FromQuery(Name = "audienceNames")] string[]? audienceNames = null,
         [FromQuery(Name = "trackerIds")] Guid[]? trackerIds = null,
+        [FromQuery(Name = "sentimentValues")] string[]? sentimentValues = null,
+        [FromQuery(Name = "platformCodes")] string[]? platformCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceCompetitiveQuery(from, to, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds), cancellationToken);
+            new GetWorkspaceCompetitiveQuery(from, to, lensCodes, topicNames, productNames, marketNames, audienceNames, trackerIds, sentimentValues, platformCodes), cancellationToken);
         return Ok(result);
     }
 }
