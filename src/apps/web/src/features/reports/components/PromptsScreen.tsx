@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
+import { PromptAnswerHistoryDrawer } from "@/features/reports/components/PromptAnswerHistoryDrawer";
 import { countryCodeToFlagUrl } from "@/lib/flag";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
@@ -112,6 +113,8 @@ export function PromptsScreen() {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("default");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  // Prompt whose row-click drawer is open. null = no drawer.
+  const [drawerPromptId, setDrawerPromptId] = useState<string | null>(null);
 
   const prompts = useWorkspacePrompts(range, trackerIds);
   const { data: discoverySummary } = useDiscoverySummary();
@@ -251,6 +254,7 @@ export function PromptsScreen() {
               setSortDir("desc");
             }
           }}
+          onOpenAnswerHistory={setDrawerPromptId}
         />
       ),
     });
@@ -369,6 +373,11 @@ export function PromptsScreen() {
           renderNav={() => null}
         />
       )}
+      <PromptAnswerHistoryDrawer
+        promptId={drawerPromptId}
+        range={range}
+        onClose={() => setDrawerPromptId(null)}
+      />
     </div>
   );
 }
@@ -667,9 +676,17 @@ interface PromptsTableProps {
   sortBy: SortKey;
   sortDir: SortDir;
   onSortChange: (key: SortKey) => void;
+  /** Open the answer-history drawer for the given prompt. Fired on row click. */
+  onOpenAnswerHistory: (promptId: string) => void;
 }
 
-function PromptsTable({ rows, sortBy, sortDir, onSortChange }: PromptsTableProps) {
+function PromptsTable({
+  rows,
+  sortBy,
+  sortDir,
+  onSortChange,
+  onOpenAnswerHistory,
+}: PromptsTableProps) {
   const update = useUpdateWorkspacePrompt();
   const remove = useRemoveWorkspacePrompt();
   return (
@@ -723,6 +740,7 @@ function PromptsTable({ rows, sortBy, sortDir, onSortChange }: PromptsTableProps
               }
               onRemove={() => remove.mutate({ trackerId: row.trackerId, promptId: row.promptId })}
               isRemoving={remove.isPending}
+              onOpen={() => onOpenAnswerHistory(row.promptId)}
             />
           ))}
         </tbody>
@@ -736,15 +754,24 @@ function PromptRow({
   onEdit,
   onRemove,
   isRemoving,
+  onOpen,
 }: {
   row: WorkspacePromptRowDto;
   onEdit: (text: string) => void;
   onRemove: () => void;
   isRemoving: boolean;
+  /** Open the row's answer-history drawer. Fired on row click. */
+  onOpen: () => void;
 }) {
   return (
-    <tr>
-      <Td>
+    <tr
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      className="cursor-pointer transition hover:bg-neutral-50"
+    >
+      {/* The prompt cell hosts an InlineEdit button. Clicking it opens
+          the editor — NOT the drawer — so we eat the click here. */}
+      <Td onClick={(e) => e.stopPropagation()}>
         <InlineEdit
           value={row.text}
           onChange={(next) => {
@@ -811,7 +838,7 @@ function PromptRow({
           </span>
         </div>
       </Td>
-      <Td className="w-6">
+      <Td className="w-6" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           onClick={onRemove}
@@ -943,8 +970,20 @@ function SortableTh({
   );
 }
 
-function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={cn("px-3 py-2 align-top text-neutral-700", className)}>{children}</td>;
+function Td({
+  children,
+  className,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: React.MouseEventHandler<HTMLTableCellElement>;
+}) {
+  return (
+    <td onClick={onClick} className={cn("px-3 py-2 align-top text-neutral-700", className)}>
+      {children}
+    </td>
+  );
 }
 
 /** Compact "2d ago" / "3h ago" / "just now" string for a recent timestamp. */

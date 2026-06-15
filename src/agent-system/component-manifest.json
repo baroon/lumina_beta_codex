@@ -1431,6 +1431,15 @@
           "notes": "Phase 4 Slice 2 side drawer drill-down from a SourcesTable row. Lists prompt + AI answer snippet + platform + lens + URL per citation. Lighter-weight precursor to the full Prompt Evidence view from ADR-004 which awaits Findings."
         },
         {
+          "name": "PromptAnswerHistoryDrawer",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/PromptAnswerHistoryDrawer.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["Badge", "ScrollArea", "Skeleton"],
+          "notes": "Row-click drawer on the workspace /prompts page. Drills into one prompt's AI answer history across in-window scans — per-answer card with platform, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated 'not in scope' state without branching on errors."
+        },
+        {
           "name": "ScanTopicsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/ScanTopicsScreen.tsx",

@@ -463,6 +463,42 @@ export interface WorkspacePromptsDto {
   prompts: WorkspacePromptRowDto[];
 }
 
+/**
+ * Per-prompt answer history at GET /api/prompts/{promptId}/answers —
+ * drives the row-click drawer on /prompts. Empty `promptText` +
+ * empty `answers` is the FE's signal that the prompt is out of scope
+ * (foreign workspace, unknown id) — the BE returns 200 with that
+ * payload rather than 404, so the drawer renders a clean empty state.
+ */
+export interface PromptAnswerHistoryDto {
+  promptId: string;
+  promptText: string;
+  /** Window lower bound (ISO). Null = "all time". */
+  from: string | null;
+  /** Window upper bound (ISO). */
+  to: string;
+  answers: PromptAnswerRowDto[];
+}
+
+export interface PromptAnswerRowDto {
+  answerId: string;
+  scanRunId: string;
+  /** ISO timestamp — ScanRun.CompletedAt with StartedAt fallback. */
+  scannedAt: string;
+  platformCode: string;
+  platformName: string;
+  /** Full AI answer body. May be empty when the provider returned no text. */
+  answerText: string;
+  /** Total tracked-brand mentions on this answer. 0 = brand not mentioned. */
+  brandMentionCount: number;
+  /** Dominant Sentiment across brand mentions ("Positive" | "Neutral" | "Mixed" | "Negative" | "Unknown"); null when not mentioned. */
+  dominantSentiment: string | null;
+  /** Min FirstMentionPosition across brand mentions, [0..1]; null when not mentioned. */
+  firstMentionPosition: number | null;
+  /** First non-empty evidence snippet; null when not mentioned. */
+  evidenceSnippet: string | null;
+}
+
 /** Domain-level citation source row from GET /api/sources/domains. */
 export interface WorkspaceDomainRowDto {
   sourceId: string;

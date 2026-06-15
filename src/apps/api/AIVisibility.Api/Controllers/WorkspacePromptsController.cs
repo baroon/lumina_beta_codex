@@ -34,4 +34,23 @@ public class WorkspacePromptsController : ControllerBase
             new GetWorkspacePromptsQuery(from, to, trackerIds), cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Per-prompt answer history — drives the row-click drawer on
+    /// /prompts. Authorization is workspace-scoped inside the handler:
+    /// a prompt that doesn't belong to a tracker of a workspace brand
+    /// returns an empty list (no 404, no enumeration leak).
+    /// </summary>
+    [HttpGet("{promptId:guid}/answers")]
+    [ProducesResponseType(typeof(PromptAnswerHistoryDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAnswerHistory(
+        Guid promptId,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new GetPromptAnswerHistoryQuery(promptId, from, to), cancellationToken);
+        return Ok(result);
+    }
 }

@@ -543,4 +543,20 @@ export const REPORTS_COPY = {
       notFound: "Scan not found or analysis hasn't completed yet.",
     },
   },
+  prompts: {
+    answerDrawer: {
+      title: "Answer history",
+      close: "Close",
+      noPromptSubtitle: "Select a prompt row to see its answer history.",
+      empty: "No answers in window.",
+      notInScope: "This prompt is not in the current workspace scope.",
+      error: "Couldn't load answer history.",
+      sectionAnswer: "Answer",
+      sectionEvidence: "Evidence",
+      notMentioned: "Brand not mentioned in this answer.",
+      mentionedCountLabel: "{count} brand mentions",
+      mentionedCountLabelOne: "1 brand mention",
+      positionLabel: "First mention at {position}",
+    },
+  },
 } as const;

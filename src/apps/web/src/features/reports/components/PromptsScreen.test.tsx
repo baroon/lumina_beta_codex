@@ -43,6 +43,11 @@ vi.mock("@/features/reports/hooks/useMarketCounts", () => ({
 vi.mock("@/features/reports/hooks/useAudienceCounts", () => ({
   useAudienceCounts: () => ({ data: undefined, isLoading: false, isError: false }),
 }));
+// Drawer hook is exercised in PromptAnswerHistoryDrawer.test.tsx; here we
+// just verify the row click is plumbed correctly and the drawer mounts.
+vi.mock("@/features/reports/hooks/usePromptAnswerHistory", () => ({
+  usePromptAnswerHistory: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
 
 // Stub the chart wrappers so we can render the screen without pulling
 // Recharts' SVG machinery into jsdom. We just record what data was
@@ -496,7 +501,27 @@ describe("PromptsScreen", () => {
     });
   });
 
-  it("clicking the X removes the row via the per-row trackerId/promptId", async () => {
+  // -------------------------------------------------------------------
+  // Row-click answer-history drawer
+  // -------------------------------------------------------------------
+
+  it("clicking a non-interactive cell on a row opens the answer-history drawer", async () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1", text: "Best resume builder?" })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    // Drawer is not open initially — its title isn't rendered yet.
+    expect(screen.queryByText("Answer history")).not.toBeInTheDocument();
+    // Click on the Tracker cell (a static, non-interactive cell on the row).
+    await userEvent.click(screen.getByText("Acme · US"));
+    // Drawer mounted (the hook returns no data, so the loading skeleton or
+    // the no-data state shows — either way the drawer Title is in the DOM).
+    expect(screen.getByText("Answer history")).toBeInTheDocument();
+  });
+
+  it("clicking the X removes the row without also opening the drawer", async () => {
     promptsState = {
       data: payload([row({ promptId: "p1", trackerId: "t1", text: "Best resume builder?" })]),
       isLoading: false,
@@ -507,5 +532,8 @@ describe("PromptsScreen", () => {
       screen.getByRole("button", { name: /Remove prompt Best resume builder/i }),
     );
     expect(removePromptMutate).toHaveBeenCalledWith({ trackerId: "t1", promptId: "p1" });
+    // The remove cell stops propagation so the row's drawer-open handler
+    // does not also fire — keep this assertion to guard the regression.
+    expect(screen.queryByText("Answer history")).not.toBeInTheDocument();
   });
 });

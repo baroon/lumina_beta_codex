@@ -4,6 +4,7 @@ import type {
   AddCustomPromptRequest,
   ConfirmPromptsResult,
   GeneratePromptsResult,
+  PromptAnswerHistoryDto,
   PromptList,
   WorkspacePromptsDto,
 } from "@/types/api";
@@ -60,4 +61,21 @@ export const promptsApi = {
     apiClient.get<WorkspacePromptsDto>(
       `/api/prompts${buildWorkspacePromptsQuery(range, trackerIds)}`,
     ),
+
+  /**
+   * Per-prompt answer history at GET /api/prompts/{promptId}/answers.
+   * Drives the row-click drawer on the workspace /prompts page. The BE
+   * returns an empty payload (200, not 404) for prompts outside the
+   * caller's workspace so the FE can render a clean empty state without
+   * branching on error.
+   */
+  answerHistory: (promptId: string, range: DateRange) => {
+    const params = new URLSearchParams();
+    if (range.from) params.set("from", range.from.toISOString());
+    if (range.to) params.set("to", range.to.toISOString());
+    const qs = params.toString();
+    return apiClient.get<PromptAnswerHistoryDto>(
+      `/api/prompts/${promptId}/answers${qs ? `?${qs}` : ""}`,
+    );
+  },
 };

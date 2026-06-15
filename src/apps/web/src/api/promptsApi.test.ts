@@ -52,4 +52,19 @@ describe("promptsApi", () => {
     promptsApi.remove("t1", "p1");
     expect(client.delete).toHaveBeenCalledWith("/api/trackers/t1/prompts/p1");
   });
+
+  it("answerHistory hits the per-prompt endpoint with serialized window bounds", () => {
+    promptsApi.answerHistory("p1", {
+      from: new Date("2026-05-09T00:00:00Z"),
+      to: new Date("2026-06-09T00:00:00Z"),
+    });
+    expect(client.get).toHaveBeenCalledWith(
+      "/api/prompts/p1/answers?from=2026-05-09T00%3A00%3A00.000Z&to=2026-06-09T00%3A00%3A00.000Z",
+    );
+  });
+
+  it("answerHistory omits the query string when the range is fully open", () => {
+    promptsApi.answerHistory("p1", { from: null, to: null });
+    expect(client.get).toHaveBeenCalledWith("/api/prompts/p1/answers");
+  });
 });
