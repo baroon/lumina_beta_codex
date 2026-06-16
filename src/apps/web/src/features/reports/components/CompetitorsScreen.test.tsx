@@ -285,6 +285,58 @@ describe("CompetitorsScreen", () => {
     expect(within(table).getByText("50%")).toBeInTheDocument();
   });
 
+  it("swaps the trend chart series when the metric toggle flips to Mention rate", async () => {
+    competitiveState = {
+      data: competitive(
+        [
+          mention({ entityId: "a", name: "Canva", mentionCount: 12 }),
+          mention({ entityId: "b", name: "Acme", isTrackedBrand: true, mentionCount: 8 }),
+        ],
+        [],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    const series: EntityTrendSeriesDto[] = [
+      // SoV series (default metric).
+      {
+        entityType: "Brand",
+        entityId: "b",
+        entityName: "Acme",
+        metricName: "BrandShareOfVoice",
+        seriesKind: "Numeric",
+        points: [
+          { scanRunId: "s1", capturedAt: "2026-06-01T00:00:00Z", value: 0.3, category: null },
+        ],
+      },
+      // Mention-rate series — should appear only after the toggle flips.
+      {
+        entityType: "Brand",
+        entityId: "b",
+        entityName: "Acme — mention",
+        metricName: "BrandMentionRate",
+        seriesKind: "Numeric",
+        points: [
+          { scanRunId: "s1", capturedAt: "2026-06-01T00:00:00Z", value: 0.6, category: null },
+        ],
+      },
+    ];
+    overviewState = { data: { series } };
+    render(<CompetitorsScreen />);
+    const chart = screen.getByTestId("line-chart");
+    // Default metric is SoV — only the SoV series surfaces.
+    expect(within(chart).getByText("Acme")).toBeInTheDocument();
+    expect(within(chart).queryByText(/Acme — mention/)).not.toBeInTheDocument();
+
+    // Flip the toggle. The toggle exposes one button per metric with
+    // aria-label = metric label.
+    await userEvent.click(screen.getByRole("button", { name: /^Mention rate$/i }));
+
+    const refreshedChart = screen.getByTestId("line-chart");
+    expect(within(refreshedChart).getByText(/Acme — mention/)).toBeInTheDocument();
+    expect(within(refreshedChart).queryByText(/^Acme$/)).not.toBeInTheDocument();
+  });
+
   it("renders the SoV trend lines for the top 5 entities by mention count", () => {
     competitiveState = {
       data: competitive(

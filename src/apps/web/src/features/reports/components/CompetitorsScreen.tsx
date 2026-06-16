@@ -298,13 +298,13 @@ export function CompetitorsScreen() {
           statusStrip={
             <div className="space-y-3">
               <CompetitorHero rows={rows} />
-              {/* SoV trend (time-series) + SoV donut (current snapshot)
-                  sit side-by-side above the filter bar — paired so the
-                  "how it's moving" and "where it is right now" reads
-                  flow together. Same "context first, filters next,
-                  sections below" rhythm as /overview. */}
+              {/* Competitive trend (metric-switchable time series) + SoV
+                  donut (current snapshot) sit side-by-side above the
+                  filter bar — paired so "how it's moving" and "where it
+                  is right now" read together. Same "context first,
+                  filters next, sections below" rhythm as /overview. */}
               <div className="grid gap-3 md:grid-cols-2">
-                <SovTrendCard series={overview.data?.series ?? []} rows={rows} />
+                <CompetitiveTrendCard series={overview.data?.series ?? []} rows={rows} />
                 <ShareOfVoiceCard mentions={competitive.data.mentionDistribution} />
               </div>
             </div>
@@ -473,25 +473,77 @@ function HeroTile({
 }
 
 // ---------------------------------------------------------------------------
-// SoV trend card — reuses useWorkspaceOverview's per-entity series
+// Competitive trend card — one line chart, four metrics behind a toggle
 // ---------------------------------------------------------------------------
 
-function SovTrendCard({
+// The four metrics the user can flip through on /competitors. Each carries
+// (a) the BE metric names — `brandMetric` is what tracked-brand series use,
+// `competitorMetric` is what competitor series use, since the BE labels
+// them differently for some axes — and (b) the chart format ("pct" vs
+// "rank") which drives axis formatting + reverseY.
+type TrendFormat = "pct" | "rank";
+interface TrendMetric {
+  value: string;
+  label: string;
+  brandMetric: string;
+  competitorMetric?: string;
+  format: TrendFormat;
+}
+const TREND_METRICS: readonly TrendMetric[] = [
+  {
+    value: "sov",
+    label: "SoV",
+    brandMetric: "BrandShareOfVoice",
+    competitorMetric: "ShareOfVoice",
+    format: "pct",
+  },
+  {
+    value: "mention",
+    label: "Mention rate",
+    brandMetric: "BrandMentionRate",
+    competitorMetric: "MentionRate",
+    format: "pct",
+  },
+  {
+    value: "rec",
+    label: "Rec. rate",
+    brandMetric: "BrandRecommendationRate",
+    competitorMetric: "RecommendationRate",
+    format: "pct",
+  },
+  {
+    value: "rank",
+    label: "Rank",
+    brandMetric: "AverageBrandRank",
+    competitorMetric: "AverageBrandRank",
+    format: "rank",
+  },
+];
+
+function CompetitiveTrendCard({
   series,
   rows,
 }: {
   series: readonly EntityTrendSeriesDto[];
   rows: readonly CompetitorRow[];
 }) {
+  const [metricValue, setMetricValue] = useState<string>(TREND_METRICS[0].value);
+  const metric = TREND_METRICS.find((m) => m.value === metricValue) ?? TREND_METRICS[0];
+
   // Show the top 5 entities by mention count — keeps the chart legible
   // even when the workspace has dozens of competitors in scope.
   const top5Keys = useMemo(
     () => new Set(rows.slice(0, 5).map((r) => `${r.entityType}:${r.entityId}`)),
     [rows],
   );
+
   const chartSeries: LineChartSeries[] = useMemo(() => {
     return series
-      .filter((s) => s.metricName === "BrandShareOfVoice" || s.metricName === "ShareOfVoice")
+      .filter((s) => {
+        if (s.entityType === "Brand") return s.metricName === metric.brandMetric;
+        if (!metric.competitorMetric) return false;
+        return s.metricName === metric.competitorMetric;
+      })
       .filter((s) => top5Keys.has(`${s.entityType}:${s.entityId}`))
       .map((s, i) => ({
         id: s.entityId,
@@ -499,23 +551,80 @@ function SovTrendCard({
         color: ENTITY_PALETTE[i % ENTITY_PALETTE.length],
         data: s.points.map((p) => ({ x: p.capturedAt, y: p.value ?? null })),
       }));
-  }, [series, top5Keys]);
+  }, [series, top5Keys, metric.brandMetric, metric.competitorMetric]);
+
+  const axis = axisConfigForFormat(metric.format);
+
   return (
     <CollapsibleCard
       icon={TrendingUp}
-      title="Share of voice over time"
-      tooltip="Per-entity SoV trend for the top 5 by mentions in the selected window."
+      title="Competitive trend"
+      tooltip="Per-entity trend for the top 5 by mentions in the selected window. Use the toggle to flip between Share of voice, Mention rate, Recommendation rate, and Rank."
+      actions={<TrendMetricToggle value={metricValue} onChange={setMetricValue} />}
     >
       {chartSeries.length === 0 ? (
         <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
       ) : (
         <LineChartWrapper
           series={chartSeries}
-          formatValue={(v) => `${Math.round(v * 100)}%`}
+          formatValue={axis.formatValue}
+          minValue={axis.minValue}
+          reverseY={axis.reverseY}
           height={180}
         />
       )}
     </CollapsibleCard>
+  );
+}
+
+function axisConfigForFormat(format: TrendFormat): {
+  formatValue: (v: number) => string;
+  minValue?: number;
+  reverseY?: boolean;
+} {
+  switch (format) {
+    case "pct":
+      return { formatValue: (v) => `${Math.round(v * 100)}%`, minValue: 0 };
+    case "rank":
+      // Rank: lower = better, so flip the Y so rank 1 sits at the top
+      // and the line dips downward as the brand falls in the list.
+      return { formatValue: (v) => v.toFixed(2), minValue: 1, reverseY: true };
+  }
+}
+
+function TrendMetricToggle({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Trend metric"
+      className="inline-flex rounded-md border border-neutral-300 bg-white p-[1px] shadow-sm"
+    >
+      {TREND_METRICS.map((m) => {
+        const active = m.value === value;
+        return (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => onChange(m.value)}
+            aria-pressed={active}
+            aria-label={m.label}
+            title={m.label}
+            className={cn(
+              "rounded px-1.5 py-0.5 text-[10px] font-semibold transition",
+              active ? "bg-primary-100 text-primary-700" : "text-neutral-600 hover:bg-neutral-100",
+            )}
+          >
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
