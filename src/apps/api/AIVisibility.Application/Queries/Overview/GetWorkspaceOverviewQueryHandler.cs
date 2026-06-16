@@ -40,15 +40,15 @@ public class GetWorkspaceOverviewQueryHandler
         var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
         var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
         var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
-        // Sentiment + Platform — Platform narrows BuildHeroAsync's
-        // PromptRun source (so every downstream count is platform-scoped);
-        // Sentiment narrows Mention-counting queries within the hero
-        // computation. Following the existing dim-filter convention,
-        // both apply ONLY to hero counts here — the trend series, top
-        // entities table, and Phase-4 measurement-model sections (brand
-        // attributes, co-mentions, risk flags, comparisons, topic
-        // ownership, factual claims) operate on workspace-wide aggregates
-        // and don't honor the dim filters either.
+        // Sentiment + Platform — Platform narrows the PromptRun source
+        // (every downstream count is platform-scoped via the answer set);
+        // Sentiment narrows Mention-counting queries at the mention
+        // level. Both filters thread through every Build* method
+        // alongside the existing lens / topic / product / market /
+        // audience filters so the WHOLE Overview payload respects them.
+        // Only Trend Series + Top Entities stay workspace-wide: they
+        // read from pre-aggregated TrendPoints which don't carry
+        // dimension granularity to filter on.
         var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
         var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
 
@@ -134,18 +134,30 @@ public class GetWorkspaceOverviewQueryHandler
         var series = BuildSeries(trendPoints, entityNames);
         var topEntities = BuildTopEntities(trendPoints, entityNames, trackedBrandIds);
         var topBrandAttributes = await BuildTopBrandAttributesAsync(
-            scanIds, trackedBrandIds, cancellationToken);
+            scanIds, trackedBrandIds,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
         var coMentions = await BuildCoMentionsAsync(
-            scanIds, trackedBrandIds, competitorRows, cancellationToken);
+            scanIds, trackedBrandIds, competitorRows,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
         var topBrandRiskFlags = await BuildTopBrandRiskFlagsAsync(
-            scanIds, trackedBrandIds, cancellationToken);
+            scanIds, trackedBrandIds,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
         var topBrandComparisons = await BuildTopBrandComparisonsAsync(
-            scanIds, trackedBrandIds, cancellationToken);
+            scanIds, trackedBrandIds,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
         var topicOwnership = await BuildTopicOwnershipAsync(
-            scanIds, trackedBrandIds, cancellationToken);
+            scanIds, trackedBrandIds,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
         var trackedBrandsById = trackedBrands.ToDictionary(b => b.Id, b => b.Name);
         var recentFactualClaims = await BuildRecentFactualClaimsAsync(
-            scanIds, trackedBrandsById, cancellationToken);
+            scanIds, trackedBrandsById,
+            lensIdFilter, topicIdFilter, productIdFilter, marketIdFilter, audienceIdFilter,
+            platformIdFilter, sentimentFilter, cancellationToken);
 
         return new WorkspaceOverviewDto(
             WorkspaceId: workspaceId,
@@ -411,7 +423,16 @@ public class GetWorkspaceOverviewQueryHandler
     /// count fall back to alphabetical on attribute name. Top 10.
     /// </summary>
     private async Task<IReadOnlyList<WorkspaceBrandAttributeDto>> BuildTopBrandAttributesAsync(
-        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
+        CancellationToken ct)
     {
         if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandAttributeDto>();
 
@@ -419,9 +440,9 @@ public class GetWorkspaceOverviewQueryHandler
 
         // Pull (Name, Polarity) for every MentionAttribute attached to a
         // tracked-brand Mention whose answer's promptRun's scan is in
-        // scope. The mentions table is the polymorphic mention spine;
-        // brand-typed rows where EntityId is in trackedBrandIds are what
-        // we want.
+        // scope and matches every active filter. The mentions table is
+        // the polymorphic mention spine; brand-typed rows where
+        // EntityId is in trackedBrandIds are what we want.
         var rows = await (
             from ma in _db.MentionAttributes.AsNoTracking()
             join m in _db.Mentions.AsNoTracking() on ma.MentionId equals m.Id
@@ -430,6 +451,18 @@ public class GetWorkspaceOverviewQueryHandler
             where m.EntityType == MentionEntityType.Brand
                 && trackedBrandIds.Contains(m.EntityId)
                 && scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment))
             select new { ma.Name, ma.Polarity })
             .ToListAsync(ct);
 
@@ -478,6 +511,13 @@ public class GetWorkspaceOverviewQueryHandler
     private async Task<IReadOnlyList<WorkspaceFactualClaimDto>> BuildRecentFactualClaimsAsync(
         IReadOnlyList<Guid> scanIds,
         Dictionary<Guid, string> trackedBrandsById,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0) return Array.Empty<WorkspaceFactualClaimDto>();
@@ -493,6 +533,18 @@ public class GetWorkspaceOverviewQueryHandler
             where m.EntityType == MentionEntityType.Brand
                 && trackedBrandIdSet.Contains(m.EntityId)
                 && scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment))
             orderby fc.CreatedAt descending
             select new
             {
@@ -533,7 +585,16 @@ public class GetWorkspaceOverviewQueryHandler
     /// alphabetical for determinism. Top 10.
     /// </summary>
     private async Task<IReadOnlyList<WorkspaceTopicOwnershipDto>> BuildTopicOwnershipAsync(
-        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
+        CancellationToken ct)
     {
         if (scanIds.Count == 0) return Array.Empty<WorkspaceTopicOwnershipDto>();
 
@@ -541,9 +602,21 @@ public class GetWorkspaceOverviewQueryHandler
 
         // Distinct in-scope prompts (one row per (promptId, scoped at
         // least once) — the PromptRuns within scan window pin the
-        // denominator universe).
+        // denominator universe). Filter chain matches BuildHeroAsync so
+        // the denominators stay consistent across sections.
         var promptIdsInScope = await _db.PromptRuns.AsNoTracking()
-            .Where(pr => scanIdSet.Contains(pr.ScanRunId))
+            .Where(pr => scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId)))
             .Select(pr => pr.PromptId)
             .Distinct()
             .ToListAsync(ct);
@@ -561,6 +634,9 @@ public class GetWorkspaceOverviewQueryHandler
 
         // In-scope prompts where ≥1 answer mentioned a tracked brand —
         // the numerator universe. Pull once and intersect per-topic.
+        // Mention-level sentiment filter applies here; the prompt-level
+        // filters were already enforced in promptIdsInScope above so
+        // this can ride the promptIdSet narrowing.
         var brandMentionedPromptIds = await (
             from m in _db.Mentions.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on m.AIAnswerId equals a.Id
@@ -568,6 +644,8 @@ public class GetWorkspaceOverviewQueryHandler
             where m.EntityType == MentionEntityType.Brand
                 && trackedBrandIds.Contains(m.EntityId)
                 && scanIdSet.Contains(pr.ScanRunId)
+                && promptIdSet.Contains(pr.PromptId)
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment))
             select pr.PromptId)
             .Distinct()
             .ToListAsync(ct);
@@ -612,7 +690,16 @@ public class GetWorkspaceOverviewQueryHandler
     /// determinism. Top 10.
     /// </summary>
     private async Task<IReadOnlyList<WorkspaceBrandComparisonDto>> BuildTopBrandComparisonsAsync(
-        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
+        CancellationToken ct)
     {
         if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandComparisonDto>();
 
@@ -626,6 +713,18 @@ public class GetWorkspaceOverviewQueryHandler
             where m.EntityType == MentionEntityType.Brand
                 && trackedBrandIds.Contains(m.EntityId)
                 && scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment))
             select new { cmp.OnAspect, cmp.WinnerIsThisMention })
             .ToListAsync(ct);
 
@@ -665,7 +764,16 @@ public class GetWorkspaceOverviewQueryHandler
     /// determinism. Top 10.
     /// </summary>
     private async Task<IReadOnlyList<WorkspaceBrandRiskFlagDto>> BuildTopBrandRiskFlagsAsync(
-        IReadOnlyList<Guid> scanIds, HashSet<Guid> trackedBrandIds, CancellationToken ct)
+        IReadOnlyList<Guid> scanIds,
+        HashSet<Guid> trackedBrandIds,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
+        CancellationToken ct)
     {
         if (scanIds.Count == 0) return Array.Empty<WorkspaceBrandRiskFlagDto>();
 
@@ -679,6 +787,18 @@ public class GetWorkspaceOverviewQueryHandler
             where m.EntityType == MentionEntityType.Brand
                 && trackedBrandIds.Contains(m.EntityId)
                 && scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment))
             select new { rf.FlagType, rf.Severity })
             .ToListAsync(ct);
 
@@ -729,6 +849,13 @@ public class GetWorkspaceOverviewQueryHandler
         IReadOnlyList<Guid> scanIds,
         HashSet<Guid> trackedBrandIds,
         IReadOnlyList<WorkspaceCompetitorDto> competitors,
+        HashSet<Guid>? lensIdFilter,
+        HashSet<Guid>? topicIdFilter,
+        HashSet<Guid>? productIdFilter,
+        HashSet<Guid>? marketIdFilter,
+        HashSet<Guid>? audienceIdFilter,
+        HashSet<Guid>? platformIdFilter,
+        HashSet<Sentiment>? sentimentFilter,
         CancellationToken ct)
     {
         if (scanIds.Count == 0 || competitors.Count == 0)
@@ -737,21 +864,37 @@ public class GetWorkspaceOverviewQueryHandler
         var scanIdSet = scanIds.ToHashSet();
         var competitorIdSet = competitors.Select(c => c.CompetitorId).ToHashSet();
 
-        // In-scope answer ids — bounded by the workspace scans.
+        // In-scope answer ids — bounded by the workspace scans + the
+        // prompt-side filter chain. Once narrowed, every downstream
+        // mention query rides this set so the filters cascade.
         var answerIds = await _db.AIAnswers.AsNoTracking()
             .Where(a => _db.PromptRuns.Any(pr =>
-                pr.Id == a.PromptRunId && scanIdSet.Contains(pr.ScanRunId)))
+                pr.Id == a.PromptRunId
+                && scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null ||
+                    _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null ||
+                    _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null ||
+                    _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null ||
+                    _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null ||
+                    _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))))
             .Select(a => a.Id)
             .ToListAsync(ct);
         if (answerIds.Count == 0) return Array.Empty<WorkspaceCoMentionDto>();
 
         var answerIdSet = answerIds.ToHashSet();
 
-        // Distinct in-scope answers where ANY tracked brand was mentioned.
+        // Distinct in-scope answers where ANY tracked brand was mentioned
+        // (with sentiment filter applied).
         var brandAnswerIds = await _db.Mentions.AsNoTracking()
             .Where(m => answerIdSet.Contains(m.AIAnswerId)
                 && m.EntityType == MentionEntityType.Brand
-                && trackedBrandIds.Contains(m.EntityId))
+                && trackedBrandIds.Contains(m.EntityId)
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
             .Select(m => m.AIAnswerId)
             .Distinct()
             .ToListAsync(ct);
@@ -759,11 +902,14 @@ public class GetWorkspaceOverviewQueryHandler
 
         // All competitor mentions in scope (Mention rows). We collapse to
         // distinct (competitorId, answerId) pairs in memory because EF's
-        // grouped distinct count has uneven provider support.
+        // grouped distinct count has uneven provider support. Sentiment
+        // filter applies to competitor mentions too — keeps "Positive
+        // mentions" rollups self-consistent across entity types.
         var competitorMentionPairs = await _db.Mentions.AsNoTracking()
             .Where(m => answerIdSet.Contains(m.AIAnswerId)
                 && m.EntityType == MentionEntityType.Competitor
-                && competitorIdSet.Contains(m.EntityId))
+                && competitorIdSet.Contains(m.EntityId)
+                && (sentimentFilter == null || sentimentFilter.Contains(m.Sentiment)))
             .Select(m => new { CompetitorId = m.EntityId, m.AIAnswerId })
             .ToListAsync(ct);
 
