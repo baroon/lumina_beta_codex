@@ -58,3 +58,26 @@ export function useRemoveWorkspacePrompt() {
     },
   });
 }
+
+/**
+ * Adds a custom prompt to a chosen tracker from the workspace /prompts
+ * "+ Add prompt" dialog. Sibling to the trackers feature's
+ * `useAddCustomPrompt` — duplicated here because the cross-feature
+ * import rule bans reports from importing trackers. Both consume the
+ * same shared promptsApi and invalidate the same caches.
+ */
+export function useAddWorkspacePrompt() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { trackerId: string; text: string; lensId: string }) =>
+      promptsApi.addCustom(vars.trackerId, {
+        text: vars.text,
+        lensId: vars.lensId,
+        primaryTopicId: null,
+      }),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["prompts", vars.trackerId] });
+      queryClient.invalidateQueries({ queryKey: ["workspace-prompts"] });
+    },
+  });
+}

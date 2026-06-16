@@ -40,14 +40,16 @@ public class GetWorkspacePromptsQueryHandler
             .ToListAsync(cancellationToken);
         if (brandIds.Count == 0)
         {
-            return new WorkspacePromptsDto(workspaceId, windowFrom, windowTo, Array.Empty<WorkspacePromptRowDto>());
+            return EmptyResult(workspaceId, windowFrom, windowTo);
         }
 
         // Trackers owned by those brands, intersected with the optional
-        // request filter — same shape as the overview handler.
+        // request filter — same shape as the overview handler. We also
+        // load PromptAllocation here so the workspace-wide quota row on
+        // /prompts can be aggregated without a follow-up query.
         var trackerRows = await _db.TrackerConfigurations.AsNoTracking()
             .Where(t => brandIds.Contains(t.BrandId))
-            .Select(t => new { t.Id, t.BrandId, t.Name })
+            .Select(t => new { t.Id, t.BrandId, t.Name, t.PromptAllocation })
             .ToListAsync(cancellationToken);
         if (request.TrackerIds is { Count: > 0 })
         {
@@ -56,7 +58,7 @@ public class GetWorkspacePromptsQueryHandler
         }
         if (trackerRows.Count == 0)
         {
-            return new WorkspacePromptsDto(workspaceId, windowFrom, windowTo, Array.Empty<WorkspacePromptRowDto>());
+            return EmptyResult(workspaceId, windowFrom, windowTo);
         }
         var trackerIds = trackerRows.Select(t => t.Id).ToList();
         var trackerById = trackerRows.ToDictionary(t => t.Id, t => t);
@@ -66,9 +68,63 @@ public class GetWorkspacePromptsQueryHandler
             .Where(p => trackerIds.Contains(p.TrackerConfigurationId) && p.Status == PromptStatus.Active)
             .Select(p => new { p.Id, p.PromptText, p.LensId, p.TrackerConfigurationId })
             .ToListAsync(cancellationToken);
+
+        // Per-tracker active-prompt counts feed both the per-tracker
+        // PromptUsed field and the workspace-wide TotalUsed roll-up below.
+        // Computed off the unconditioned prompts list (no row drops yet)
+        // so empty trackers still show "0 / N" in the picker.
+        var usedByTracker = prompts
+            .GroupBy(p => p.TrackerConfigurationId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // Lens options per in-scope tracker — drives the Add-prompt
+        // dialog's dependent lens picker. Single query + group keeps it
+        // cheap even with many trackers.
+        var trackerLensRows = await (
+            from tl in _db.TrackerLenses.AsNoTracking()
+            join l in _db.Lenses.AsNoTracking() on tl.LensId equals l.Id
+            where trackerIds.Contains(tl.TrackerConfigurationId)
+            orderby l.DisplayOrder
+            select new { tl.TrackerConfigurationId, LensId = l.Id, l.Name }
+        ).ToListAsync(cancellationToken);
+        var lensesByTracker = trackerLensRows
+            .GroupBy(x => x.TrackerConfigurationId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<WorkspacePromptLensOptionDto>)g
+                    .Select(x => new WorkspacePromptLensOptionDto(x.LensId, x.Name))
+                    .ToList());
+
+        // Brand-name lookup for the tracker option list. Pulled up here so
+        // it's available for the empty-prompts path too — the dialog still
+        // needs trackers/brand names even when there are zero prompts.
+        var brandNameByIdForOptions = await _db.Brands.AsNoTracking()
+            .Where(b => brandIds.Contains(b.Id))
+            .ToDictionaryAsync(b => b.Id, b => b.Name, cancellationToken);
+
+        var trackerOptions = trackerRows
+            .Select(t => new WorkspacePromptTrackerOptionDto(
+                Id: t.Id,
+                Name: t.Name,
+                BrandId: t.BrandId,
+                BrandName: brandNameByIdForOptions.TryGetValue(t.BrandId, out var bn) ? bn : string.Empty,
+                PromptAllocation: t.PromptAllocation,
+                PromptUsed: usedByTracker.TryGetValue(t.Id, out var used) ? used : 0,
+                Lenses: lensesByTracker.TryGetValue(t.Id, out var ls)
+                    ? ls
+                    : Array.Empty<WorkspacePromptLensOptionDto>()))
+            .OrderBy(t => t.BrandName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var totalAllocation = trackerRows.Sum(t => t.PromptAllocation);
+        var totalUsed = prompts.Count;
+
         if (prompts.Count == 0)
         {
-            return new WorkspacePromptsDto(workspaceId, windowFrom, windowTo, Array.Empty<WorkspacePromptRowDto>());
+            return new WorkspacePromptsDto(
+                workspaceId, windowFrom, windowTo,
+                Array.Empty<WorkspacePromptRowDto>(),
+                totalAllocation, totalUsed, trackerOptions);
         }
         var promptIds = prompts.Select(p => p.Id).ToList();
 
@@ -78,10 +134,9 @@ public class GetWorkspacePromptsQueryHandler
             .Where(l => lensIds.Contains(l.Id))
             .ToDictionaryAsync(l => l.Id, l => l.Name, cancellationToken);
 
-        // Brand names for the trackers we care about.
-        var brandNameById = await _db.Brands.AsNoTracking()
-            .Where(b => brandIds.Contains(b.Id))
-            .ToDictionaryAsync(b => b.Id, b => b.Name, cancellationToken);
+        // Brand names — already loaded above to build the tracker option
+        // list, reused here for the row-level brand attribution.
+        var brandNameById = brandNameByIdForOptions;
 
         // PromptTopics → topic names. Many prompts × few topics; pull as one
         // query and group in memory rather than per-prompt round-trips.
@@ -270,6 +325,19 @@ public class GetWorkspacePromptsQueryHandler
             .ThenBy(r => r.Text, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new WorkspacePromptsDto(workspaceId, windowFrom, windowTo, rows);
+        return new WorkspacePromptsDto(
+            workspaceId, windowFrom, windowTo, rows,
+            totalAllocation, totalUsed, trackerOptions);
     }
+
+    // Stable shape for the two early-exit paths (no brands / no in-scope
+    // trackers). Keeps the contract honest: every caller gets the same
+    // top-level field set whether or not there are prompts.
+    private static WorkspacePromptsDto EmptyResult(Guid workspaceId, DateTime? windowFrom, DateTime windowTo) =>
+        new(workspaceId, windowFrom, windowTo,
+            Array.Empty<WorkspacePromptRowDto>(),
+            TotalAllocation: 0,
+            TotalUsed: 0,
+            Trackers: Array.Empty<WorkspacePromptTrackerOptionDto>());
+
 }

@@ -163,7 +163,12 @@ export function DateRangePicker({
         <div
           role="dialog"
           aria-label="Choose date range"
-          className="absolute left-0 top-[calc(100%+4px)] z-30 flex w-[560px] rounded-lg border border-neutral-200 bg-white shadow-xl"
+          // Anchor to the right edge of the trigger so the 560px panel
+          // unfolds leftward — keeps it inside the viewport when the
+          // trigger sits near the right margin (e.g. the filter bar on
+          // /overview and /prompts). `left-auto` overrides any cascading
+          // `left-0` if this component is wrapped in a Radix portal.
+          className="absolute right-0 left-auto top-[calc(100%+4px)] z-30 flex w-[560px] rounded-lg border border-neutral-200 bg-white shadow-xl"
         >
           <ul className="w-44 border-r border-neutral-100 py-2 text-sm" role="listbox">
             <li>

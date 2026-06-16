@@ -54,13 +54,18 @@ public class GetWorkspacePromptsQueryHandlerTests
         {
             Id = Guid.NewGuid(), BrandId = acme.Id, Brand = acme,
             Name = "Acme · US", Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow,
+            // Distinct allocation values so the workspace quota assertion
+            // can verify the handler actually sums per-tracker allocations
+            // rather than returning a hard-coded number.
+            PromptAllocation = 50,
         };
         var betaTracker = new TrackerConfiguration
         {
             Id = Guid.NewGuid(), BrandId = beta.Id, Brand = beta,
             Name = "Beta · US", Status = TrackerStatus.Active, CreatedAt = DateTime.UtcNow,
+            PromptAllocation = 30,
         };
-        var lens = new Lens { Id = Guid.NewGuid(), Code = "category-discovery", Name = "Category Discovery" };
+        var lens = new Lens { Id = Guid.NewGuid(), Code = "category-discovery", Name = "Category Discovery", DisplayOrder = 1 };
         var topic = new Topic
         {
             Id = Guid.NewGuid(), BrandId = acme.Id, DiscoveryRunId = Guid.NewGuid(),
@@ -133,6 +138,12 @@ public class GetWorkspacePromptsQueryHandlerTests
         ctx.Prompts.Add(promptAcmeActive);
         ctx.Prompts.Add(promptAcmeDraft);
         ctx.Prompts.Add(promptBetaActive);
+        // TrackerLens rows define each tracker's lens-coverage set —
+        // mirrors the per-tracker ListPromptsQuery behaviour so the Add
+        // -prompt dialog on the workspace /prompts page can populate the
+        // dependent lens dropdown.
+        ctx.TrackerLenses.Add(new TrackerLens { TrackerConfigurationId = acmeTracker.Id, LensId = lens.Id });
+        ctx.TrackerLenses.Add(new TrackerLens { TrackerConfigurationId = betaTracker.Id, LensId = lens.Id });
         ctx.PromptTopics.Add(new PromptTopic { PromptId = promptAcmeActive.Id, TopicId = topic.Id });
         ctx.PromptProducts.Add(new PromptProduct { PromptId = promptAcmeActive.Id, ProductId = product.Id });
         ctx.PromptAudiences.Add(new PromptAudience { PromptId = promptAcmeActive.Id, AudienceId = audience.Id });
@@ -454,5 +465,75 @@ public class GetWorkspacePromptsQueryHandlerTests
         // Acme is more recent → should sort first.
         result.Prompts.Select(p => p.PromptId)
             .Should().ContainInOrder(seed.PromptAcmeActiveId, seed.PromptBetaActiveId);
+    }
+
+    // -----------------------------------------------------------------
+    // Workspace quota + tracker options — drive the "X / Y prompts"
+    // indicator and the Add-prompt dialog's tracker / lens pickers on
+    // the workspace /prompts page.
+    // -----------------------------------------------------------------
+
+    [Fact]
+    public async Task ExposesWorkspaceQuota_AsSumOfTrackerAllocationsAndActivePromptCount()
+    {
+        using var ctx = NewContext();
+        Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddDays(-30), null, null),
+            CancellationToken.None);
+
+        // Acme allocation 50 + Beta allocation 30 = 80; 2 Active prompts.
+        result.TotalAllocation.Should().Be(80);
+        result.TotalUsed.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ExposesTrackerOptions_WithLensesAndPerTrackerUsage()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(DateTime.UtcNow.AddDays(-30), null, null),
+            CancellationToken.None);
+
+        // Brand sort + tracker sort means Acme comes before Beta.
+        result.Trackers.Select(t => t.Id)
+            .Should().ContainInOrder(seed.AcmeTrackerId, seed.BetaTrackerId);
+
+        var acme = result.Trackers.Single(t => t.Id == seed.AcmeTrackerId);
+        acme.Name.Should().Be("Acme · US");
+        acme.BrandName.Should().Be("Acme");
+        acme.PromptAllocation.Should().Be(50);
+        // Acme has 1 Active prompt (Draft is excluded).
+        acme.PromptUsed.Should().Be(1);
+        acme.Lenses.Should().ContainSingle()
+            .Which.Name.Should().Be("Category Discovery");
+
+        var beta = result.Trackers.Single(t => t.Id == seed.BetaTrackerId);
+        beta.PromptAllocation.Should().Be(30);
+        beta.PromptUsed.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task TrackerIdsFilter_NarrowsQuotaAndOptionsToSubset()
+    {
+        // When the caller scopes to a single tracker, the workspace-wide
+        // aggregates AND the tracker options list narrow with the scope
+        // so the FE quota / picker stays consistent with the row list.
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+
+        var result = await NewHandler(ctx).Handle(
+            new GetWorkspacePromptsQuery(
+                DateTime.UtcNow.AddDays(-30), null,
+                TrackerIds: new[] { seed.BetaTrackerId }),
+            CancellationToken.None);
+
+        result.TotalAllocation.Should().Be(30);
+        result.TotalUsed.Should().Be(1);
+        result.Trackers.Should().ContainSingle()
+            .Which.Id.Should().Be(seed.BetaTrackerId);
     }
 }

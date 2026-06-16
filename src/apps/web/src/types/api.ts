@@ -454,6 +454,26 @@ export interface WorkspacePromptRowDto {
   averageFirstMentionPosition: number | null;
 }
 
+export interface WorkspacePromptLensOptionDto {
+  id: string;
+  name: string;
+}
+
+/**
+ * In-scope tracker exposed on the workspace /prompts DTO. Carries enough
+ * shape (allocation, used, lens options) for the Add-prompt dialog's
+ * tracker + dependent lens pickers to render without a second round-trip.
+ */
+export interface WorkspacePromptTrackerOptionDto {
+  id: string;
+  name: string;
+  brandId: string;
+  brandName: string;
+  promptAllocation: number;
+  promptUsed: number;
+  lenses: WorkspacePromptLensOptionDto[];
+}
+
 export interface WorkspacePromptsDto {
   workspaceId: string;
   /** Window lower bound (ISO). Null = "all time". */
@@ -461,6 +481,12 @@ export interface WorkspacePromptsDto {
   /** Window upper bound (ISO). Resolves to UTC now when caller omits. */
   to: string;
   prompts: WorkspacePromptRowDto[];
+  /** Sum of <c>TrackerConfiguration.PromptAllocation</c> across in-scope trackers. */
+  totalAllocation: number;
+  /** Total Active prompts across in-scope trackers (= prompts.length). */
+  totalUsed: number;
+  /** In-scope trackers — drives the Add-prompt dialog's pickers. */
+  trackers: WorkspacePromptTrackerOptionDto[];
 }
 
 /**

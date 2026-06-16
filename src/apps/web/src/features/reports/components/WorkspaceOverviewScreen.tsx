@@ -441,19 +441,19 @@ export function WorkspaceOverviewScreen() {
       availablePlatformCodes={availablePlatformCodes}
       platformCountsByCode={platformCountsByCode ?? undefined}
       isRefreshing={isFetching && !isLoading}
+      range={range}
+      onRangeChange={setRange}
+      granularity={granularity}
+      onGranularityChange={setGranularity}
     />
   );
 
   return (
     <div className="space-y-6">
-      <PageHeader title={copy.title}>
-        <DateRangeGranularityPicker
-          range={range}
-          onRangeChange={setRange}
-          granularity={granularity}
-          onGranularityChange={setGranularity}
-        />
-      </PageHeader>
+      {/* PageHeader is title-only now — the calendar lives in the
+          filter bar (ComparisonControlsRow), matching /prompts so the
+          control layout is consistent across pages. */}
+      <PageHeader title={copy.title} />
 
       {data.trackedBrands.length === 0 ? (
         <>
@@ -560,8 +560,11 @@ function CategorizedOverview({
       label: "Discovery",
       children: (
         <div className="space-y-4">
-          {trendCard("mention")}
-          {trendCard("sov")}
+          {/* Mention-rate + SoV trend cards moved out of this section
+              into the top-of-page strip (above the filter bar) — they
+              live as the "static charts" the user wants to see before
+              the sticky filter bar pins. See CategorizedOverview's
+              statusStrip below. */}
           {depthData && <MentionsByPlatformCard rows={depthData.mentionsByPlatform} />}
           <TopEntitiesCard
             rows={data.topEntities}
@@ -667,12 +670,26 @@ function CategorizedOverview({
   return (
     <MetricCategoryLayout
       statusStrip={
-        <HeroRow hero={data.hero} previousHero={data.previousHero} onDrillDown={onDrillDown} />
+        <div className="space-y-3">
+          <HeroRow hero={data.hero} previousHero={data.previousHero} onDrillDown={onDrillDown} />
+          {/* "Static" top trend charts — mention rate + Share of voice —
+              live above the sticky filter bar so the visual order is
+              "summary KPIs, then trend context, then filter bar, then
+              filterable Build sections". Side-by-side at md+ so they
+              read as one summary row; stacked on narrow viewports. */}
+          <div className="grid gap-3 md:grid-cols-2">
+            {trendCard("mention")}
+            {trendCard("sov")}
+          </div>
+        </div>
       }
+      // controlsStrip is sticky again — pins below the static top
+      // strip so the filter row stays accessible while scrolling the
+      // Build sections below.
       controlsStrip={controlsStrip}
       sections={visibleSections}
-      // Lens chips moved into controlsStrip, so we suppress the default
-      // pill nav by returning null from renderNav.
+      // Lens chips moved into controlsStrip, so the default pill nav
+      // stays suppressed.
       renderNav={() => null}
     />
   );
@@ -717,7 +734,7 @@ function ShareOfVoiceCard({
       <DonutChartWrapper
         data={slices}
         formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
-        height={260}
+        height={200}
       />
     </CollapsibleCard>
   );
@@ -1088,7 +1105,7 @@ function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
         formatValue={(v) =>
           `${v} (${Math.round((v / rows.reduce((s, r) => s + r.citationCount, 0)) * 100)}%)`
         }
-        height={260}
+        height={200}
       />
     </CollapsibleCard>
   );
@@ -1143,6 +1160,12 @@ interface ComparisonControlsRowProps {
    *  prior payload visible). Drives a tiny spinner inside the bar so the
    *  user knows fresh data is on its way. */
   isRefreshing?: boolean;
+  /** Active date-range selection — drives the DateRangeGranularityPicker
+   *  trigger label inside the filter bar. */
+  range: DateRangeSelection;
+  onRangeChange: (next: DateRangeSelection) => void;
+  granularity: DateGranularity;
+  onGranularityChange: (next: DateGranularity) => void;
 }
 
 function ComparisonControlsRow({
@@ -1177,6 +1200,10 @@ function ComparisonControlsRow({
   availablePlatformCodes,
   platformCountsByCode,
   isRefreshing = false,
+  range,
+  onRangeChange,
+  granularity,
+  onGranularityChange,
 }: ComparisonControlsRowProps) {
   // Coverage filters (Topics/Products/Markets/Audiences + Sentiment +
   // Models) drive the count badge on the Filters chip. Trust signals
@@ -1212,19 +1239,24 @@ function ComparisonControlsRow({
     }
   }
 
-  // Single sticky row. Lens chips on the left (selectors + section
-  // anchors), entity-scope toggle + coverage Filters popover on the
-  // right. Date + granularity live in the PageHeader.
+  // Single-row sticky bar. Lens chips on the left (selectors + section
+  // anchors), entity-scope toggle + date picker + coverage Filters
+  // popover on the right. The outer flex is `flex-nowrap` so the right
+  // group never drops to a second line; the lens chip area carries
+  // `min-w-0 overflow-x-auto` so it horizontally scrolls if six chips
+  // are wider than the remaining space.
   //
   // Sticky behavior is owned by the outer MetricCategoryLayout.
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
-      <LensChipRow
-        selectedCodes={selectedLenses}
-        onChange={onSelectedLensesChange}
-        onActivate={scrollToLensSection}
-        countsByCode={lensCountsByCode}
-      />
+    <div className="flex flex-nowrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+      <div className="min-w-0 flex-1 overflow-x-auto">
+        <LensChipRow
+          selectedCodes={selectedLenses}
+          onChange={onSelectedLensesChange}
+          onActivate={scrollToLensSection}
+          countsByCode={lensCountsByCode}
+        />
+      </div>
       {isRefreshing && (
         <span
           aria-live="polite"
@@ -1235,8 +1267,14 @@ function ComparisonControlsRow({
           Refreshing…
         </span>
       )}
-      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
         <EntityScopeToggle value={entityScope} onChange={onEntityScopeChange} />
+        <DateRangeGranularityPicker
+          range={range}
+          onRangeChange={onRangeChange}
+          granularity={granularity}
+          onGranularityChange={onGranularityChange}
+        />
         <FiltersPopover activeCount={activeFilterCount} onClearAll={clearAllFilters}>
           {/* Trigger-pill selectors collapsed into a single flex-wrap
               group — each pill already names the dimension, so per-row
@@ -1384,12 +1422,12 @@ function HeroTile({
 }) {
   const inner = (
     <>
-      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-neutral-500">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-neutral-500">
         <span className="truncate">{label}</span>
-        <InfoTooltip label={label} iconSize={12} />
+        <InfoTooltip label={label} iconSize={11} />
       </div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <p className="text-2xl font-semibold text-neutral-900">{value}</p>
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <p className="text-lg font-semibold text-neutral-900">{value}</p>
         <HeroDelta current={current} previous={previous} invertColors={invertDelta} />
       </div>
     </>
@@ -1397,7 +1435,7 @@ function HeroTile({
   if (!onClick) {
     return (
       <Card>
-        <CardContent className="p-4">{inner}</CardContent>
+        <CardContent className="p-2.5">{inner}</CardContent>
       </Card>
     );
   }
@@ -1407,7 +1445,7 @@ function HeroTile({
       onClick={onClick}
       aria-label={`View trend by ${label}`}
       className={cn(
-        "rounded-lg border border-neutral-200 bg-white p-4 text-left shadow-sm transition",
+        "rounded-lg border border-neutral-200 bg-white p-2.5 text-left shadow-sm transition",
         "hover:border-primary-300 hover:bg-primary-50/30",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400",
       )}
@@ -1550,6 +1588,11 @@ function NumericTrendChart({
       maxValue={axis.maxValue}
       minValue={axis.minValue}
       reverseY={axis.reverseY}
+      // Tighter than the wrapper default (224) so the trend stack on
+      // /overview reads as a compact glance row rather than a tall
+      // scrolling column. Keeps the filter bar above the fold for
+      // typical viewports.
+      height={180}
     />
   );
 }

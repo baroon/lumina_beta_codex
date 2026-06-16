@@ -22,7 +22,42 @@ public sealed record WorkspacePromptsDto(
     DateTime? From,
     /// <summary>Effective window upper bound (resolves to UTC now when unspecified).</summary>
     DateTime To,
-    IReadOnlyList<WorkspacePromptRowDto> Prompts);
+    IReadOnlyList<WorkspacePromptRowDto> Prompts,
+    /// <summary>
+    /// Sum of <see cref="AIVisibility.Domain.Entities.TrackerConfiguration.PromptAllocation"/>
+    /// across every in-scope tracker. Drives the workspace-wide
+    /// "X / Y prompts" quota indicator on /prompts.
+    /// </summary>
+    int TotalAllocation,
+    /// <summary>
+    /// Total Active prompts across every in-scope tracker. Equals
+    /// <c>Prompts.Count</c> — surfaced as its own field so the FE doesn't
+    /// have to reproduce the aggregation client-side.
+    /// </summary>
+    int TotalUsed,
+    /// <summary>
+    /// In-scope trackers with allocation + per-tracker lens options. Used
+    /// by the /prompts Add-prompt dialog to populate the tracker picker
+    /// (and, after the user selects one, the lens picker) without an
+    /// extra round-trip to the per-tracker list endpoint.
+    /// </summary>
+    IReadOnlyList<WorkspacePromptTrackerOptionDto> Trackers);
+
+/// <summary>
+/// One in-scope tracker on the workspace /prompts page. Carries enough
+/// metadata (allocation, used, lens options) for the Add-prompt dialog
+/// to drive both the tracker picker and the dependent lens picker.
+/// </summary>
+public sealed record WorkspacePromptTrackerOptionDto(
+    Guid Id,
+    string Name,
+    Guid BrandId,
+    string BrandName,
+    int PromptAllocation,
+    int PromptUsed,
+    IReadOnlyList<WorkspacePromptLensOptionDto> Lenses);
+
+public sealed record WorkspacePromptLensOptionDto(Guid Id, string Name);
 
 public sealed record WorkspacePromptRowDto(
     Guid PromptId,

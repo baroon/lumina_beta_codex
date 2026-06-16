@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowDownUp, ArrowUp, BarChart3, PieChart, X } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowDown, ArrowDownUp, ArrowUp, BarChart3, PieChart, Plus, X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { InlineEdit } from "@/components/atoms/inline-edit";
 import { Input } from "@/components/atoms/input";
+import { Label } from "@/components/atoms/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/atoms/select";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { DonutChartWrapper, type DonutChartDatum } from "@/components/charts/DonutChartWrapper";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
@@ -41,13 +51,18 @@ import { useMarketCounts } from "@/features/reports/hooks/useMarketCounts";
 import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
 import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import {
+  useAddWorkspacePrompt,
   useRemoveWorkspacePrompt,
   useUpdateWorkspacePrompt,
   useWorkspacePrompts,
 } from "@/features/reports/hooks/useWorkspacePrompts";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { cn } from "@/lib/utils";
-import type { BrandedDimensionGroupDto, WorkspacePromptRowDto } from "@/types/api";
+import type {
+  BrandedDimensionGroupDto,
+  WorkspacePromptRowDto,
+  WorkspacePromptTrackerOptionDto,
+} from "@/types/api";
 
 // Canonical lens codes — drives both the default selection and the
 // section render order. Matches the Workspace Overview to keep the lens
@@ -115,6 +130,9 @@ export function PromptsScreen() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   // Prompt whose row-click drawer is open. null = no drawer.
   const [drawerPromptId, setDrawerPromptId] = useState<string | null>(null);
+  // Add-prompt dialog open state. We don't keep form state here — the
+  // dialog component owns its own draft and resets on close.
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   const prompts = useWorkspacePrompts(range, trackerIds);
   const { data: discoverySummary } = useDiscoverySummary();
@@ -319,19 +337,21 @@ export function PromptsScreen() {
     (selectedSentiments.length > 0 ? 1 : 0);
 
   const controlsStrip = (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
-      <LensChipRow
-        selectedCodes={selectedLenses}
-        onChange={setSelectedLenses}
-        onActivate={(code) => {
-          const el = document.getElementById(code);
-          if (el && typeof el.scrollIntoView === "function") {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        }}
-        countsByCode={promptCountsByLensCode}
-      />
-      <div className="ml-auto flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-nowrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+      <div className="min-w-0 flex-1 overflow-x-auto">
+        <LensChipRow
+          selectedCodes={selectedLenses}
+          onChange={setSelectedLenses}
+          onActivate={(code) => {
+            const el = document.getElementById(code);
+            if (el && typeof el.scrollIntoView === "function") {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
+          countsByCode={promptCountsByLensCode}
+        />
+      </div>
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
         <Input
           inputSize="sm"
           value={query}
@@ -340,6 +360,7 @@ export function PromptsScreen() {
           aria-label="Filter prompts"
           className="w-48"
         />
+        <DateRangePicker value={range} onChange={setRange} />
         <FiltersPopover
           activeCount={activeFilterCount}
           onClearAll={() => {
@@ -411,10 +432,53 @@ export function PromptsScreen() {
     </div>
   );
 
+  const trackerOptions = prompts.data.trackers;
+  const totalAllocation = prompts.data.totalAllocation;
+  const totalUsed = prompts.data.totalUsed;
+  const hasAllocationData = trackerOptions.length > 0 && totalAllocation > 0;
+  const atOrOverQuota = hasAllocationData && totalUsed >= totalAllocation;
+
   return (
     <div className="space-y-5">
       <PageHeader title="Prompts">
-        <DateRangePicker value={range} onChange={setRange} />
+        {/* "X / Y prompts" quota indicator across in-scope trackers.
+            Hidden when the workspace has no allocation data (avoids
+            displaying a stark "0 / 0" before any tracker is set up).
+            Tints to a warning colour once the workspace is at or past
+            its aggregate allocation so the limit is legible at a glance. */}
+        {hasAllocationData && (
+          <div
+            aria-label="Prompt allocation across in-scope trackers"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium tabular-nums",
+              atOrOverQuota
+                ? "border-semantic-warning-200 bg-semantic-warning-50 text-semantic-warning-700"
+                : "border-neutral-200 bg-white text-neutral-700",
+            )}
+          >
+            <span className="text-neutral-500">Prompts</span>
+            <span>{totalUsed.toLocaleString()}</span>
+            <span className="text-neutral-400">/</span>
+            <span>{totalAllocation.toLocaleString()}</span>
+          </div>
+        )}
+        {/* Icon-only add button — pairs with the quota badge to keep the
+            header lean. The DateRangePicker moves down into the controls
+            strip beside the filters; the header now only carries the
+            workspace-wide "what / how much" affordances. */}
+        <button
+          type="button"
+          onClick={() => setIsAddOpen(true)}
+          disabled={trackerOptions.length === 0}
+          aria-label="Add prompt"
+          title="Add prompt"
+          className={cn(
+            "inline-flex h-6 w-6 items-center justify-center rounded-md border border-primary-200 bg-primary-50 text-primary-700 transition hover:bg-primary-100",
+            "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary-50",
+          )}
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+        </button>
       </PageHeader>
 
       {prompts.data.prompts.length === 0 ? (
@@ -446,7 +510,207 @@ export function PromptsScreen() {
         range={range}
         onClose={() => setDrawerPromptId(null)}
       />
+      <AddPromptDialog open={isAddOpen} onOpenChange={setIsAddOpen} trackers={trackerOptions} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add-prompt dialog — picks tracker → lens → text. Owns its own draft
+// state and resets on close so re-opening doesn't carry stale input.
+// ---------------------------------------------------------------------------
+
+interface AddPromptDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trackers: readonly WorkspacePromptTrackerOptionDto[];
+}
+
+function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps) {
+  const [trackerId, setTrackerId] = useState<string>("");
+  const [lensId, setLensId] = useState<string>("");
+  const [text, setText] = useState("");
+  const add = useAddWorkspacePrompt();
+
+  const selectedTracker = trackers.find((t) => t.id === trackerId);
+  const lenses = selectedTracker?.lenses ?? [];
+  const atTrackerCap =
+    selectedTracker != null && selectedTracker.promptUsed >= selectedTracker.promptAllocation;
+
+  // Reset every field when the dialog closes so re-opening starts blank.
+  useEffect(() => {
+    if (!open) {
+      setTrackerId("");
+      setLensId("");
+      setText("");
+    }
+  }, [open]);
+
+  // Clear the lens choice whenever the tracker changes — the previous
+  // lens may not exist on the new tracker, and a stale lens would
+  // produce a silent BE rejection.
+  useEffect(() => {
+    setLensId("");
+  }, [trackerId]);
+
+  const submitDisabled =
+    add.isPending || atTrackerCap || trackerId === "" || lensId === "" || text.trim().length === 0;
+
+  function submit() {
+    const trimmed = text.trim();
+    if (!trimmed || !trackerId || !lensId) return;
+    add.mutate(
+      { trackerId, text: trimmed, lensId },
+      {
+        onSuccess: () => onOpenChange(false),
+      },
+    );
+  }
+
+  const errorMessage =
+    add.isError && add.error instanceof Error
+      ? add.error.message
+      : add.isError
+        ? "Add failed — try again."
+        : null;
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          )}
+        />
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
+            "rounded-lg border border-neutral-200 bg-white p-5 shadow-xl focus:outline-none",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out",
+            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Dialog.Title className="text-base font-semibold text-neutral-900">
+                Add prompt
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-xs text-neutral-600">
+                Pick a tracker and lens, then write the prompt text. It joins the tracker's active
+                prompts immediately.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="add-prompt-tracker" className="text-[11px] text-neutral-600">
+                Tracker
+              </Label>
+              <Select value={trackerId} onValueChange={setTrackerId}>
+                <SelectTrigger
+                  id="add-prompt-tracker"
+                  selectSize="sm"
+                  aria-label="Tracker"
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Select tracker…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trackers.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.brandName} · {t.name} ({t.promptUsed}/{t.promptAllocation})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {atTrackerCap && (
+                <p className="text-[11px] text-semantic-warning-700">
+                  {selectedTracker?.name} is at allocation ({selectedTracker?.promptAllocation}).
+                  Remove a prompt before adding another.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="add-prompt-lens" className="text-[11px] text-neutral-600">
+                Lens
+              </Label>
+              <Select value={lensId} onValueChange={setLensId} disabled={lenses.length === 0}>
+                <SelectTrigger
+                  id="add-prompt-lens"
+                  selectSize="sm"
+                  aria-label="Lens"
+                  className="w-full"
+                >
+                  <SelectValue
+                    placeholder={
+                      trackerId === ""
+                        ? "Pick a tracker first"
+                        : lenses.length === 0
+                          ? "No lenses configured"
+                          : "Select lens…"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {lenses.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="add-prompt-text" className="text-[11px] text-neutral-600">
+                Prompt text
+              </Label>
+              <textarea
+                id="add-prompt-text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={3}
+                placeholder="What's the best resume builder?"
+                aria-label="Prompt text"
+                disabled={add.isPending}
+                className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
+              />
+            </div>
+
+            {errorMessage && (
+              <p role="alert" className="text-[11px] text-semantic-error-600">
+                {errorMessage}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <Dialog.Close asChild>
+              <Button variant="outline" size="sm" disabled={add.isPending}>
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button type="button" size="sm" onClick={submit} disabled={submitDisabled}>
+              {add.isPending ? "Adding…" : "Add prompt"}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

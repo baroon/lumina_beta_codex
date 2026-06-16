@@ -83,7 +83,7 @@ export function LensChipRow({
   }
 
   return (
-    <nav className="flex flex-wrap items-center gap-1" aria-label="Visibility lens selectors">
+    <nav className="flex flex-nowrap items-center gap-1" aria-label="Visibility lens selectors">
       {VISIBILITY_LENSES.map((lens) => (
         <LensChip
           key={lens.code}
@@ -131,7 +131,10 @@ function LensChip({ name, shortName, Icon, pressed, count, onClick }: LensChipPr
       aria-label={name}
       title={name}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition",
+        // shrink-0 so the chips don't squish on narrow viewports —
+        // the parent row uses overflow-x-auto, so chips slide
+        // horizontally instead of compressing.
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition",
         pressed
           ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100"
           : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50",

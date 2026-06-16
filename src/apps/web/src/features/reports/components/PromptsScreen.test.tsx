@@ -1,7 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { DiscoverySummaryDto, WorkspacePromptRowDto, WorkspacePromptsDto } from "@/types/api";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+
+// Radix Select polyfill — see select.test.tsx for context. Required for
+// the Add-prompt dialog's tracker + lens dropdowns to interact under jsdom.
+beforeAll(() => {
+  HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+  HTMLElement.prototype.setPointerCapture = vi.fn();
+  HTMLElement.prototype.releasePointerCapture = vi.fn();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+});
+import type {
+  DiscoverySummaryDto,
+  WorkspacePromptRowDto,
+  WorkspacePromptsDto,
+  WorkspacePromptTrackerOptionDto,
+} from "@/types/api";
 
 let scopeState: { scope: "all" | string[] };
 let promptsState: {
@@ -18,6 +32,7 @@ let discoverySummaryState: {
 
 let updatePromptMutate: ReturnType<typeof vi.fn>;
 let removePromptMutate: ReturnType<typeof vi.fn>;
+let addPromptMutate: ReturnType<typeof vi.fn>;
 const idleMutation = { isPending: false, isError: false, isSuccess: false };
 
 vi.mock("@/hooks/useTrackerScope", () => ({
@@ -27,6 +42,7 @@ vi.mock("@/features/reports/hooks/useWorkspacePrompts", () => ({
   useWorkspacePrompts: () => ({ ...promptsState, refetch: vi.fn() }),
   useUpdateWorkspacePrompt: () => ({ mutate: updatePromptMutate, ...idleMutation }),
   useRemoveWorkspacePrompt: () => ({ mutate: removePromptMutate, ...idleMutation }),
+  useAddWorkspacePrompt: () => ({ mutate: addPromptMutate, ...idleMutation }),
 }));
 vi.mock("@/features/reports/hooks/useDiscoverySummary", () => ({
   useDiscoverySummary: () => discoverySummaryState,
@@ -103,12 +119,37 @@ function row(overrides: Partial<WorkspacePromptRowDto>): WorkspacePromptRowDto {
   };
 }
 
-function payload(rows: WorkspacePromptRowDto[]): WorkspacePromptsDto {
+function trackerOption(
+  overrides: Partial<WorkspacePromptTrackerOptionDto> = {},
+): WorkspacePromptTrackerOptionDto {
+  return {
+    id: "t1",
+    name: "Acme · US",
+    brandId: "b1",
+    brandName: "Acme",
+    promptAllocation: 50,
+    promptUsed: 1,
+    lenses: [{ id: "l1", name: "Discovery" }],
+    ...overrides,
+  };
+}
+
+function payload(
+  rows: WorkspacePromptRowDto[],
+  options: {
+    totalAllocation?: number;
+    totalUsed?: number;
+    trackers?: WorkspacePromptTrackerOptionDto[];
+  } = {},
+): WorkspacePromptsDto {
   return {
     workspaceId: "w1",
     from: "2026-05-09T00:00:00Z",
     to: "2026-06-09T00:00:00Z",
     prompts: rows,
+    totalAllocation: options.totalAllocation ?? 50,
+    totalUsed: options.totalUsed ?? rows.length,
+    trackers: options.trackers ?? [trackerOption({ promptUsed: rows.length })],
   };
 }
 
@@ -118,6 +159,7 @@ beforeEach(() => {
   discoverySummaryState = { data: undefined, isLoading: false, isError: false };
   updatePromptMutate = vi.fn();
   removePromptMutate = vi.fn();
+  addPromptMutate = vi.fn();
 });
 
 describe("filterRows (pure)", () => {
@@ -653,6 +695,105 @@ describe("PromptsScreen", () => {
     // Drawer mounted (the hook returns no data, so the loading skeleton or
     // the no-data state shows — either way the drawer Title is in the DOM).
     expect(screen.getByText("Answer history")).toBeInTheDocument();
+  });
+
+  // -------------------------------------------------------------------
+  // Workspace quota indicator + "Add prompt" dialog
+  // -------------------------------------------------------------------
+
+  it("renders the 'X / Y prompts' quota badge from the workspace payload", () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1" })], {
+        totalAllocation: 80,
+        totalUsed: 12,
+      }),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    const badge = screen.getByLabelText(/prompt allocation across in-scope trackers/i);
+    expect(badge).toHaveTextContent("12");
+    expect(badge).toHaveTextContent("80");
+  });
+
+  it("hides the quota badge when the workspace has no allocation data", () => {
+    promptsState = {
+      data: payload([], { totalAllocation: 0, totalUsed: 0, trackers: [] }),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    expect(
+      screen.queryByLabelText(/prompt allocation across in-scope trackers/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables the Add prompt button when no trackers are in scope", () => {
+    promptsState = {
+      data: payload([], { totalAllocation: 0, totalUsed: 0, trackers: [] }),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    expect(screen.getByRole("button", { name: /^Add prompt$/i })).toBeDisabled();
+  });
+
+  it("opens the Add prompt dialog from the header button", async () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1" })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i }));
+    // The dialog title is rendered when open.
+    expect(screen.getAllByText(/^Add prompt$/i).length).toBeGreaterThan(1);
+    // Tracker + Lens labels appear in the dialog body.
+    expect(screen.getByLabelText("Tracker")).toBeInTheDocument();
+    expect(screen.getByLabelText("Lens")).toBeInTheDocument();
+  });
+
+  it("submits with the picked tracker, lens, and trimmed text", async () => {
+    promptsState = {
+      data: payload([row({ promptId: "p1" })], {
+        trackers: [
+          trackerOption({
+            id: "t1",
+            name: "Acme · US",
+            brandName: "Acme",
+            promptUsed: 1,
+            promptAllocation: 50,
+            lenses: [
+              { id: "lens-discovery", name: "Discovery" },
+              { id: "lens-comparison", name: "Comparison" },
+            ],
+          }),
+        ],
+      }),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i }));
+
+    // Pick the tracker — the only option in the trackers list.
+    await userEvent.click(screen.getByRole("combobox", { name: "Tracker" }));
+    await userEvent.click(screen.getByRole("option", { name: /Acme · Acme · US \(1\/50\)/i }));
+    // Pick the lens — second option in the lens dropdown.
+    await userEvent.click(screen.getByRole("combobox", { name: "Lens" }));
+    await userEvent.click(screen.getByRole("option", { name: "Comparison" }));
+
+    const textarea = screen.getByLabelText("Prompt text") as HTMLTextAreaElement;
+    await userEvent.type(textarea, "  Best resume builder?  ");
+
+    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i, hidden: false }));
+
+    expect(addPromptMutate).toHaveBeenCalledOnce();
+    expect(addPromptMutate.mock.calls[0][0]).toEqual({
+      trackerId: "t1",
+      lensId: "lens-comparison",
+      text: "Best resume builder?",
+    });
   });
 
   it("clicking the X removes the row without also opening the drawer", async () => {

@@ -31,7 +31,7 @@ export function EntityScopeToggle({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex rounded-md border border-neutral-300 bg-white p-0.5 shadow-sm"
+      className="inline-flex rounded-md border border-neutral-300 bg-white p-[1px] shadow-sm"
     >
       {OPTIONS.map((opt) => {
         const active = value === opt.value;
@@ -44,7 +44,7 @@ export function EntityScopeToggle({
             aria-label={opt.title}
             title={opt.title}
             className={cn(
-              "rounded px-2 py-0.5 text-[11px] font-semibold transition",
+              "rounded px-1.5 py-0.5 text-[10px] font-semibold transition",
               active ? "bg-primary-100 text-primary-700" : "text-neutral-600 hover:bg-neutral-100",
             )}
           >
