@@ -31,10 +31,21 @@ public class WorkspaceSourcesController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
         [FromQuery(Name = "trackerIds")] Guid[]? trackerIds = null,
+        [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
+        [FromQuery(Name = "topicNames")] string[]? topicNames = null,
+        [FromQuery(Name = "productNames")] string[]? productNames = null,
+        [FromQuery(Name = "marketNames")] string[]? marketNames = null,
+        [FromQuery(Name = "audienceNames")] string[]? audienceNames = null,
+        [FromQuery(Name = "sentimentValues")] string[]? sentimentValues = null,
+        [FromQuery(Name = "platformCodes")] string[]? platformCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceDomainsQuery(from, to, trackerIds), cancellationToken);
+            new GetWorkspaceDomainsQuery(
+                from, to, trackerIds,
+                lensCodes, topicNames, productNames, marketNames, audienceNames,
+                sentimentValues, platformCodes),
+            cancellationToken);
         return Ok(result);
     }
 
@@ -44,10 +55,21 @@ public class WorkspaceSourcesController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
         [FromQuery(Name = "trackerIds")] Guid[]? trackerIds = null,
+        [FromQuery(Name = "lensCodes")] string[]? lensCodes = null,
+        [FromQuery(Name = "topicNames")] string[]? topicNames = null,
+        [FromQuery(Name = "productNames")] string[]? productNames = null,
+        [FromQuery(Name = "marketNames")] string[]? marketNames = null,
+        [FromQuery(Name = "audienceNames")] string[]? audienceNames = null,
+        [FromQuery(Name = "sentimentValues")] string[]? sentimentValues = null,
+        [FromQuery(Name = "platformCodes")] string[]? platformCodes = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetWorkspaceUrlsQuery(from, to, trackerIds), cancellationToken);
+            new GetWorkspaceUrlsQuery(
+                from, to, trackerIds,
+                lensCodes, topicNames, productNames, marketNames, audienceNames,
+                sentimentValues, platformCodes),
+            cancellationToken);
         return Ok(result);
     }
 }

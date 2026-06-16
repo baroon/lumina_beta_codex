@@ -23,8 +23,7 @@ import { ScanCompetitorDetailPage } from "@/routes/scans/competitor-detail";
 import { ScanClaimsPage } from "@/routes/scans/claims";
 import { OverviewPage } from "@/routes/overview";
 import { PromptsPage } from "@/routes/prompts";
-import { SourcesDomainsPage } from "@/routes/sources/domains";
-import { SourcesUrlsPage } from "@/routes/sources/urls";
+import { SourcesPage } from "@/routes/sources";
 import { CompetitorsPage } from "@/routes/competitors";
 import { InsightsPage } from "@/routes/insights";
 import { SettingsWorkspacePage } from "@/routes/settings/workspace";
@@ -172,16 +171,10 @@ const promptsRoute = createRoute({
   component: PromptsPage,
 });
 
-const sourcesDomainsRoute = createRoute({
+const sourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/sources/domains",
-  component: SourcesDomainsPage,
-});
-
-const sourcesUrlsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/sources/urls",
-  component: SourcesUrlsPage,
+  path: "/sources",
+  component: SourcesPage,
 });
 
 const competitorsRoute = createRoute({
@@ -229,8 +222,7 @@ const routeTree = rootRoute.addChildren([
   scanClaimsRoute,
   overviewRoute,
   promptsRoute,
-  sourcesDomainsRoute,
-  sourcesUrlsRoute,
+  sourcesRoute,
   competitorsRoute,
   insightsRoute,
   settingsWorkspaceRoute,

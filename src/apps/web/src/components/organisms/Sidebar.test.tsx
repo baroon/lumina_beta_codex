@@ -50,8 +50,7 @@ describe("Sidebar", () => {
 
     await expectLink(APP_COPY.nav.overview, "/overview");
     await expectLink(APP_COPY.nav.prompts, "/prompts");
-    await expectLink(APP_COPY.nav.sourcesDomains, "/sources/domains");
-    await expectLink(APP_COPY.nav.sourcesUrls, "/sources/urls");
+    await expectLink(APP_COPY.nav.sources, "/sources");
     await expectLink(APP_COPY.nav.competitors, "/competitors");
     await expectLink(APP_COPY.nav.insights, "/insights");
     await expectLink(APP_COPY.nav.scans, "/scans");

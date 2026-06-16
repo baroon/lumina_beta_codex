@@ -11,7 +11,15 @@ namespace AIVisibility.Application.Queries.Sources;
 public record GetWorkspaceUrlsQuery(
     DateTime? From,
     DateTime? To,
-    IReadOnlyList<Guid>? TrackerIds = null) : IRequest<WorkspaceUrlsDto>;
+    IReadOnlyList<Guid>? TrackerIds = null,
+    // Mirrors GetWorkspaceDomainsQuery — see that file for semantics.
+    IReadOnlyList<string>? LensCodes = null,
+    IReadOnlyList<string>? TopicNames = null,
+    IReadOnlyList<string>? ProductNames = null,
+    IReadOnlyList<string>? MarketNames = null,
+    IReadOnlyList<string>? AudienceNames = null,
+    IReadOnlyList<string>? SentimentValues = null,
+    IReadOnlyList<string>? PlatformCodes = null) : IRequest<WorkspaceUrlsDto>;
 
 public sealed record WorkspaceUrlsDto(
     Guid WorkspaceId,

@@ -11,14 +11,33 @@ import type {
 } from "@/types/api";
 
 /**
- * Build the `?from=&to=&trackerIds=` query string for the workspace
- * sources endpoint(s). Same convention as overviewApi + promptsApi.
+ * Build the workspace-sources query string. Mirrors the overviewApi
+ * pattern (same `?from=&to=&trackerIds=&lensCodes=&topicNames=...` shape)
+ * so the FE filter bar drives every workspace page consistently. Empty
+ * arrays are no-ops (ASP.NET parses absence of the key as null).
  */
-function buildWorkspaceSourcesQuery(range: DateRange, trackerIds: readonly string[]): string {
+function buildWorkspaceSourcesQuery(
+  range: DateRange,
+  trackerIds: readonly string[],
+  lensCodes: readonly string[] = [],
+  topicNames: readonly string[] = [],
+  productNames: readonly string[] = [],
+  marketNames: readonly string[] = [],
+  audienceNames: readonly string[] = [],
+  sentimentValues: readonly string[] = [],
+  platformCodes: readonly string[] = [],
+): string {
   const params = new URLSearchParams();
   if (range.from) params.set("from", range.from.toISOString());
   if (range.to) params.set("to", range.to.toISOString());
   for (const id of trackerIds) params.append("trackerIds", id);
+  for (const code of lensCodes) params.append("lensCodes", code);
+  for (const name of topicNames) params.append("topicNames", name);
+  for (const name of productNames) params.append("productNames", name);
+  for (const name of marketNames) params.append("marketNames", name);
+  for (const name of audienceNames) params.append("audienceNames", name);
+  for (const value of sentimentValues) params.append("sentimentValues", value);
+  for (const code of platformCodes) params.append("platformCodes", code);
   const s = params.toString();
   return s ? `?${s}` : "";
 }
@@ -42,21 +61,64 @@ export const sourcesApi = {
   /**
    * Workspace-wide domain-level citation source view at
    * GET /api/sources/domains. Aggregates citations across selected
-   * trackers in window, one row per Source.
+   * trackers in window, one row per Source. Filter args mirror
+   * overviewApi so the canonical filter bar drives both pages
+   * consistently.
    */
-  workspaceDomains: (range: DateRange, trackerIds: readonly string[] = []) =>
+  workspaceDomains: (
+    range: DateRange,
+    trackerIds: readonly string[] = [],
+    lensCodes: readonly string[] = [],
+    topicNames: readonly string[] = [],
+    productNames: readonly string[] = [],
+    marketNames: readonly string[] = [],
+    audienceNames: readonly string[] = [],
+    sentimentValues: readonly string[] = [],
+    platformCodes: readonly string[] = [],
+  ) =>
     apiClient.get<WorkspaceDomainsDto>(
-      `/api/sources/domains${buildWorkspaceSourcesQuery(range, trackerIds)}`,
+      `/api/sources/domains${buildWorkspaceSourcesQuery(
+        range,
+        trackerIds,
+        lensCodes,
+        topicNames,
+        productNames,
+        marketNames,
+        audienceNames,
+        sentimentValues,
+        platformCodes,
+      )}`,
     ),
 
   /**
    * Workspace-wide URL-level citation source view at
    * GET /api/sources/urls. One row per SourceUrl — mentioned-source
-   * citations without a URL only appear on /sources/domains.
+   * citations without a URL only appear on /sources/domains. Filter
+   * args mirror workspaceDomains.
    */
-  workspaceUrls: (range: DateRange, trackerIds: readonly string[] = []) =>
+  workspaceUrls: (
+    range: DateRange,
+    trackerIds: readonly string[] = [],
+    lensCodes: readonly string[] = [],
+    topicNames: readonly string[] = [],
+    productNames: readonly string[] = [],
+    marketNames: readonly string[] = [],
+    audienceNames: readonly string[] = [],
+    sentimentValues: readonly string[] = [],
+    platformCodes: readonly string[] = [],
+  ) =>
     apiClient.get<WorkspaceUrlsDto>(
-      `/api/sources/urls${buildWorkspaceSourcesQuery(range, trackerIds)}`,
+      `/api/sources/urls${buildWorkspaceSourcesQuery(
+        range,
+        trackerIds,
+        lensCodes,
+        topicNames,
+        productNames,
+        marketNames,
+        audienceNames,
+        sentimentValues,
+        platformCodes,
+      )}`,
     ),
 };
 

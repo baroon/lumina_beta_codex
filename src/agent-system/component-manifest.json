@@ -1313,43 +1313,33 @@
           "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` (already scope-aware after step 5) into one sortable table — columns: # · Entity · Mentions (with proportional bar) · Share of voice · Recommendation rate. Tracked brands highlighted with a 'You' badge + soft primary background; the rank-1 non-tracked-brand row gets a 'Leader' badge. Pure `mergeEntityRows` helper exported for unit testing. Scope follows the sidebar's TrackerSelector."
         },
         {
-          "name": "DomainsScreen",
+          "name": "SourcesScreen",
           "category": "Feature — Reporting",
-          "path": "src/features/reports/components/DomainsScreen.tsx",
+          "path": "src/features/reports/components/SourcesScreen.tsx",
           "status": "implemented",
           "variants": [],
           "dependencies": [
             "PageHeader",
-            "SectionHeader",
+            "MetricCategoryLayout",
             "Card",
             "Input",
             "Badge",
+            "SourceTypeDropdown",
             "LoadingPage",
             "ErrorPage",
+            "DateRangePicker",
+            "FiltersPopover",
+            "LensChipRow",
+            "InfoTooltip",
+            "TopicSelector",
+            "ProductSelector",
+            "MarketSelector",
+            "AudienceSelector",
             "useTrackerScope",
-            "useWorkspaceDomains"
+            "useWorkspaceDomains",
+            "useWorkspaceUrls"
           ],
-          "notes": "Workspace-wide domain-level citation source view at /sources/domains. Per-Source rows aggregating citations across selected trackers' scans in window — columns: Source (name + normalized domain) · Type · Citations · Scans (retrieved-in count) · Authority · Last seen (relative). Type-filter pill row above the table, search filters by name or domain. Sourced from a new `GET /api/sources/domains?trackerIds=&from=&to=` endpoint (WorkspaceSourcesController → GetWorkspaceDomainsQueryHandler) that picks the dominant SourceType across the workspace's per-brand BrandSourceClassifications. Pure `filterDomains` and `countByType` helpers exported for unit testing. Right-rail source-type donut + Source-Retrieved trend chart are deferred polish."
-        },
-        {
-          "name": "SourceUrlsScreen",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/SourceUrlsScreen.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": [
-            "PageHeader",
-            "SectionHeader",
-            "Card",
-            "Input",
-            "Badge",
-            "LoadingPage",
-            "ErrorPage",
-            "useTrackerScope",
-            "useWorkspaceUrls",
-            "lucide-react"
-          ],
-          "notes": "Workspace-wide URL-level citation source view at /sources/urls. Per-SourceUrl rows aggregating citations across selected trackers' scans in window — columns: URL (title + normalized URL with external-link icon to the raw URL) · Domain · Type · Citations · Scans · Last seen (relative). Type-filter pill row + search by URL/title/domain/source name. Mentioned-source citations without a URL skip this page and only appear on /sources/domains. Sourced from new `GET /api/sources/urls?trackerIds=&from=&to=` endpoint (WorkspaceSourcesController → GetWorkspaceUrlsQueryHandler) — same dominant-classification pattern as the domains handler. Pure `filterUrls` and `countByType` helpers exported."
+          "notes": "Workspace-wide citation source view at /sources. Single page with a Domains ↔ URLs view toggle (replaces the prior /sources/domains and /sources/urls split). Canonical page shell — title-only PageHeader, MetricCategoryLayout with Hero KPIs (Citations · Domains · URLs · Top type) + sticky single-row controls strip (lens chips · view toggle · DateRangePicker · FiltersPopover with Topics/Products/Markets/Audiences/Models/Sentiment) + one section that swaps tables on view flip. All seven canonical filter dimensions thread through both useWorkspaceDomains + useWorkspaceUrls; the BE narrows the underlying citation set via PromptRun-level EXISTS subqueries (sentiment narrows via Mention join). Source classification mutates the underlying Source, so a flip on a URL row updates every URL backed by the same Source after the cache invalidates. Pure `filterActive`, `countByType`, and `deriveHero` helpers exported."
         },
         {
           "name": "PromptsScreen",

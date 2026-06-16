@@ -8,8 +8,7 @@ export const APP_COPY = {
     scans: "Scans",
     // Phase: navigation-and-pages rework (categorized sidebar).
     prompts: "Prompts",
-    sourcesDomains: "Sources › Domains",
-    sourcesUrls: "Sources › URLs",
+    sources: "Sources",
     competitors: "Competitors",
     insights: "Insights",
     settingsWorkspace: "Workspace",

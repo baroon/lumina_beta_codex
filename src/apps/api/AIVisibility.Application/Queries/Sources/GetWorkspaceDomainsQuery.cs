@@ -18,7 +18,20 @@ namespace AIVisibility.Application.Queries.Sources;
 public record GetWorkspaceDomainsQuery(
     DateTime? From,
     DateTime? To,
-    IReadOnlyList<Guid>? TrackerIds = null) : IRequest<WorkspaceDomainsDto>;
+    IReadOnlyList<Guid>? TrackerIds = null,
+    // Workspace-wide canonical filters — same shape as the Overview /
+    // Competitive queries so the FE filter bar drives every page
+    // consistently. Each null means "no filter on this dimension";
+    // non-null narrows the citation set via PromptRun-level EXISTS
+    // subqueries (lens / topic / product / market / audience / platform)
+    // or AIAnswer-level (sentiment, via Mention join).
+    IReadOnlyList<string>? LensCodes = null,
+    IReadOnlyList<string>? TopicNames = null,
+    IReadOnlyList<string>? ProductNames = null,
+    IReadOnlyList<string>? MarketNames = null,
+    IReadOnlyList<string>? AudienceNames = null,
+    IReadOnlyList<string>? SentimentValues = null,
+    IReadOnlyList<string>? PlatformCodes = null) : IRequest<WorkspaceDomainsDto>;
 
 public sealed record WorkspaceDomainsDto(
     Guid WorkspaceId,

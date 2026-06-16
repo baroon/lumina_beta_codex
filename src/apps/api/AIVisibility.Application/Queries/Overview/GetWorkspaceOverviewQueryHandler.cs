@@ -1,4 +1,5 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Application.Queries.Common;
 using AIVisibility.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -32,14 +33,14 @@ public class GetWorkspaceOverviewQueryHandler
         // (possibly empty) ⇒ filter PromptRuns by Prompt.LensId. An empty
         // resolved set is the honest "no lens matched" outcome — hero
         // counts come out as zero, which is what we want.
-        var lensIdFilter = await ResolveLensIdSetAsync(request.LensCodes, cancellationToken);
+        var lensIdFilter = await FilterResolvers.ResolveLensIdSetAsync(_db, request.LensCodes, cancellationToken);
         // Same semantics for topics — resolved from names (the dedup
         // unit the FE picker operates on) to all matching Topic.Id rows
         // so duplicates across brands / discovery runs are honored.
-        var topicIdFilter = await ResolveTopicIdSetAsync(request.TopicNames, cancellationToken);
-        var productIdFilter = await ResolveProductIdSetAsync(request.ProductNames, cancellationToken);
-        var marketIdFilter = await ResolveMarketIdSetAsync(request.MarketNames, cancellationToken);
-        var audienceIdFilter = await ResolveAudienceIdSetAsync(request.AudienceNames, cancellationToken);
+        var topicIdFilter = await FilterResolvers.ResolveTopicIdSetAsync(_db, workspaceId, request.TopicNames, cancellationToken);
+        var productIdFilter = await FilterResolvers.ResolveProductIdSetAsync(_db, workspaceId, request.ProductNames, cancellationToken);
+        var marketIdFilter = await FilterResolvers.ResolveMarketIdSetAsync(_db, workspaceId, request.MarketNames, cancellationToken);
+        var audienceIdFilter = await FilterResolvers.ResolveAudienceIdSetAsync(_db, workspaceId, request.AudienceNames, cancellationToken);
         // Sentiment + Platform — Platform narrows the PromptRun source
         // (every downstream count is platform-scoped via the answer set);
         // Sentiment narrows Mention-counting queries at the mention
@@ -49,8 +50,8 @@ public class GetWorkspaceOverviewQueryHandler
         // Only Trend Series + Top Entities stay workspace-wide: they
         // read from pre-aggregated TrendPoints which don't carry
         // dimension granularity to filter on.
-        var sentimentFilter = ResolveSentimentSet(request.SentimentValues);
-        var platformIdFilter = await ResolvePlatformIdSetAsync(request.PlatformCodes, cancellationToken);
+        var sentimentFilter = FilterResolvers.ResolveSentimentSet(request.SentimentValues);
+        var platformIdFilter = await FilterResolvers.ResolvePlatformIdSetAsync(_db, request.PlatformCodes, cancellationToken);
 
         // Tracked brands in the workspace.
         var trackedBrands = await _db.Brands.AsNoTracking()
@@ -1041,114 +1042,9 @@ public class GetWorkspaceOverviewQueryHandler
     /// "no lens matched the codes" and ends up with zero counts, which
     /// is the honest answer for an invalid code.
     /// </summary>
-    private async Task<HashSet<Guid>?> ResolveLensIdSetAsync(
-        IReadOnlyList<string>? codes, CancellationToken ct)
-    {
-        if (codes is null || codes.Count == 0) return null;
-        var ids = await _db.Lenses.AsNoTracking()
-            .Where(l => codes.Contains(l.Code))
-            .Select(l => l.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
-    /// <summary>
-    /// Resolve topic names (case-sensitive match — names come from the
-    /// same FE list the user picks from) to every matching Topic.Id in
-    /// the current workspace. Topics are per-brand so the same name may
-    /// resolve to multiple ids; we want all of them so duplicates from
-    /// repeated discovery runs are honored.
-    /// </summary>
-    private async Task<HashSet<Guid>?> ResolveTopicIdSetAsync(
-        IReadOnlyList<string>? names, CancellationToken ct)
-    {
-        if (names is null || names.Count == 0) return null;
-        var workspaceId = _workspace.WorkspaceId;
-        var ids = await _db.Topics.AsNoTracking()
-            .Where(t => names.Contains(t.Name)
-                && _db.Brands.Any(b => b.Id == t.BrandId && b.WorkspaceId == workspaceId))
-            .Select(t => t.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
-    private async Task<HashSet<Guid>?> ResolveProductIdSetAsync(
-        IReadOnlyList<string>? names, CancellationToken ct)
-    {
-        if (names is null || names.Count == 0) return null;
-        var workspaceId = _workspace.WorkspaceId;
-        var ids = await _db.Products.AsNoTracking()
-            .Where(p => names.Contains(p.Name)
-                && _db.Brands.Any(b => b.Id == p.BrandId && b.WorkspaceId == workspaceId))
-            .Select(p => p.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
-    private async Task<HashSet<Guid>?> ResolveMarketIdSetAsync(
-        IReadOnlyList<string>? names, CancellationToken ct)
-    {
-        if (names is null || names.Count == 0) return null;
-        var workspaceId = _workspace.WorkspaceId;
-        var ids = await _db.Markets.AsNoTracking()
-            .Where(m => names.Contains(m.Name)
-                && _db.Brands.Any(b => b.Id == m.BrandId && b.WorkspaceId == workspaceId))
-            .Select(m => m.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
-    private async Task<HashSet<Guid>?> ResolveAudienceIdSetAsync(
-        IReadOnlyList<string>? names, CancellationToken ct)
-    {
-        if (names is null || names.Count == 0) return null;
-        var workspaceId = _workspace.WorkspaceId;
-        var ids = await _db.Audiences.AsNoTracking()
-            .Where(a => names.Contains(a.Name)
-                && _db.Brands.Any(b => b.Id == a.BrandId && b.WorkspaceId == workspaceId))
-            .Select(a => a.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
-
-    /// <summary>
-    /// Resolve Sentiment-enum names ("Positive" / "Neutral" / etc.) to a
-    /// HashSet of the enum values. Null / empty input ⇒ null out, meaning
-    /// "no sentiment filter". Unknown strings are dropped silently — the
-    /// FE shouldn't be able to send them, but a stale URL link or typo
-    /// shouldn't 500 the API. Pure (no DB hit).
-    /// </summary>
-    private static HashSet<Sentiment>? ResolveSentimentSet(IReadOnlyList<string>? values)
-    {
-        if (values is null || values.Count == 0) return null;
-        var set = new HashSet<Sentiment>();
-        foreach (var v in values)
-        {
-            if (Enum.TryParse<Sentiment>(v, ignoreCase: false, out var parsed))
-            {
-                set.Add(parsed);
-            }
-        }
-        return set;
-    }
-
-    /// <summary>
-    /// Resolve AIPlatform.Code strings ("openai" / "claude" / "gemini" /
-    /// "perplexity" / etc.) to a HashSet of AIPlatform.Id. Null / empty
-    /// input ⇒ null out, meaning "no platform filter". Codes that don't
-    /// match a platform row are dropped silently for the same reason as
-    /// {@link ResolveSentimentSet}.
-    /// </summary>
-    private async Task<HashSet<Guid>?> ResolvePlatformIdSetAsync(
-        IReadOnlyList<string>? codes, CancellationToken ct)
-    {
-        if (codes is null || codes.Count == 0) return null;
-        var ids = await _db.AIPlatforms.AsNoTracking()
-            .Where(p => codes.Contains(p.Code))
-            .Select(p => p.Id)
-            .ToListAsync(ct);
-        return ids.ToHashSet();
-    }
+    // Filter resolvers live in AIVisibility.Application.Queries.Common.FilterResolvers
+    // so the same name→id semantics are shared across every workspace
+    // report query (Overview, Sources, future surfaces).
 
     private async Task<IReadOnlyDictionary<(TrendEntityType, Guid), string>> ResolveEntityNamesAsync(
         IReadOnlyList<Domain.Entities.TrendPoint> points, CancellationToken ct)

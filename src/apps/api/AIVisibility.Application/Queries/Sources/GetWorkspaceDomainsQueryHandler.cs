@@ -1,4 +1,5 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Application.Queries.Common;
 using AIVisibility.Application.Queries.Overview;
 using AIVisibility.Domain.Enums;
 using MediatR;
@@ -63,14 +64,47 @@ public class GetWorkspaceDomainsQueryHandler
         var scanIdSet = scansInWindow.Select(s => s.Id).ToHashSet();
         var scanCompletedAt = scansInWindow.ToDictionary(s => s.Id, s => s.CompletedAt);
 
+        // Resolve workspace-wide canonical filters once up front so the
+        // EXISTS subqueries below can read the resolved HashSets without
+        // touching the request record on each predicate.
+        var lensIdFilter = await FilterResolvers.ResolveLensIdSetAsync(_db, request.LensCodes, cancellationToken);
+        var topicIdFilter = await FilterResolvers.ResolveTopicIdSetAsync(_db, workspaceId, request.TopicNames, cancellationToken);
+        var productIdFilter = await FilterResolvers.ResolveProductIdSetAsync(_db, workspaceId, request.ProductNames, cancellationToken);
+        var marketIdFilter = await FilterResolvers.ResolveMarketIdSetAsync(_db, workspaceId, request.MarketNames, cancellationToken);
+        var audienceIdFilter = await FilterResolvers.ResolveAudienceIdSetAsync(_db, workspaceId, request.AudienceNames, cancellationToken);
+        var sentimentFilter = FilterResolvers.ResolveSentimentSet(request.SentimentValues);
+        var platformIdFilter = await FilterResolvers.ResolvePlatformIdSetAsync(_db, request.PlatformCodes, cancellationToken);
+
         // Citations whose answers belong to in-window scans. Group by
         // SourceId and project counts + the citing-scan-id set.
         // PromptRuns join: Citation → AIAnswer → PromptRun → ScanRun.
+        // The seven workspace-wide filters narrow at the PromptRun
+        // level (lens / topic / product / market / audience / platform)
+        // via EXISTS subqueries — same pattern as the Overview handler
+        // so source citations stay aligned with the rest of the report
+        // when the user selects a filter. Sentiment narrows at the
+        // Mention level: citations are only counted when their answer
+        // has at least one matching-sentiment brand mention.
         var citationFacts = await (
             from c in _db.Citations.AsNoTracking()
             join a in _db.AIAnswers.AsNoTracking() on c.AIAnswerId equals a.Id
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
             where scanIdSet.Contains(pr.ScanRunId)
+                && (lensIdFilter == null
+                    || _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null
+                    || _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null
+                    || _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null
+                    || _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null
+                    || _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null
+                    || _db.Mentions.Any(m => m.AIAnswerId == a.Id
+                        && m.EntityType == MentionEntityType.Brand
+                        && sentimentFilter.Contains(m.Sentiment)))
             select new { c.SourceId, pr.ScanRunId }
         ).ToListAsync(cancellationToken);
 

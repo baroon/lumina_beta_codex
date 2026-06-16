@@ -1,4 +1,5 @@
 using AIVisibility.Application.Interfaces;
+using AIVisibility.Application.Queries.Common;
 using AIVisibility.Application.Queries.Overview;
 using AIVisibility.Domain.Enums;
 using MediatR;
@@ -62,6 +63,16 @@ public class GetWorkspaceUrlsQueryHandler
         var scanIdSet = scansInWindow.Select(s => s.Id).ToHashSet();
         var scanCompletedAt = scansInWindow.ToDictionary(s => s.Id, s => s.CompletedAt);
 
+        // Same canonical-filter resolution + EXISTS pattern as the
+        // domains handler. See that file for semantics.
+        var lensIdFilter = await FilterResolvers.ResolveLensIdSetAsync(_db, request.LensCodes, cancellationToken);
+        var topicIdFilter = await FilterResolvers.ResolveTopicIdSetAsync(_db, workspaceId, request.TopicNames, cancellationToken);
+        var productIdFilter = await FilterResolvers.ResolveProductIdSetAsync(_db, workspaceId, request.ProductNames, cancellationToken);
+        var marketIdFilter = await FilterResolvers.ResolveMarketIdSetAsync(_db, workspaceId, request.MarketNames, cancellationToken);
+        var audienceIdFilter = await FilterResolvers.ResolveAudienceIdSetAsync(_db, workspaceId, request.AudienceNames, cancellationToken);
+        var sentimentFilter = FilterResolvers.ResolveSentimentSet(request.SentimentValues);
+        var platformIdFilter = await FilterResolvers.ResolvePlatformIdSetAsync(_db, request.PlatformCodes, cancellationToken);
+
         // Citations whose answers landed in window AND that point at a
         // specific SourceUrl (mentioned-source citations without URL skip
         // this page — they're on /sources/domains only).
@@ -70,6 +81,21 @@ public class GetWorkspaceUrlsQueryHandler
             join a in _db.AIAnswers.AsNoTracking() on c.AIAnswerId equals a.Id
             join pr in _db.PromptRuns.AsNoTracking() on a.PromptRunId equals pr.Id
             where scanIdSet.Contains(pr.ScanRunId) && c.SourceUrlId != null
+                && (lensIdFilter == null
+                    || _db.Prompts.Any(p => p.Id == pr.PromptId && lensIdFilter.Contains(p.LensId)))
+                && (topicIdFilter == null
+                    || _db.PromptTopics.Any(pt => pt.PromptId == pr.PromptId && topicIdFilter.Contains(pt.TopicId)))
+                && (productIdFilter == null
+                    || _db.PromptProducts.Any(pp => pp.PromptId == pr.PromptId && productIdFilter.Contains(pp.ProductId)))
+                && (marketIdFilter == null
+                    || _db.PromptMarkets.Any(pm => pm.PromptId == pr.PromptId && marketIdFilter.Contains(pm.MarketId)))
+                && (audienceIdFilter == null
+                    || _db.PromptAudiences.Any(pa => pa.PromptId == pr.PromptId && audienceIdFilter.Contains(pa.AudienceId)))
+                && (platformIdFilter == null || platformIdFilter.Contains(pr.AIPlatformId))
+                && (sentimentFilter == null
+                    || _db.Mentions.Any(m => m.AIAnswerId == a.Id
+                        && m.EntityType == MentionEntityType.Brand
+                        && sentimentFilter.Contains(m.Sentiment)))
             select new { SourceUrlId = c.SourceUrlId!.Value, c.SourceId, pr.ScanRunId }
         ).ToListAsync(cancellationToken);
 

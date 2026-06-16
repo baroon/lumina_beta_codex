@@ -5,7 +5,6 @@ import {
   Briefcase,
   Globe,
   LayoutGrid,
-  Link2,
   type LucideIcon,
   MessageSquare,
   PieChart,
@@ -54,8 +53,7 @@ export function Sidebar() {
         <SidebarSection label={APP_COPY.navSections.analytics}>
           <NavItem to="/overview" icon={PieChart} label={APP_COPY.nav.overview} />
           <NavItem to="/prompts" icon={MessageSquare} label={APP_COPY.nav.prompts} />
-          <NavItem to="/sources/domains" icon={Globe} label={APP_COPY.nav.sourcesDomains} />
-          <NavItem to="/sources/urls" icon={Link2} label={APP_COPY.nav.sourcesUrls} />
+          <NavItem to="/sources" icon={Globe} label={APP_COPY.nav.sources} />
           <NavItem to="/competitors" icon={Swords} label={APP_COPY.nav.competitors} />
           <NavItem to="/insights" icon={TrendingUp} label={APP_COPY.nav.insights} beta />
           <NavItem to="/scans" icon={Activity} label={APP_COPY.nav.scans} />

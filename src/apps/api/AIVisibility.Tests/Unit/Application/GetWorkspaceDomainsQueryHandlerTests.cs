@@ -270,4 +270,54 @@ public class GetWorkspaceDomainsQueryHandlerTests
         // Trustpilot (3) is first; reddit and orphan tied at 1, alphabetical → orphan, reddit.
         result.Domains.Select(d => d.SourceName).Should().ContainInOrder("Trustpilot", "Orphan", "Reddit");
     }
+
+    [Fact]
+    public async Task LensCodesFilter_NarrowsToPromptsInMatchingLenses()
+    {
+        // Seed has one lens ("category-discovery"); filtering to that lens
+        // is a no-op narrow (all rows still surface). Filtering to a
+        // different lens code drops every row because no Prompt belongs
+        // to that lens. Confirms the EXISTS-on-Prompts subquery wires
+        // through without the test having to seed multiple lens rows.
+        using var ctx = NewContext();
+        Build(ctx);
+
+        var matching = await NewHandler(ctx).Handle(
+            new GetWorkspaceDomainsQuery(
+                DateTime.UtcNow.AddDays(-30), null, null,
+                LensCodes: new[] { "category-discovery" }),
+            CancellationToken.None);
+        matching.Domains.Should().HaveCount(3);
+
+        var nonMatching = await NewHandler(ctx).Handle(
+            new GetWorkspaceDomainsQuery(
+                DateTime.UtcNow.AddDays(-30), null, null,
+                LensCodes: new[] { "no-such-lens" }),
+            CancellationToken.None);
+        nonMatching.Domains.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task PlatformCodesFilter_NarrowsByPromptRunPlatform()
+    {
+        // All seeded runs use the "openai" platform. Filtering to that
+        // code is a no-op (3 rows); filtering to a different code drops
+        // every row because no run matches.
+        using var ctx = NewContext();
+        Build(ctx);
+
+        var matching = await NewHandler(ctx).Handle(
+            new GetWorkspaceDomainsQuery(
+                DateTime.UtcNow.AddDays(-30), null, null,
+                PlatformCodes: new[] { "openai" }),
+            CancellationToken.None);
+        matching.Domains.Should().HaveCount(3);
+
+        var nonMatching = await NewHandler(ctx).Handle(
+            new GetWorkspaceDomainsQuery(
+                DateTime.UtcNow.AddDays(-30), null, null,
+                PlatformCodes: new[] { "claude" }),
+            CancellationToken.None);
+        nonMatching.Domains.Should().BeEmpty();
+    }
 }
