@@ -462,10 +462,10 @@ export function PromptsScreen() {
             <span>{totalAllocation.toLocaleString()}</span>
           </div>
         )}
-        {/* Icon-only add button — pairs with the quota badge to keep the
-            header lean. The DateRangePicker moves down into the controls
-            strip beside the filters; the header now only carries the
-            workspace-wide "what / how much" affordances. */}
+        {/* Compact "Add prompt" button — text label leads, "+" reads as
+            a glyph rather than the whole affordance. Pairs with the
+            quota badge so the header carries the workspace-wide
+            "what / how much / add" cluster. */}
         <button
           type="button"
           onClick={() => setIsAddOpen(true)}
@@ -473,11 +473,12 @@ export function PromptsScreen() {
           aria-label="Add prompt"
           title="Add prompt"
           className={cn(
-            "inline-flex h-6 w-6 items-center justify-center rounded-md border border-primary-200 bg-primary-50 text-primary-700 transition hover:bg-primary-100",
+            "inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 transition hover:bg-primary-100",
             "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary-50",
           )}
         >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
+          <Plus className="h-3 w-3" aria-hidden />
+          <span>Add prompt</span>
         </button>
       </PageHeader>
 
