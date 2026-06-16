@@ -1467,6 +1467,24 @@
           "notes": "Per-tracked-brand mention-gap bars vs each in-scope competitor. Positive = brand ahead, negative = competitor ahead. Used on /overview and /competitors. Optional selectedKeys narrows both the group list and the per-group competitor list."
         },
         {
+          "name": "BrandVsCompetitorCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/BrandVsCompetitorCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "BarChartWrapper"],
+          "notes": "Horizontal bar of raw mention counts per entity. Complements ShareOfVoiceCard (share vs absolute). Used on /overview and /competitors. Optional selectedKeys narrows the bars; omitted = no filter."
+        },
+        {
+          "name": "CoMentionLandscapeCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CoMentionLandscapeCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "BarChartWrapper"],
+          "notes": "Per-competitor count of in-scope answers where a tracked brand AND that competitor were both mentioned, plus a per-row 'share of competitor's mentions' caption. Surfaces substitute clusters the buyer is comparing against. Used on /overview and /competitors. Optional selectedKeys narrows by competitor id."
+        },
+        {
           "name": "ScanTopicsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/ScanTopicsScreen.tsx",

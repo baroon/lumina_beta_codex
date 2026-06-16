@@ -383,6 +383,40 @@ describe("CompetitorsScreen", () => {
     expect(screen.getByRole("heading", { name: /^Share of voice$/i })).toBeInTheDocument();
   });
 
+  it("renders Mention counts + Co-mention landscape sections below the table", () => {
+    competitiveState = {
+      data: competitive(
+        [
+          mention({ entityId: "a", name: "Acme", isTrackedBrand: true, mentionCount: 8 }),
+          mention({ entityId: "b", name: "Canva", mentionCount: 12 }),
+        ],
+        [],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    overviewState = {
+      data: {
+        series: [],
+        coMentions: [
+          {
+            competitorId: "b",
+            competitorName: "Canva",
+            coMentionCount: 5,
+            competitorMentionCount: 12,
+          },
+        ],
+      },
+    };
+    render(<CompetitorsScreen />);
+    expect(screen.getByRole("heading", { name: /Mention counts/i, level: 2 })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Co-mention landscape/i, level: 2 }),
+    ).toBeInTheDocument();
+    // Co-mention card surfaces its per-row caption when share is computable.
+    expect(screen.getByText(/of competitor's mentions/i)).toBeInTheDocument();
+  });
+
   it("renders Recommendation rate + Competitive gap sections below the table", () => {
     competitiveState = {
       data: {

@@ -24,6 +24,8 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
+import { BrandVsCompetitorCard } from "@/features/reports/components/BrandVsCompetitorCard";
+import { CoMentionLandscapeCard } from "@/features/reports/components/CoMentionLandscapeCard";
 import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
 import {
   InlineChipFilter,
@@ -248,6 +250,14 @@ export function CompetitorsScreen() {
         ),
     },
     {
+      id: "MentionCounts",
+      label: "Mention counts",
+      // Pairs with the SoV donut up top — donut shows relative share,
+      // bar shows absolute volume. Useful when a tiny SoV slice still
+      // dominates by raw count or vice versa.
+      children: <BrandVsCompetitorCard mentions={competitive.data.mentionDistribution} />,
+    },
+    {
       id: "RecommendationRate",
       label: "Recommendation rate",
       children: <RecommendationRateCard rates={competitive.data.recommendationRates} />,
@@ -256,6 +266,14 @@ export function CompetitorsScreen() {
       id: "CompetitiveGaps",
       label: "Competitive gaps",
       children: <CompetitiveGapGroupsCard groups={competitive.data.competitiveGaps} />,
+    },
+    {
+      id: "CoMentionLandscape",
+      label: "Co-mention landscape",
+      // Surfaces substitute clusters — when a tracked brand IS mentioned,
+      // which competitors show up alongside? Strong signal for "who the
+      // buyer is comparing us against."
+      children: <CoMentionLandscapeCard rows={overview.data?.coMentions ?? []} />,
     },
   ];
 

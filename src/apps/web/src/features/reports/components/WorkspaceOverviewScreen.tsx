@@ -55,6 +55,8 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { EntityScopeToggle, type EntityScope } from "@/components/molecules/EntityScopeToggle";
 import { REPORTS_COPY } from "@/content/reports";
+import { BrandVsCompetitorCard } from "@/features/reports/components/BrandVsCompetitorCard";
+import { CoMentionLandscapeCard } from "@/features/reports/components/CoMentionLandscapeCard";
 import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
 import {
   InlineChipFilter,
@@ -90,7 +92,6 @@ import type {
   WorkspaceBrandAttributeDto,
   WorkspaceBrandComparisonDto,
   WorkspaceBrandRiskFlagDto,
-  WorkspaceCoMentionDto,
   WorkspaceFactualClaimDto,
   WorkspaceHeroDto,
   WorkspaceTopicOwnershipDto,
@@ -698,35 +699,9 @@ function CategorizedOverview({
 // page can reuse them without duplicating the donut/bar wiring. See
 // `./ShareOfVoiceCard` and `./RecommendationRateCard`.
 
-// ---------------------------------------------------------------------------
-// Brand vs Competitor mentions bar — filtered, raw counts
-// ---------------------------------------------------------------------------
-
-function BrandVsCompetitorCard({
-  mentions,
-  selectedKeys,
-}: {
-  mentions: readonly EntityMentionDto[];
-  selectedKeys: readonly string[];
-}) {
-  const copy = REPORTS_COPY.overview.mentions;
-  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
-
-  const data: BarChartDatum[] = mentions
-    .filter((m) => selectedSet.has(`${m.entityType}:${m.entityId}`))
-    .filter((m) => m.mentionCount > 0)
-    .map((m) => ({ label: m.name, value: m.mentionCount }));
-
-  return (
-    <CollapsibleCard icon={BarChart3} title={copy.brandVsCompetitor} tooltip={copy.tooltip}>
-      {data.length === 0 ? (
-        <p className="text-sm text-neutral-500">{copy.noData}</p>
-      ) : (
-        <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
-      )}
-    </CollapsibleCard>
-  );
-}
+// BrandVsCompetitorCard moved to `./BrandVsCompetitorCard` so
+// /competitors can render the same raw-mention bar without duplicating
+// the wiring.
 
 // ---------------------------------------------------------------------------
 // Mention distribution radar — filtered
@@ -774,59 +749,8 @@ function MentionDistributionCard({
 // competitor off in the BrandSelector hides it here too.
 // ---------------------------------------------------------------------------
 
-function CoMentionLandscapeCard({
-  rows,
-  selectedKeys,
-}: {
-  rows: readonly WorkspaceCoMentionDto[];
-  selectedKeys: readonly string[];
-}) {
-  const copy = REPORTS_COPY.overview.coMentionLandscape;
-  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
-  const visibleRows = rows.filter((r) => selectedSet.has(`Competitor:${r.competitorId}`));
-
-  if (visibleRows.length === 0) {
-    return (
-      <CollapsibleCard icon={Users} title={copy.title} tooltip={copy.tooltip}>
-        <p className="text-sm text-neutral-500">{copy.noData}</p>
-      </CollapsibleCard>
-    );
-  }
-
-  const data: BarChartDatum[] = visibleRows.map((r) => ({
-    label: r.competitorName,
-    value: r.coMentionCount,
-  }));
-
-  return (
-    <CollapsibleCard icon={Users} title={copy.title} tooltip={copy.tooltip}>
-      <p className="mb-3 text-xs text-neutral-500">{copy.subline}</p>
-      <BarChartWrapper data={data} valueAxisLabel={copy.axisLabel} />
-      <ul className="mt-3 space-y-1 text-xs text-neutral-600">
-        {visibleRows.map((r) => {
-          const share =
-            r.competitorMentionCount === 0 ? null : r.coMentionCount / r.competitorMentionCount;
-          return (
-            <li
-              key={r.competitorId}
-              className="flex items-center justify-between border-b border-neutral-100 py-1 last:border-b-0"
-            >
-              <span className="font-medium text-neutral-700">{r.competitorName}</span>
-              <span className="tabular-nums">
-                {r.coMentionCount} / {r.competitorMentionCount}
-                {share != null && (
-                  <span className="ml-2 text-neutral-500">
-                    ({Math.round(share * 100)}% {copy.shareSuffix})
-                  </span>
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </CollapsibleCard>
-  );
-}
+// CoMentionLandscapeCard moved to `./CoMentionLandscapeCard` so the
+// /competitors page can reuse it for substitute-cluster analysis.
 
 // ---------------------------------------------------------------------------
 // Head-to-head wins/losses by aspect (Phase 4 measurement-model item #15).
