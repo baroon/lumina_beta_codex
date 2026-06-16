@@ -1,5 +1,16 @@
 import { useMemo, useState } from "react";
-import { Crown, Hash, Percent, TrendingUp, Trophy, Users, type LucideIcon } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Crown,
+  Hash,
+  Percent,
+  TrendingUp,
+  Trophy,
+  Users,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
@@ -97,6 +108,22 @@ export function CompetitorsScreen() {
     selectedSentiments,
     selectedPlatformCodes,
   );
+  // Second competitive fetch shifted back one window for the Movers
+  // card. When the user picks "All time" the previous selection equals
+  // the current one — React-Query dedupes via the cache key so this
+  // costs nothing in that case.
+  const previousSelection = useMemo(() => previousSelectionFor(range), [range]);
+  const previousCompetitive = useWorkspaceCompetitive(
+    previousSelection,
+    lensCodesForApi,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
+  );
   const overview = useWorkspaceOverview(
     range,
     lensCodesForApi,
@@ -150,6 +177,16 @@ export function CompetitorsScreen() {
     competitive.data.mentionDistribution,
     competitive.data.recommendationRates,
   );
+  const previousRows = previousCompetitive.data
+    ? mergeEntityRows(
+        previousCompetitive.data.mentionDistribution,
+        previousCompetitive.data.recommendationRates,
+      )
+    : [];
+  // Movers is meaningful only when current vs previous represent two
+  // distinct windows. For "All time" the two selections are identical
+  // and the card renders an explanatory empty state.
+  const isMoversComparable = range.kind !== "all";
 
   const activeFilterCount =
     (selectedTopicNames.length > 0 ? 1 : 0) +
@@ -274,6 +311,22 @@ export function CompetitorsScreen() {
       // which competitors show up alongside? Strong signal for "who the
       // buyer is comparing us against."
       children: <CoMentionLandscapeCard rows={overview.data?.coMentions ?? []} />,
+    },
+    {
+      id: "Movers",
+      label: "Movers",
+      // Two-column gainers / losers — flags rising and falling competitors
+      // at a glance by diffing the current window against an equal-length
+      // back-shifted window. Empty-state when current = "all time" since
+      // there's no previous to compare against.
+      children: (
+        <MoversCard
+          currentRows={rows}
+          previousRows={previousRows}
+          isComparable={isMoversComparable}
+          isLoadingPrevious={previousCompetitive.isLoading || previousCompetitive.isFetching}
+        />
+      ),
     },
   ];
 
@@ -624,6 +677,242 @@ function TrendMetricToggle({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Movers — gainers + losers between two equal-length windows
+// ---------------------------------------------------------------------------
+
+/**
+ * Equal-length back-shifted window for the Movers comparison.
+ * - `preset N days` → previous window starts 2N days ago and ends N days ago.
+ * - `custom from-to` → previous window equals the same width immediately
+ *   before `from`.
+ * - `all` → returns the same selection. The Movers card renders an
+ *   explanatory empty state in this case since "all time" has no
+ *   meaningful previous window.
+ *
+ * Exported so the math is unit-testable without React.
+ */
+export function previousSelectionFor(sel: DateRangeSelection): DateRangeSelection {
+  switch (sel.kind) {
+    case "preset": {
+      const now = new Date();
+      const to = new Date(now.getTime() - sel.days * 24 * 60 * 60 * 1000);
+      const from = new Date(now.getTime() - 2 * sel.days * 24 * 60 * 60 * 1000);
+      return { kind: "custom", from, to };
+    }
+    case "custom": {
+      const widthMs = sel.to.getTime() - sel.from.getTime();
+      const from = new Date(sel.from.getTime() - widthMs);
+      const to = new Date(sel.from.getTime());
+      return { kind: "custom", from, to };
+    }
+    case "all":
+      return sel;
+  }
+}
+
+interface MoverRow {
+  entityType: string;
+  entityId: string;
+  name: string;
+  isTrackedBrand: boolean;
+  currentMentions: number;
+  previousMentions: number;
+  /** Signed delta of mention count. Positive = gained, negative = lost. */
+  delta: number;
+  /**
+   * Relative change vs the previous window's mention count.
+   * Null when previous = 0 (no prior baseline; FE shows "new").
+   */
+  pctChange: number | null;
+}
+
+interface MoversBreakdown {
+  gainers: readonly MoverRow[];
+  losers: readonly MoverRow[];
+}
+
+/**
+ * Diff two equal-length windows of competitor rows. Each entity present
+ * in either window gets one MoverRow. Sorted by signed delta — gainers
+ * descending, losers ascending — and capped at five each so the
+ * two-column section reads as a glance.
+ *
+ * Exported so the diff is testable without React.
+ */
+export function deriveMovers(
+  current: readonly CompetitorRow[],
+  previous: readonly CompetitorRow[],
+): MoversBreakdown {
+  const previousByKey = new Map<string, CompetitorRow>();
+  for (const r of previous) {
+    previousByKey.set(`${r.entityType}:${r.entityId}`, r);
+  }
+  const currentByKey = new Map<string, CompetitorRow>();
+  for (const r of current) {
+    currentByKey.set(`${r.entityType}:${r.entityId}`, r);
+  }
+
+  const allKeys = new Set<string>([...currentByKey.keys(), ...previousByKey.keys()]);
+  const moverRows: MoverRow[] = [];
+  for (const key of allKeys) {
+    const cur = currentByKey.get(key);
+    const prev = previousByKey.get(key);
+    const currentMentions = cur?.mentionCount ?? 0;
+    const previousMentions = prev?.mentionCount ?? 0;
+    const delta = currentMentions - previousMentions;
+    if (delta === 0) continue;
+    const sample = cur ?? prev!;
+    moverRows.push({
+      entityType: sample.entityType,
+      entityId: sample.entityId,
+      name: sample.name,
+      isTrackedBrand: sample.isTrackedBrand,
+      currentMentions,
+      previousMentions,
+      delta,
+      pctChange: previousMentions === 0 ? null : delta / previousMentions,
+    });
+  }
+
+  // Gainers: positive delta, sorted descending. Losers: negative delta,
+  // sorted ascending (most negative first). Capped at 5 each.
+  const gainers = moverRows
+    .filter((m) => m.delta > 0)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, 5);
+  const losers = moverRows
+    .filter((m) => m.delta < 0)
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, 5);
+  return { gainers, losers };
+}
+
+function MoversCard({
+  currentRows,
+  previousRows,
+  isComparable,
+  isLoadingPrevious,
+}: {
+  currentRows: readonly CompetitorRow[];
+  previousRows: readonly CompetitorRow[];
+  isComparable: boolean;
+  isLoadingPrevious: boolean;
+}) {
+  const breakdown = useMemo(
+    () => deriveMovers(currentRows, previousRows),
+    [currentRows, previousRows],
+  );
+
+  if (!isComparable) {
+    return (
+      <CollapsibleCard
+        icon={Zap}
+        title="Movers"
+        tooltip="Compares the current window against an equal-length window immediately before it."
+      >
+        <p className="text-sm text-neutral-500">
+          Pick a bounded date range to surface gainers and losers — "All time" has no previous
+          window to compare against.
+        </p>
+      </CollapsibleCard>
+    );
+  }
+  if (isLoadingPrevious) {
+    return (
+      <CollapsibleCard icon={Zap} title="Movers">
+        <p className="text-sm text-neutral-500">Comparing windows…</p>
+      </CollapsibleCard>
+    );
+  }
+  if (breakdown.gainers.length === 0 && breakdown.losers.length === 0) {
+    return (
+      <CollapsibleCard icon={Zap} title="Movers">
+        <p className="text-sm text-neutral-500">No notable movement this window.</p>
+      </CollapsibleCard>
+    );
+  }
+  return (
+    <CollapsibleCard
+      icon={Zap}
+      title="Movers"
+      tooltip="Top gainers and losers between the current window and an equal-length window immediately before it."
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <MoverColumn
+          title="Gainers"
+          rows={breakdown.gainers}
+          emptyLabel="No gainers in this window."
+          positive
+        />
+        <MoverColumn
+          title="Losers"
+          rows={breakdown.losers}
+          emptyLabel="No losers in this window."
+        />
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function MoverColumn({
+  title,
+  rows,
+  emptyLabel,
+  positive = false,
+}: {
+  title: string;
+  rows: readonly MoverRow[];
+  emptyLabel: string;
+  positive?: boolean;
+}) {
+  const Arrow = positive ? ArrowUp : ArrowDown;
+  const accent = positive ? "text-semantic-success-700" : "text-semantic-error-700";
+  return (
+    <div className="space-y-2">
+      <h3 className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <Arrow size={12} className={accent} aria-hidden />
+        {title}
+      </h3>
+      {rows.length === 0 ? (
+        <p className="text-xs text-neutral-400">{emptyLabel}</p>
+      ) : (
+        <ul className="divide-y divide-neutral-100 rounded-md border border-neutral-200">
+          {rows.map((r) => (
+            <li
+              key={`${r.entityType}:${r.entityId}`}
+              className="flex items-center justify-between px-3 py-2 text-xs"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-neutral-900">{r.name}</span>
+                {r.isTrackedBrand && (
+                  <span className="rounded bg-primary-50 px-1.5 py-0 text-[10px] font-semibold text-primary-700">
+                    You
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 tabular-nums">
+                <span className="text-neutral-500">
+                  {r.previousMentions} → {r.currentMentions}
+                </span>
+                <span className={cn("font-semibold", accent)}>
+                  {r.delta > 0 ? "+" : ""}
+                  {r.delta}
+                </span>
+                <span className="w-12 text-right text-[10px] text-neutral-500">
+                  {r.pctChange == null
+                    ? "new"
+                    : `${r.pctChange > 0 ? "+" : ""}${Math.round(r.pctChange * 100)}%`}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

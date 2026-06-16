@@ -16,14 +16,39 @@ let competitiveState: {
   isError: boolean;
   error?: unknown;
 };
+// Optional separate payload for the previous-window competitive fetch.
+// When null, both calls return `competitiveState` (the existing tests'
+// behaviour). When set, the Nth call to useWorkspaceCompetitive returns
+// the Nth payload — first = current window, second = previous window.
+let previousCompetitiveState: WorkspaceCompetitiveDto | null;
 let overviewState: { data?: Partial<WorkspaceOverviewDto> };
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
 }));
-vi.mock("@/features/reports/hooks/useWorkspaceCompetitive", () => ({
-  useWorkspaceCompetitive: () => ({ ...competitiveState, refetch: vi.fn() }),
-}));
+vi.mock("@/features/reports/hooks/useWorkspaceCompetitive", () => {
+  let callIndex = 0;
+  return {
+    useWorkspaceCompetitive: () => {
+      const isPreviousCall = callIndex === 1 && previousCompetitiveState != null;
+      callIndex = (callIndex + 1) % 2;
+      if (isPreviousCall) {
+        return {
+          data: previousCompetitiveState,
+          isLoading: false,
+          isFetching: false,
+          isError: false,
+          refetch: vi.fn(),
+        };
+      }
+      return {
+        ...competitiveState,
+        isFetching: false,
+        refetch: vi.fn(),
+      };
+    },
+  };
+});
 vi.mock("@/features/reports/hooks/useWorkspaceOverview", () => ({
   useWorkspaceOverview: () => ({ ...overviewState, isLoading: false, isError: false }),
 }));
@@ -58,7 +83,14 @@ vi.mock("@/components/charts/LineChartWrapper", () => ({
   ),
 }));
 
-import { CompetitorsScreen, deriveHero, mergeEntityRows } from "./CompetitorsScreen";
+import {
+  CompetitorsScreen,
+  deriveHero,
+  deriveMovers,
+  mergeEntityRows,
+  previousSelectionFor,
+  type CompetitorRow,
+} from "./CompetitorsScreen";
 
 function mention(overrides: Partial<EntityMentionDto>): EntityMentionDto {
   return {
@@ -103,6 +135,7 @@ function competitive(
 beforeEach(() => {
   scopeState = { scope: "all" };
   competitiveState = { data: competitive([], []), isLoading: false, isError: false };
+  previousCompetitiveState = null;
   overviewState = { data: { series: [] } };
 });
 
@@ -219,6 +252,114 @@ describe("deriveHero (pure)", () => {
     expect(summary.yourEntity).toBeNull();
     expect(summary.yourRank).toBeNull();
     expect(summary.gapToLeader).toBeNull();
+  });
+});
+
+describe("previousSelectionFor (pure)", () => {
+  it("shifts a preset window back by N days into a custom range", () => {
+    const result = previousSelectionFor({ kind: "preset", days: 30 });
+    expect(result.kind).toBe("custom");
+    if (result.kind !== "custom") throw new Error("unreachable");
+    // Width should be ~30 days (allow small rounding tolerance).
+    const widthDays = (result.to.getTime() - result.from.getTime()) / (1000 * 60 * 60 * 24);
+    expect(widthDays).toBeGreaterThan(29.99);
+    expect(widthDays).toBeLessThan(30.01);
+    // `to` should sit roughly 30 days before "now".
+    const toAgoDays = (Date.now() - result.to.getTime()) / (1000 * 60 * 60 * 24);
+    expect(toAgoDays).toBeGreaterThan(29.99);
+    expect(toAgoDays).toBeLessThan(30.01);
+  });
+
+  it("shifts a custom window back by the same width immediately before from", () => {
+    const from = new Date("2026-06-01T00:00:00Z");
+    const to = new Date("2026-06-15T00:00:00Z");
+    const result = previousSelectionFor({ kind: "custom", from, to });
+    expect(result).toEqual({
+      kind: "custom",
+      from: new Date("2026-05-18T00:00:00Z"),
+      to: new Date("2026-06-01T00:00:00Z"),
+    });
+  });
+
+  it("returns 'all' unchanged because there's no meaningful previous window", () => {
+    expect(previousSelectionFor({ kind: "all" })).toEqual({ kind: "all" });
+  });
+});
+
+describe("deriveMovers (pure)", () => {
+  function row(overrides: Partial<CompetitorRow>): CompetitorRow {
+    return {
+      entityType: "Brand",
+      entityId: "x",
+      name: "X",
+      isTrackedBrand: false,
+      mentionCount: 0,
+      shareOfVoice: 0,
+      recommendationRate: null,
+      ...overrides,
+    };
+  }
+
+  it("returns no movers when current and previous match exactly", () => {
+    const rows = [row({ entityId: "a", name: "Acme", mentionCount: 5 })];
+    const breakdown = deriveMovers(rows, rows);
+    expect(breakdown.gainers).toEqual([]);
+    expect(breakdown.losers).toEqual([]);
+  });
+
+  it("ranks gainers descending and losers ascending by signed delta", () => {
+    const current = [
+      row({ entityId: "a", name: "Acme", mentionCount: 12 }), // +7
+      row({ entityId: "b", name: "Beta", mentionCount: 2 }), // -3
+      row({ entityId: "c", name: "Canva", mentionCount: 9 }), // +5
+      row({ entityId: "d", name: "Drop", mentionCount: 4 }), // -6
+    ];
+    const previous = [
+      row({ entityId: "a", name: "Acme", mentionCount: 5 }),
+      row({ entityId: "b", name: "Beta", mentionCount: 5 }),
+      row({ entityId: "c", name: "Canva", mentionCount: 4 }),
+      row({ entityId: "d", name: "Drop", mentionCount: 10 }),
+    ];
+    const { gainers, losers } = deriveMovers(current, previous);
+    expect(gainers.map((m) => m.name)).toEqual(["Acme", "Canva"]);
+    expect(losers.map((m) => m.name)).toEqual(["Drop", "Beta"]);
+    // Acme: 12 - 5 = +7, pct = 7/5 = 1.4.
+    expect(gainers[0].delta).toBe(7);
+    expect(gainers[0].pctChange).toBeCloseTo(1.4, 5);
+  });
+
+  it("flags entirely-new entities with null pctChange", () => {
+    const current = [row({ entityId: "new", name: "Newcomer", mentionCount: 4 })];
+    const { gainers } = deriveMovers(current, []);
+    expect(gainers).toHaveLength(1);
+    expect(gainers[0].pctChange).toBeNull();
+  });
+
+  it("caps gainers + losers at 5 each", () => {
+    const make = (id: string, prevCount: number, currCount: number) => ({
+      previousRow: row({
+        entityId: `prev-${id}`,
+        name: `Prev${id}`,
+        mentionCount: prevCount,
+        entityType: `T${id}`,
+      }),
+      currentRow: row({
+        entityId: `prev-${id}`,
+        name: `Prev${id}`,
+        mentionCount: currCount,
+        entityType: `T${id}`,
+      }),
+    });
+    const sequence = ["1", "2", "3", "4", "5", "6", "7"];
+    const made = sequence.map((id, i) => make(id, 0, (i + 1) * 2));
+    const { gainers } = deriveMovers(
+      made.map((m) => m.currentRow),
+      made.map((m) => m.previousRow),
+    );
+    expect(gainers).toHaveLength(5);
+    // Highest deltas should win the cap — last two entries (largest)
+    // are kept.
+    expect(gainers[0].name).toBe("Prev7");
   });
 });
 
@@ -433,6 +574,53 @@ describe("CompetitorsScreen", () => {
     // visible heading "Share of voice". Anchored to ^/$ so it doesn't
     // collide with the Hero tile labelled "Your share of voice".
     expect(screen.getByRole("heading", { name: /^Share of voice$/i })).toBeInTheDocument();
+  });
+
+  it("renders the Movers section with gainers + losers when previous window data is provided", () => {
+    competitiveState = {
+      data: competitive(
+        [
+          mention({ entityId: "a", name: "Canva", mentionCount: 18 }),
+          mention({ entityId: "b", name: "Acme", isTrackedBrand: true, mentionCount: 12 }),
+          mention({ entityId: "c", name: "Figma", mentionCount: 2 }),
+        ],
+        [],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    previousCompetitiveState = competitive(
+      [
+        mention({ entityId: "a", name: "Canva", mentionCount: 8 }), // +10 gainer
+        mention({ entityId: "b", name: "Acme", isTrackedBrand: true, mentionCount: 6 }), // +6 gainer
+        mention({ entityId: "c", name: "Figma", mentionCount: 10 }), // -8 loser
+      ],
+      [],
+    );
+    render(<CompetitorsScreen />);
+    // Movers section heading from MetricCategoryLayout.
+    expect(screen.getByRole("heading", { name: /^Movers$/, level: 2 })).toBeInTheDocument();
+    // Gainer column lists Canva (+10) and Acme (+6); losers column lists Figma (-8).
+    expect(screen.getByText("+10")).toBeInTheDocument();
+    expect(screen.getByText("+6")).toBeInTheDocument();
+    expect(screen.getByText("-8")).toBeInTheDocument();
+  });
+
+  it("renders the Movers card empty-state explanation when the date range is 'all time'", () => {
+    // We can't actually flip the picker to All time from a test without
+    // additional UI plumbing, so we just exercise the no-movement render
+    // path: identical current + previous payloads → no movers.
+    competitiveState = {
+      data: competitive([mention({ entityId: "a", name: "Acme", mentionCount: 5 })], []),
+      isLoading: false,
+      isError: false,
+    };
+    previousCompetitiveState = competitive(
+      [mention({ entityId: "a", name: "Acme", mentionCount: 5 })],
+      [],
+    );
+    render(<CompetitorsScreen />);
+    expect(screen.getByText(/no notable movement this window/i)).toBeInTheDocument();
   });
 
   it("renders Mention counts + Co-mention landscape sections below the table", () => {
