@@ -1,5 +1,12 @@
 # KANBAN-004: Reporting & Actions UI
 
+> **Page-by-page build.** As of 2026-06-16, `/overview` and `/prompts` are
+> feature-complete and serve as the canonical layout + filter-UX
+> template for every remaining page. New pages should adopt the same
+> shell (title-only `PageHeader`, single-row sticky controls strip with
+> lens chips + calendar + Filters, popover overflow handling) before
+> adding page-specific functionality. See memory `pages-template-overview-prompts`.
+
 ## Backlog
 
 ### Product / UX
@@ -153,3 +160,12 @@ _Nothing in progress right now._
 
 - **Per-platform Models matrix column** — today the row only exposes ran/didn't-run via `platformCodes`. A real matrix needs per-platform visibility / mention / sentiment columns from the BE.
 - **Tags column** — no `Tag` domain object exists; would need a new dim with tracker-level attribution before it can land on the prompt row.
+
+### `/prompts` quota + Add-prompt dialog + filter-bar unification (commits `9609315` + `02e20cd`, 2026-06-16)
+
+- BE: `WorkspacePromptsDto` gains `TotalAllocation`, `TotalUsed`, and a `Trackers` list (per-tracker allocation + used count + lens options) so the FE can drive a workspace-wide quota indicator and a dependent tracker/lens picker for the Add-prompt dialog without a second round-trip. Handler aggregates allocation and joins `TrackerLenses → Lenses` (ordered by `DisplayOrder`) per in-scope tracker. Empty-result paths return the same top-level shape. 515/515 BE tests pass; 3 new handler tests cover the quota sum, tracker-options shape, and tracker-id filter narrowing.
+- FE `/prompts`: `PageHeader` now hosts an `"X / Y prompts"` quota badge (warning-tinted at/past cap) plus a compact "+ Add prompt" text pill. Radix Dialog `AddPromptDialog` opens with tracker picker → dependent lens picker → prompt textarea; `useAddWorkspacePrompt` (feature-local sibling of `useAddCustomPrompt` to satisfy the cross-feature lint boundary) submits via the existing `promptsApi.addCustom` and invalidates the workspace-prompts cache. DateRangePicker relocated out of the header into the controls strip beside Search + Filters.
+- FE `/overview`: page restructured to match. Mention-rate + Share-of-voice trend cards hoisted out of the Discovery section into `statusStrip` (side-by-side at `md+` via `grid-cols-2`) above the sticky filter bar; `DateRangeGranularityPicker` moved out of the `PageHeader` into `ComparisonControlsRow` beside Filters so calendar placement is consistent with `/prompts`; Hero KPI tiles tightened (`p-2.5`, `text-lg`); chart heights trimmed (donut 260→200, trend 224→180) so the filter bar lands above the fold.
+- FE shared: filter bar is now strictly **single row**. Outer container `flex-nowrap`; lens chips live in a `min-w-0 flex-1 overflow-x-auto` wrapper so they slide horizontally instead of wrapping the right group below. Right control group is `shrink-0 flex-nowrap`. Each `LensChip` carries `shrink-0`. `EntityScopeToggle` tightened to `p-[1px]` / `px-1.5` / `text-[10px]`. `DateRangePicker` popover anchor switched to `right-0 left-auto` so the 560 px panel unfolds inside the viewport when the trigger sits near the right margin.
+- FE tests **982/982 pass**, typecheck clean. `PromptsScreen.test.tsx` extended with quota badge, dialog open, disabled-empty-state, and full submit-flow tests; existing 23 overview tests unchanged in behaviour after restructure.
+- Outcome: these two pages are now the **canonical template** for the rest of the navigation. Sources / Domains, Sources / URLs, Competitors, Insights, Brands*, Scans `?trackers=`, and the Settings stubs should be brought into this shell before adding new functionality.
