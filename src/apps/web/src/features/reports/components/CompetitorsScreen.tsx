@@ -1,37 +1,137 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Crown, Hash, Percent, TrendingUp, Trophy, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
+import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
+import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
+import {
+  DateRangePicker,
+  defaultDateRangeSelection,
+  type DateRangeSelection,
+} from "@/components/molecules/DateRangePicker";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
+import { AudienceSelector } from "@/components/molecules/AudienceSelector";
+import { FiltersPopover, FiltersPopoverRow } from "@/components/molecules/FiltersPopover";
+import { InfoTooltip } from "@/components/molecules/InfoTooltip";
+import { LensChipRow } from "@/components/molecules/LensChipRow";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
+import { MarketSelector } from "@/components/molecules/MarketSelector";
+import {
+  MetricCategoryLayout,
+  type MetricCategorySection,
+} from "@/components/molecules/MetricCategoryLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
-import { SectionHeader } from "@/components/molecules/SectionHeader";
-import { defaultDateRangeSelection } from "@/components/molecules/DateRangePicker";
-import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { ProductSelector } from "@/components/molecules/ProductSelector";
+import { TopicSelector } from "@/components/molecules/TopicSelector";
+import { VISIBILITY_LENSES } from "@/content/lenses";
+import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
+import {
+  InlineChipFilter,
+  PLATFORM_LABELS,
+  platformLabel,
+  SENTIMENT_ORDER,
+} from "@/features/reports/components/FilterChips";
+import { RecommendationRateCard } from "@/features/reports/components/RecommendationRateCard";
+import { ShareOfVoiceCard } from "@/features/reports/components/ShareOfVoiceCard";
+import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
+import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
+import { useMarketCounts } from "@/features/reports/hooks/useMarketCounts";
+import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
+import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
+import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
+import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { cn } from "@/lib/utils";
-import type { EntityMentionDto, EntityRateDto } from "@/types/api";
+import type {
+  BrandedDimensionGroupDto,
+  EntityMentionDto,
+  EntityRateDto,
+  EntityTrendSeriesDto,
+} from "@/types/api";
+
+const ALL_LENS_CODES = VISIBILITY_LENSES.map((l) => l.code);
+const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
+// Color palette shared with /overview's Top Entities trend so the same
+// entity reads as the same color when the user switches between pages.
+const ENTITY_PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#06b6d4", "#a855f7"];
 
 /**
- * Workspace-wide competitor ranks at /competitors. Joins
- * `mentionDistribution` (mention counts + share of voice) with
- * `recommendationRates` (recommendation rate per entity) from
- * `useWorkspaceCompetitive` into a single sortable row per entity.
- * Tracked brands are highlighted with a 'You' badge.
+ * Workspace-wide competitor ranks at /competitors. Brought into the
+ * canonical page shell (title-only PageHeader → MetricCategoryLayout
+ * with Hero KPI tiles + SoV trend card on top, sticky single-row
+ * controls strip, and a single Competitive Ranking section).
  *
- * Scope follows the sidebar's TrackerSelector via `useTrackerScope`.
+ * Filters: lens chips (filter only — single section), date range,
+ * Topics / Products / Markets / Audiences / Models / Sentiment. All
+ * filter args are passed through to both `useWorkspaceCompetitive`
+ * (drives the ranking) and `useWorkspaceOverview` (drives the SoV
+ * trend lines).
  */
 export function CompetitorsScreen() {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
+  const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
+  const [selectedLenses, setSelectedLenses] = useState<readonly string[]>(ALL_LENS_CODES);
+  const [selectedTopicNames, setSelectedTopicNames] = useState<string[]>([]);
+  const [selectedProductNames, setSelectedProductNames] = useState<string[]>([]);
+  const [selectedMarketNames, setSelectedMarketNames] = useState<string[]>([]);
+  const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
+  const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
+  const [selectedSentiments, setSelectedSentiments] = useState<string[]>([]);
+
+  // Pass NO_LENS_FILTER through to the BE when every lens is selected
+  // (cross-lens view); narrow when the user picks a subset. Matches the
+  // sentinel pattern used on /overview + /prompts.
+  const lensCodesForApi = selectedLenses.length === ALL_LENS_CODES.length ? [] : selectedLenses;
+
   const competitive = useWorkspaceCompetitive(
-    defaultDateRangeSelection(),
-    [],
-    [],
-    [],
-    [],
-    [],
+    range,
+    lensCodesForApi,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
     trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
   );
+  const overview = useWorkspaceOverview(
+    range,
+    lensCodesForApi,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
+  );
+
+  const { data: discoverySummary } = useDiscoverySummary();
+  const topicsByBrand = discoverySummary?.topics ?? EMPTY_GROUPS;
+  const productsByBrand = discoverySummary?.products ?? EMPTY_GROUPS;
+  const marketsByBrand = discoverySummary?.markets ?? EMPTY_GROUPS;
+  const audiencesByBrand = discoverySummary?.audiences ?? EMPTY_GROUPS;
+  const { data: topicCountsRaw } = useTopicCounts(range);
+  const { data: productCountsRaw } = useProductCounts(range);
+  const { data: marketCountsRaw } = useMarketCounts(range);
+  const { data: audienceCountsRaw } = useAudienceCounts(range);
+  const topicCountsByName = useMemo<Record<string, number>>(() => {
+    if (!topicCountsRaw) return {};
+    return Object.fromEntries(topicCountsRaw.map((t) => [t.topicName, t.mentionCount]));
+  }, [topicCountsRaw]);
+  const productCountsByName = useMemo<Record<string, number>>(() => {
+    if (!productCountsRaw) return {};
+    return Object.fromEntries(productCountsRaw.map((p) => [p.productName, p.mentionCount]));
+  }, [productCountsRaw]);
+  const marketCountsByName = useMemo<Record<string, number>>(() => {
+    if (!marketCountsRaw) return {};
+    return Object.fromEntries(marketCountsRaw.map((m) => [m.marketName, m.mentionCount]));
+  }, [marketCountsRaw]);
+  const audienceCountsByName = useMemo<Record<string, number>>(() => {
+    if (!audienceCountsRaw) return {};
+    return Object.fromEntries(audienceCountsRaw.map((a) => [a.audienceName, a.mentionCount]));
+  }, [audienceCountsRaw]);
 
   if (competitive.isLoading) return <LoadingPage />;
   if (competitive.isError) {
@@ -49,34 +149,355 @@ export function CompetitorsScreen() {
     competitive.data.recommendationRates,
   );
 
+  const activeFilterCount =
+    (selectedTopicNames.length > 0 ? 1 : 0) +
+    (selectedProductNames.length > 0 ? 1 : 0) +
+    (selectedMarketNames.length > 0 ? 1 : 0) +
+    (selectedAudienceNames.length > 0 ? 1 : 0) +
+    (selectedPlatformCodes.length > 0 ? 1 : 0) +
+    (selectedSentiments.length > 0 ? 1 : 0);
+
+  const controlsStrip = (
+    <div className="flex flex-nowrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+      <div className="min-w-0 flex-1 overflow-x-auto">
+        <LensChipRow
+          selectedCodes={selectedLenses}
+          onChange={setSelectedLenses}
+          // No section anchor here — the ranking table is cross-lens, so
+          // the lens chips on /competitors act as filters only.
+        />
+      </div>
+      <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
+        <DateRangePicker value={range} onChange={setRange} />
+        <FiltersPopover
+          activeCount={activeFilterCount}
+          onClearAll={() => {
+            setSelectedTopicNames([]);
+            setSelectedProductNames([]);
+            setSelectedMarketNames([]);
+            setSelectedAudienceNames([]);
+            setSelectedPlatformCodes([]);
+            setSelectedSentiments([]);
+          }}
+        >
+          <div
+            role="group"
+            aria-label="Discovery filters"
+            className="flex flex-wrap items-center gap-1.5 px-2 py-1"
+          >
+            <TopicSelector
+              topicsByBrand={topicsByBrand}
+              selectedNames={selectedTopicNames}
+              onChange={setSelectedTopicNames}
+              countsByName={topicCountsByName}
+            />
+            <ProductSelector
+              productsByBrand={productsByBrand}
+              selectedNames={selectedProductNames}
+              onChange={setSelectedProductNames}
+              countsByName={productCountsByName}
+            />
+            <MarketSelector
+              marketsByBrand={marketsByBrand}
+              selectedNames={selectedMarketNames}
+              onChange={setSelectedMarketNames}
+              countsByName={marketCountsByName}
+            />
+            <AudienceSelector
+              audiencesByBrand={audiencesByBrand}
+              selectedNames={selectedAudienceNames}
+              onChange={setSelectedAudienceNames}
+              countsByName={audienceCountsByName}
+            />
+          </div>
+          <FiltersPopoverRow label="Models" active={selectedPlatformCodes.length > 0}>
+            <InlineChipFilter
+              available={Object.keys(PLATFORM_LABELS)}
+              selected={selectedPlatformCodes}
+              onChange={setSelectedPlatformCodes}
+              labelFor={platformLabel}
+              emptyLabel="No models in scope."
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Sentiment" active={selectedSentiments.length > 0}>
+            <InlineChipFilter
+              available={SENTIMENT_ORDER}
+              selected={selectedSentiments}
+              onChange={setSelectedSentiments}
+              emptyLabel="No sentiments in scope."
+            />
+          </FiltersPopoverRow>
+        </FiltersPopover>
+      </div>
+    </div>
+  );
+
+  // Multi-section layout. Lens chips above act as filters only — every
+  // section is cross-lens, so the chips have no per-lens anchor role.
+  const sections: MetricCategorySection[] = [
+    {
+      id: "CompetitiveRanking",
+      label: "Competitive ranking",
+      children:
+        rows.length === 0 ? (
+          <p className="rounded-md border border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-3 text-xs text-neutral-500">
+            No competitor data matches the current filters.
+          </p>
+        ) : (
+          <CompetitorsTable rows={rows} />
+        ),
+    },
+    {
+      id: "RecommendationRate",
+      label: "Recommendation rate",
+      children: <RecommendationRateCard rates={competitive.data.recommendationRates} />,
+    },
+    {
+      id: "CompetitiveGaps",
+      label: "Competitive gaps",
+      children: <CompetitiveGapGroupsCard groups={competitive.data.competitiveGaps} />,
+    },
+  ];
+
+  const hasAnyData = competitive.data.mentionDistribution.length > 0;
+
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Competitors"
-        description="Competitor ranks aggregated across the selected trackers — mentions, share of voice, and recommendation rates."
-      />
+      <PageHeader title="Competitors" />
 
-      <Card>
-        <CardContent className="space-y-3 p-4">
-          <SectionHeader
-            title="Competitive ranking"
-            meta={
-              <span className="text-xs text-neutral-500">
-                {rows.length} {rows.length === 1 ? "entity" : "entities"}
-              </span>
-            }
-          />
-          {rows.length === 0 ? (
-            <p className="text-xs text-neutral-500">
+      {!hasAnyData ? (
+        <>
+          {controlsStrip}
+          <Card>
+            <CardContent className="p-8 text-center text-sm text-neutral-600">
               No competitor data in scope yet. Run a scan that includes competitor mentions to
               populate this page.
-            </p>
-          ) : (
-            <CompetitorsTable rows={rows} />
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <MetricCategoryLayout
+          statusStrip={
+            <div className="space-y-3">
+              <CompetitorHero rows={rows} />
+              {/* SoV trend (time-series) + SoV donut (current snapshot)
+                  sit side-by-side above the filter bar — paired so the
+                  "how it's moving" and "where it is right now" reads
+                  flow together. Same "context first, filters next,
+                  sections below" rhythm as /overview. */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <SovTrendCard series={overview.data?.series ?? []} rows={rows} />
+                <ShareOfVoiceCard mentions={competitive.data.mentionDistribution} />
+              </div>
+            </div>
+          }
+          controlsStrip={controlsStrip}
+          sections={sections}
+          renderNav={() => null}
+        />
+      )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Hero KPI tiles — derived from the merged ranking rows
+// ---------------------------------------------------------------------------
+
+function CompetitorHero({ rows }: { rows: readonly CompetitorRow[] }) {
+  const summary = useMemo(() => deriveHero(rows), [rows]);
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <HeroTile
+        icon={Users}
+        label="Entities tracked"
+        value={summary.totalEntities.toLocaleString()}
+        sub={
+          summary.totalMentions === 0
+            ? "no mentions yet"
+            : `${summary.totalMentions.toLocaleString()} mentions`
+        }
+        tooltip="Distinct brands + competitors with at least one mention in the selected window."
+      />
+      <HeroTile
+        icon={Crown}
+        label="Leader"
+        value={summary.leader?.name ?? "—"}
+        sub={
+          summary.leader == null
+            ? "no leader"
+            : summary.leader.isTrackedBrand
+              ? "you"
+              : `${summary.leader.mentionCount.toLocaleString()} mentions`
+        }
+        tooltip="Entity with the most mentions across in-scope answers."
+      />
+      <HeroTile
+        icon={Hash}
+        label="Your rank"
+        value={summary.yourRank == null ? "—" : `#${summary.yourRank}`}
+        sub={summary.yourEntity == null ? "no tracked brand" : summary.yourEntity.name}
+        tooltip="Position of your leading tracked brand in the mention-count ranking."
+      />
+      <HeroTile
+        icon={Percent}
+        label="Your share of voice"
+        value={summary.yourEntity == null ? "—" : formatPct(summary.yourEntity.shareOfVoice)}
+        sub={
+          summary.yourEntity == null
+            ? "—"
+            : `${summary.yourEntity.mentionCount.toLocaleString()} mentions`
+        }
+        tooltip="Your leading tracked brand's mentions as a share of total in-scope mentions."
+      />
+      <HeroTile
+        icon={TrendingUp}
+        label="Your recommendation rate"
+        value={
+          summary.yourEntity == null || summary.yourEntity.recommendationRate == null
+            ? "—"
+            : formatPct(summary.yourEntity.recommendationRate)
+        }
+        sub="recommended / mentioned"
+        tooltip="Share of your tracked brand's mentions that are recommendation-flavoured."
+      />
+      <HeroTile
+        icon={Trophy}
+        label="Gap to leader"
+        value={
+          summary.gapToLeader == null ? "—" : `${summary.gapToLeader.toLocaleString()} mentions`
+        }
+        sub={
+          summary.gapToLeader == null
+            ? "—"
+            : summary.gapToLeader === 0
+              ? "tied or leading"
+              : `vs ${summary.leader?.name ?? "leader"}`
+        }
+        tooltip="Mention-count difference between the leader and your leading tracked brand. Zero = leading or tied."
+      />
+    </div>
+  );
+}
+
+interface CompetitorHeroSummary {
+  totalEntities: number;
+  totalMentions: number;
+  leader: CompetitorRow | null;
+  yourEntity: CompetitorRow | null;
+  yourRank: number | null;
+  gapToLeader: number | null;
+}
+
+/**
+ * Roll the merged ranking rows into the six Hero tile values. Picks the
+ * tracked brand with the most mentions as "you" (multi-brand workspaces
+ * surface their leading tracked entity here; the per-tracker scope in
+ * the sidebar already lets the user narrow further).
+ *
+ * Exported so the math can be unit-tested independently of the React tree.
+ */
+export function deriveHero(rows: readonly CompetitorRow[]): CompetitorHeroSummary {
+  if (rows.length === 0) {
+    return {
+      totalEntities: 0,
+      totalMentions: 0,
+      leader: null,
+      yourEntity: null,
+      yourRank: null,
+      gapToLeader: null,
+    };
+  }
+  const totalMentions = rows.reduce((sum, r) => sum + r.mentionCount, 0);
+  const leader = rows[0] ?? null;
+  const yourEntity = rows.find((r) => r.isTrackedBrand) ?? null;
+  const yourRank = yourEntity == null ? null : rows.indexOf(yourEntity) + 1;
+  const gapToLeader =
+    yourEntity == null || leader == null
+      ? null
+      : Math.max(0, leader.mentionCount - yourEntity.mentionCount);
+  return {
+    totalEntities: rows.length,
+    totalMentions,
+    leader,
+    yourEntity,
+    yourRank,
+    gapToLeader,
+  };
+}
+
+function HeroTile({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tooltip,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  sub: string;
+  tooltip?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-2.5">
+        <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-neutral-500">
+          <Icon size={12} className="text-neutral-400" aria-hidden />
+          <span className="truncate">{label}</span>
+          <InfoTooltip label={label} body={tooltip} iconSize={11} />
+        </div>
+        <div className="mt-0.5 truncate text-lg font-semibold text-neutral-900">{value}</div>
+        <div className="truncate text-[11px] text-neutral-500">{sub}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SoV trend card — reuses useWorkspaceOverview's per-entity series
+// ---------------------------------------------------------------------------
+
+function SovTrendCard({
+  series,
+  rows,
+}: {
+  series: readonly EntityTrendSeriesDto[];
+  rows: readonly CompetitorRow[];
+}) {
+  // Show the top 5 entities by mention count — keeps the chart legible
+  // even when the workspace has dozens of competitors in scope.
+  const top5Keys = useMemo(
+    () => new Set(rows.slice(0, 5).map((r) => `${r.entityType}:${r.entityId}`)),
+    [rows],
+  );
+  const chartSeries: LineChartSeries[] = useMemo(() => {
+    return series
+      .filter((s) => s.metricName === "BrandShareOfVoice" || s.metricName === "ShareOfVoice")
+      .filter((s) => top5Keys.has(`${s.entityType}:${s.entityId}`))
+      .map((s, i) => ({
+        id: s.entityId,
+        name: s.entityName,
+        color: ENTITY_PALETTE[i % ENTITY_PALETTE.length],
+        data: s.points.map((p) => ({ x: p.capturedAt, y: p.value ?? null })),
+      }));
+  }, [series, top5Keys]);
+  return (
+    <CollapsibleCard
+      icon={TrendingUp}
+      title="Share of voice over time"
+      tooltip="Per-entity SoV trend for the top 5 by mentions in the selected window."
+    >
+      {chartSeries.length === 0 ? (
+        <p className="text-sm text-neutral-500">No trend data in the selected window yet.</p>
+      ) : (
+        <LineChartWrapper
+          series={chartSeries}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+          height={180}
+        />
+      )}
+    </CollapsibleCard>
   );
 }
 
@@ -141,7 +562,7 @@ export function mergeEntityRows(
 }
 
 // ---------------------------------------------------------------------------
-// Table
+// Ranking table
 // ---------------------------------------------------------------------------
 
 function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
@@ -150,7 +571,7 @@ function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
     [rows],
   );
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
       <table className="w-full text-xs">
         <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
           <tr>
@@ -209,7 +630,7 @@ function MentionBar({ count, max }: { count: number; max: number }) {
   const widthPct = max === 0 ? 0 : (count / max) * 100;
   return (
     <span className="inline-flex items-center justify-end gap-2">
-      <span className="hidden sm:block h-1.5 w-16 overflow-hidden rounded bg-neutral-100">
+      <span className="hidden h-1.5 w-16 overflow-hidden rounded bg-neutral-100 sm:block">
         <span
           className="block h-full rounded bg-primary-400"
           style={{ width: `${widthPct}%` }}

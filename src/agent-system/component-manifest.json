@@ -1440,6 +1440,33 @@
           "notes": "Row-click drawer on the workspace /prompts page. Drills into one prompt's AI answer history across in-window scans — per-answer card with platform, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated 'not in scope' state without branching on errors."
         },
         {
+          "name": "ShareOfVoiceCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/ShareOfVoiceCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "DonutChartWrapper"],
+          "notes": "Donut of mention-count share per entity (brands + competitors). Used on /overview and /competitors. Optional selectedKeys narrows the slices; omitted = no filter."
+        },
+        {
+          "name": "RecommendationRateCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/RecommendationRateCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "BarChartWrapper"],
+          "notes": "Horizontal bar of recommendation-rate per entity. Drops null rates (no mentions at all) silently. Optional selectedKeys narrows the bars; omitted = no filter."
+        },
+        {
+          "name": "CompetitiveGapGroupsCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/CompetitiveGapGroupsCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "BarChartWrapper"],
+          "notes": "Per-tracked-brand mention-gap bars vs each in-scope competitor. Positive = brand ahead, negative = competitor ahead. Used on /overview and /competitors. Optional selectedKeys narrows both the group list and the per-group competitor list."
+        },
+        {
           "name": "ScanTopicsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/ScanTopicsScreen.tsx",

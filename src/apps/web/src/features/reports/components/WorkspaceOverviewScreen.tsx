@@ -12,11 +12,9 @@ import {
   Loader2,
   MessageSquare,
   Minus,
-  PieChart,
   Quote,
   Smile,
   Swords,
-  Target,
   ThumbsUp,
   TrendingUp,
   Trophy,
@@ -57,12 +55,15 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { EntityScopeToggle, type EntityScope } from "@/components/molecules/EntityScopeToggle";
 import { REPORTS_COPY } from "@/content/reports";
+import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
 import {
   InlineChipFilter,
   PLATFORM_LABELS,
   platformLabel,
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
+import { RecommendationRateCard } from "@/features/reports/components/RecommendationRateCard";
+import { ShareOfVoiceCard } from "@/features/reports/components/ShareOfVoiceCard";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
@@ -78,13 +79,10 @@ import { findEntityTrend } from "@/lib/entityTrend";
 import { bucketTrendPoints } from "@/lib/trendBucketing";
 import { cn } from "@/lib/utils";
 import type {
-  BrandCompetitiveGapGroupDto,
   BrandedDimensionGroupDto,
-  CompetitiveGapDto,
   DomainRowDto,
   DomainTypeShareDto,
   EntityMentionDto,
-  EntityRateDto,
   EntityTrendSeriesDto,
   TopicHeatmapDto,
   PlatformMentionDto,
@@ -695,84 +693,10 @@ function CategorizedOverview({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Share of Voice donut — recomputes denominator from selected entities
-// ---------------------------------------------------------------------------
-
-function ShareOfVoiceCard({
-  mentions,
-  selectedKeys,
-}: {
-  mentions: readonly EntityMentionDto[];
-  selectedKeys: readonly string[];
-}) {
-  const copy = REPORTS_COPY.overview.sov;
-  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
-
-  const filtered = mentions
-    .filter((m) => selectedSet.has(`${m.entityType}:${m.entityId}`))
-    .filter((m) => m.mentionCount > 0);
-  const total = filtered.reduce((sum, m) => sum + m.mentionCount, 0);
-
-  if (total === 0) {
-    return (
-      <CollapsibleCard icon={PieChart} title={copy.title} tooltip={copy.tooltip}>
-        <p className="text-sm text-neutral-500">{copy.noData}</p>
-      </CollapsibleCard>
-    );
-  }
-
-  const slices: DonutChartDatum[] = filtered.map((m, i) => ({
-    id: `${m.entityType}:${m.entityId}`,
-    label: m.name,
-    value: m.mentionCount,
-    color: entityColor(m.isTrackedBrand, i),
-  }));
-
-  return (
-    <CollapsibleCard icon={PieChart} title={copy.title} tooltip={copy.tooltip}>
-      <DonutChartWrapper
-        data={slices}
-        formatValue={(v) => `${v} (${Math.round((v / total) * 100)}%)`}
-        height={200}
-      />
-    </CollapsibleCard>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Recommendation rate by entity bar — filtered, counts not shares
-// ---------------------------------------------------------------------------
-
-function RecommendationRateCard({
-  rates,
-  selectedKeys,
-}: {
-  rates: readonly EntityRateDto[];
-  selectedKeys: readonly string[];
-}) {
-  const copy = REPORTS_COPY.overview.recommendationRate;
-  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
-
-  const data: BarChartDatum[] = rates
-    .filter((r) => selectedSet.has(`${r.entityType}:${r.entityId}`))
-    .filter((r) => r.recommendationRate != null)
-    .map((r) => ({ label: r.name, value: r.recommendationRate ?? 0 }));
-
-  return (
-    <CollapsibleCard icon={ThumbsUp} title={copy.title} tooltip={copy.tooltip}>
-      {data.length === 0 ? (
-        <p className="text-sm text-neutral-500">{copy.noData}</p>
-      ) : (
-        <BarChartWrapper
-          data={data}
-          valueAxisLabel={copy.axisLabel}
-          formatValue={(v) => `${Math.round(v * 100)}%`}
-        />
-      )}
-    </CollapsibleCard>
-  );
-}
+// ShareOfVoiceCard + RecommendationRateCard were extracted into their
+// own files under features/reports/components/ so the new /competitors
+// page can reuse them without duplicating the donut/bar wiring. See
+// `./ShareOfVoiceCard` and `./RecommendationRateCard`.
 
 // ---------------------------------------------------------------------------
 // Brand vs Competitor mentions bar — filtered, raw counts
@@ -838,56 +762,9 @@ function MentionDistributionCard({
 // Competitive gap groups (one section per tracked brand)
 // ---------------------------------------------------------------------------
 
-function CompetitiveGapGroupsCard({
-  groups,
-  selectedKeys,
-}: {
-  groups: readonly BrandCompetitiveGapGroupDto[];
-  selectedKeys: readonly string[];
-}) {
-  const copy = REPORTS_COPY.overview.competitiveGap;
-  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
-
-  // Filter each group's competitor list to those selected; drop groups
-  // whose tracked brand is itself deselected.
-  const visibleGroups = groups
-    .filter((g) => selectedSet.has(`Brand:${g.trackedBrandId}`))
-    .map((g) => ({
-      ...g,
-      gaps: g.gaps.filter((gap) => selectedSet.has(`Competitor:${gap.competitorId}`)),
-    }))
-    .filter((g) => g.gaps.length > 0);
-
-  return (
-    <CollapsibleCard icon={Target} title={copy.title} tooltip={copy.tooltip}>
-      {visibleGroups.length === 0 ? (
-        <p className="text-sm text-neutral-500">{copy.noGroups}</p>
-      ) : (
-        <div className="space-y-6">
-          {visibleGroups.map((g) => (
-            <GapBlock key={g.trackedBrandId} group={g} />
-          ))}
-        </div>
-      )}
-    </CollapsibleCard>
-  );
-}
-
-function GapBlock({ group }: { group: { trackedBrandName: string; gaps: CompetitiveGapDto[] } }) {
-  const copy = REPORTS_COPY.overview.competitiveGap;
-  const data: BarChartDatum[] = group.gaps.map((g) => ({
-    label: g.competitorName,
-    value: g.mentionsGap,
-  }));
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-neutral-700">
-        {copy.perBrandLabel.replace("{brandName}", group.trackedBrandName)}
-      </h3>
-      <BarChartWrapper data={data} valueAxisLabel="Mentions gap" />
-    </div>
-  );
-}
+// CompetitiveGapGroupsCard + its GapBlock helper moved to
+// `./CompetitiveGapGroupsCard` so /competitors can reuse the same
+// per-tracked-brand mention-gap layout.
 
 // ---------------------------------------------------------------------------
 // Co-mention landscape (Phase 4 measurement-model item #8). Bars for the
