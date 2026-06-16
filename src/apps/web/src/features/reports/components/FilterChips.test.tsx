@@ -86,7 +86,7 @@ describe("InlineChipFilter", () => {
     expect(onChange).toHaveBeenCalledWith(["ChatGpt", "Claude"]);
   });
 
-  it("does NOT unselect on a second click of an already-selected chip", async () => {
+  it("toggles a chip out of the selection on a second click", async () => {
     const onChange = vi.fn();
     render(
       <InlineChipFilter
@@ -97,8 +97,8 @@ describe("InlineChipFilter", () => {
         emptyLabel="empty"
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /Filter by ChatGPT/i }));
-    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /^Filter by ChatGPT$/i }));
+    expect(onChange).toHaveBeenCalledWith([]);
   });
 
   it("renders per-chip count badges when countsByValue is supplied", () => {

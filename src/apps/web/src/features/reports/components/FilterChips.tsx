@@ -32,18 +32,16 @@ export const SENTIMENT_ORDER: readonly string[] = [
 ];
 
 /**
- * Inline chip multi-select with the LensChipRow UX:
+ * Inline chip multi-select with toggle semantics:
  *   - Empty `selected` = "no narrowing": every chip visually pressed.
  *   - Clicking a chip when nothing is explicitly selected narrows to
  *     just that chip.
- *   - Subsequent clicks ADD to the selection (multi-select).
- *   - Clicking an already-selected chip is a no-op (don't-unselect rule;
- *     the Clear link below resets).
+ *   - Subsequent clicks toggle: a chip already in the selection comes
+ *     out, a chip not in the selection goes in.
+ *   - The Clear link below resets to empty (= all pressed again).
  *
  * Used by both `/prompts` (Models + Sentiment rows in the FiltersPopover)
- * and `/overview` (same two rows). The empty-selection / don't-unselect
- * semantics intentionally match `LensChipRow` on the Workspace Overview's
- * lens-chip strip so filter behavior reads consistently across the app.
+ * and `/overview` (same two rows).
  */
 interface InlineChipFilterProps {
   /** Stable iteration order of values to render as chips. */
@@ -80,9 +78,12 @@ export function InlineChipFilter({
   }
   const selectedSet = new Set(selected);
   const allSelectedVisually = selected.length === 0;
-  function add(value: string) {
-    if (selectedSet.has(value)) return; // explicit don't-unselect rule
-    onChange([...selected, value]);
+  function toggle(value: string) {
+    if (selectedSet.has(value)) {
+      onChange(selected.filter((v) => v !== value));
+    } else {
+      onChange([...selected, value]);
+    }
   }
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -98,7 +99,7 @@ export function InlineChipFilter({
           <button
             key={value}
             type="button"
-            onClick={() => add(value)}
+            onClick={() => toggle(value)}
             aria-pressed={pressed}
             aria-label={`${ariaLabelPrefix} ${label}`}
             className={cn(

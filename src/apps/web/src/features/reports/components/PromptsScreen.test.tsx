@@ -526,7 +526,7 @@ describe("PromptsScreen", () => {
     expect(screen.getByText("Unmeasured prompt")).toBeInTheDocument();
   });
 
-  it("inline chip filters accumulate multi-selection and never unselect on a second click", async () => {
+  it("inline chip filters accumulate multi-selection and toggle on a second click", async () => {
     promptsState = {
       data: payload([
         row({ promptId: "a", text: "ChatGPT prompt", platformCodes: ["ChatGpt"] }),
@@ -545,16 +545,17 @@ describe("PromptsScreen", () => {
     expect(screen.queryByText("Gemini prompt")).not.toBeInTheDocument();
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
 
-    // Second click ADDS to the selection (multi-select), it does NOT
-    // replace. Both ChatGPT and Gemini rows should now be visible.
+    // Second click on a different chip ADDS — both ChatGPT and Gemini
+    // rows now visible.
     await userEvent.click(screen.getByRole("button", { name: /Filter by Gemini/i }));
     expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
     expect(screen.getByText("Gemini prompt")).toBeInTheDocument();
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
 
-    // Clicking an already-selected chip is a no-op (don't-unselect rule).
+    // Clicking an already-selected chip TOGGLES it back out — ChatGPT
+    // comes out of the selection, Gemini stays.
     await userEvent.click(screen.getByRole("button", { name: /^Filter by ChatGPT$/i }));
-    expect(screen.getByText("ChatGPT prompt")).toBeInTheDocument();
+    expect(screen.queryByText("ChatGPT prompt")).not.toBeInTheDocument();
     expect(screen.getByText("Gemini prompt")).toBeInTheDocument();
     expect(screen.queryByText("Claude prompt")).not.toBeInTheDocument();
   });
