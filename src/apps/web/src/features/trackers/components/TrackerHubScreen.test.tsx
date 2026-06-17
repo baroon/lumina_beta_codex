@@ -295,7 +295,7 @@ describe("TrackerHubScreen", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByRole("tab", { name: /Overview/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Schedule/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Prompts/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /AI Questions/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Lenses/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Scans/i })).toBeInTheDocument();
   });
@@ -312,26 +312,26 @@ describe("TrackerHubScreen", () => {
 
   it("Prompts tab lists the tracker's prompts", async () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
-    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /AI Questions/i }));
     expect(screen.getByText("What's the best resume builder?")).toBeInTheDocument();
     expect(screen.getByText("Top 5 resume builders 2026?")).toBeInTheDocument();
   });
 
   it("Prompts tab — clicking X on a prompt fires the remove mutation", async () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
-    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /AI Questions/i }));
     await userEvent.click(
-      screen.getByRole("button", { name: /Remove prompt What's the best resume builder/i }),
+      screen.getByRole("button", { name: /Remove AI Question What's the best resume builder/i }),
     );
     expect(removePromptMutate).toHaveBeenCalledWith("pr1");
   });
 
   it("Prompts tab — Add prompt fires the mutation with the trimmed text + first lens", async () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
-    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
-    const input = screen.getByPlaceholderText(/Add a prompt/i);
+    await userEvent.click(screen.getByRole("tab", { name: /AI Questions/i }));
+    const input = screen.getByPlaceholderText(/Add an AI Question/i);
     await userEvent.type(input, "  How do I optimize my resume for ATS?  ");
-    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add AI Question$/ }));
     expect(addPromptMutate).toHaveBeenCalledOnce();
     expect(addPromptMutate.mock.calls[0][0]).toEqual({
       text: "How do I optimize my resume for ATS?",
@@ -349,9 +349,9 @@ describe("TrackerHubScreen", () => {
       isError: false,
     };
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
-    await userEvent.click(screen.getByRole("tab", { name: /Prompts/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /AI Questions/i }));
     expect(screen.getByText(/\(at cap\)/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Add prompt$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Add AI Question$/ })).toBeDisabled();
   });
 
   it("Scans tab links each scan to its results page", async () => {

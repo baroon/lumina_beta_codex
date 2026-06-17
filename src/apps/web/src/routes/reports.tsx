@@ -1,6 +1,5 @@
-import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
-import { PRODUCT_PAGES } from "@/content/productPages";
+import { ReportsScreen } from "@/features/reports/components/ReportsScreen";
 
 export function ReportsPage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.reports} />;
+  return <ReportsScreen />;
 }

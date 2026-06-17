@@ -113,9 +113,9 @@ describe("PromptReviewScreen", () => {
 
   it("adds a custom prompt scoped to its section", async () => {
     render(<PromptReviewScreen trackerId="tr1" />);
-    const addButtons = screen.getAllByRole("button", { name: /add custom prompt/i });
+    const addButtons = screen.getAllByRole("button", { name: /add custom AI Question/i });
     await userEvent.click(addButtons[0]);
-    await userEvent.type(screen.getByPlaceholderText("Type a prompt..."), "New one");
+    await userEvent.type(screen.getByPlaceholderText("Type an AI Question..."), "New one");
     await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
     expect(addMutate).toHaveBeenCalledWith({
       text: "New one",
@@ -136,7 +136,7 @@ describe("PromptReviewScreen", () => {
   it("confirms prompts and advances to the schedule screen", async () => {
     confirmMutate.mockImplementation((_arg, opts) => opts.onSuccess({ activatedCount: 2 }));
     render(<PromptReviewScreen trackerId="tr1" />);
-    await userEvent.click(screen.getByRole("button", { name: /confirm prompts/i }));
+    await userEvent.click(screen.getByRole("button", { name: /confirm AI Questions/i }));
     expect(confirmMutate).toHaveBeenCalled();
     expect(screen.getByTestId("schedule-screen")).toBeInTheDocument();
   });
@@ -164,7 +164,7 @@ describe("PromptReviewScreen", () => {
     };
     render(<PromptReviewScreen trackerId="tr1" />);
     expect(generateMutate).toHaveBeenCalledWith({ trackerId: "tr1" });
-    expect(screen.getByText(/no prompts yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no AI Questions yet/i)).toBeInTheDocument();
   });
 
   it("shows the full state at allocation and hides add", () => {

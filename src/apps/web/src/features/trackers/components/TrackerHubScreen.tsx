@@ -107,7 +107,7 @@ export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) 
     },
     {
       id: "prompts",
-      label: "Prompts",
+      label: "AI Questions",
       icon: MessageSquare,
       children: <PromptsTab trackerId={trackerId} />,
     },
@@ -400,7 +400,7 @@ function ScheduleTab({ setup }: { setup: TrackerScheduleSetup | null }) {
       <CardContent className="grid gap-4 p-4 sm:grid-cols-2">
         <Field label="Cadence">{setup.cadence}</Field>
         <Field label="Timezone">{setup.timezone}</Field>
-        <Field label="Active prompts">{setup.activePromptCount}</Field>
+        <Field label="Active AI Questions">{setup.activePromptCount}</Field>
         <Field label="Platforms">
           <div className="flex flex-wrap gap-1">
             {setup.platforms
@@ -432,7 +432,7 @@ function PromptsTab({ trackerId }: { trackerId: string }) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-sm text-neutral-500">
-          Loading prompts…
+          Loading AI Questions…
         </CardContent>
       </Card>
     );
@@ -441,7 +441,7 @@ function PromptsTab({ trackerId }: { trackerId: string }) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-sm text-semantic-error-600">
-          Failed to load prompts.
+          Failed to load AI Questions.
         </CardContent>
       </Card>
     );
@@ -456,11 +456,11 @@ function PromptsTab({ trackerId }: { trackerId: string }) {
     <Card>
       <CardContent className="space-y-3 p-4">
         <div className="text-xs text-neutral-500">
-          {rows.length} prompt{rows.length === 1 ? "" : "s"} · allocation {allocation}
+          {rows.length} AI Question{rows.length === 1 ? "" : "s"} · allocation {allocation}
           {atCap && <span className="ml-2 text-semantic-warning-600">(at cap)</span>}
         </div>
         {rows.length === 0 ? (
-          <p className="text-xs text-neutral-500">No prompts yet for this tracker.</p>
+          <p className="text-xs text-neutral-500">No AI Questions yet for this tracker.</p>
         ) : (
           <ul className="space-y-1.5">
             {rows.slice(0, 50).map((p) => (
@@ -492,7 +492,7 @@ function PromptRow({ trackerId, prompt }: { trackerId: string; prompt: PromptDto
             }
           }}
           multiline
-          placeholder="Prompt text"
+          placeholder="AI Question text"
         />
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -508,7 +508,7 @@ function PromptRow({ trackerId, prompt }: { trackerId: string; prompt: PromptDto
           type="button"
           onClick={() => remove.mutate(prompt.id)}
           disabled={remove.isPending}
-          aria-label={`Remove prompt ${prompt.text}`}
+          aria-label={`Remove AI Question ${prompt.text}`}
           className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
         >
           <X className="h-3 w-3" aria-hidden />
@@ -562,8 +562,10 @@ function AddPromptForm({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={2}
-        placeholder={disabled ? "Allocation reached — remove a prompt first" : "Add a prompt…"}
-        aria-label="Add a prompt"
+        placeholder={
+          disabled ? "Allocation reached — remove an AI Question first" : "Add an AI Question…"
+        }
+        aria-label="Add an AI Question"
         disabled={disabled || add.isPending}
         className={cn(
           "w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
@@ -589,7 +591,7 @@ function AddPromptForm({
           onClick={submit}
           disabled={disabled || add.isPending || text.trim() === "" || !lensId}
         >
-          {add.isPending ? "Adding…" : "Add prompt"}
+          {add.isPending ? "Adding…" : "Add AI Question"}
         </Button>
         {errorMessage && <span className="text-xs text-semantic-error-600">{errorMessage}</span>}
       </div>

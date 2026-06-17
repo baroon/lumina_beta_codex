@@ -1,18 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/atoms/badge";
-import { Card, CardContent } from "@/components/atoms/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { useAllScans } from "@/features/reports/hooks/useAllScans";
+import { deriveScanHistorySummary, formatScanDateTime } from "@/features/reports/scanHistory";
 import type { ScanListItemDto } from "@/types/api";
 
-/**
- * Temporary cross-tracker scan index. Lists every recent scan with a row
- * link to its Scan Results page. Not in production navigation — typed via
- * the /scans URL. Replace with a real Tracker Dashboard once that lands.
- */
 export function ScanListScreen() {
   const { data, isLoading, isError, error, refetch } = useAllScans();
 
@@ -27,6 +23,7 @@ export function ScanListScreen() {
   }
 
   const rows = data ?? [];
+  const summary = deriveScanHistorySummary(rows);
 
   return (
     <div className="space-y-6">
@@ -35,7 +32,36 @@ export function ScanListScreen() {
         description={REPORTS_COPY.scanList.subtitle}
       />
 
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          label={REPORTS_COPY.scanList.summary.lastCompletedScan}
+          value={summary.lastCompletedScan}
+          helper={REPORTS_COPY.scanList.summary.lastCompletedScanHelper}
+        />
+        <SummaryCard
+          label={REPORTS_COPY.scanList.summary.answersCollected}
+          value={summary.checksCompleted}
+          helper={REPORTS_COPY.scanList.summary.answersCollectedHelper}
+        />
+        <SummaryCard
+          label={REPORTS_COPY.scanList.summary.successRate}
+          value={summary.successRate}
+          helper={REPORTS_COPY.scanList.summary.successRateHelper}
+        />
+        <SummaryCard
+          label={REPORTS_COPY.scanList.summary.failedRuns}
+          value={summary.failedRuns}
+          helper={REPORTS_COPY.scanList.summary.failedRunsHelper}
+        />
+      </div>
+
       <Card>
+        <CardHeader>
+          <CardTitle>{REPORTS_COPY.scanList.sections.runs}</CardTitle>
+          <p className="text-sm text-neutral-600">
+            {REPORTS_COPY.scanList.sections.runsDescription}
+          </p>
+        </CardHeader>
         <CardContent className="p-0">
           {rows.length === 0 ? (
             <p className="p-8 text-center text-sm text-neutral-500">
@@ -63,6 +89,9 @@ export function ScanListScreen() {
                   <th className="px-4 py-3 text-right font-medium">
                     {REPORTS_COPY.scanList.columns.progress}
                   </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    {REPORTS_COPY.scanList.columns.failures}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -87,7 +116,7 @@ function ScanRow({ row }: { row: ScanListItemDto }) {
           params={{ scanRunId: row.scanRunId }}
           className="text-neutral-700 hover:text-primary-600 hover:underline"
         >
-          {formatDateTime(row.startedAt)}
+          {formatScanDateTime(row.startedAt)}
         </Link>
       </td>
       <td className="px-4 py-3 text-neutral-700">{row.brandName}</td>
@@ -103,9 +132,12 @@ function ScanRow({ row }: { row: ScanListItemDto }) {
         )}
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-neutral-700">
-        {row.failedCount > 0
-          ? `${row.completedCount}/${row.scanCheckCount} (${row.failedCount} failed)`
-          : `${row.completedCount}/${row.scanCheckCount}`}
+        {row.completedCount}/{row.scanCheckCount}
+      </td>
+      <td className="px-4 py-3 text-right tabular-nums">
+        <span className={row.failedCount > 0 ? "text-semantic-error-700" : "text-neutral-500"}>
+          {row.failedCount}
+        </span>
       </td>
     </tr>
   );
@@ -113,14 +145,24 @@ function ScanRow({ row }: { row: ScanListItemDto }) {
 
 function StatusBadge({ status }: { status: string }) {
   const variant =
-    status === "Completed" ? "secondary" : status === "Failed" ? "destructive" : "outline";
+    status === "Completed"
+      ? "success"
+      : status === "Failed"
+        ? "destructive"
+        : status === "Running"
+          ? "warning"
+          : "outline";
   return <Badge variant={variant}>{status}</Badge>;
 }
 
-function formatDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+function SummaryCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <Card>
+      <CardContent className="space-y-2 p-4">
+        <p className="text-xs font-medium uppercase text-neutral-500">{label}</p>
+        <p className="text-2xl font-semibold text-neutral-950">{value}</p>
+        <p className="text-xs text-neutral-500">{helper}</p>
+      </CardContent>
+    </Card>
+  );
 }

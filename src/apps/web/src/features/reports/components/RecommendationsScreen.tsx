@@ -13,6 +13,7 @@ import {
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
+import { REPORTS_COPY } from "@/content/reports";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
@@ -24,6 +25,7 @@ import {
 } from "@/features/reports/recommendations";
 
 export function RecommendationsScreen() {
+  const copy = REPORTS_COPY.recommendationsPage;
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
@@ -40,7 +42,7 @@ export function RecommendationsScreen() {
     () => [
       {
         accessorKey: "priority",
-        header: "Priority",
+        header: copy.table.priority,
         cell: ({ row }) => (
           <span className="font-medium tabular-nums text-neutral-900">
             #{row.original.priority}
@@ -50,7 +52,7 @@ export function RecommendationsScreen() {
       },
       {
         accessorKey: "title",
-        header: "Action",
+        header: copy.table.action,
         cell: ({ row }) => (
           <button type="button" onClick={() => setSelected(row.original)} className="text-left">
             <span className="font-medium text-neutral-900 hover:text-primary-700">
@@ -65,28 +67,28 @@ export function RecommendationsScreen() {
       },
       {
         accessorKey: "lens",
-        header: "Lens",
+        header: copy.table.lens,
         cell: ({ row }) => <Badge variant="outline">{row.original.lens}</Badge>,
       },
       {
         accessorKey: "impact",
-        header: "Impact",
+        header: copy.table.impact,
         cell: ({ row }) => <ImpactBadge impact={row.original.impact} />,
       },
       {
         accessorKey: "effort",
-        header: "Effort",
+        header: copy.table.effort,
         cell: ({ row }) => row.original.effort,
       },
       {
         accessorKey: "evidenceCount",
-        header: "Evidence",
+        header: copy.table.evidence,
         cell: ({ row }) =>
           `${row.original.evidenceCount.toLocaleString()} ${row.original.evidenceLabel}`,
       },
       {
         accessorKey: "status",
-        header: "Status",
+        header: copy.table.status,
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
@@ -96,13 +98,13 @@ export function RecommendationsScreen() {
         cell: ({ row }) => (
           <Button variant="ghost" size="sm" onClick={() => setSelected(row.original)}>
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            <span className="sr-only">Open recommendation</span>
+            <span className="sr-only">{copy.actions.open}</span>
           </Button>
         ),
         meta: { align: "right", cellClassName: "w-16" },
       },
     ],
-    [],
+    [copy],
   );
 
   if (overview.isLoading) return <LoadingPage />;
@@ -121,13 +123,10 @@ export function RecommendationsScreen() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Recommendations"
-        description="Prioritized actions to improve AI visibility, citation authority, competitive positioning, and brand accuracy."
-      >
+      <PageHeader title={copy.title} description={copy.subtitle}>
         <Button variant="outline" size="sm" disabled>
           <FileText className="h-3.5 w-3.5" aria-hidden />
-          Create report
+          {copy.actions.createReport}
         </Button>
       </PageHeader>
 
@@ -135,26 +134,26 @@ export function RecommendationsScreen() {
         <DateRangePicker value={range} onChange={setRange} />
         {competitive.isError && (
           <span className="text-xs text-semantic-warning-700">
-            Competitive recommendations are unavailable.
+            {copy.controls.competitiveUnavailable}
           </span>
         )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <SummaryTile
-          label="Open recommendations"
+          label={copy.summary.openRecommendations}
           value={recommendations.length.toLocaleString()}
-          helper="Prioritized actions derived from current evidence."
+          helper={copy.summary.openRecommendationsHelper}
         />
         <SummaryTile
-          label="High impact"
+          label={copy.summary.highImpact}
           value={highImpactCount.toLocaleString()}
-          helper="Actions most likely to improve visibility or reduce risk."
+          helper={copy.summary.highImpactHelper}
         />
         <SummaryTile
-          label="Evidence links"
+          label={copy.summary.evidenceLinks}
           value={evidenceCount.toLocaleString()}
-          helper="AI answers, claims, topics, risks, or competitor gaps behind the queue."
+          helper={copy.summary.evidenceLinksHelper}
         />
       </div>
 
@@ -163,10 +162,10 @@ export function RecommendationsScreen() {
         data={recommendations}
         getRowId={(item) => item.id}
         initialSorting={[{ id: "priority", desc: false }]}
-        emptyMessage={<RecommendationsEmptyState />}
+        emptyMessage={<RecommendationsEmptyState copy={copy.empty} />}
       />
 
-      <RecommendationDrawer item={selected} onClose={() => setSelected(null)} />
+      <RecommendationDrawer item={selected} onClose={() => setSelected(null)} copy={copy} />
     </div>
   );
 }
@@ -190,15 +189,16 @@ function ImpactBadge({ impact }: { impact: RecommendationImpact }) {
   return <Badge variant={variant}>{impact}</Badge>;
 }
 
-function RecommendationsEmptyState() {
+function RecommendationsEmptyState({
+  copy,
+}: {
+  copy: typeof REPORTS_COPY.recommendationsPage.empty;
+}) {
   return (
     <div className="p-5 text-center">
       <Lightbulb className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
-      <h2 className="mt-3 text-sm font-semibold text-neutral-900">No recommendations yet</h2>
-      <p className="mx-auto mt-1 max-w-xl text-sm text-neutral-500">
-        Recommendations will appear after Lumina has enough AI answer, citation, competitor, topic,
-        and claim evidence for the selected tracker and date range.
-      </p>
+      <h2 className="mt-3 text-sm font-semibold text-neutral-900">{copy.title}</h2>
+      <p className="mx-auto mt-1 max-w-xl text-sm text-neutral-500">{copy.description}</p>
     </div>
   );
 }
@@ -218,9 +218,11 @@ function StatusBadge({ status }: { status: RecommendationStatus }) {
 function RecommendationDrawer({
   item,
   onClose,
+  copy,
 }: {
   item: RecommendationItem | null;
   onClose: () => void;
+  copy: typeof REPORTS_COPY.recommendationsPage;
 }) {
   if (!item) return null;
 
@@ -236,7 +238,7 @@ function RecommendationDrawer({
         <div className="flex items-start justify-between border-b border-neutral-200 p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Recommendation
+              {copy.drawer.eyebrow}
             </p>
             <h2 id="recommendation-drawer-title" className="mt-1 text-lg font-semibold">
               {item.title}
@@ -245,7 +247,7 @@ function RecommendationDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close recommendation"
+            aria-label={copy.actions.close}
             className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -253,16 +255,16 @@ function RecommendationDrawer({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          <DrawerSection title="Why this matters">{item.why}</DrawerSection>
-          <DrawerSection title="Suggested implementation">{item.action}</DrawerSection>
+          <DrawerSection title={copy.drawer.why}>{item.why}</DrawerSection>
+          <DrawerSection title={copy.drawer.implementation}>{item.action}</DrawerSection>
           <div className="grid grid-cols-2 gap-3">
-            <DrawerMeta label="Lens" value={item.lens} />
-            <DrawerMeta label="Status" value={item.status} />
-            <DrawerMeta label="Impact" value={item.impact} />
-            <DrawerMeta label="Effort" value={item.effort} />
+            <DrawerMeta label={copy.drawer.lens} value={item.lens} />
+            <DrawerMeta label={copy.drawer.status} value={item.status} />
+            <DrawerMeta label={copy.drawer.impact} value={item.impact} />
+            <DrawerMeta label={copy.drawer.effort} value={item.effort} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-neutral-900">Evidence</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{copy.drawer.evidence}</h3>
             <ul className="mt-2 space-y-2">
               {item.evidence.map((evidence) => (
                 <li
@@ -278,10 +280,10 @@ function RecommendationDrawer({
 
         <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
           <Button variant="outline" size="sm" disabled>
-            Add to report
+            {copy.actions.addToReport}
           </Button>
           <Button size="sm" disabled>
-            Mark as planned
+            {copy.actions.markPlanned}
           </Button>
         </div>
       </aside>

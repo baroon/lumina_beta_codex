@@ -207,7 +207,7 @@ describe("TrackerEditScreen", () => {
 
   it("Prompts section renders the count from the prompts hook", () => {
     render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
-    expect(screen.getByText(/12 active prompt/i)).toBeInTheDocument();
+    expect(screen.getByText(/12 active AI Question/i)).toBeInTheDocument();
   });
 
   it("renders 'Tracker not found.' when the summary returns no tracker", () => {

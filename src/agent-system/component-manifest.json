@@ -971,6 +971,25 @@
           "notes": "Brand picker: lists onboarded brands with discovery status, links to each brand's profile page, and an Add Brand action."
         },
         {
+          "name": "BrandDiscoveryScreen",
+          "category": "Feature — Brands",
+          "path": "src/features/brands/components/BrandDiscoveryScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "DataTable",
+            "LoadingPage",
+            "ErrorPage",
+            "useBrandsList",
+            "lucide-react"
+          ],
+          "notes": "Workspace-level /brand-discovery command center. Lists brands with latest discovery status, pages crawled, last run, summary tiles, empty/error states, and CTAs into add-brand, continue-discovery, or brand-profile flows."
+        },
+        {
           "name": "BrandProfileScreen",
           "category": "Feature — Brands",
           "path": "src/features/brands/components/BrandProfileScreen.tsx",
@@ -1041,6 +1060,25 @@
             "usePrompts"
           ],
           "notes": "Tracker edit screen at /brands/$brandId/trackers/$trackerId/edit. Schedule section is the only fully-editable surface today (cadence + timezone + platforms via useConfigureTrackerSchedule, saves WITHOUT kicking off a scan — distinct from the create-flow TrackerScheduleScreen which activates + scans). Prompts section renders a count + link to the wizard for actual prompt management. Lenses section is a ComingSoon placeholder pending a per-tracker lens-edit endpoint. Sticky bottom save bar appears only when the schedule form is dirty (compared field-by-field against the setup snapshot); shows 'Saving…' during mutation, 'Saved.' on success, 'Save failed — try again.' on error. Discard reverts local state to the setup snapshot."
+        },
+        {
+          "name": "TrackersScreen",
+          "category": "Feature — Tracker",
+          "path": "src/features/trackers/components/TrackersScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "DataTable",
+            "LoadingPage",
+            "ErrorPage",
+            "useAllTrackers",
+            "lucide-react"
+          ],
+          "notes": "Workspace-level /trackers page. Replaces the product scaffold with a data-backed tracker inventory using the existing workspace tracker list endpoint. Shows summary tiles, brand coverage cards, an empty state, and a sortable table linking each tracker to its hub and brand profile."
         },
         {
           "name": "TrackerNameEditor",
@@ -1149,6 +1187,39 @@
           "variants": [],
           "dependencies": ["Card", "Button", "Input", "LoadingPage"],
           "notes": "Ready-to-create screen: editable suggested tracker name + coverage summary from the setup-preview endpoint; calls POST /brands/{id}/trackers."
+        }
+      ]
+    },
+    {
+      "name": "Feature — Settings",
+      "description": "Components for workspace and account-level settings surfaces.",
+      "components": [
+        {
+          "name": "WorkspaceSettingsScreen",
+          "category": "Feature — Settings",
+          "path": "src/features/settings/components/WorkspaceSettingsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "LoadingPage",
+            "ErrorPage",
+            "useWorkspaceSettingsSummary",
+            "lucide-react"
+          ],
+          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, read-only profile/team/notification/integration sections, empty usage hint, and disabled v1 account-management actions."
+        },
+        {
+          "name": "ProfileSettingsScreen",
+          "category": "Feature — Settings",
+          "path": "src/features/settings/components/ProfileSettingsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react"],
+          "notes": "Profile settings page at /settings/profile. Replaces the ComingSoon shell with read-only identity, preferences, notification, and access sections plus disabled v1 actions until account/profile endpoints are available."
         }
       ]
     },
@@ -1325,6 +1396,51 @@
           "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes summary tiles, prioritized action table, empty state, and right-side details drawer."
         },
         {
+          "name": "LensesScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/LensesScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "Progress",
+            "DataTable",
+            "DateRangePicker",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview",
+            "useLensCounts",
+            "lucide-react"
+          ],
+          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, health status badges, and links into each lens detail route."
+        },
+        {
+          "name": "LensDetailScreen",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/LensDetailScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "Progress",
+            "DataTable",
+            "DateRangePicker",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview",
+            "lucide-react"
+          ],
+          "notes": "Data-backed /lenses/$lensId detail page. Resolves route slugs to Visibility Lens codes and queries workspace overview with a single lens filter. Renders lens KPIs, signal cards, top-entity table, empty state, and backlink to /lenses."
+        },
+        {
           "name": "TopicsScreen",
           "category": "Feature â€” Reporting",
           "path": "src/features/reports/components/TopicsScreen.tsx",
@@ -1345,6 +1461,37 @@
             "topics"
           ],
           "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes summary tiles, date range control, sortable DataTable, empty state, and a right-side topic opportunity drawer."
+        },
+        {
+          "name": "ClaimsRisksScreen",
+          "category": "Feature Ã¢â‚¬â€ Reporting",
+          "path": "src/features/reports/components/ClaimsRisksScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "DataTable",
+            "DateRangePicker",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview",
+            "useUpdateFactualClaimReviewStatus",
+            "claimsRisks"
+          ],
+          "notes": "Data-backed /claims-risks page. Uses workspace overview factual claims, risk flags, and known-for attributes to render risk summary tiles, a sortable claim review table, risk themes, known-for themes, workflow status counts, and a right-side claim review drawer."
+        },
+        {
+          "name": "ReportsScreen",
+          "category": "Feature Ã¢â‚¬â€ Reporting",
+          "path": "src/features/reports/components/ReportsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react"],
+          "notes": "Dedicated /reports page for the agency/client reporting workflow. Renders report summary tiles, create-report section checklist, template chooser, report-history empty state, and disabled v1 actions for create/schedule/export until report generation endpoints land."
         },
         {
           "name": "CompetitorsScreen",
@@ -1436,7 +1583,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "Badge", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Temporary cross-tracker scan index at /scans. Plain table; each row links to /scans/{id}/results. Consumes GET /api/scans (capped at 100 rows). Replace with a real Tracker Dashboard navigation once that lands."
+          "notes": "Reporting Scan History page at /scan-history. Shows operational summary metrics (last completed scan, completed checks, success rate, failed runs) plus a cross-tracker scan runs table linking each row to /scans/{id}/results. Consumes GET /api/scans (capped at 100 rows); /scans redirects here while scan detail routes stay under /scans/{id}."
         },
         {
           "name": "ScanSourcesScreen",

@@ -16,6 +16,37 @@ export const BRANDS_COPY = {
     addBrand: "Add Brand",
     empty: "No brands yet. Add your first brand to get started.",
   },
+  discoveryHub: {
+    title: "Brand Discovery",
+    description:
+      "Review the brands Lumina has discovered, continue pending discovery runs, and open brand profiles before creating trackers.",
+    actions: {
+      addBrand: "Add brand",
+      continueDiscovery: "Continue discovery",
+      openProfile: "Open profile",
+    },
+    summary: {
+      brands: "Brands",
+      brandsHelper: "Brands configured in this workspace.",
+      completed: "Completed discoveries",
+      completedHelper: "Brands with confirmed discovery profiles.",
+      pending: "Needs review",
+      pendingHelper: "Discovery runs still awaiting confirmation.",
+      pages: "Pages crawled",
+      pagesHelper: "Website pages analyzed during discovery.",
+    },
+    table: {
+      brand: "Brand",
+      website: "Website",
+      status: "Discovery status",
+      pages: "Pages",
+      lastRun: "Last run",
+      action: "Action",
+      notStarted: "Not started",
+      notCompleted: "Not completed",
+      empty: "No brands yet. Add a brand to scan its website and build the discovery profile.",
+    },
+  },
   profile: {
     description: "Brand identity, dimensions, and discovery snapshot.",
     rerunDiscovery: "Re-run discovery",

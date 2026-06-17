@@ -1,6 +1,5 @@
-import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
-import { PRODUCT_PAGES } from "@/content/productPages";
+import { BrandDiscoveryScreen } from "@/features/brands/components/BrandDiscoveryScreen";
 
 export function BrandDiscoveryPage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.brandDiscovery} />;
+  return <BrandDiscoveryScreen />;
 }

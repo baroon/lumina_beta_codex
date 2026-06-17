@@ -77,7 +77,7 @@ function buildTimezones(current: string): string[] {
  *   saves via useConfigureTrackerSchedule WITHOUT kicking off a scan
  *   (distinct from the create-flow TrackerScheduleScreen).
  *
- *   Prompts — read-only summary + link to the wizard prompt review.
+ *   AI Questions — read-only summary + link to the wizard review.
  *   Lenses — editable checkbox picker backed by GET/PUT
  *   /api/trackers/{id}/lenses.
  *
@@ -201,8 +201,9 @@ function DangerZoneSection({
       <CardContent className="space-y-3 p-4">
         <SectionHeader icon={Trash2} title="Danger zone" />
         <p className="text-xs text-neutral-600">
-          Deleting this tracker permanently removes every scan run, prompt run, and recorded answer
-          for it. The owning brand and its other trackers are not affected. This cannot be undone.
+          Deleting this tracker permanently removes every scan run, AI answer run, and recorded
+          answer for it. The owning brand and its other trackers are not affected. This cannot be
+          undone.
         </p>
         <div>
           <Button
@@ -219,7 +220,7 @@ function DangerZoneSection({
           open={open}
           onOpenChange={setOpen}
           title="Delete tracker"
-          description="This permanently deletes the tracker, every scan run, every prompt run, and every answer recorded for it. The owning brand and its other trackers are not affected."
+          description="This permanently deletes the tracker, every scan run, every AI answer run, and every answer recorded for it. The owning brand and its other trackers are not affected."
           expectedConfirmText={trackerName}
           confirmLabel="Delete tracker"
           onConfirm={() => del.mutate()}
@@ -377,7 +378,7 @@ function ScheduleSection({ trackerId, setup }: ScheduleSectionProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Prompts section — read-only summary, defers actual edits
+// AI Questions section — read-only summary, defers actual edits
 // ---------------------------------------------------------------------------
 
 function PromptsSection({ trackerId, brandId }: { trackerId: string; brandId: string }) {
@@ -389,7 +390,7 @@ function PromptsSection({ trackerId, brandId }: { trackerId: string; brandId: st
       <CardContent className="space-y-3 p-4">
         <SectionHeader
           icon={MessageSquare}
-          title="Prompts"
+          title="AI Questions"
           meta={
             <Badge variant="secondary" className="text-xs">
               {count}
@@ -398,16 +399,15 @@ function PromptsSection({ trackerId, brandId }: { trackerId: string; brandId: st
           }
         />
         <p className="text-xs text-neutral-500">
-          {count} active prompt{count === 1 ? "" : "s"} across this tracker. Add, remove, or
-          regenerate prompts in the discovery wizard for now — inline prompt management lands with
-          the workspace Prompts page.
+          {count} active AI Question{count === 1 ? "" : "s"} across this tracker. Add, remove, or
+          regenerate AI Questions in the discovery wizard for now.
         </p>
         <Link
           to="/brands/$brandId/discovery"
           params={{ brandId }}
           className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
         >
-          Manage prompts in discovery
+          Manage AI Questions in discovery
         </Link>
       </CardContent>
     </Card>
@@ -473,8 +473,8 @@ function LensesSection({ trackerId }: { trackerId: string }) {
         ) : (
           <>
             <p className="text-xs text-neutral-500">
-              Pick which Visibility Lenses generate prompts for this tracker. At least one lens is
-              required.
+              Pick which Visibility Lenses generate AI Questions for this tracker. At least one lens
+              is required.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {data.lenses.map((lens) => {

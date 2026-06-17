@@ -1,6 +1,5 @@
-import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
-import { PRODUCT_PAGES } from "@/content/productPages";
+import { LensesScreen } from "@/features/reports/components/LensesScreen";
 
 export function LensesPage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.lenses} />;
+  return <LensesScreen />;
 }

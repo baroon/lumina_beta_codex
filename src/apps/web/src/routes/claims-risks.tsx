@@ -1,6 +1,5 @@
-import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
-import { PRODUCT_PAGES } from "@/content/productPages";
+import { ClaimsRisksScreen } from "@/features/reports/components/ClaimsRisksScreen";
 
 export function ClaimsRisksPage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.claimsRisks} />;
+  return <ClaimsRisksScreen />;
 }

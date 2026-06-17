@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import { deriveScanHistorySummary } from "@/features/reports/scanHistory";
 import type { ScanListItemDto } from "@/types/api";
 import { ScanListScreen } from "./ScanListScreen";
 
@@ -80,7 +81,16 @@ describe("ScanListScreen", () => {
 
   it("renders one row per scan with a link to the results page", () => {
     hookState = {
-      data: [row({ scanRunId: "s1" }), row({ scanRunId: "s2", brandName: "Brand B" })],
+      data: [
+        row({ scanRunId: "s1" }),
+        row({
+          scanRunId: "s2",
+          brandName: "Brand B",
+          scanCheckCount: 5,
+          completedCount: 3,
+          failedCount: 2,
+        }),
+      ],
       isLoading: false,
       isError: false,
       error: null,
@@ -88,6 +98,9 @@ describe("ScanListScreen", () => {
     };
     render(<ScanListScreen />);
 
+    expect(screen.getByText("Checks completed")).toBeInTheDocument();
+    expect(screen.getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText("Scan runs")).toBeInTheDocument();
     expect(screen.getByText("Brand A")).toBeInTheDocument();
     expect(screen.getByText("Brand B")).toBeInTheDocument();
     const links = screen.getAllByRole("link");
@@ -106,5 +119,25 @@ describe("ScanListScreen", () => {
     render(<ScanListScreen />);
     expect(screen.getByText("—")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
+  });
+  it("derives scan history summary metrics from scan rows", () => {
+    const summary = deriveScanHistorySummary([
+      row({
+        completedAt: "2026-05-27T10:05:00Z",
+        scanCheckCount: 10,
+        completedCount: 10,
+      }),
+      row({
+        completedAt: "2026-05-28T12:00:00Z",
+        scanCheckCount: 10,
+        completedCount: 7,
+        failedCount: 3,
+      }),
+    ]);
+
+    expect(summary.lastCompletedScan).toContain("May 28");
+    expect(summary.checksCompleted).toBe("17");
+    expect(summary.successRate).toBe("85%");
+    expect(summary.failedRuns).toBe("1");
   });
 });

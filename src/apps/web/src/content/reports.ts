@@ -384,6 +384,21 @@ export const REPORTS_COPY = {
     title: "Scan History",
     subtitle:
       "Track when Lumina collected AI answers, which platforms completed successfully, and what changed.",
+    summary: {
+      lastCompletedScan: "Last completed scan",
+      lastCompletedScanHelper: "Most recent scan that finished successfully.",
+      answersCollected: "Checks completed",
+      answersCollectedHelper: "Completed answer checks across scan runs.",
+      successRate: "Success rate",
+      successRateHelper: "Completed checks divided by scheduled checks.",
+      failedRuns: "Failed runs",
+      failedRunsHelper: "Scan runs with one or more failed checks.",
+    },
+    sections: {
+      runs: "Scan runs",
+      runsDescription:
+        "Open a scan to inspect collected AI answers, sources, topics, competitors, and claims.",
+    },
     columns: {
       startedAt: "Started",
       brand: "Brand",
@@ -391,6 +406,7 @@ export const REPORTS_COPY = {
       scanStatus: "Scan",
       analysisStatus: "Analysis",
       progress: "Checks",
+      failures: "Failures",
     },
     empty:
       "No scans have run yet. Run the first scan to collect AI answers and generate visibility insights.",
@@ -558,6 +574,177 @@ export const REPORTS_COPY = {
       mentionedCountLabel: "{count} brand mentions",
       mentionedCountLabelOne: "1 brand mention",
       positionLabel: "First mention at {position}",
+    },
+  },
+  claimsRisks: {
+    title: "Claims & Risks",
+    subtitle:
+      "Review factual claims, disputed statements, risky descriptions, and negative themes AI platforms generate about your brand.",
+    createReport: "Create report",
+    filtersUnavailable: "Filters unlock after claim and risk-specific endpoints land.",
+    summary: {
+      openRisks: "Open risks",
+      openRisksHelper: "Unresolved risk themes and unreviewed claims.",
+      claimsToReview: "Claims to review",
+      claimsToReviewHelper: "Factual claims not yet verified or disputed.",
+      disputedClaims: "Disputed claims",
+      disputedClaimsHelper: "Claims marked disputed or incorrect.",
+      highSeverity: "High severity",
+      highSeverityHelper: "Recurring or high-impact risk themes.",
+    },
+    sections: {
+      claims: "Claims AI makes about you",
+      claimsDescription:
+        "Similar claims should be grouped over time; this v1 feed shows the newest claims that need review.",
+      risks: "Risk themes",
+      risksDescription:
+        "Recurring negative, uncertain, disputed, or sensitive themes detected in AI answers.",
+      knownFor: "What AI says you are known for",
+      knownForDescription:
+        "Recurring associations, strengths, and descriptors AI uses for your brand.",
+      workflow: "Review workflow",
+      workflowDescription: "Track which claims are verified, disputed, or still pending review.",
+    },
+    claimsTable: {
+      claim: "Claim",
+      brand: "Brand",
+      status: "Status",
+      verifiability: "Type",
+      date: "First seen",
+      subject: "Subject",
+      empty: "No claims or risks detected yet.",
+    },
+    statuses: {
+      Pending: "Pending review",
+      Verified: "Verified true",
+      Disputed: "Disputed",
+    } as Record<string, string>,
+    drawer: {
+      title: "Claim review",
+      evidence: "Evidence",
+      subject: "Subject",
+      assertedValue: "Asserted value",
+      verifiability: "Claim type",
+      reviewStatus: "Review status",
+      actions: "Review actions",
+      close: "Close claim review",
+      markVerified: "Mark verified",
+      markDisputed: "Mark disputed",
+      resetPending: "Reset to pending",
+      saveError: "Save failed — try again.",
+    },
+  },
+  recommendationsPage: {
+    title: "Recommendations",
+    subtitle:
+      "Prioritized actions to improve AI visibility, citation authority, competitive positioning, and brand accuracy.",
+    actions: {
+      createReport: "Create report",
+      open: "Open recommendation",
+      close: "Close recommendation",
+      addToReport: "Add to report",
+      markPlanned: "Mark as planned",
+    },
+    controls: {
+      competitiveUnavailable: "Competitive recommendations are unavailable.",
+    },
+    summary: {
+      openRecommendations: "Open recommendations",
+      openRecommendationsHelper: "Prioritized actions derived from current evidence.",
+      highImpact: "High impact",
+      highImpactHelper: "Actions most likely to improve visibility or reduce risk.",
+      evidenceLinks: "Evidence links",
+      evidenceLinksHelper:
+        "AI answers, claims, topics, risks, or competitor gaps behind the queue.",
+    },
+    table: {
+      priority: "Priority",
+      action: "Action",
+      lens: "Lens",
+      impact: "Impact",
+      effort: "Effort",
+      evidence: "Evidence",
+      status: "Status",
+    },
+    empty: {
+      title: "No recommendations yet",
+      description:
+        "Recommendations will appear after Lumina has enough AI answer, citation, competitor, topic, and claim evidence for the selected tracker and date range.",
+    },
+    drawer: {
+      eyebrow: "Recommendation",
+      why: "Why this matters",
+      implementation: "Suggested implementation",
+      evidence: "Evidence",
+      lens: "Lens",
+      status: "Status",
+      impact: "Impact",
+      effort: "Effort",
+    },
+  },
+  reportsPage: {
+    title: "Reports",
+    subtitle:
+      "Create, schedule, and share client-ready summaries of AI visibility, competitive movement, citation authority, risks, and recommended actions.",
+    actions: {
+      create: "Create report",
+      schedule: "Schedule report",
+      export: "Export",
+    },
+    controls: {
+      competitiveUnavailable: "Competitive report sections are unavailable.",
+    },
+    summary: {
+      reportsCreated: "Report-ready sections",
+      reportsCreatedHelper: "Sections with enough current evidence to include.",
+      scheduledReports: "Evidence links",
+      scheduledReportsHelper: "Questions, mentions, citations, and recommendations available.",
+      lastReportSent: "Last report sent",
+      lastReportSentHelper: "Most recent manual or scheduled delivery.",
+      openClientActions: "Open client actions",
+      openClientActionsHelper: "Recommendations not yet completed or dismissed.",
+    },
+    createReport: {
+      title: "Create report",
+      description:
+        "Build a client-ready report using key metrics, lens summaries, recommendations, and evidence.",
+      sections: [
+        "Executive summary",
+        "Visibility scorecards",
+        "Lens performance",
+        "Recommendations",
+        "Competitors",
+        "Sources and citations",
+        "Topics and content gaps",
+        "Claims and risks",
+        "Evidence appendix",
+      ],
+    },
+    status: {
+      ready: "Ready",
+      needsData: "Needs data",
+      planned: "Planned",
+      notSent: "Not sent",
+    },
+    templates: {
+      title: "Report templates",
+      description: "Choose a report format based on the audience and use case.",
+      items: [
+        "Executive summary",
+        "Weekly client update",
+        "Monthly AI visibility report",
+        "Competitive movement report",
+        "Content opportunities report",
+        "Citation authority report",
+        "Risk review report",
+      ],
+    },
+    history: {
+      title: "Report history",
+      description: "Reports generated or scheduled from tracker evidence will appear here.",
+      empty:
+        "No reports created yet. Create your first report from current tracker insights, recommendations, and evidence.",
+      columns: ["Report name", "Tracker", "Date range", "Created by", "Status", "Actions"],
     },
   },
 } as const;

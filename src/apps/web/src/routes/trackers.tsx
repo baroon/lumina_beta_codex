@@ -1,6 +1,5 @@
-import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
-import { PRODUCT_PAGES } from "@/content/productPages";
+import { TrackersScreen } from "@/features/trackers/components/TrackersScreen";
 
 export function TrackersPage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.trackers} />;
+  return <TrackersScreen />;
 }

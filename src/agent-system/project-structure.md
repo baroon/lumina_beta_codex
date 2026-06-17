@@ -144,6 +144,10 @@ apps/web/
 │   │   │   ├── components/
 │   │   │   ├── hooks/
 │   │   │   └── types.ts
+│   │   ├── settings/
+│   │   │   ├── components/             Workspace and account settings screens
+│   │   │   ├── hooks/                  Settings-specific summary hooks
+│   │   │   └── types.ts
 │   │   └── reports/
 │   │       ├── components/             CoreMetricsRow, PromptEvidenceTable, TrackerDashboard, etc.
 │   │       ├── hooks/                  useReport, useReportFilters

@@ -15,7 +15,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Temporary cross-tracker scan index. Storybook will render the error path since no backend is available; run the dev servers to see the populated table with linked rows.",
+          "Reporting Scan History page with operational summary metrics and linked scan rows. Storybook will render the error path unless the scans hook is mocked by the global preview.",
       },
     },
   },

@@ -49,3 +49,86 @@ export const VISIBILITY_LENSES: ReadonlyArray<VisibilityLens> = [
     description: "Where is the brand absent from AI answers when it should be present?",
   },
 ];
+
+export const LENSES_COPY = {
+  page: {
+    title: "Lenses",
+    description:
+      "Analyze AI visibility through the six business-intent lenses that shape discovery, buying decisions, comparisons, trust, citations, and content gaps.",
+    actions: {
+      open: "Open lens",
+      export: "Export lens brief",
+    },
+    controls: {
+      countsUnavailable: "Lens counts are unavailable for this range.",
+    },
+    summary: {
+      lenses: "Visibility lenses",
+      lensesHelper: "Strategic analysis views used across every tracker.",
+      questions: "AI questions",
+      questionsHelper: "Tracked prompts evaluated in the selected date range.",
+      mentions: "Brand mentions",
+      mentionsHelper: "Tracked-brand mentions found in AI answers.",
+      citations: "Citations",
+      citationsHelper: "Evidence citations captured across AI answers.",
+    },
+    table: {
+      lens: "Lens",
+      mentions: "Mentions",
+      mentionUnit: "mentions",
+      mentionSummary: "{count} lens mentions in this range",
+      share: "Share",
+      status: "Status",
+      action: "Action",
+      empty: "No lens evidence yet. Run scans to populate lens performance.",
+    },
+    status: {
+      healthy: "Healthy",
+      sparse: "Sparse",
+      empty: "No evidence",
+    },
+  },
+  detail: {
+    fallbackTitle: "Lens not found",
+    fallbackDescription: "Choose a valid Visibility Lens from the lenses overview.",
+    actions: {
+      back: "All lenses",
+      export: "Export lens brief",
+    },
+    summary: {
+      questions: "AI questions",
+      questionsHelper: "Tracked prompts evaluated for this lens.",
+      mentionRate: "Mention rate",
+      mentionRateHelper: "Share of AI answers that mention a tracked brand.",
+      firstMention: "First mention",
+      firstMentionHelper: "How often a tracked brand is the first named entity.",
+      citations: "Citations",
+      citationsHelper: "Evidence citations captured for this lens.",
+    },
+    sections: {
+      entities: "Top entities",
+      entitiesDescription: "Brands and competitors most visible inside this lens.",
+      signals: "Lens signals",
+      signalsDescription: "The core measurement signals available for this lens and date range.",
+    },
+    table: {
+      entity: "Entity",
+      visibility: "Visibility",
+      shareOfVoice: "Share of voice",
+      sentiment: "Sentiment",
+      type: "Type",
+      empty: "No entity evidence yet. Run scans for this lens to populate visibility.",
+      youChip: "You",
+      unknownSentiment: "Unknown",
+      noData: "No data",
+    },
+    signals: {
+      absence: "Absence rate",
+      absenceDescription: "Answers where tracked brands are entirely absent.",
+      firstMention: "First mention rate",
+      firstMentionDescription: "Answers where a tracked brand appears first.",
+      trackedBrands: "Tracked brands",
+      competitors: "Competitors",
+    },
+  },
+} as const;
