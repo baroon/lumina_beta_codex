@@ -25,7 +25,14 @@ import { OverviewPage } from "@/routes/overview";
 import { PromptsPage } from "@/routes/prompts";
 import { SourcesPage } from "@/routes/sources";
 import { CompetitorsPage } from "@/routes/competitors";
-import { InsightsPage } from "@/routes/insights";
+import { LensesPage } from "@/routes/lenses";
+import { LensDetailPage } from "@/routes/lens-detail";
+import { RecommendationsPage } from "@/routes/recommendations";
+import { TopicsPage } from "@/routes/topics";
+import { ClaimsRisksPage } from "@/routes/claims-risks";
+import { ReportsPage } from "@/routes/reports";
+import { BrandDiscoveryPage } from "@/routes/brand-discovery";
+import { TrackersPage } from "@/routes/trackers";
 import { SettingsWorkspacePage } from "@/routes/settings/workspace";
 import { SettingsProfilePage } from "@/routes/settings/profile";
 
@@ -111,7 +118,9 @@ const trackerEditRoute = createRoute({
 const scansListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/scans",
-  component: ScanListPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/scan-history", replace: true });
+  },
 });
 
 const scanResultsRoute = createRoute({
@@ -168,7 +177,39 @@ const overviewRoute = createRoute({
 const promptsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/prompts",
+  beforeLoad: () => {
+    throw redirect({ to: "/ai-questions", replace: true });
+  },
+});
+
+const aiQuestionsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ai-questions",
   component: PromptsPage,
+});
+
+const lensesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lenses",
+  component: LensesPage,
+});
+
+const lensDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lenses/$lensId",
+  component: LensDetailPage,
+});
+
+const recommendationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recommendations",
+  component: RecommendationsPage,
+});
+
+const topicsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/topics",
+  component: TopicsPage,
 });
 
 const sourcesRoute = createRoute({
@@ -186,7 +227,45 @@ const competitorsRoute = createRoute({
 const insightsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/insights",
-  component: InsightsPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/recommendations", replace: true });
+  },
+});
+
+const claimsRisksRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/claims-risks",
+  component: ClaimsRisksPage,
+});
+
+const reportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reports",
+  component: ReportsPage,
+});
+
+const scanHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/scan-history",
+  component: ScanListPage,
+});
+
+const brandDiscoveryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brand-discovery",
+  component: BrandDiscoveryPage,
+});
+
+const trackersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/trackers",
+  component: TrackersPage,
+});
+
+const workspaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace",
+  component: SettingsWorkspacePage,
 });
 
 // Settings stubs — pulled forward from step 15 so the sidebar Settings
@@ -194,7 +273,9 @@ const insightsRoute = createRoute({
 const settingsWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/workspace",
-  component: SettingsWorkspacePage,
+  beforeLoad: () => {
+    throw redirect({ to: "/workspace", replace: true });
+  },
 });
 
 const settingsProfileRoute = createRoute({
@@ -222,9 +303,20 @@ const routeTree = rootRoute.addChildren([
   scanClaimsRoute,
   overviewRoute,
   promptsRoute,
+  aiQuestionsRoute,
+  lensesRoute,
+  lensDetailRoute,
+  recommendationsRoute,
+  topicsRoute,
   sourcesRoute,
   competitorsRoute,
   insightsRoute,
+  claimsRisksRoute,
+  reportsRoute,
+  scanHistoryRoute,
+  brandDiscoveryRoute,
+  trackersRoute,
+  workspaceRoute,
   settingsWorkspaceRoute,
   settingsProfileRoute,
 ]);

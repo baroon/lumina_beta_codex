@@ -1,11 +1,9 @@
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderWithRouter } from "@/test-utils";
 import { APP_COPY } from "@/content/app";
+import { navSections } from "@/content/navigation";
 
-// Stub the data hook so Sidebar tests don't need a QueryClientProvider.
-// We're testing navigation structure here; the hook itself has its own
-// tests in `useBrandsWithTrackers.test.tsx`.
 vi.mock("@/hooks/useBrandsWithTrackers", () => ({
   useBrandsWithTrackers: () => ({ brands: [], isLoading: false, isError: false, error: null }),
 }));
@@ -13,90 +11,72 @@ vi.mock("@/hooks/useBrandsWithTrackers", () => ({
 import { Sidebar } from "./Sidebar";
 
 beforeEach(() => {
-  // Reset URL between tests so the TrackerSelector's URL-driven state is
-  // deterministic.
   window.history.replaceState(null, "", "/");
 });
 
 describe("Sidebar", () => {
-  it("renders the app name from APP_COPY", async () => {
+  it("renders the app name and TrackerSelector", async () => {
     renderWithRouter(<Sidebar />);
+
     expect(await screen.findByText(APP_COPY.name)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tracker scope selector/i })).toBeInTheDocument();
   });
 
-  it("renders the TrackerSelector at the top", async () => {
+  it("renders the five product navigation sections", async () => {
     renderWithRouter(<Sidebar />);
-    expect(
-      await screen.findByRole("button", { name: /tracker scope selector/i }),
-    ).toBeInTheDocument();
+
+    expect(await screen.findByText(APP_COPY.navSections.dashboard)).toBeInTheDocument();
+    expect(screen.getByText(APP_COPY.navSections.strategy)).toBeInTheDocument();
+    expect(screen.getByText(APP_COPY.navSections.intelligence)).toBeInTheDocument();
+    expect(screen.getByText(APP_COPY.navSections.reporting)).toBeInTheDocument();
+    expect(screen.getByText(APP_COPY.navSections.setup)).toBeInTheDocument();
   });
 
-  it("renders the three section headers", async () => {
+  it("links top-level items to the new route structure", async () => {
     renderWithRouter(<Sidebar />);
-    expect(await screen.findByText(APP_COPY.navSections.analytics)).toBeInTheDocument();
-    expect(screen.getByText(APP_COPY.navSections.manage)).toBeInTheDocument();
-    expect(screen.getByText(APP_COPY.navSections.settings)).toBeInTheDocument();
+
+    const expected = new Map([
+      [APP_COPY.nav.overview, "/overview"],
+      [APP_COPY.nav.lenses, "/lenses"],
+      [APP_COPY.nav.recommendations, "/recommendations"],
+      [APP_COPY.nav.topics, "/topics"],
+      [APP_COPY.nav.aiQuestions, "/ai-questions"],
+      [APP_COPY.nav.competitors, "/competitors"],
+      [APP_COPY.nav.sources, "/sources"],
+      [APP_COPY.nav.claimsRisks, "/claims-risks"],
+      [APP_COPY.nav.reports, "/reports"],
+      [APP_COPY.nav.scanHistory, "/scan-history"],
+      [APP_COPY.nav.brandDiscovery, "/brand-discovery"],
+      [APP_COPY.nav.trackers, "/trackers"],
+      [APP_COPY.nav.brands, "/brands"],
+      [APP_COPY.nav.workspace, "/workspace"],
+    ]);
+
+    for (const [label, href] of expected) {
+      expect(await screen.findByRole("link", { name: label })).toHaveAttribute("href", href);
+    }
   });
 
-  it("ANALYTICS section links resolve to the right routes", async () => {
-    renderWithRouter(<Sidebar />);
+  it("defines six child lens routes in the typed nav config", () => {
+    const strategy = navSections.find((section) => section.label === APP_COPY.navSections.strategy);
+    const lenses = strategy?.items.find((item) => item.label === APP_COPY.nav.lenses);
 
-    const expectLink = async (label: string, href: string) => {
-      const link = await screen.findByRole("link", {
-        name: new RegExp(`^${label}(\\s+BETA)?$`, "i"),
-      });
-      expect(link).toHaveAttribute("href", href);
-    };
-
-    await expectLink(APP_COPY.nav.overview, "/overview");
-    await expectLink(APP_COPY.nav.prompts, "/prompts");
-    await expectLink(APP_COPY.nav.sources, "/sources");
-    await expectLink(APP_COPY.nav.competitors, "/competitors");
-    await expectLink(APP_COPY.nav.insights, "/insights");
-    await expectLink(APP_COPY.nav.scans, "/scans");
+    expect(lenses?.children?.map((child) => child.href)).toEqual([
+      "/lenses/discovery",
+      "/lenses/buying-intent",
+      "/lenses/competitive",
+      "/lenses/sentiment",
+      "/lenses/citations",
+      "/lenses/content-gaps",
+    ]);
   });
 
-  it("MANAGE section links — Brands and Trackers both point at /brands", async () => {
+  it("does not expose deprecated primary labels", async () => {
     renderWithRouter(<Sidebar />);
-    const brands = await screen.findByRole("link", {
-      name: new RegExp(`^${APP_COPY.nav.brands}$`, "i"),
-    });
-    expect(brands).toHaveAttribute("href", "/brands");
-    // Trackers → same brand-list page with a hash anchor that the brand
-    // list will use to expand tracker sub-rows once that lands.
-    const trackers = await screen.findByRole("link", {
-      name: new RegExp(`^${APP_COPY.nav.trackers}$`, "i"),
-    });
-    expect(trackers.getAttribute("href")).toMatch(/^\/brands#trackers$/);
-  });
-
-  it("SETTINGS section links resolve to settings stubs", async () => {
-    renderWithRouter(<Sidebar />);
-    const workspace = await screen.findByRole("link", {
-      name: new RegExp(`^${APP_COPY.nav.settingsWorkspace}$`, "i"),
-    });
-    expect(workspace).toHaveAttribute("href", "/settings/workspace");
-
-    const profile = await screen.findByRole("link", {
-      name: new RegExp(`^${APP_COPY.nav.settingsProfile}$`, "i"),
-    });
-    expect(profile).toHaveAttribute("href", "/settings/profile");
-  });
-
-  it("renders a BETA pill next to the Insights nav item", async () => {
-    renderWithRouter(<Sidebar />);
-    const insightsLink = await screen.findByRole("link", {
-      name: new RegExp(`^${APP_COPY.nav.insights}\\s+BETA$`, "i"),
-    });
-    expect(within(insightsLink).getByText(/^beta$/i)).toBeInTheDocument();
-  });
-
-  it("does not render the deprecated standalone 'Add Brand' nav item", async () => {
-    renderWithRouter(<Sidebar />);
-    // Wait for the sidebar to mount.
     await screen.findByText(APP_COPY.name);
-    expect(
-      screen.queryByRole("link", { name: new RegExp(APP_COPY.nav.addBrand, "i") }),
-    ).not.toBeInTheDocument();
+
+    expect(screen.queryByRole("link", { name: "Prompts" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Insights" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Scans" })).not.toBeInTheDocument();
   });
 });

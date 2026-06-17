@@ -254,12 +254,12 @@ describe("deriveSummary (pure)", () => {
 describe("PromptsScreen", () => {
   it("renders the page header", () => {
     render(<PromptsScreen />);
-    expect(screen.getByRole("heading", { name: /Prompts/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /AI Questions/i })).toBeInTheDocument();
   });
 
-  it("renders the empty hint when there are no prompts in scope", () => {
+  it("renders the empty hint when there are no AI questions in scope", () => {
     render(<PromptsScreen />);
-    expect(screen.getByText(/no active prompts in scope yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no active AI questions in scope yet/i)).toBeInTheDocument();
   });
 
   it("renders one row per prompt with lens, topics, tracker, and activity", () => {
@@ -345,7 +345,7 @@ describe("PromptsScreen", () => {
     expect(screen.getByText("Best resume builder?")).toBeInTheDocument();
     expect(screen.getByText("How do I write a CV?")).toBeInTheDocument();
 
-    await userEvent.type(screen.getByPlaceholderText(/search prompts/i), "CV");
+    await userEvent.type(screen.getByPlaceholderText(/search AI questions/i), "CV");
     expect(screen.queryByText("Best resume builder?")).not.toBeInTheDocument();
     expect(screen.getByText("How do I write a CV?")).toBeInTheDocument();
   });
@@ -438,7 +438,7 @@ describe("PromptsScreen", () => {
     // surfaces the lens name as plain text).
     expect(screen.queryByText("Neutral sentiment prompt")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Sentiment & Trust" })).toBeInTheDocument();
-    expect(screen.getByText(/no prompts.*match.*current filters/i)).toBeInTheDocument();
+    expect(screen.getByText(/no AI questions.*match.*current filters/i)).toBeInTheDocument();
   });
 
   it("still drops sections that have zero in-scope prompts even before any filter is applied", () => {
@@ -454,7 +454,7 @@ describe("PromptsScreen", () => {
     render(<PromptsScreen />);
     expect(screen.getByText("Discovery only")).toBeInTheDocument();
     expect(screen.queryByText(/Sentiment & Trust/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/no prompts.*match/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no AI questions.*match/i)).not.toBeInTheDocument();
   });
 
   it("renders flag images in the Country column for valid alpha-2 codes", () => {
@@ -491,12 +491,14 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     // 4 summary-tile labels.
-    expect(screen.getByRole("button", { name: "About Prompts in view" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "About AI questions in view" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "About % with mentions" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "About Avg visibility" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "About Avg mentions / prompt" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "About Avg mentions / question" }),
+    ).toBeInTheDocument();
     // 2 chart-card titles.
-    expect(screen.getByRole("button", { name: "About Prompts by lens" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "About AI questions by lens" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "About Visibility distribution" }),
     ).toBeInTheDocument();
@@ -698,10 +700,10 @@ describe("PromptsScreen", () => {
   });
 
   // -------------------------------------------------------------------
-  // Workspace quota indicator + "Add prompt" dialog
+  // Workspace quota indicator + "Add AI question" dialog
   // -------------------------------------------------------------------
 
-  it("renders the 'X / Y prompts' quota badge from the workspace payload", () => {
+  it("renders the 'X / Y AI questions' quota badge from the workspace payload", () => {
     promptsState = {
       data: payload([row({ promptId: "p1" })], {
         totalAllocation: 80,
@@ -711,7 +713,7 @@ describe("PromptsScreen", () => {
       isError: false,
     };
     render(<PromptsScreen />);
-    const badge = screen.getByLabelText(/prompt allocation across in-scope trackers/i);
+    const badge = screen.getByLabelText(/AI question allocation across in-scope trackers/i);
     expect(badge).toHaveTextContent("12");
     expect(badge).toHaveTextContent("80");
   });
@@ -724,30 +726,30 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     expect(
-      screen.queryByLabelText(/prompt allocation across in-scope trackers/i),
+      screen.queryByLabelText(/AI question allocation across in-scope trackers/i),
     ).not.toBeInTheDocument();
   });
 
-  it("disables the Add prompt button when no trackers are in scope", () => {
+  it("disables the Add AI question button when no trackers are in scope", () => {
     promptsState = {
       data: payload([], { totalAllocation: 0, totalUsed: 0, trackers: [] }),
       isLoading: false,
       isError: false,
     };
     render(<PromptsScreen />);
-    expect(screen.getByRole("button", { name: /^Add prompt$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Add AI question$/i })).toBeDisabled();
   });
 
-  it("opens the Add prompt dialog from the header button", async () => {
+  it("opens the Add AI question dialog from the header button", async () => {
     promptsState = {
       data: payload([row({ promptId: "p1" })]),
       isLoading: false,
       isError: false,
     };
     render(<PromptsScreen />);
-    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add AI question$/i }));
     // The dialog title is rendered when open.
-    expect(screen.getAllByText(/^Add prompt$/i).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/^Add AI question$/i).length).toBeGreaterThan(1);
     // Tracker + Lens labels appear in the dialog body.
     expect(screen.getByLabelText("Tracker")).toBeInTheDocument();
     expect(screen.getByLabelText("Lens")).toBeInTheDocument();
@@ -774,7 +776,7 @@ describe("PromptsScreen", () => {
       isError: false,
     };
     render(<PromptsScreen />);
-    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Add AI question$/i }));
 
     // Pick the tracker — the only option in the trackers list.
     await userEvent.click(screen.getByRole("combobox", { name: "Tracker" }));
@@ -783,10 +785,12 @@ describe("PromptsScreen", () => {
     await userEvent.click(screen.getByRole("combobox", { name: "Lens" }));
     await userEvent.click(screen.getByRole("option", { name: "Comparison" }));
 
-    const textarea = screen.getByLabelText("Prompt text") as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText("AI question text") as HTMLTextAreaElement;
     await userEvent.type(textarea, "  Best resume builder?  ");
 
-    await userEvent.click(screen.getByRole("button", { name: /^Add prompt$/i, hidden: false }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Add AI question$/i, hidden: false }),
+    );
 
     expect(addPromptMutate).toHaveBeenCalledOnce();
     expect(addPromptMutate.mock.calls[0][0]).toEqual({
@@ -804,7 +808,7 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     await userEvent.click(
-      screen.getByRole("button", { name: /Remove prompt Best resume builder/i }),
+      screen.getByRole("button", { name: /Remove AI question Best resume builder/i }),
     );
     expect(removePromptMutate).toHaveBeenCalledWith({ trackerId: "t1", promptId: "p1" });
     // The remove cell stops propagation so the row's drawer-open handler

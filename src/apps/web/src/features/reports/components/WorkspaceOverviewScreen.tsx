@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Globe,
   Grid3X3,
-  Layers,
   Loader2,
   MessageSquare,
   Minus,
@@ -58,6 +57,7 @@ import { REPORTS_COPY } from "@/content/reports";
 import { BrandVsCompetitorCard } from "@/features/reports/components/BrandVsCompetitorCard";
 import { CoMentionLandscapeCard } from "@/features/reports/components/CoMentionLandscapeCard";
 import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
+import { DomainTypesCard } from "@/features/reports/components/DomainTypesCard";
 import {
   InlineChipFilter,
   PLATFORM_LABELS,
@@ -83,7 +83,6 @@ import { cn } from "@/lib/utils";
 import type {
   BrandedDimensionGroupDto,
   DomainRowDto,
-  DomainTypeShareDto,
   EntityMentionDto,
   EntityTrendSeriesDto,
   TopicHeatmapDto,
@@ -183,7 +182,7 @@ const METRIC_OPTIONS: MetricOption[] = [
   },
   {
     value: "rank",
-    label: "Average brand rank",
+    label: "Average answer position",
     brandMetric: "AverageBrandRank",
     format: "rank",
   },
@@ -878,39 +877,8 @@ function TopCitationDomainsCard({ rows }: { rows: readonly DomainRowDto[] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Domain types donut — workspace-wide; not filtered by selector
-// ---------------------------------------------------------------------------
-
-function DomainTypesCard({ rows }: { rows: readonly DomainTypeShareDto[] }) {
-  const copy = REPORTS_COPY.overview.domainTypes;
-  if (rows.length === 0) {
-    return (
-      <CollapsibleCard icon={Layers} title={copy.title} tooltip={copy.tooltip}>
-        <p className="text-sm text-neutral-500">{copy.noData}</p>
-      </CollapsibleCard>
-    );
-  }
-
-  const slices: DonutChartDatum[] = rows.map((r, i) => ({
-    id: r.sourceType,
-    label: r.sourceType,
-    value: r.citationCount,
-    color: ENTITY_PALETTE[i % ENTITY_PALETTE.length],
-  }));
-
-  return (
-    <CollapsibleCard icon={Layers} title={copy.title} tooltip={copy.tooltip}>
-      <DonutChartWrapper
-        data={slices}
-        formatValue={(v) =>
-          `${v} (${Math.round((v / rows.reduce((s, r) => s + r.citationCount, 0)) * 100)}%)`
-        }
-        height={200}
-      />
-    </CollapsibleCard>
-  );
-}
+// DomainTypesCard moved to `./DomainTypesCard` so /sources can reuse
+// it for its filtered source-type donut.
 
 // ---------------------------------------------------------------------------
 // Comparison controls row — brand selector + date-range picker
@@ -1182,7 +1150,7 @@ function HeroRow({
         onClick={() => onDrillDown("mention")}
       />
       <HeroTile
-        label="Absence rate"
+        label="Not-mentioned rate"
         value={hero.brandAbsenceRate == null ? "—" : `${Math.round(hero.brandAbsenceRate * 100)}%`}
         current={hero.brandAbsenceRate}
         previous={previousHero?.brandAbsenceRate ?? null}

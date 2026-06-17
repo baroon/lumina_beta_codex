@@ -1295,6 +1295,58 @@
           "notes": "Workspace-wide Insights page (BETA) at /insights — templated narrative summary over `useWorkspaceOverview`'s topEntities + a sorted ranking table where tracked brands are highlighted with a 'You' badge and a soft primary background. Narrative covers position (e.g. 'Acme ranks #2 of 3 with 50% AI visibility — trailing Canva by 30 pp') and celebrates the case where a tracked brand leads. v1 uses templated copy; LLM-generated narrative lands in a follow-up. Respects the sidebar's TrackerSelector scope via useTrackerScope."
         },
         {
+          "name": "ProductPageScaffold",
+          "category": "Feature â€” Reporting",
+          "path": "src/features/reports/components/ProductPageScaffold.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["PageHeader", "Card", "Badge", "lucide-react"],
+          "notes": "Reusable product-page scaffold for the standalone Lumina IA rollout. Renders spec-backed page identity, primary business question, metric placeholders, planned sections, and empty-state copy for routes that do not yet have a dedicated data-backed screen."
+        },
+        {
+          "name": "RecommendationsScreen",
+          "category": "Feature â€” Reporting",
+          "path": "src/features/reports/components/RecommendationsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "DateRangePicker",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview",
+            "useWorkspaceCompetitive",
+            "recommendations"
+          ],
+          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes summary tiles, prioritized action table, empty state, and right-side details drawer."
+        },
+        {
+          "name": "TopicsScreen",
+          "category": "Feature â€” Reporting",
+          "path": "src/features/reports/components/TopicsScreen.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Badge",
+            "Button",
+            "Progress",
+            "DataTable",
+            "DateRangePicker",
+            "LoadingPage",
+            "ErrorPage",
+            "useTrackerScope",
+            "useWorkspaceOverview",
+            "topics"
+          ],
+          "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes summary tiles, date range control, sortable DataTable, empty state, and a right-side topic opportunity drawer."
+        },
+        {
           "name": "CompetitorsScreen",
           "category": "Feature — Reporting",
           "path": "src/features/reports/components/CompetitorsScreen.tsx",
@@ -1464,6 +1516,24 @@
           "variants": [],
           "dependencies": ["CollapsibleCard", "BarChartWrapper"],
           "notes": "Horizontal bar of raw mention counts per entity. Complements ShareOfVoiceCard (share vs absolute). Used on /overview and /competitors. Optional selectedKeys narrows the bars; omitted = no filter."
+        },
+        {
+          "name": "DataTable",
+          "category": "Molecules",
+          "path": "src/components/molecules/DataTable.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["@tanstack/react-table", "lucide-react"],
+          "notes": "Generic sortable data table built on @tanstack/react-table v8. Columns declare their own header / cell renderers via ColumnDef, so custom row content (badges, dropdowns, external-link cells) lives inside the column definition rather than inline. Click-to-sort with the standard three-state cycle (asc → desc → unsorted), aria-sort attribute on header buttons. Column meta accepts `{ align: 'left' | 'right' }` for right-aligned numeric columns (tabular-nums applied), plus `className` / `cellClassName` for fine-grained styling. Migrating page tables to this molecule from raw <table> markup."
+        },
+        {
+          "name": "DomainTypesCard",
+          "category": "Feature — Reporting",
+          "path": "src/features/reports/components/DomainTypesCard.tsx",
+          "status": "implemented",
+          "variants": [],
+          "dependencies": ["CollapsibleCard", "DonutChartWrapper"],
+          "notes": "Source-type donut — citations broken out by the dominant SourceType per Source. Workspace-aggregate input on /overview (pre-aggregated by the competitive endpoint); on /sources the same DomainTypeShareDto[] shape is computed locally from the filtered domain rows so the donut respects the page's filter bar."
         },
         {
           "name": "CoMentionLandscapeCard",

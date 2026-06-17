@@ -1,6 +1,6 @@
 import { ProductPageScaffold } from "@/features/reports/components/ProductPageScaffold";
 import { PRODUCT_PAGES } from "@/content/productPages";
 
-export function SettingsWorkspacePage() {
-  return <ProductPageScaffold page={PRODUCT_PAGES.workspace} />;
+export function BrandDiscoveryPage() {
+  return <ProductPageScaffold page={PRODUCT_PAGES.brandDiscovery} />;
 }

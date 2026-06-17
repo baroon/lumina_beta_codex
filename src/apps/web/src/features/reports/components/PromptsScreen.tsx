@@ -306,7 +306,7 @@ export function PromptsScreen() {
       children:
         sortedRows.length === 0 ? (
           <p className="rounded-md border border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-3 text-xs text-neutral-500">
-            No prompts in {lens.name} match the current filters.
+            No AI questions in {lens.name} match the current filters.
           </p>
         ) : (
           <PromptsTable
@@ -356,8 +356,8 @@ export function PromptsScreen() {
           inputSize="sm"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search prompts…"
-          aria-label="Filter prompts"
+          placeholder="Search AI questions…"
+          aria-label="Filter AI questions"
           className="w-48"
         />
         <DateRangePicker value={range} onChange={setRange} />
@@ -440,7 +440,7 @@ export function PromptsScreen() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Prompts">
+      <PageHeader title="AI Questions">
         {/* "X / Y prompts" quota indicator across in-scope trackers.
             Hidden when the workspace has no allocation data (avoids
             displaying a stark "0 / 0" before any tracker is set up).
@@ -448,7 +448,7 @@ export function PromptsScreen() {
             its aggregate allocation so the limit is legible at a glance. */}
         {hasAllocationData && (
           <div
-            aria-label="Prompt allocation across in-scope trackers"
+            aria-label="AI question allocation across in-scope trackers"
             className={cn(
               "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium tabular-nums",
               atOrOverQuota
@@ -456,7 +456,7 @@ export function PromptsScreen() {
                 : "border-neutral-200 bg-white text-neutral-700",
             )}
           >
-            <span className="text-neutral-500">Prompts</span>
+            <span className="text-neutral-500">AI Questions</span>
             <span>{totalUsed.toLocaleString()}</span>
             <span className="text-neutral-400">/</span>
             <span>{totalAllocation.toLocaleString()}</span>
@@ -470,15 +470,15 @@ export function PromptsScreen() {
           type="button"
           onClick={() => setIsAddOpen(true)}
           disabled={trackerOptions.length === 0}
-          aria-label="Add prompt"
-          title="Add prompt"
+          aria-label="Add AI question"
+          title="Add AI question"
           className={cn(
             "inline-flex items-center gap-1 rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-700 transition hover:bg-primary-100",
             "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary-50",
           )}
         >
           <Plus className="h-3 w-3" aria-hidden />
-          <span>Add prompt</span>
+          <span>Add AI question</span>
         </button>
       </PageHeader>
 
@@ -487,8 +487,8 @@ export function PromptsScreen() {
           {controlsStrip}
           <Card>
             <CardContent className="p-8 text-center text-sm text-neutral-600">
-              No active prompts in scope yet. Trackers populate this page once their prompts are
-              confirmed.
+              No active AI questions in scope yet. Trackers populate this page once their AI
+              questions are confirmed.
             </CardContent>
           </Card>
         </>
@@ -597,11 +597,11 @@ function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps)
           <div className="flex items-start justify-between gap-3">
             <div>
               <Dialog.Title className="text-base font-semibold text-neutral-900">
-                Add prompt
+                Add AI question
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-neutral-600">
-                Pick a tracker and lens, then write the prompt text. It joins the tracker's active
-                prompts immediately.
+                Pick a tracker and lens, then write the AI question text. It joins the tracker's
+                active questions immediately.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -640,7 +640,7 @@ function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps)
               {atTrackerCap && (
                 <p className="text-[11px] text-semantic-warning-700">
                   {selectedTracker?.name} is at allocation ({selectedTracker?.promptAllocation}).
-                  Remove a prompt before adding another.
+                  Remove an AI question before adding another.
                 </p>
               )}
             </div>
@@ -678,7 +678,7 @@ function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps)
 
             <div className="space-y-1">
               <Label htmlFor="add-prompt-text" className="text-[11px] text-neutral-600">
-                Prompt text
+                AI question text
               </Label>
               <textarea
                 id="add-prompt-text"
@@ -686,7 +686,7 @@ function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps)
                 onChange={(e) => setText(e.target.value)}
                 rows={3}
                 placeholder="What's the best resume builder?"
-                aria-label="Prompt text"
+                aria-label="AI question text"
                 disabled={add.isPending}
                 className="w-full resize-y rounded-md border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
               />
@@ -706,7 +706,7 @@ function AddPromptDialog({ open, onOpenChange, trackers }: AddPromptDialogProps)
               </Button>
             </Dialog.Close>
             <Button type="button" size="sm" onClick={submit} disabled={submitDisabled}>
-              {add.isPending ? "Adding…" : "Add prompt"}
+              {add.isPending ? "Adding…" : "Add AI question"}
             </Button>
           </div>
         </Dialog.Content>
@@ -750,18 +750,18 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryTile
-          label="Prompts in view"
+          label="AI questions in view"
           value={prompts.length.toLocaleString()}
           sub={`of ${totalCount.toLocaleString()}`}
-          tooltip="In-scope prompts after lens, topic, model, and search filters — out of the workspace total."
+          tooltip="In-scope AI questions after lens, topic, model, and search filters — out of the workspace total."
         />
         <SummaryTile
           label="% with mentions"
           value={
             summary.withMentionsPct == null ? "—" : `${Math.round(summary.withMentionsPct * 100)}%`
           }
-          sub={`${summary.withMentionsCount.toLocaleString()} prompts`}
-          tooltip="Share of in-view prompts whose tracked brand was mentioned at least once in this window."
+          sub={`${summary.withMentionsCount.toLocaleString()} AI questions`}
+          tooltip="Share of in-view AI questions whose tracked brand was mentioned at least once in this window."
         />
         <SummaryTile
           label="Avg visibility"
@@ -773,31 +773,31 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
               ? "no data"
               : `${summary.measuredCount.toLocaleString()} measured`
           }
-          tooltip="Mean per-prompt visibility rate across in-view prompts that produced at least one in-window answer."
+          tooltip="Mean per-question visibility rate across in-view AI questions that produced at least one in-window answer."
         />
         <SummaryTile
-          label="Avg mentions / prompt"
+          label="Avg mentions / question"
           value={summary.avgMentions == null ? "—" : summary.avgMentions.toFixed(1)}
           sub={
             summary.totalMentions === 0
               ? "no data"
               : `${summary.totalMentions.toLocaleString()} total`
           }
-          tooltip="Mean tracked-brand mention count per in-view prompt during the selected window."
+          tooltip="Mean tracked-brand mention count per in-view AI question during the selected window."
         />
       </div>
       <div className="grid gap-3 lg:grid-cols-2">
         <CollapsibleCard
           icon={PieChart}
-          title="Prompts by lens"
-          tooltip="How in-view prompts split across the six Visibility Lenses. Empty lenses are dropped."
+          title="AI questions by lens"
+          tooltip="How in-view AI questions split across the six Visibility Lenses. Empty lenses are dropped."
         >
           {donutSlices.length === 0 ? (
-            <p className="text-sm text-neutral-500">No prompts in scope.</p>
+            <p className="text-sm text-neutral-500">No AI questions in scope.</p>
           ) : (
             <DonutChartWrapper
               data={donutSlices}
-              formatValue={(v) => `${v} prompt${v === 1 ? "" : "s"}`}
+              formatValue={(v) => `${v} AI question${v === 1 ? "" : "s"}`}
               height={220}
             />
           )}
@@ -805,12 +805,12 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
         <CollapsibleCard
           icon={BarChart3}
           title="Visibility distribution"
-          tooltip="In-view prompts bucketed by visibility rate. Counts only prompts with at least one in-window answer."
+          tooltip="In-view AI questions bucketed by visibility rate. Counts only questions with at least one in-window answer."
         >
           {prompts.length === 0 ? (
-            <p className="text-sm text-neutral-500">No prompts in scope.</p>
+            <p className="text-sm text-neutral-500">No AI questions in scope.</p>
           ) : (
-            <BarChartWrapper data={histogramData} valueAxisLabel="Prompts" height={220} />
+            <BarChartWrapper data={histogramData} valueAxisLabel="AI Questions" height={220} />
           )}
         </CollapsibleCard>
       </div>
@@ -970,7 +970,7 @@ function PromptsTable({
       <table className="w-full text-xs">
         <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
           <tr>
-            <Th>Prompt</Th>
+            <Th>AI Question</Th>
             <Th>Topics</Th>
             <Th>Country</Th>
             <Th>Tracker</Th>
@@ -1056,7 +1056,7 @@ function PromptRow({
             }
           }}
           multiline
-          placeholder="Prompt text"
+          placeholder="AI question text"
         />
       </Td>
       <Td>
@@ -1119,7 +1119,7 @@ function PromptRow({
           type="button"
           onClick={onRemove}
           disabled={isRemoving}
-          aria-label={`Remove prompt ${row.text}`}
+          aria-label={`Remove AI question ${row.text}`}
           className="rounded-sm p-0.5 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 disabled:opacity-50"
         >
           <X className="h-3 w-3" aria-hidden />

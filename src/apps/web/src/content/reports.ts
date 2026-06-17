@@ -40,7 +40,7 @@ export const REPORTS_COPY = {
       brandFirstMentionRate: "Lead share",
       brandRecommendationScore: "Recommendation score",
       brandRecommendationShare: "Recommendation share",
-      brandAbsenceRate: "Absence rate",
+      brandAbsenceRate: "Not-mentioned rate",
       averageAnswerCertainty: "Answer certainty",
       brandTopRecommendationShare: "Top-rec share",
       averageBrandRecommendationPosition: "Avg rec position",
@@ -49,7 +49,7 @@ export const REPORTS_COPY = {
       brandRecommendationContext: "Rec. context (For/Caveats)",
       brandTopicRecommendations: "Topic recs (Yes/No)",
       authorityCitations: "Authority (Hi/Lo)",
-      averageBrandRank: "Average brand rank",
+      averageBrandRank: "Average answer position",
       competitorMentionCount: "Competitor mentions",
       productMentionCount: "Product mentions",
       citationCount: "Citations",
@@ -158,7 +158,7 @@ export const REPORTS_COPY = {
       noData: "No citations in this window.",
     },
     domainTypes: {
-      title: "Domain types",
+      title: "Citation source mix",
       noData: "No citation data in this window.",
     },
     platforms: {
@@ -263,15 +263,15 @@ export const REPORTS_COPY = {
       netHeader: "Net",
     },
     topicOwnership: {
-      title: "Topic ownership",
+      title: "Topic visibility",
       tooltip: TBD_TOOLTIP,
       subline:
         "Per-topic prompt volume in scope and the share where a tracked brand was mentioned.",
       noData: "No topics tagged on any in-scope prompt.",
       topicHeader: "Topic",
-      promptsHeader: "Prompts",
-      mentionedHeader: "We were mentioned",
-      shareHeader: "Ownership",
+      promptsHeader: "AI Questions",
+      mentionedHeader: "Brand mentioned",
+      shareHeader: "Visibility",
     },
     recommendationRate: {
       title: "Recommendation rate by entity",
@@ -291,7 +291,7 @@ export const REPORTS_COPY = {
       noData: "No citations in this window.",
     },
     domainTypes: {
-      title: "Domain types",
+      title: "Citation source mix",
       tooltip: TBD_TOOLTIP,
       noData: "No citation data in this window.",
     },
@@ -318,7 +318,7 @@ export const REPORTS_COPY = {
       noData: "No risk flags raised against the brand in this window.",
     },
     factualClaims: {
-      title: "Factual claims to review",
+      title: "Claims AI makes about you",
       tooltip: TBD_TOOLTIP,
       subline:
         "Recent claims the AI asserted about a tracked brand. Verify against your source of truth.",
@@ -381,9 +381,9 @@ export const REPORTS_COPY = {
     },
   },
   scanList: {
-    title: "All Scans",
+    title: "Scan History",
     subtitle:
-      "Temporary index of recent scans across all trackers. Click a row to open its results.",
+      "Track when Lumina collected AI answers, which platforms completed successfully, and what changed.",
     columns: {
       startedAt: "Started",
       brand: "Brand",
@@ -392,7 +392,8 @@ export const REPORTS_COPY = {
       analysisStatus: "Analysis",
       progress: "Checks",
     },
-    empty: "No scans yet.",
+    empty:
+      "No scans have run yet. Run the first scan to collect AI answers and generate visibility insights.",
     analysisPending: "—",
   },
   competitors: {

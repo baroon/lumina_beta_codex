@@ -480,12 +480,12 @@ describe("WorkspaceOverviewScreen", () => {
     }
   });
 
-  it("renders the Absence rate and First-mention rate hero tiles with the new measurement-model fields", () => {
+  it("renders the Not-mentioned rate and First-mention rate hero tiles with the new measurement-model fields", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
     // Labels appear in the hero row.
-    expect(screen.getByText(/absence rate/i)).toBeInTheDocument();
+    expect(screen.getByText(/not-mentioned rate/i)).toBeInTheDocument();
     expect(screen.getByText(/first-mention rate/i)).toBeInTheDocument();
   });
 
@@ -506,7 +506,7 @@ describe("WorkspaceOverviewScreen", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    expect(screen.getByText(/factual claims to review/i)).toBeInTheDocument();
+    expect(screen.getByText(/claims ai makes about you/i)).toBeInTheDocument();
     expect(screen.getByText("Acme is headquartered in San Francisco.")).toBeInTheDocument();
     expect(screen.getByText("Acme was founded in 1975.")).toBeInTheDocument();
     // Each claim renders a verdict toggle group with 3 buttons (Pending /
@@ -547,11 +547,11 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getAllByText(/does not belong to the current workspace/i)).toHaveLength(1);
   });
 
-  it("renders the topic ownership card with prompt counts and ownership percent", () => {
+  it("renders the topic visibility card with AI question counts and visibility percent", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
-    expect(screen.getByText(/topic ownership/i)).toBeInTheDocument();
+    expect(screen.getByText(/topic visibility/i)).toBeInTheDocument();
     expect(screen.getByText("Career advice")).toBeInTheDocument();
     expect(screen.getByText("Industry news")).toBeInTheDocument();
     // Career advice = 8/10 = 80% (green); Industry news = 1/6 = 17% (red).
@@ -597,7 +597,7 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText("×2")).toBeInTheDocument();
   });
 
-  it("Absence rate delta renders DOWN as success-colored (invertDelta) because lower is better", () => {
+  it("Not-mentioned rate delta renders DOWN as success-colored (invertDelta) because lower is better", () => {
     // Fixture: previousAbsenceRate=0.55, currentAbsenceRate=0.4 → -27%.
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
@@ -606,7 +606,7 @@ describe("WorkspaceOverviewScreen", () => {
     expect(delta).toHaveClass("text-semantic-success-600");
   });
 
-  it("Average brand rank card renders with reversed Y-axis (1 at top)", () => {
+  it("Average answer position card renders with reversed Y-axis (1 at top)", () => {
     hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
     render(<WorkspaceOverviewScreen />);
 
@@ -812,7 +812,7 @@ describe("WorkspaceOverviewScreen", () => {
     expect(screen.getByText(/brand vs competitor/i)).toBeInTheDocument();
     expect(screen.getByText(/mention distribution/i)).toBeInTheDocument();
     expect(screen.getByText(/top citation domains/i)).toBeInTheDocument();
-    expect(screen.getByText(/domain types/i)).toBeInTheDocument();
+    expect(screen.getByText(/citation source mix/i)).toBeInTheDocument();
 
     // Multi-brand gap groups — one header per tracked brand.
     expect(screen.getByText(/Gaps for Acme/i)).toBeInTheDocument();

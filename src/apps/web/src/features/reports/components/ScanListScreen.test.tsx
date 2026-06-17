@@ -75,7 +75,7 @@ describe("ScanListScreen", () => {
   it("renders an empty state when there are no scans", () => {
     hookState = { data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() };
     render(<ScanListScreen />);
-    expect(screen.getByText(/no scans yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no scans have run yet/i)).toBeInTheDocument();
   });
 
   it("renders one row per scan with a link to the results page", () => {

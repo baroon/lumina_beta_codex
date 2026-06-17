@@ -1,8 +1,35 @@
 import { useMemo, useState } from "react";
-import { ExternalLink, Globe, Link2, Quote, Tag } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Award,
+  Calendar,
+  ExternalLink,
+  Globe,
+  Link2,
+  Quote,
+  ScatterChart as ScatterIcon,
+  Tag,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
+import {
+  CartesianGrid,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from "recharts";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
+import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
+import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
+import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
+import { DataTable } from "@/components/molecules/DataTable";
 import {
   Select,
   SelectContent,
@@ -37,6 +64,7 @@ import {
   platformLabel,
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
+import { DomainTypesCard } from "@/features/reports/components/DomainTypesCard";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
 import { useMarketCounts } from "@/features/reports/hooks/useMarketCounts";
@@ -48,11 +76,16 @@ import {
   useWorkspaceBrandsForClassification,
 } from "@/features/reports/hooks/useUpdateWorkspaceSourceClassification";
 import { useWorkspaceDomains } from "@/features/reports/hooks/useWorkspaceDomains";
+import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import { useWorkspaceUrls } from "@/features/reports/hooks/useWorkspaceUrls";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { previousSelectionFor } from "@/lib/previousWindow";
 import { cn } from "@/lib/utils";
+import type { ColumnDef } from "@tanstack/react-table";
 import type {
   BrandedDimensionGroupDto,
+  DomainTypeShareDto,
+  EntityTrendSeriesDto,
   SourceTypeReferenceDto,
   WorkspaceDomainRowDto,
   WorkspaceUrlRowDto,
@@ -62,6 +95,23 @@ const ALL_LENS_CODES = VISIBILITY_LENSES.map((l) => l.code);
 const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
 const EMPTY_DOMAIN_ROWS: readonly WorkspaceDomainRowDto[] = [];
 const EMPTY_URL_ROWS: readonly WorkspaceUrlRowDto[] = [];
+const EMPTY_SERIES: readonly EntityTrendSeriesDto[] = [];
+
+// Per-line palette for the owned-share trend — matches the entity
+// palette used across /overview + /competitors so the tracked brand
+// reads in the same primary purple wherever it appears.
+const TREND_PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#06b6d4", "#a855f7"];
+
+// Authority-band buckets. Inclusive at the lower bound, exclusive at
+// the upper, with the final band closed on both ends so 100 lands in
+// the top bucket.
+const AUTHORITY_BANDS: ReadonlyArray<{ label: string; min: number; max: number }> = [
+  { label: "0–20", min: 0, max: 20 },
+  { label: "20–40", min: 20, max: 40 },
+  { label: "40–60", min: 40, max: 60 },
+  { label: "60–80", min: 60, max: 80 },
+  { label: "80–100", min: 80, max: 100.0001 },
+];
 
 type SourcesView = "domain" | "url";
 
@@ -129,6 +179,36 @@ export function SourcesScreen() {
     selectedSentiments,
     selectedPlatformCodes,
   );
+  // Workspace overview feeds the Owned-citation-share trend card —
+  // we read `series` filtered to BrandOwnedCitationShare. Same filter
+  // dimensions as the sources hooks so the trend stays aligned.
+  const overview = useWorkspaceOverview(
+    range,
+    lensCodesForApi,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    trackerIds,
+    selectedSentiments,
+    selectedPlatformCodes,
+  );
+  // Second domains fetch at the equal-length back-shifted window — feeds
+  // the Movers card. React-Query keys collapse to the same entry when
+  // the current selection is "All time" (no meaningful previous), so
+  // there's no extra network in that case.
+  const previousSelection = useMemo(() => previousSelectionFor(range), [range]);
+  const previousDomains = useWorkspaceDomains(
+    previousSelection,
+    trackerIds,
+    lensCodesForApi,
+    selectedTopicNames,
+    selectedProductNames,
+    selectedMarketNames,
+    selectedAudienceNames,
+    selectedSentiments,
+    selectedPlatformCodes,
+  );
 
   const { data: discoverySummary } = useDiscoverySummary();
   const topicsByBrand = discoverySummary?.topics ?? EMPTY_GROUPS;
@@ -173,6 +253,24 @@ export function SourcesScreen() {
   const domainRows = domains.data?.domains ?? EMPTY_DOMAIN_ROWS;
   const urlRows = urls.data?.urls ?? EMPTY_URL_ROWS;
   const hero = useMemo(() => deriveHero(domainRows, urlRows), [domainRows, urlRows]);
+  // Source-type breakdown for the donut — same DomainTypeShareDto[]
+  // shape /overview consumes, but computed locally so the donut
+  // respects the page's filter bar instead of staying workspace-wide.
+  const domainTypeShares = useMemo(() => deriveTypeShares(domainRows), [domainRows]);
+  // Authority-score buckets feed the per-band citation bar chart.
+  const authorityBuckets = useMemo(() => deriveAuthorityBuckets(domainRows), [domainRows]);
+  // Authority × citations scatter — one dot per source with both axes
+  // present. Null-authority rows drop.
+  const scatterPoints = useMemo(() => deriveScatterPoints(domainRows), [domainRows]);
+  // Freshness buckets — categorical bins of last-seen recency.
+  const freshnessBuckets = useMemo(() => deriveFreshnessBuckets(domainRows), [domainRows]);
+  // Movers — gainers + losers vs the previous-window domain rows.
+  const previousDomainRows = previousDomains.data?.domains ?? EMPTY_DOMAIN_ROWS;
+  const moversBreakdown = useMemo(
+    () => deriveSourceMovers(domainRows, previousDomainRows),
+    [domainRows, previousDomainRows],
+  );
+  const isMoversComparable = range.kind !== "all";
 
   // Domain + URL queries fire in parallel. We block on the active
   // view's primary query for the LoadingPage decision so the page
@@ -204,12 +302,11 @@ export function SourcesScreen() {
         <LensChipRow
           selectedCodes={selectedLenses}
           onChange={setSelectedLenses}
-          // No section anchors — /sources has a single section that
-          // swaps via the view toggle.
+          // No section anchors — the table view (domain vs URL) toggles
+          // inside the Cited section, not via lens anchors here.
         />
       </div>
       <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
-        <ViewToggle value={view} onChange={setView} />
         <DateRangePicker value={range} onChange={setRange} />
         <FiltersPopover
           activeCount={activeFilterCount}
@@ -285,11 +382,54 @@ export function SourcesScreen() {
 
   const sections: MetricCategorySection[] = [
     {
+      id: "Context",
+      label: "Citation context",
+      // Top-of-page snapshot pair — source-type mix (donut) + owned
+      // citation share trend. Now a regular section so the filter bar
+      // sits directly under the Hero KPIs.
+      children: (
+        <div className="grid gap-3 md:grid-cols-2">
+          <DomainTypesCard rows={domainTypeShares} />
+          <OwnedShareTrendCard series={overview.data?.series ?? EMPTY_SERIES} />
+        </div>
+      ),
+    },
+    {
+      id: "Authority",
+      label: "Authority",
+      // Distribution bar + scatter sit side-by-side — same theme, two
+      // lenses: distribution = "how many citations at each band",
+      // scatter = "which sources fall where on authority vs volume".
+      children: (
+        <div className="grid gap-4 md:grid-cols-2">
+          <AuthorityDistributionCard buckets={authorityBuckets} />
+          <AuthorityScatterCard points={scatterPoints} />
+        </div>
+      ),
+    },
+    {
+      id: "Activity",
+      label: "Activity",
+      // Recency-of-citation breakdown + movers vs previous window.
+      // Both lenses on "how the citation set is moving over time."
+      children: (
+        <div className="grid gap-4 md:grid-cols-2">
+          <FreshnessCard buckets={freshnessBuckets} />
+          <SourceMoversCard
+            breakdown={moversBreakdown}
+            isComparable={isMoversComparable}
+            isLoadingPrevious={previousDomains.isLoading || previousDomains.isFetching}
+          />
+        </div>
+      ),
+    },
+    {
       id: "CitedSources",
       label: view === "domain" ? "Cited domains" : "Cited URLs",
       children: (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
+            <ViewToggle value={view} onChange={setView} />
             <Input
               inputSize="sm"
               value={query}
@@ -362,11 +502,445 @@ export function SourcesScreen() {
         </>
       ) : (
         <MetricCategoryLayout
+          // statusStrip is the Hero KPI row only; the filter bar comes
+          // right under it (sticky). Donut + trend moved into the
+          // first section ("Citation context") so the filter bar sits
+          // directly beneath the Hero rather than past two more cards.
           statusStrip={<SourcesHero hero={hero} />}
           controlsStrip={controlsStrip}
           sections={sections}
           renderNav={() => null}
         />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Source-type breakdown — aggregates citations per SourceType from the
+// filtered domain rows. Output shape matches DomainTypeShareDto so the
+// extracted DomainTypesCard can render either /sources (filtered,
+// computed-here) or /overview (workspace-aggregate, BE-provided).
+// ---------------------------------------------------------------------------
+
+export function deriveTypeShares(rows: readonly WorkspaceDomainRowDto[]): DomainTypeShareDto[] {
+  if (rows.length === 0) return [];
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    totals.set(r.sourceType, (totals.get(r.sourceType) ?? 0) + r.citationCount);
+  }
+  const grandTotal = [...totals.values()].reduce((s, n) => s + n, 0);
+  if (grandTotal === 0) return [];
+  return [...totals.entries()]
+    .map(([sourceType, citationCount]) => ({
+      sourceType,
+      citationCount,
+      share: citationCount / grandTotal,
+    }))
+    .sort((a, b) => b.citationCount - a.citationCount);
+}
+
+// ---------------------------------------------------------------------------
+// Authority-band buckets — total citations per authority band.
+// ---------------------------------------------------------------------------
+
+export interface AuthorityBucket {
+  label: string;
+  citations: number;
+  sourceCount: number;
+}
+
+export function deriveAuthorityBuckets(
+  rows: readonly WorkspaceDomainRowDto[],
+): readonly AuthorityBucket[] {
+  return AUTHORITY_BANDS.map((band) => {
+    let citations = 0;
+    let sourceCount = 0;
+    for (const r of rows) {
+      if (r.authorityScore == null) continue;
+      if (r.authorityScore >= band.min && r.authorityScore < band.max) {
+        citations += r.citationCount;
+        sourceCount += 1;
+      }
+    }
+    return { label: band.label, citations, sourceCount };
+  });
+}
+
+function AuthorityDistributionCard({ buckets }: { buckets: readonly AuthorityBucket[] }) {
+  const totalCitations = buckets.reduce((s, b) => s + b.citations, 0);
+  const data: BarChartDatum[] = buckets.map((b) => ({ label: b.label, value: b.citations }));
+  return (
+    <CollapsibleCard
+      icon={Award}
+      title="Authority distribution"
+      tooltip="Citations bucketed by source authority score (0–100). Sources without a curated authority score (null) are excluded. Higher bands = more reputable; a left-skewed chart means the AI is leaning on fringe sources."
+    >
+      {totalCitations === 0 ? (
+        <p className="text-sm text-neutral-500">
+          No authority data in this window. Sources without a curated authority score don't
+          contribute to this chart.
+        </p>
+      ) : (
+        <BarChartWrapper
+          data={data}
+          valueAxisLabel="Citations"
+          formatValue={(v) => v.toLocaleString()}
+        />
+      )}
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Owned-citation-share trend — single-metric line chart, no switcher
+// (citations are inherently a single-metric story on this page).
+// ---------------------------------------------------------------------------
+
+function OwnedShareTrendCard({ series }: { series: readonly EntityTrendSeriesDto[] }) {
+  // Only tracked-brand series matter for owned-share — competitors
+  // don't have an "owned" notion for the workspace's brands.
+  const chartSeries: LineChartSeries[] = useMemo(() => {
+    return series
+      .filter((s) => s.entityType === "Brand")
+      .filter(
+        (s) => s.metricName === "BrandOwnedCitationShare" || s.metricName === "OwnedCitationShare",
+      )
+      .map((s, i) => ({
+        id: s.entityId,
+        name: s.entityName,
+        color: TREND_PALETTE[i % TREND_PALETTE.length],
+        data: s.points.map((p) => ({ x: p.capturedAt, y: p.value ?? null })),
+      }));
+  }, [series]);
+  return (
+    <CollapsibleCard
+      icon={TrendingUp}
+      title="Owned citation share over time"
+      tooltip="Per-tracked-brand share of in-window citations that point at a domain you own. Tracks how much of the AI's citation appetite your owned content captures."
+    >
+      {chartSeries.length === 0 ? (
+        <p className="text-sm text-neutral-500">No owned-citation trend data in this window yet.</p>
+      ) : (
+        <LineChartWrapper
+          series={chartSeries}
+          formatValue={(v) => `${Math.round(v * 100)}%`}
+          minValue={0}
+          height={180}
+        />
+      )}
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Authority × citations scatter — each source as a dot
+// ---------------------------------------------------------------------------
+
+export interface ScatterPoint {
+  sourceId: string;
+  name: string;
+  authority: number;
+  citations: number;
+}
+
+export function deriveScatterPoints(
+  rows: readonly WorkspaceDomainRowDto[],
+): readonly ScatterPoint[] {
+  const out: ScatterPoint[] = [];
+  for (const r of rows) {
+    if (r.authorityScore == null) continue;
+    out.push({
+      sourceId: r.sourceId,
+      name: r.sourceName,
+      authority: r.authorityScore,
+      citations: r.citationCount,
+    });
+  }
+  return out;
+}
+
+function AuthorityScatterCard({ points }: { points: readonly ScatterPoint[] }) {
+  return (
+    <CollapsibleCard
+      icon={ScatterIcon}
+      title="Authority × citations"
+      tooltip="Each cited source plotted by authority (x) and citation count (y). Top-right = strong signals. Top-left = AI leaning on weak sources. Bottom-right = high-authority opportunities the AI isn't citing yet."
+    >
+      {points.length === 0 ? (
+        <p className="text-sm text-neutral-500">
+          No sources with both an authority score and citations in window.
+        </p>
+      ) : (
+        <div style={{ height: 280 }} className="w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                type="number"
+                dataKey="authority"
+                name="Authority"
+                domain={[0, 100]}
+                tickCount={6}
+                tick={{ fontSize: 10, fill: "#6b7280" }}
+                label={{
+                  value: "Authority score",
+                  position: "insideBottom",
+                  offset: -10,
+                  style: { fontSize: 10, fill: "#6b7280" },
+                }}
+              />
+              <YAxis
+                type="number"
+                dataKey="citations"
+                name="Citations"
+                allowDecimals={false}
+                tick={{ fontSize: 10, fill: "#6b7280" }}
+                label={{
+                  value: "Citations",
+                  angle: -90,
+                  position: "insideLeft",
+                  style: { fontSize: 10, fill: "#6b7280" },
+                }}
+              />
+              <ZAxis range={[50, 50]} />
+              <RechartsTooltip
+                cursor={{ strokeDasharray: "3 3" }}
+                labelFormatter={() => ""}
+                contentStyle={{ fontSize: 11 }}
+              />
+              <Scatter name="Sources" data={[...points]} fill="#6366f1" fillOpacity={0.7} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Citation freshness — buckets by last-seen recency
+// ---------------------------------------------------------------------------
+
+export interface FreshnessBucket {
+  label: string;
+  sourceCount: number;
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+export function deriveFreshnessBuckets(
+  rows: readonly WorkspaceDomainRowDto[],
+  now: Date = new Date(),
+): readonly FreshnessBucket[] {
+  let today = 0;
+  let week = 0;
+  let month = 0;
+  let older = 0;
+  let never = 0;
+  for (const r of rows) {
+    if (!r.lastSeenAt) {
+      never += 1;
+      continue;
+    }
+    const ageMs = now.getTime() - new Date(r.lastSeenAt).getTime();
+    const ageDays = ageMs / ONE_DAY_MS;
+    if (ageDays <= 1) today += 1;
+    else if (ageDays <= 7) week += 1;
+    else if (ageDays <= 30) month += 1;
+    else older += 1;
+  }
+  return [
+    { label: "Today", sourceCount: today },
+    { label: "This week", sourceCount: week },
+    { label: "This month", sourceCount: month },
+    { label: "Older", sourceCount: older },
+    { label: "Never", sourceCount: never },
+  ];
+}
+
+function FreshnessCard({ buckets }: { buckets: readonly FreshnessBucket[] }) {
+  const total = buckets.reduce((s, b) => s + b.sourceCount, 0);
+  const data: BarChartDatum[] = buckets.map((b) => ({ label: b.label, value: b.sourceCount }));
+  return (
+    <CollapsibleCard
+      icon={Calendar}
+      title="Citation freshness"
+      tooltip="Distinct sources binned by how recently the AI last cited them. A right-skewed chart means sources are showing up consistently; left-skewed means the AI is rotating fast or running out of fresh material."
+    >
+      {total === 0 ? (
+        <p className="text-sm text-neutral-500">No citation activity in this window.</p>
+      ) : (
+        <BarChartWrapper
+          data={data}
+          valueAxisLabel="Sources"
+          formatValue={(v) => v.toLocaleString()}
+        />
+      )}
+    </CollapsibleCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Movers — gainers + losers in citation count vs the previous window
+// ---------------------------------------------------------------------------
+
+interface SourceMoverRow {
+  sourceId: string;
+  name: string;
+  currentCitations: number;
+  previousCitations: number;
+  delta: number;
+  pctChange: number | null;
+}
+
+interface SourceMoversBreakdown {
+  gainers: readonly SourceMoverRow[];
+  losers: readonly SourceMoverRow[];
+}
+
+export function deriveSourceMovers(
+  current: readonly WorkspaceDomainRowDto[],
+  previous: readonly WorkspaceDomainRowDto[],
+): SourceMoversBreakdown {
+  const prevByKey = new Map<string, WorkspaceDomainRowDto>();
+  for (const r of previous) prevByKey.set(r.sourceId, r);
+  const curByKey = new Map<string, WorkspaceDomainRowDto>();
+  for (const r of current) curByKey.set(r.sourceId, r);
+
+  const all = new Set<string>([...curByKey.keys(), ...prevByKey.keys()]);
+  const movers: SourceMoverRow[] = [];
+  for (const key of all) {
+    const cur = curByKey.get(key);
+    const prev = prevByKey.get(key);
+    const currentCitations = cur?.citationCount ?? 0;
+    const previousCitations = prev?.citationCount ?? 0;
+    const delta = currentCitations - previousCitations;
+    if (delta === 0) continue;
+    const sample = cur ?? prev!;
+    movers.push({
+      sourceId: sample.sourceId,
+      name: sample.sourceName,
+      currentCitations,
+      previousCitations,
+      delta,
+      pctChange: previousCitations === 0 ? null : delta / previousCitations,
+    });
+  }
+  const gainers = movers
+    .filter((m) => m.delta > 0)
+    .sort((a, b) => b.delta - a.delta)
+    .slice(0, 5);
+  const losers = movers
+    .filter((m) => m.delta < 0)
+    .sort((a, b) => a.delta - b.delta)
+    .slice(0, 5);
+  return { gainers, losers };
+}
+
+function SourceMoversCard({
+  breakdown,
+  isComparable,
+  isLoadingPrevious,
+}: {
+  breakdown: SourceMoversBreakdown;
+  isComparable: boolean;
+  isLoadingPrevious: boolean;
+}) {
+  if (!isComparable) {
+    return (
+      <CollapsibleCard
+        icon={Zap}
+        title="Movers"
+        tooltip="Compares the current window against an equal-length window immediately before it."
+      >
+        <p className="text-sm text-neutral-500">
+          Pick a bounded date range to surface gainers and losers — "All time" has no previous
+          window to compare against.
+        </p>
+      </CollapsibleCard>
+    );
+  }
+  if (isLoadingPrevious) {
+    return (
+      <CollapsibleCard icon={Zap} title="Movers">
+        <p className="text-sm text-neutral-500">Comparing windows…</p>
+      </CollapsibleCard>
+    );
+  }
+  if (breakdown.gainers.length === 0 && breakdown.losers.length === 0) {
+    return (
+      <CollapsibleCard icon={Zap} title="Movers">
+        <p className="text-sm text-neutral-500">No notable movement this window.</p>
+      </CollapsibleCard>
+    );
+  }
+  return (
+    <CollapsibleCard
+      icon={Zap}
+      title="Movers"
+      tooltip="Top gainers and losers in citation count between the current window and an equal-length window immediately before it."
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <SourceMoverColumn
+          title="Gainers"
+          rows={breakdown.gainers}
+          emptyLabel="No gainers this window."
+          positive
+        />
+        <SourceMoverColumn
+          title="Losers"
+          rows={breakdown.losers}
+          emptyLabel="No losers this window."
+        />
+      </div>
+    </CollapsibleCard>
+  );
+}
+
+function SourceMoverColumn({
+  title,
+  rows,
+  emptyLabel,
+  positive = false,
+}: {
+  title: string;
+  rows: readonly SourceMoverRow[];
+  emptyLabel: string;
+  positive?: boolean;
+}) {
+  const Arrow = positive ? ArrowUp : ArrowDown;
+  const accent = positive ? "text-semantic-success-700" : "text-semantic-error-700";
+  return (
+    <div className="space-y-2">
+      <h3 className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <Arrow size={12} className={accent} aria-hidden />
+        {title}
+      </h3>
+      {rows.length === 0 ? (
+        <p className="text-xs text-neutral-400">{emptyLabel}</p>
+      ) : (
+        <ul className="divide-y divide-neutral-100 rounded-md border border-neutral-200">
+          {rows.map((r) => (
+            <li key={r.sourceId} className="flex items-center justify-between px-3 py-2 text-xs">
+              <span className="font-medium text-neutral-900">{r.name}</span>
+              <div className="flex items-center gap-2 tabular-nums">
+                <span className="text-neutral-500">
+                  {r.previousCitations} → {r.currentCitations}
+                </span>
+                <span className={cn("font-semibold", accent)}>
+                  {r.delta > 0 ? "+" : ""}
+                  {r.delta}
+                </span>
+                <span className="w-12 text-right text-[10px] text-neutral-500">
+                  {r.pctChange == null
+                    ? "new"
+                    : `${r.pctChange > 0 ? "+" : ""}${Math.round(r.pctChange * 100)}%`}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -657,100 +1231,81 @@ function DomainsTable({
   classifyingBrandId: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
-  return (
-    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
-      <table className="w-full text-xs">
-        <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
-          <tr>
-            <Th>Source</Th>
-            <Th>Type</Th>
-            <Th className="text-right">Citations</Th>
-            <Th className="text-right">Scans</Th>
-            <Th className="text-right">Authority</Th>
-            <Th>Last seen</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100">
-          {rows.map((row) => (
-            <DomainsRow
-              key={row.sourceId}
-              row={row}
-              classifyingBrandId={classifyingBrandId}
-              sourceTypes={sourceTypes}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function DomainsRow({
-  row,
-  classifyingBrandId,
-  sourceTypes,
-}: {
-  row: WorkspaceDomainRowDto;
-  classifyingBrandId: string | null;
-  sourceTypes: readonly SourceTypeReferenceDto[];
-}) {
-  const update = useUpdateWorkspaceSourceClassification(classifyingBrandId);
-  const errorMessage =
-    update.isError && update.variables?.sourceId === row.sourceId
-      ? update.error instanceof Error
-        ? update.error.message
-        : "Save failed — try again."
-      : null;
-  const canEdit = classifyingBrandId != null && sourceTypes.length > 0;
-  return (
-    <tr>
-      <Td>
-        <div className="flex flex-col">
-          <span className="text-neutral-900">{row.sourceName}</span>
-          {row.normalizedDomain && (
-            <span className="text-[10px] text-neutral-500">{row.normalizedDomain}</span>
-          )}
-        </div>
-      </Td>
-      <Td>
-        {canEdit ? (
-          <div className="flex flex-col gap-1">
-            <SourceTypeDropdown
-              value={row.sourceType}
-              onChange={(next) => update.mutate({ sourceId: row.sourceId, sourceType: next })}
-              sourceTypes={sourceTypes}
-              disabled={update.isPending}
-              ariaLabel={`Source type for ${row.sourceName}`}
-            />
-            {errorMessage && (
-              <p className="text-[10px] text-semantic-error-600" role="alert">
-                {errorMessage}
-              </p>
+  const columns = useMemo<ColumnDef<WorkspaceDomainRowDto, unknown>[]>(
+    () => [
+      {
+        accessorKey: "sourceName",
+        header: "Source",
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span className="text-neutral-900">{row.original.sourceName}</span>
+            {row.original.normalizedDomain && (
+              <span className="text-[10px] text-neutral-500">{row.original.normalizedDomain}</span>
             )}
           </div>
-        ) : (
-          <Badge variant="secondary" className="text-[10px]">
-            {row.sourceType}
-          </Badge>
-        )}
-      </Td>
-      <Td className="text-right tabular-nums">{row.citationCount}</Td>
-      <Td className="text-right tabular-nums">{row.retrievedInScans}</Td>
-      <Td className="text-right tabular-nums">
-        {row.authorityScore == null ? (
-          <span className="text-neutral-400">—</span>
-        ) : (
-          <span className="text-neutral-700">{Math.round(row.authorityScore)}</span>
-        )}
-      </Td>
-      <Td>
-        {row.lastSeenAt ? (
-          formatRelativeDate(row.lastSeenAt)
-        ) : (
-          <span className="text-neutral-400">never</span>
-        )}
-      </Td>
-    </tr>
+        ),
+      },
+      {
+        accessorKey: "sourceType",
+        header: "Type",
+        cell: ({ row }) => (
+          <SourceTypeCell
+            sourceId={row.original.sourceId}
+            sourceName={row.original.sourceName}
+            sourceType={row.original.sourceType}
+            classifyingBrandId={classifyingBrandId}
+            sourceTypes={sourceTypes}
+          />
+        ),
+      },
+      {
+        accessorKey: "citationCount",
+        header: "Citations",
+        meta: { align: "right" },
+      },
+      {
+        accessorKey: "retrievedInScans",
+        header: "Scans",
+        meta: { align: "right" },
+      },
+      {
+        accessorKey: "authorityScore",
+        header: "Authority",
+        meta: { align: "right" },
+        cell: ({ row }) =>
+          row.original.authorityScore == null ? (
+            <span className="text-neutral-400">—</span>
+          ) : (
+            <span className="text-neutral-700">{Math.round(row.original.authorityScore)}</span>
+          ),
+        // Null-aware sort: place null authority at the bottom regardless
+        // of direction so "no data" doesn't crowd the top of the column.
+        sortingFn: (a, b) =>
+          nullableNumericSort(a.original.authorityScore, b.original.authorityScore),
+      },
+      {
+        accessorKey: "lastSeenAt",
+        header: "Last seen",
+        cell: ({ row }) =>
+          row.original.lastSeenAt ? (
+            formatRelativeDate(row.original.lastSeenAt)
+          ) : (
+            <span className="text-neutral-400">never</span>
+          ),
+        sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
+      },
+    ],
+    [classifyingBrandId, sourceTypes],
+  );
+
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      getRowId={(r) => r.sourceId}
+      initialSorting={[{ id: "citationCount", desc: true }]}
+      emptyMessage="No sources match the current filters."
+    />
   );
 }
 
@@ -763,115 +1318,156 @@ function UrlsTable({
   classifyingBrandId: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
-  return (
-    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
-      <table className="w-full text-xs">
-        <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
-          <tr>
-            <Th>URL</Th>
-            <Th>Domain · Type</Th>
-            <Th className="text-right">Citations</Th>
-            <Th className="text-right">Scans</Th>
-            <Th>Last seen</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100">
-          {rows.map((row) => (
-            <UrlRow
-              key={row.sourceUrlId}
-              row={row}
+  const columns = useMemo<ColumnDef<WorkspaceUrlRowDto, unknown>[]>(
+    () => [
+      {
+        // URL column carries title (optional) + the normalized URL with
+        // an external-link affordance. Sort by title when present,
+        // falling back to the URL string.
+        id: "url",
+        accessorFn: (r) => r.title ?? r.normalizedUrl ?? r.url,
+        header: "URL",
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            {row.original.title && <span className="text-neutral-900">{row.original.title}</span>}
+            <a
+              href={row.original.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 text-[10px] text-primary-600 hover:underline"
+              title={row.original.url}
+            >
+              <span className="max-w-[400px] truncate">
+                {row.original.normalizedUrl || row.original.url}
+              </span>
+              <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden />
+            </a>
+          </div>
+        ),
+      },
+      {
+        id: "domainAndType",
+        accessorFn: (r) => r.normalizedDomain ?? r.sourceName,
+        header: "Domain · Type",
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <span className="text-neutral-900">
+              {row.original.normalizedDomain ?? row.original.sourceName}
+            </span>
+            <SourceTypeCell
+              sourceId={row.original.sourceId}
+              sourceName={row.original.sourceName}
+              sourceType={row.original.sourceType}
               classifyingBrandId={classifyingBrandId}
               sourceTypes={sourceTypes}
             />
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "citationCount",
+        header: "Citations",
+        meta: { align: "right" },
+      },
+      {
+        accessorKey: "retrievedInScans",
+        header: "Scans",
+        meta: { align: "right" },
+      },
+      {
+        accessorKey: "lastSeenAt",
+        header: "Last seen",
+        cell: ({ row }) =>
+          row.original.lastSeenAt ? (
+            formatRelativeDate(row.original.lastSeenAt)
+          ) : (
+            <span className="text-neutral-400">never</span>
+          ),
+        sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
+      },
+    ],
+    [classifyingBrandId, sourceTypes],
+  );
+
+  return (
+    <DataTable
+      data={rows}
+      columns={columns}
+      getRowId={(r) => r.sourceUrlId}
+      initialSorting={[{ id: "citationCount", desc: true }]}
+      emptyMessage="No URLs match the current filters."
+    />
   );
 }
 
-function UrlRow({
-  row,
+// ---------------------------------------------------------------------------
+// Shared SourceType cell — shared between the Domains and URLs tables.
+// Owns the classification mutation; the dropdown only renders when the
+// active brand has source-types data loaded.
+// ---------------------------------------------------------------------------
+
+function SourceTypeCell({
+  sourceId,
+  sourceName,
+  sourceType,
   classifyingBrandId,
   sourceTypes,
 }: {
-  row: WorkspaceUrlRowDto;
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
   classifyingBrandId: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
   const update = useUpdateWorkspaceSourceClassification(classifyingBrandId);
-  // Match by sourceId — multiple URL rows share a Source. The error
-  // surfaces on every URL row backed by the failing Source.
   const errorMessage =
-    update.isError && update.variables?.sourceId === row.sourceId
+    update.isError && update.variables?.sourceId === sourceId
       ? update.error instanceof Error
         ? update.error.message
         : "Save failed — try again."
       : null;
   const canEdit = classifyingBrandId != null && sourceTypes.length > 0;
+  if (!canEdit) {
+    return (
+      <Badge variant="secondary" className="self-start text-[10px]">
+        {sourceType}
+      </Badge>
+    );
+  }
   return (
-    <tr>
-      <Td>
-        <div className="flex flex-col">
-          {row.title && <span className="text-neutral-900">{row.title}</span>}
-          <a
-            href={row.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-[10px] text-primary-600 hover:underline"
-            title={row.url}
-          >
-            <span className="max-w-[400px] truncate">{row.normalizedUrl || row.url}</span>
-            <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden />
-          </a>
-        </div>
-      </Td>
-      <Td>
-        <div className="flex flex-col gap-1">
-          <span className="text-neutral-900">{row.normalizedDomain ?? row.sourceName}</span>
-          {canEdit ? (
-            <SourceTypeDropdown
-              value={row.sourceType}
-              onChange={(next) => update.mutate({ sourceId: row.sourceId, sourceType: next })}
-              sourceTypes={sourceTypes}
-              disabled={update.isPending}
-              ariaLabel={`Source type for ${row.sourceName}`}
-            />
-          ) : (
-            <Badge variant="secondary" className="self-start text-[10px]">
-              {row.sourceType}
-            </Badge>
-          )}
-          {errorMessage && (
-            <p className="text-[10px] text-semantic-error-600" role="alert">
-              {errorMessage}
-            </p>
-          )}
-        </div>
-      </Td>
-      <Td className="text-right tabular-nums">{row.citationCount}</Td>
-      <Td className="text-right tabular-nums">{row.retrievedInScans}</Td>
-      <Td>
-        {row.lastSeenAt ? (
-          formatRelativeDate(row.lastSeenAt)
-        ) : (
-          <span className="text-neutral-400">never</span>
-        )}
-      </Td>
-    </tr>
+    <div className="flex flex-col gap-1">
+      <SourceTypeDropdown
+        value={sourceType}
+        onChange={(next) => update.mutate({ sourceId, sourceType: next })}
+        sourceTypes={sourceTypes}
+        disabled={update.isPending}
+        ariaLabel={`Source type for ${sourceName}`}
+      />
+      {errorMessage && (
+        <p className="text-[10px] text-semantic-error-600" role="alert">
+          {errorMessage}
+        </p>
+      )}
+    </div>
   );
 }
 
-function Th({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <th scope="col" className={cn("px-3 py-2 text-left text-[10px] font-medium", className)}>
-      {children}
-    </th>
-  );
+// Numeric sort that always pushes nulls to the bottom, regardless of
+// whether the column is asc or desc. tanstack-react-table's default
+// sort treats nulls as the smallest value, which crowds them at the
+// top on ascending.
+function nullableNumericSort(a: number | null | undefined, b: number | null | undefined): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return a - b;
 }
 
-function Td({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <td className={cn("px-3 py-2 align-top text-neutral-700", className)}>{children}</td>;
+function nullableDateSort(a: string | null | undefined, b: string | null | undefined): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return new Date(a).getTime() - new Date(b).getTime();
 }
 
 function formatRelativeDate(iso: string): string {

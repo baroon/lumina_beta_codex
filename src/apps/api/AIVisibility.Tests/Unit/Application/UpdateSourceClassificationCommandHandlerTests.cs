@@ -45,10 +45,13 @@ public class UpdateSourceClassificationCommandHandlerTests
     }
 
     [Fact]
-    public async Task ReturnsNull_When_BrandSourcePair_HasNoExistingClassification()
+    public async Task ReturnsNull_When_SourceItself_DoesNotExist()
     {
-        // 404 path: user trying to correct a classification that doesn't
-        // exist for this brand (probably stale UI state).
+        // 404 path: caller targets a Source row that doesn't exist in
+        // the DB at all. Used to be the same path as "no classification
+        // for the (brand, source) pair", but the handler now upserts
+        // missing classifications — so the only honest 404 left is the
+        // genuinely-missing-source case.
         using var ctx = NewContext();
         var sut = new UpdateSourceClassificationCommandHandler(ctx);
 
@@ -57,6 +60,43 @@ public class UpdateSourceClassificationCommandHandlerTests
             CancellationToken.None);
 
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CreatesUserCorrectedRow_When_BrandSourcePair_HasNoExistingClassification()
+    {
+        // Upsert path: the source exists but the active brand has never
+        // classified it. Reporting surfaces (/sources) can legitimately
+        // show such rows, so the user click must create the row rather
+        // than 404.
+        using var ctx = NewContext();
+        var brandId = Guid.NewGuid();
+        var sourceId = Guid.NewGuid();
+        ctx.Sources.Add(new Source
+        {
+            Id = sourceId,
+            SourceName = "Acme Source",
+            NormalizedDomain = "acme.example",
+            CreatedAt = DateTime.UtcNow,
+        });
+        ctx.SaveChanges();
+        var sut = new UpdateSourceClassificationCommandHandler(ctx);
+
+        var result = await sut.Handle(
+            new UpdateSourceClassificationCommand(sourceId, brandId, SourceType.Editorial),
+            CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.SourceType.Should().Be("Editorial");
+        result.ProvenanceSource.Should().Be("UserCorrected");
+        result.Status.Should().Be("UserCorrected");
+        result.ConfidenceScore.Should().Be(1.0);
+
+        // The row should now be persisted with the user-correction shape.
+        var reloaded = await ctx.BrandSourceClassifications.AsNoTracking()
+            .SingleAsync(c => c.BrandId == brandId && c.SourceId == sourceId);
+        reloaded.SourceType.Should().Be(SourceType.Editorial);
+        reloaded.ProvenanceSource.Should().Be(ClassificationSource.UserCorrected);
     }
 
     [Fact]
