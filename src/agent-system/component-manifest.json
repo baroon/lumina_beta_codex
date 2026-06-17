@@ -1366,7 +1366,7 @@
             "useWorkspaceCompetitive",
             "recommendations"
           ],
-          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes summary tiles, prioritized action table, empty state, and right-side details drawer."
+          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes date range, Status/Impact/Lens filter pills with clear action, summary tiles that reflect the filtered queue, prioritized action table, empty state, and right-side details drawer."
         },
         {
           "name": "LensesScreen",
@@ -1534,7 +1534,7 @@
             "useTrackerScope",
             "useWorkspacePrompts"
           ],
-          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, and Sentiment. Status strip includes KPI tiles, visibility distribution, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, country, tracker, platforms, visibility, sentiment, mentions, activity, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
+          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, and Sentiment. Status strip includes KPI tiles, visibility distribution, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, market, country, tracker, platforms, visibility, sentiment, mentions, activity, derived status, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
         },
         {
           "name": "ScanResultsScreen",

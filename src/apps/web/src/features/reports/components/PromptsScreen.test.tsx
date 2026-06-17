@@ -275,6 +275,7 @@ describe("PromptsScreen", () => {
           lensName: "Discovery",
           topics: ["Resume builders"],
           audiences: ["Job seekers"],
+          markets: ["United States"],
           trackerName: "Acme · US",
           brandName: "Acme",
           scanCount: 3,
@@ -290,10 +291,12 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("Best resume builder?")).toBeInTheDocument();
     expect(within(table).getByText("Resume builders")).toBeInTheDocument();
     expect(within(table).getByText("Job seekers")).toBeInTheDocument();
+    expect(within(table).getByText("United States")).toBeInTheDocument();
     expect(within(table).getByText("Acme")).toBeInTheDocument();
     expect(within(table).getByText("Acme · US")).toBeInTheDocument();
     expect(within(table).getByText("ChatGPT")).toBeInTheDocument();
     expect(within(table).getByText("3 scans")).toBeInTheDocument();
+    expect(within(table).getByText("Brand visible")).toBeInTheDocument();
   });
 
   it("renders analytical columns (visibility, sentiment, mentions)", () => {
@@ -316,6 +319,41 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("pos 0.22")).toBeInTheDocument();
     expect(within(table).getByText("Positive")).toBeInTheDocument();
     expect(within(table).getByText("6")).toBeInTheDocument();
+  });
+
+  it("derives row status from answer coverage and visibility", () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          text: "No answer question",
+          visibilityRate: null,
+          scanCount: 0,
+          brandMentionCount: 0,
+        }),
+        row({
+          promptId: "b",
+          text: "Weak visibility question",
+          visibilityRate: 0.1,
+          brandMentionCount: 1,
+        }),
+        row({
+          promptId: "c",
+          text: "Missing brand question",
+          visibilityRate: 0.4,
+          brandMentionCount: 0,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<PromptsScreen />);
+
+    const table = questionTables()[0];
+    expect(within(table).getByText("No answers")).toBeInTheDocument();
+    expect(within(table).getByText("Needs attention")).toBeInTheDocument();
+    expect(within(table).getByText("Not visible")).toBeInTheDocument();
   });
 
   it("summarizes questions by lens with mention rate, average position, and open issues", () => {

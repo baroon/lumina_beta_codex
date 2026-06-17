@@ -108,6 +108,26 @@ describe("RecommendationsScreen", () => {
     expect(within(drawer).getByText("Evidence")).toBeInTheDocument();
   });
 
+  it("filters the action queue by impact and lens", async () => {
+    render(<RecommendationsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "High" }));
+
+    expect(screen.getByText("Close the gap with Rival News")).toBeInTheDocument();
+    expect(screen.queryByText("Review claim about circulation")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "All impacts" }));
+    await userEvent.click(screen.getByRole("button", { name: "Claims & Risks" }));
+
+    expect(screen.getByText("Review claim about circulation")).toBeInTheDocument();
+    expect(screen.queryByText("Close the gap with Rival News")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(screen.getByText("Review claim about circulation")).toBeInTheDocument();
+    expect(screen.getByText("Close the gap with Rival News")).toBeInTheDocument();
+  });
+
   it("renders the empty state when no recommendations are derived", () => {
     overviewState = {
       ...overviewState,

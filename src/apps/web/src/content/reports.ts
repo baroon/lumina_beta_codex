@@ -647,6 +647,10 @@ export const REPORTS_COPY = {
     },
     controls: {
       competitiveUnavailable: "Competitive recommendations are unavailable.",
+      allStatuses: "All statuses",
+      allImpacts: "All impacts",
+      allLenses: "All lenses",
+      clearFilters: "Clear filters",
     },
     summary: {
       openRecommendations: "Open recommendations",

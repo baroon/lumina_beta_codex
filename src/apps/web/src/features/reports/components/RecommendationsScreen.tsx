@@ -15,6 +15,7 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { cn } from "@/lib/utils";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import {
@@ -30,6 +31,9 @@ export function RecommendationsScreen() {
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [selected, setSelected] = useState<RecommendationItem | null>(null);
+  const [statusFilter, setStatusFilter] = useState<RecommendationStatus | "all">("all");
+  const [impactFilter, setImpactFilter] = useState<RecommendationImpact | "all">("all");
+  const [lensFilter, setLensFilter] = useState<string>("all");
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const competitive = useWorkspaceCompetitive(range, [], [], [], [], [], trackerIds);
@@ -37,6 +41,20 @@ export function RecommendationsScreen() {
   const recommendations = useMemo(
     () => deriveRecommendations(overview.data, competitive.data),
     [overview.data, competitive.data],
+  );
+  const lensOptions = useMemo(
+    () => Array.from(new Set(recommendations.map((item) => item.lens))).sort(),
+    [recommendations],
+  );
+  const filteredRecommendations = useMemo(
+    () =>
+      recommendations.filter((item) => {
+        if (statusFilter !== "all" && item.status !== statusFilter) return false;
+        if (impactFilter !== "all" && item.impact !== impactFilter) return false;
+        if (lensFilter !== "all" && item.lens !== lensFilter) return false;
+        return true;
+      }),
+    [impactFilter, lensFilter, recommendations, statusFilter],
   );
   const columns = useMemo<ColumnDef<RecommendationItem, unknown>[]>(
     () => [
@@ -118,8 +136,9 @@ export function RecommendationsScreen() {
   }
   if (!overview.data) return null;
 
-  const highImpactCount = recommendations.filter((r) => r.impact === "High").length;
-  const evidenceCount = recommendations.reduce((sum, r) => sum + r.evidenceCount, 0);
+  const highImpactCount = filteredRecommendations.filter((r) => r.impact === "High").length;
+  const evidenceCount = filteredRecommendations.reduce((sum, r) => sum + r.evidenceCount, 0);
+  const filtersActive = statusFilter !== "all" || impactFilter !== "all" || lensFilter !== "all";
 
   return (
     <div className="space-y-5">
@@ -132,6 +151,60 @@ export function RecommendationsScreen() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
+        <FilterPill
+          active={statusFilter === "all"}
+          label={copy.controls.allStatuses}
+          onClick={() => setStatusFilter("all")}
+        />
+        {(["Open", "Planned", "Done"] as const).map((status) => (
+          <FilterPill
+            key={status}
+            active={statusFilter === status}
+            label={status}
+            onClick={() => setStatusFilter(status)}
+          />
+        ))}
+        <span className="mx-1 h-5 w-px bg-neutral-200" aria-hidden />
+        <FilterPill
+          active={impactFilter === "all"}
+          label={copy.controls.allImpacts}
+          onClick={() => setImpactFilter("all")}
+        />
+        {(["High", "Medium", "Low"] as const).map((impact) => (
+          <FilterPill
+            key={impact}
+            active={impactFilter === impact}
+            label={impact}
+            onClick={() => setImpactFilter(impact)}
+          />
+        ))}
+        <span className="mx-1 h-5 w-px bg-neutral-200" aria-hidden />
+        <FilterPill
+          active={lensFilter === "all"}
+          label={copy.controls.allLenses}
+          onClick={() => setLensFilter("all")}
+        />
+        {lensOptions.map((lens) => (
+          <FilterPill
+            key={lens}
+            active={lensFilter === lens}
+            label={lens}
+            onClick={() => setLensFilter(lens)}
+          />
+        ))}
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("all");
+              setImpactFilter("all");
+              setLensFilter("all");
+            }}
+            className="ml-auto text-xs font-medium text-primary-700 hover:text-primary-800"
+          >
+            {copy.controls.clearFilters}
+          </button>
+        )}
         {competitive.isError && (
           <span className="text-xs text-semantic-warning-700">
             {copy.controls.competitiveUnavailable}
@@ -142,7 +215,7 @@ export function RecommendationsScreen() {
       <div className="grid gap-3 md:grid-cols-3">
         <SummaryTile
           label={copy.summary.openRecommendations}
-          value={recommendations.length.toLocaleString()}
+          value={filteredRecommendations.length.toLocaleString()}
           helper={copy.summary.openRecommendationsHelper}
         />
         <SummaryTile
@@ -159,7 +232,7 @@ export function RecommendationsScreen() {
 
       <DataTable
         columns={columns}
-        data={recommendations}
+        data={filteredRecommendations}
         getRowId={(item) => item.id}
         initialSorting={[{ id: "priority", desc: false }]}
         emptyMessage={<RecommendationsEmptyState copy={copy.empty} />}
@@ -167,6 +240,32 @@ export function RecommendationsScreen() {
 
       <RecommendationDrawer item={selected} onClose={() => setSelected(null)} copy={copy} />
     </div>
+  );
+}
+
+function FilterPill({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+        active
+          ? "border-primary-200 bg-primary-50 text-primary-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 

@@ -1061,6 +1061,7 @@ function PromptsTable({
             <Th>AI Question</Th>
             <Th>Topics</Th>
             <Th>Audience</Th>
+            <Th>Market</Th>
             <Th>Country</Th>
             <Th>Tracker</Th>
             <Th>Platforms</Th>
@@ -1091,6 +1092,7 @@ function PromptsTable({
             >
               Activity
             </SortableTh>
+            <Th>Status</Th>
             <Th className="w-6">
               <span className="sr-only">Remove</span>
             </Th>
@@ -1156,6 +1158,9 @@ function PromptRow({
         <DimensionChipList values={row.audiences} emptyLabel="No audience" />
       </Td>
       <Td>
+        <DimensionChipList values={row.markets} emptyLabel="No market" />
+      </Td>
+      <Td>
         <CountryCell codes={row.marketCountryCodes} />
       </Td>
       <Td>
@@ -1200,6 +1205,9 @@ function PromptRow({
           </span>
         </div>
       </Td>
+      <Td>
+        <QuestionStatusBadge row={row} />
+      </Td>
       <Td className="w-6" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
@@ -1212,6 +1220,38 @@ function PromptRow({
         </button>
       </Td>
     </tr>
+  );
+}
+
+function QuestionStatusBadge({ row }: { row: WorkspacePromptRowDto }) {
+  if (row.scanCount === 0 || row.visibilityRate == null) {
+    return (
+      <Badge variant="outline" className="whitespace-nowrap text-[10px]">
+        No answers
+      </Badge>
+    );
+  }
+
+  if (row.visibilityRate < 0.25) {
+    return (
+      <Badge variant="warning" className="whitespace-nowrap text-[10px]">
+        Needs attention
+      </Badge>
+    );
+  }
+
+  if (row.brandMentionCount === 0) {
+    return (
+      <Badge variant="secondary" className="whitespace-nowrap text-[10px]">
+        Not visible
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="success" className="whitespace-nowrap text-[10px]">
+      Brand visible
+    </Badge>
   );
 }
 
