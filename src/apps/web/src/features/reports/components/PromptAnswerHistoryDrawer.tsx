@@ -39,6 +39,8 @@ export function PromptAnswerHistoryDrawer({
   const copy = REPORTS_COPY.prompts.answerDrawer;
 
   const notInScope = data !== undefined && data.promptText === "" && data.answers.length === 0;
+  const title = data?.promptText ? `${copy.title}: ${data.promptText}` : copy.title;
+  const subtitle = data?.promptText ? answerHistorySubtitle(data.answers) : copy.noPromptSubtitle;
 
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
@@ -54,17 +56,11 @@ export function PromptAnswerHistoryDrawer({
           <header className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-4">
             <div className="min-w-0">
               <Dialog.Title className="text-base font-semibold text-neutral-900">
-                {copy.title}
+                {title}
               </Dialog.Title>
-              {data?.promptText ? (
-                <Dialog.Description className="mt-0.5 truncate text-xs text-neutral-500">
-                  {data.promptText}
-                </Dialog.Description>
-              ) : (
-                <Dialog.Description className="mt-0.5 text-xs text-neutral-500">
-                  {copy.noPromptSubtitle}
-                </Dialog.Description>
-              )}
+              <Dialog.Description className="mt-0.5 text-xs text-neutral-500">
+                {subtitle}
+              </Dialog.Description>
             </div>
             <Dialog.Close asChild>
               <button
@@ -123,6 +119,9 @@ function AnswerCard({ answer }: { answer: PromptAnswerRowDto }) {
         <span className="text-[11px] text-neutral-500">{formatScannedAt(answer.scannedAt)}</span>
         {mentioned ? (
           <>
+            <Badge variant="success" className="text-[10px]">
+              Brand mentioned
+            </Badge>
             <Badge variant={sentimentVariant(answer.dominantSentiment)} className="text-[10px]">
               {answer.dominantSentiment ?? "Unknown"}
             </Badge>
@@ -157,6 +156,18 @@ function AnswerCard({ answer }: { answer: PromptAnswerRowDto }) {
       </p>
     </li>
   );
+}
+
+function answerHistorySubtitle(answers: readonly PromptAnswerRowDto[]): string {
+  const answerCount = answers.length;
+  const platformCount = new Set(answers.map((answer) => answer.platformCode)).size;
+  const mentionCount = answers.reduce((sum, answer) => sum + answer.brandMentionCount, 0);
+
+  return [
+    `${answerCount.toLocaleString()} ${answerCount === 1 ? "answer" : "answers"}`,
+    `${platformCount.toLocaleString()} ${platformCount === 1 ? "platform" : "platforms"}`,
+    `${mentionCount.toLocaleString()} brand ${mentionCount === 1 ? "mention" : "mentions"}`,
+  ].join(" · ");
 }
 
 function DrawerSkeleton() {

@@ -83,10 +83,11 @@ describe("PromptAnswerHistoryDrawer", () => {
       isError: false,
     };
     render(<PromptAnswerHistoryDrawer promptId="p1" range={range} onClose={vi.fn()} />);
-    expect(screen.getByText("Answer history")).toBeInTheDocument();
-    expect(screen.getByText("Best resume builder?")).toBeInTheDocument();
+    expect(screen.getByText("Answer history: Best resume builder?")).toBeInTheDocument();
+    expect(screen.getByText("2 answers · 2 platforms · 3 brand mentions")).toBeInTheDocument();
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
     expect(screen.getByText("Claude")).toBeInTheDocument();
+    expect(screen.getByText("Brand mentioned")).toBeInTheDocument();
     expect(screen.getByText("Positive")).toBeInTheDocument();
     expect(screen.getByText("3 brand mentions")).toBeInTheDocument();
     expect(screen.getByText("First mention at 0.12")).toBeInTheDocument();

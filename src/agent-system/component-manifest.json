@@ -1603,7 +1603,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "ScrollArea", "Skeleton"],
-          "notes": "Row-click drawer on the workspace /prompts page. Drills into one prompt's AI answer history across in-window scans — per-answer card with platform, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated 'not in scope' state without branching on errors."
+          "notes": "Row-click drawer on the AI Questions surface. Drills into one question's AI answer history across in-window scans with title pattern Answer history: {AI question} and a compact answer/platform/brand-mention subtitle. Per-answer cards show platform, scan recency, brand-mentioned state, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated not-in-scope state without branching on errors."
         },
         {
           "name": "ShareOfVoiceCard",
