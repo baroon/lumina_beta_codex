@@ -727,6 +727,7 @@ interface TopSectionProps {
 
 function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionProps) {
   const summary = useMemo(() => deriveSummary(prompts), [prompts]);
+  const lensSummaries = useMemo(() => deriveLensSummaries(prompts), [prompts]);
 
   const donutSlices: DonutChartDatum[] = useMemo(() => {
     return VISIBILITY_LENSES.map((lens, i) => ({
@@ -790,16 +791,63 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
         <CollapsibleCard
           icon={PieChart}
           title="AI questions by lens"
-          tooltip="How in-view AI questions split across the six Visibility Lenses. Empty lenses are dropped."
+          tooltip="How in-view AI questions split across the six Visibility Lenses, with mention rate, average position, and weak or missing visibility counts."
         >
           {donutSlices.length === 0 ? (
             <p className="text-sm text-neutral-500">No AI questions in scope.</p>
           ) : (
-            <DonutChartWrapper
-              data={donutSlices}
-              formatValue={(v) => `${v} AI question${v === 1 ? "" : "s"}`}
-              height={220}
-            />
+            <div className="space-y-3">
+              <DonutChartWrapper
+                data={donutSlices}
+                formatValue={(v) => `${v} AI question${v === 1 ? "" : "s"}`}
+                height={180}
+              />
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-left uppercase tracking-wide text-neutral-500">
+                    <tr>
+                      <Th>Lens</Th>
+                      <Th className="text-right">Questions</Th>
+                      <Th className="text-right">Mention rate</Th>
+                      <Th className="text-right">Avg position</Th>
+                      <Th className="text-right">Open issues</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {lensSummaries.map((lens) => (
+                      <tr key={lens.code}>
+                        <Td>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: lens.color }}
+                              aria-hidden
+                            />
+                            <span className="font-medium text-neutral-900">{lens.name}</span>
+                          </div>
+                        </Td>
+                        <Td className="text-right tabular-nums">{lens.questionCount}</Td>
+                        <Td className="text-right tabular-nums">
+                          {Math.round(lens.mentionRate * 100)}%
+                        </Td>
+                        <Td className="text-right tabular-nums">
+                          {lens.avgPosition == null ? "—" : lens.avgPosition.toFixed(1)}
+                        </Td>
+                        <Td className="text-right tabular-nums">
+                          {lens.openIssues === 0 ? (
+                            <span className="text-neutral-400">—</span>
+                          ) : (
+                            <span className="font-medium text-semantic-warning-700">
+                              {lens.openIssues}
+                            </span>
+                          )}
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </CollapsibleCard>
         <CollapsibleCard
@@ -853,6 +901,16 @@ interface PromptsSummary {
   avgMentions: number | null;
 }
 
+interface LensSummary {
+  code: string;
+  name: string;
+  color: string;
+  questionCount: number;
+  mentionRate: number;
+  avgPosition: number | null;
+  openIssues: number;
+}
+
 /**
  * Roll up the filtered prompt list into the four KPI tile values. Exported
  * for testability — keeps the math separate from the React tree.
@@ -885,6 +943,36 @@ export function deriveSummary(prompts: readonly WorkspacePromptRowDto[]): Prompt
     totalMentions,
     avgMentions: totalMentions / prompts.length,
   };
+}
+
+function deriveLensSummaries(prompts: readonly WorkspacePromptRowDto[]): LensSummary[] {
+  return VISIBILITY_LENSES.map((lens, index) => {
+    const rows = prompts.filter((prompt) => LENS_NAME_TO_CODE[prompt.lensName] === lens.code);
+    if (rows.length === 0) return null;
+
+    const rowsWithMentions = rows.filter((prompt) => prompt.brandMentionCount > 0).length;
+    const rowsWithPosition = rows.filter(
+      (prompt): prompt is WorkspacePromptRowDto & { averageFirstMentionPosition: number } =>
+        prompt.averageFirstMentionPosition != null,
+    );
+    const positionTotal = rowsWithPosition.reduce(
+      (sum, prompt) => sum + prompt.averageFirstMentionPosition,
+      0,
+    );
+    const openIssues = rows.filter(
+      (prompt) => prompt.visibilityRate == null || prompt.visibilityRate < 0.25,
+    ).length;
+
+    return {
+      code: lens.code,
+      name: lens.name,
+      color: LENS_PALETTE[index % LENS_PALETTE.length],
+      questionCount: rows.length,
+      mentionRate: rowsWithMentions / rows.length,
+      avgPosition: rowsWithPosition.length === 0 ? null : positionTotal / rowsWithPosition.length,
+      openIssues,
+    };
+  }).filter((lens): lens is LensSummary => lens != null);
 }
 
 // ---------------------------------------------------------------------------
@@ -972,8 +1060,10 @@ function PromptsTable({
           <tr>
             <Th>AI Question</Th>
             <Th>Topics</Th>
+            <Th>Audience</Th>
             <Th>Country</Th>
             <Th>Tracker</Th>
+            <Th>Platforms</Th>
             <SortableTh
               column="visibility"
               sortBy={sortBy}
@@ -1060,16 +1150,10 @@ function PromptRow({
         />
       </Td>
       <Td>
-        <div className="flex flex-wrap items-center gap-1">
-          {row.topics.slice(0, 3).map((t) => (
-            <Badge key={t} variant="outline" className="text-[10px]">
-              {t}
-            </Badge>
-          ))}
-          {row.topics.length > 3 && (
-            <span className="text-[10px] text-neutral-400">+{row.topics.length - 3}</span>
-          )}
-        </div>
+        <DimensionChipList values={row.topics} emptyLabel="No topics" />
+      </Td>
+      <Td>
+        <DimensionChipList values={row.audiences} emptyLabel="No audience" />
       </Td>
       <Td>
         <CountryCell codes={row.marketCountryCodes} />
@@ -1079,6 +1163,9 @@ function PromptRow({
           <span className="text-neutral-900">{row.brandName}</span>
           <span className="text-[10px] text-neutral-500">{row.trackerName}</span>
         </div>
+      </Td>
+      <Td>
+        <PlatformCell platformCodes={row.platformCodes} />
       </Td>
       <Td className="text-right tabular-nums">
         <VisibilityCell rate={row.visibilityRate} avgPosition={row.averageFirstMentionPosition} />
@@ -1110,7 +1197,6 @@ function PromptRow({
           </span>
           <span className="text-[10px] text-neutral-500">
             {row.scanCount} {row.scanCount === 1 ? "scan" : "scans"}
-            {row.platformCodes.length > 0 && ` · ${row.platformCodes.join(", ")}`}
           </span>
         </div>
       </Td>
@@ -1126,6 +1212,44 @@ function PromptRow({
         </button>
       </Td>
     </tr>
+  );
+}
+
+function DimensionChipList({
+  values,
+  emptyLabel,
+}: {
+  values: readonly string[];
+  emptyLabel: string;
+}) {
+  if (values.length === 0) return <span className="text-neutral-400">{emptyLabel}</span>;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {values.slice(0, 3).map((value) => (
+        <Badge key={value} variant="outline" className="text-[10px]">
+          {value}
+        </Badge>
+      ))}
+      {values.length > 3 && (
+        <span className="text-[10px] text-neutral-400">+{values.length - 3}</span>
+      )}
+    </div>
+  );
+}
+
+function PlatformCell({ platformCodes }: { platformCodes: readonly string[] }) {
+  if (platformCodes.length === 0) return <span className="text-neutral-400">—</span>;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {platformCodes.slice(0, 3).map((code) => (
+        <Badge key={code} variant="secondary" className="text-[10px]">
+          {platformLabel(code)}
+        </Badge>
+      ))}
+      {platformCodes.length > 3 && (
+        <span className="text-[10px] text-neutral-400">+{platformCodes.length - 3}</span>
+      )}
+    </div>
   );
 }
 

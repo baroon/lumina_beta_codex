@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { PromptsScreen } from "./PromptsScreen";
 
 const meta: Meta<typeof PromptsScreen> = {
-  title: "Features/Reports/PromptsScreen",
+  title: "Features/Reports/AIQuestionsScreen",
   component: PromptsScreen,
   tags: ["autodocs"],
 };

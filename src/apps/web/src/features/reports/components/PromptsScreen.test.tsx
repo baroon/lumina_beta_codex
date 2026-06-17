@@ -162,6 +162,10 @@ beforeEach(() => {
   addPromptMutate = vi.fn();
 });
 
+function questionTables(): HTMLElement[] {
+  return screen.getAllByRole("table").filter((table) => within(table).queryByText("AI Question"));
+}
+
 describe("filterRows (pure)", () => {
   const rows = [
     row({ promptId: "a", text: "Best resume builder?", lensName: "Discovery", topics: ["Resume"] }),
@@ -270,6 +274,7 @@ describe("PromptsScreen", () => {
           text: "Best resume builder?",
           lensName: "Discovery",
           topics: ["Resume builders"],
+          audiences: ["Job seekers"],
           trackerName: "Acme · US",
           brandName: "Acme",
           scanCount: 3,
@@ -281,12 +286,14 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     // One section → one table.
-    const table = screen.getByRole("table");
+    const table = questionTables()[0];
     expect(within(table).getByText("Best resume builder?")).toBeInTheDocument();
     expect(within(table).getByText("Resume builders")).toBeInTheDocument();
+    expect(within(table).getByText("Job seekers")).toBeInTheDocument();
     expect(within(table).getByText("Acme")).toBeInTheDocument();
     expect(within(table).getByText("Acme · US")).toBeInTheDocument();
-    expect(within(table).getByText(/3 scans · ChatGpt/)).toBeInTheDocument();
+    expect(within(table).getByText("ChatGPT")).toBeInTheDocument();
+    expect(within(table).getByText("3 scans")).toBeInTheDocument();
   });
 
   it("renders analytical columns (visibility, sentiment, mentions)", () => {
@@ -304,11 +311,49 @@ describe("PromptsScreen", () => {
       isError: false,
     };
     render(<PromptsScreen />);
-    const table = screen.getByRole("table");
+    const table = questionTables()[0];
     expect(within(table).getByText("75%")).toBeInTheDocument();
     expect(within(table).getByText("pos 0.22")).toBeInTheDocument();
     expect(within(table).getByText("Positive")).toBeInTheDocument();
     expect(within(table).getByText("6")).toBeInTheDocument();
+  });
+
+  it("summarizes questions by lens with mention rate, average position, and open issues", () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          lensName: "Discovery",
+          visibilityRate: 0.5,
+          brandMentionCount: 2,
+          averageFirstMentionPosition: 1,
+        }),
+        row({
+          promptId: "b",
+          lensName: "Discovery",
+          visibilityRate: 0.1,
+          brandMentionCount: 0,
+          averageFirstMentionPosition: null,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<PromptsScreen />);
+
+    const summaryTable = screen
+      .getAllByRole("table")
+      .find((table) => within(table).queryByText("Open issues"));
+    expect(summaryTable).toBeDefined();
+    const discoveryRow = within(summaryTable as HTMLElement)
+      .getByText("Discovery")
+      .closest("tr");
+    expect(discoveryRow).not.toBeNull();
+    expect(within(discoveryRow as HTMLElement).getByText("2")).toBeInTheDocument();
+    expect(within(discoveryRow as HTMLElement).getByText("50%")).toBeInTheDocument();
+    expect(within(discoveryRow as HTMLElement).getByText("1.0")).toBeInTheDocument();
+    expect(within(discoveryRow as HTMLElement).getByText("1")).toBeInTheDocument();
   });
 
   it("renders em-dash fallbacks when analytical columns are null", () => {
@@ -326,7 +371,7 @@ describe("PromptsScreen", () => {
       isError: false,
     };
     render(<PromptsScreen />);
-    const table = screen.getByRole("table");
+    const table = questionTables()[0];
     // Visibility, sentiment, and mentions all collapse to "—" when the
     // prompt has no in-window answers.
     expect(within(table).getAllByText("—").length).toBeGreaterThanOrEqual(3);
@@ -371,7 +416,7 @@ describe("PromptsScreen", () => {
     };
     render(<PromptsScreen />);
     // Each section becomes its own table.
-    const tables = screen.getAllByRole("table");
+    const tables = questionTables();
     expect(tables).toHaveLength(2);
     expect(within(tables[0]).getByText("Discovery prompt")).toBeInTheDocument();
     expect(within(tables[1]).getByText("Sentiment prompt")).toBeInTheDocument();
@@ -479,7 +524,7 @@ describe("PromptsScreen", () => {
     expect(screen.getByRole("img", { name: "US" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "GB" })).toBeInTheDocument();
     // Country-less row: the cell falls through to the em-dash placeholder.
-    const table = screen.getByRole("table");
+    const table = questionTables()[0];
     expect(within(table).getAllByText("—").length).toBeGreaterThanOrEqual(1);
   });
 

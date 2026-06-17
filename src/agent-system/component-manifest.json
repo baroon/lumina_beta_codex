@@ -548,7 +548,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "lucide-react"],
-          "notes": "Compact 4-tile KPI row: Queries / Mentions / Citations / Brand mention rate. Each tile shows the absolute value plus a percent delta chip vs the previous-period hero (up = success-green, down = error-red, zero-baseline-but-nonzero = 'New' badge). Returns no delta when previousHero is null, when both periods are zero, or when the delta rounds to 0%. Used by InsightsScreen (workspace scope) and the per-tracker hub Overview tab so both surfaces lead with the same at-a-glance KPI row. Larger multi-row hero treatments live in WorkspaceOverviewScreen (separate HeroTile composition with click-to-scroll drill-down) and are deliberately not consolidated since they carry tooltip + invertDelta affordances that don't apply to this compact variant."
+          "notes": "Compact 4-tile KPI row: Queries / Mentions / Citations / Brand mention rate. Each tile shows the absolute value plus a percent delta chip vs the previous-period hero (up = success-green, down = error-red, zero-baseline-but-nonzero = 'New' badge). Returns no delta when previousHero is null, when both periods are zero, or when the delta rounds to 0%. Used by TrackerHubScreen's Overview tab for the at-a-glance single-tracker summary. Larger multi-row hero treatments live in WorkspaceOverviewScreen (separate HeroTile composition with click-to-scroll drill-down) and are deliberately not consolidated since they carry tooltip + invertDelta affordances that do not apply to this compact variant."
         },
         {
           "name": "AiNarrativeSection",
@@ -557,7 +557,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "Button", "useGenerateAiNarrative", "lucide-react"],
-          "notes": "On-demand LLM-authored narrative panel. Single Generate button until clicked, then surfaces the model response inline with a 'via {platform}' byline and a Regenerate affordance. Hidden entirely when `hasData=false` so empty trackers/workspaces don't show a button that calls a paid endpoint to summarize nothing. Mutation state lives in the underlying hook (`useGenerateAiNarrative` in `hooks/useAiNarrative.ts`) so filter/scope changes don't blow the result away — the user clicks Regenerate explicitly. Used by InsightsScreen (workspace scope) and TrackerHubScreen Overview tab (single-tracker scope, threading `trackerIds={[trackerId]}`)."
+          "notes": "On-demand LLM-authored narrative panel. Single Generate button until clicked, then surfaces the model response inline with a 'via {platform}' byline and a Regenerate affordance. Hidden entirely when hasData=false so empty trackers/workspaces do not show a button that calls a paid endpoint to summarize nothing. Mutation state lives in the underlying hook (useGenerateAiNarrative in hooks/useAiNarrative.ts) so filter/scope changes do not blow the result away; the user clicks Regenerate explicitly. Used by TrackerHubScreen Overview tab (single-tracker scope, threading trackerIds={[trackerId]})."
         },
         {
           "name": "EntityTrendDrillDown",
@@ -566,7 +566,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["LineChartWrapper"],
-          "notes": "Inline drill-down panel for one row in a ranking-style top-entities table. Renders the per-scan trend line (BrandMentionRate for tracked brands, MentionRate for competitors) using the workspace overview's series payload, or a soft hint when the entity has no numeric points (single scan, all nulls, missing series). Pure presentational component — the entity-to-series lookup lives in `lib/entityTrend.ts` (findEntityTrend) so this `.tsx` only exports a component and stays inside Vite's react-refresh boundary. Used by InsightsScreen's ranking table and TrackerHubScreen's TopEntities card so the click-to-expand drill-down reads identically on both surfaces."
+          "notes": "Inline drill-down panel for one row in a ranking-style top-entities table. Renders the per-scan trend line (BrandMentionRate for tracked brands, MentionRate for competitors) using the workspace overview series payload, or a soft hint when the entity has no numeric points (single scan, all nulls, missing series). Pure presentational component; the entity-to-series lookup lives in lib/entityTrend.ts (findEntityTrend) so this .tsx only exports a component and stays inside Vite react-refresh boundary. Used by TrackerHubScreen TopEntities card for click-to-expand drill-down."
         },
         {
           "name": "Breadcrumb",
@@ -1348,33 +1348,6 @@
           "notes": "Thin wrapper around `Breadcrumb` for the scan detail surfaces. Fetches the scan summary via `useScanResults` (React-Query-cached so it shares the cache entry with pages that already call it) and renders the canonical trail `Brands › {Brand} › {Tracker} › {currentLabel}`. Brand label links to `/brands/$id/profile`, tracker label links to `/brands/$id/trackers/$id`. While the summary loads the brand and tracker rows render skeleton segments so the trail keeps its layout. Used by ScanResultsScreen, ScanSourcesScreen, ScanTopicsScreen, ScanTopicDetailScreen, ScanCompetitorsScreen, ScanCompetitorDetailScreen, ScanClaimsScreen."
         },
         {
-          "name": "InsightsScreen",
-          "category": "Feature — Reporting",
-          "path": "src/features/reports/components/InsightsScreen.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": [
-            "PageHeader",
-            "SectionHeader",
-            "Card",
-            "Badge",
-            "LoadingPage",
-            "ErrorPage",
-            "useTrackerScope",
-            "useWorkspaceOverview"
-          ],
-          "notes": "Workspace-wide Insights page (BETA) at /insights — templated narrative summary over `useWorkspaceOverview`'s topEntities + a sorted ranking table where tracked brands are highlighted with a 'You' badge and a soft primary background. Narrative covers position (e.g. 'Acme ranks #2 of 3 with 50% AI visibility — trailing Canva by 30 pp') and celebrates the case where a tracked brand leads. v1 uses templated copy; LLM-generated narrative lands in a follow-up. Respects the sidebar's TrackerSelector scope via useTrackerScope."
-        },
-        {
-          "name": "ProductPageScaffold",
-          "category": "Feature â€” Reporting",
-          "path": "src/features/reports/components/ProductPageScaffold.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": ["PageHeader", "Card", "Badge", "lucide-react"],
-          "notes": "Reusable product-page scaffold for the standalone Lumina IA rollout. Renders spec-backed page identity, primary business question, metric placeholders, planned sections, and empty-state copy for routes that do not yet have a dedicated data-backed screen."
-        },
-        {
           "name": "RecommendationsScreen",
           "category": "Feature â€” Reporting",
           "path": "src/features/reports/components/RecommendationsScreen.tsx",
@@ -1548,16 +1521,20 @@
           "variants": [],
           "dependencies": [
             "PageHeader",
-            "SectionHeader",
             "Card",
             "Input",
             "Badge",
             "LoadingPage",
             "ErrorPage",
+            "CollapsibleCard",
+            "DateRangePicker",
+            "FiltersPopover",
+            "LensChipRow",
+            "PromptAnswerHistoryDrawer",
             "useTrackerScope",
             "useWorkspacePrompts"
           ],
-          "notes": "Workspace-wide prompt inventory at /prompts. v1 lists every active prompt across selected trackers with columns: Prompt · Lens · Topics · Tracker (brand + tracker name) · Scans · Platforms · Last scan. Search filters by prompt text, lens, topic, tracker, or brand (case-insensitive). Sourced from a new `GET /api/prompts?trackerIds=&from=&to=` endpoint (WorkspacePromptsController → GetWorkspacePromptsQueryHandler) that aggregates scan count + last scan + platform codes per prompt in window. Analytical columns (visibility / sentiment / position / mention count) are deliberately deferred to a follow-up — they need heavier joins through PromptRuns → AIAnswers → Mentions / AnswerSignals."
+          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, and Sentiment. Status strip includes KPI tiles, visibility distribution, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, country, tracker, platforms, visibility, sentiment, mentions, activity, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
         },
         {
           "name": "ScanResultsScreen",

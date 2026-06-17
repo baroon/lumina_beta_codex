@@ -564,9 +564,9 @@ export const REPORTS_COPY = {
     answerDrawer: {
       title: "Answer history",
       close: "Close",
-      noPromptSubtitle: "Select a prompt row to see its answer history.",
+      noPromptSubtitle: "Select an AI question row to see its answer history.",
       empty: "No answers in window.",
-      notInScope: "This prompt is not in the current workspace scope.",
+      notInScope: "This AI question is not in the current workspace scope.",
       error: "Couldn't load answer history.",
       sectionAnswer: "Answer",
       sectionEvidence: "Evidence",
