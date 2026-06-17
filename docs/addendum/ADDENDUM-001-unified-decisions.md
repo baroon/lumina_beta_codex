@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-18
 **Context:** Unification of the AI Visibility architecture package with the BOLD Agent-First Builder framework methodology and tooling.
-**Participants:** Product owner + Claude Opus 4.6 (architecture review session)
+**Participants:** Product owner + implementation agent (architecture review session)
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Context:** Phase 1 (Discovery) shipped with several deliberate deviations from ADR-001. This addendum records those deviations so the locked ADR stays accurate-by-reference. ADR-001 itself is unchanged; the sections below supersede the corresponding parts of it.
-**Participants:** Product owner + Claude Opus 4.7
+**Participants:** Product owner + implementation agent
 
 ---
 

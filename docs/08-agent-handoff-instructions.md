@@ -1,6 +1,6 @@
 # Agent Handoff Instructions
 
-Use this package when handing work to Codex, Claude Code, or another implementation agent.
+Use this package when handing work to an implementation agent or engineer.
 
 ## First instruction to agent
 

@@ -439,7 +439,7 @@ Target screen: TrackerDashboard -- Core Metrics Row
 Follow the chain exactly.
 ```
 
-Screenshots can be passed directly -- Claude Code reads images.
+Screenshots can be passed directly when the active implementation environment supports image input.
 
 **Tier attribution rules:**
 

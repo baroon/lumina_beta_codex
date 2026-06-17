@@ -1,6 +1,6 @@
 # PLANS.md
 
-Use this format for implementation plans handed to Codex/Claude.
+Use this format for implementation plans handed to an implementation agent or engineer.
 
 ## Plan Template
 

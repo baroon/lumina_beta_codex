@@ -1,6 +1,6 @@
 # New machine setup
 
-Everything needed to build, test, run, and continue the project is in this repo. Clone to **`C:\Code\Baroon\Lumina_Beta_Claude`** (keeping the same path means Claude Code's per-project state lines up, and the working agreement in `src/CLAUDE.md` auto-loads).
+Everything needed to build, test, run, and continue the project is in this repo. Clone to **`C:\Code\Baroon\Lumina_Beta_Codex`** and read `src/agent.md` before making changes.
 
 ## 1. Install dependencies
 
@@ -52,5 +52,5 @@ pnpm --filter web build-storybook       # all stories compile
 
 ## Notes
 
-- **Working style travels via git:** the red→green-per-bug-fix rule and the present-trade-offs collaboration style live in `src/CLAUDE.md` (auto-loaded), so a fresh Claude session matches the established experience. Claude's home-dir memory (`~/.claude/.../memory/`) is machine-local and optional to copy.
+- **Working style travels via git:** the red→green-per-bug-fix rule, story/test coverage expectations, manifest updates, lint rules, and present-trade-offs collaboration style live in `src/agent.md`, so any implementation agent or engineer can follow the same conventions.
 - **What to work on next:** this guide is setup-only and phase-agnostic — for the current phase and its specs see the README "Status" section, `docs/03-phase-roadmap.md`, and the latest `docs/kanban/`.

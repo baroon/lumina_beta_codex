@@ -783,7 +783,7 @@ Stack: **.NET 8 + MediatR (CQRS) + EF Core + PostgreSQL + Hangfire**. Controller
 dispatch to MediatR. Handlers do the work. New services register in
 `AIVisibility.Infrastructure/DependencyInjection.cs`.
 
-The flow for adding an endpoint is in `CLAUDE.md` and `agent-system/CHAINS.md` (chain
+The flow for adding an endpoint is in `agent.md` and `agent-system/CHAINS.md` (chain
 `create-endpoint`): DTO → Command/Query → Handler → (Service if needed) → DI registration →
 Controller action.
 
@@ -870,7 +870,7 @@ For the canonical mapping of user-facing → internal terms, see `01-product-voc
 
 1. **This guide** — sections 4 (mental model), 5 (Discovery), 7 (Scan execution), 10
    (architecture).
-2. **`src/CLAUDE.md`** — project conventions, file naming, ESLint boundaries, test patterns.
+2. **`src/agent.md`** — project conventions, file naming, ESLint boundaries, test patterns.
 3. **`agent-system/CHAINS.md`** — recipe-style procedures for every non-trivial change
    (create-endpoint, create-entity, add-feature-page, …).
 4. **`agent-system/project-structure.md`** — directory map and pre-commit enforcement.

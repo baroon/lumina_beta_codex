@@ -6,7 +6,7 @@ Track and improve how a brand shows up in AI assistants' answers. Monorepo: a Re
 
 | Path | What's there |
 | --- | --- |
-| `src/CLAUDE.md` | **Project conventions — read this first** (architecture, agent chains, tests, manifest, styling, working agreement). Auto-loads in Claude Code. |
+| `src/agent.md` | **Project conventions — read this first** (architecture, workflow chains, tests, manifest, styling, working agreement). |
 | `src/apps/web` | Front end (React + Vite + Tailwind + Storybook) |
 | `src/apps/api` | Back end (.NET 8, MediatR, EF Core) |
 | `src/agent-system/` | `CHAINS.md` (workflow recipes), `component-manifest.json` (component registry), `project-structure.md` |
@@ -30,7 +30,7 @@ Verify the toolchain: `pnpm check:all` (front end) and `dotnet test apps/api/AIV
 
 ## How we work
 
-- **Conventions live in [`src/CLAUDE.md`](src/CLAUDE.md)**: atomic-design layers, a co-located test **and** story per component, the component manifest, ESLint layer boundaries, design tokens, centralized copy, and the working agreement (red→green per bug fix; present trade-offs in the message).
+- **Conventions live in [`src/agent.md`](src/agent.md)**: atomic-design layers, a co-located test **and** story per component, the component manifest, ESLint layer boundaries, design tokens, centralized copy, and the working agreement (red→green per bug fix; present trade-offs in the message).
 - **Non-trivial changes follow a chain** from [`src/agent-system/CHAINS.md`](src/agent-system/CHAINS.md) — 17 recipes, each ending in a 14-point review gate. Rule of thumb: if a change touches a tested/storied file or a controller/handler/entity/migration, use a chain; otherwise talk directly.
 
 ## Status
