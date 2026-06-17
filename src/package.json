@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev:web": "pnpm --filter web dev",
-    "dev:api": "dotnet watch run --project apps/api/AIVisibility.Api/AIVisibility.Api.csproj",
+    "dev:api": "dotnet watch run --project apps/api/AIVisibility.Api/AIVisibility.Api.csproj --urls http://localhost:3001",
     "build:web": "pnpm --filter web build",
     "build:api": "dotnet build apps/api/AIVisibility.sln",
     "test:web": "pnpm --filter web test",

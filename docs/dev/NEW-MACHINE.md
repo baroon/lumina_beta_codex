@@ -39,7 +39,7 @@ dotnet ef database update --project apps/api/AIVisibility.Infrastructure --start
 # API — the env var is REQUIRED (no launchSettings.json; otherwise the base
 # appsettings loads with an empty connection string and Hangfire fails).
 ASPNETCORE_ENVIRONMENT=Development pnpm dev:api   # PowerShell: $env:ASPNETCORE_ENVIRONMENT="Development"; pnpm dev:api
-pnpm dev:web                                      # web on :5173 (CORS allows 5173/5174/3000)
+pnpm dev:web                                      # web on :3000 (CORS allows only localhost:3000)
 ```
 
 ## 5. Verify the toolchain

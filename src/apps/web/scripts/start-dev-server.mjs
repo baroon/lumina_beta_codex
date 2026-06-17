@@ -19,15 +19,15 @@ process.on("unhandledRejection", (error) => {
 const server = await createServer({
   root: process.cwd(),
   server: {
-    host: "127.0.0.1",
-    port: 4173,
+    host: "localhost",
+    port: 3000,
     strictPort: true,
   },
 });
 
 await server.listen();
 server.printUrls();
-log("listening on http://127.0.0.1:4173/");
+log("listening on http://localhost:3000/");
 
 const keepAlive = setInterval(() => {
   log("heartbeat");

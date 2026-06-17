@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 
-const HUB_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/hubs/discovery";
+const HUB_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001") + "/hubs/discovery";
 
 export function useSignalR() {
   const connectionRef = useRef<signalR.HubConnection | null>(null);

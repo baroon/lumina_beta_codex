@@ -36,17 +36,13 @@ builder.Services.AddHangfire(config => config
         options.UseNpgsqlConnection(connString)));
 builder.Services.AddHangfireServer();
 
-// CORS for frontend dev server
+// CORS for the frontend dev server. Keep this narrow: API dev runs on
+// localhost:3001, and only the UI origin on localhost:3000 is allowed.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevCors", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:4173",
-                "http://127.0.0.1:4173",
-                "http://localhost:3000")
+        policy.WithOrigins("http://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

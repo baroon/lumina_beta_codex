@@ -22,8 +22,8 @@ dotnet restore apps/api/AIVisibility.sln       # api deps
 docker compose up -d                           # Postgres (+ RabbitMQ, Azurite, Mailpit, Gotenberg)
 # create apps/api/AIVisibility.Api/appsettings.Local.json with your OpenAI key (see NEW-MACHINE.md)
 dotnet ef database update --project apps/api/AIVisibility.Infrastructure --startup-project apps/api/AIVisibility.Api
-$env:ASPNETCORE_ENVIRONMENT="Development"; pnpm dev:api   # API on :5000
-pnpm dev:web                                              # web on :5173
+$env:ASPNETCORE_ENVIRONMENT="Development"; pnpm dev:api   # API on :3001
+pnpm dev:web                                              # web on :3000
 ```
 
 Verify the toolchain: `pnpm check:all` (front end) and `dotnet test apps/api/AIVisibility.sln` (back end).
