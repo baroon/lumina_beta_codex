@@ -114,6 +114,7 @@ const AUTHORITY_BANDS: ReadonlyArray<{ label: string; min: number; max: number }
 ];
 
 type SourcesView = "domain" | "url";
+type SourceRelationship = "Owned" | "Third-party" | "Unknown";
 
 /**
  * Workspace-wide citation source view at /sources. One screen, two
@@ -150,6 +151,7 @@ export function SourcesScreen() {
   // active rather than the workspace-wide BE narrow.
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [relationshipFilter, setRelationshipFilter] = useState<SourceRelationship | null>(null);
   const [classifyingBrandId, setClassifyingBrandId] = useState<string | null>(null);
 
   // Pass NO_LENS_FILTER through to the BE when every lens is selected
@@ -241,6 +243,8 @@ export function SourcesScreen() {
   const brandsList = brands.data ?? [];
   const effectiveClassifyingBrandId =
     classifyingBrandId ?? (brandsList.length > 0 ? brandsList[0].id : null);
+  const effectiveClassifyingBrandName =
+    brandsList.find((brand) => brand.id === effectiveClassifyingBrandId)?.name ?? null;
 
   // Hero KPIs roll up from BOTH queries so the four-tile strip reads
   // the same regardless of which view is active. Citations is
@@ -257,6 +261,10 @@ export function SourcesScreen() {
   // shape /overview consumes, but computed locally so the donut
   // respects the page's filter bar instead of staying workspace-wide.
   const domainTypeShares = useMemo(() => deriveTypeShares(domainRows), [domainRows]);
+  const relationshipShares = useMemo(
+    () => deriveRelationshipShares(domainRows, effectiveClassifyingBrandName),
+    [domainRows, effectiveClassifyingBrandName],
+  );
   // Authority-score buckets feed the per-band citation bar chart.
   const authorityBuckets = useMemo(() => deriveAuthorityBuckets(domainRows), [domainRows]);
   // Authority × citations scatter — one dot per source with both axes
@@ -378,7 +386,14 @@ export function SourcesScreen() {
   const activeView: ActiveView =
     view === "domain" ? { kind: "domain", allRows: domainRows } : { kind: "url", allRows: urlRows };
   const typeCounts = countByType(activeView);
-  const filteredRows = filterActive(activeView, query, typeFilter);
+  const relationshipCounts = countByRelationship(activeView, effectiveClassifyingBrandName);
+  const filteredRows = filterActive(
+    activeView,
+    query,
+    typeFilter,
+    relationshipFilter,
+    effectiveClassifyingBrandName,
+  );
 
   const sections: MetricCategorySection[] = [
     {
@@ -388,8 +403,9 @@ export function SourcesScreen() {
       // citation share trend. Now a regular section so the filter bar
       // sits directly under the Hero KPIs.
       children: (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-3">
           <DomainTypesCard rows={domainTypeShares} />
+          <RelationshipMixCard rows={relationshipShares} />
           <OwnedShareTrendCard series={overview.data?.series ?? EMPTY_SERIES} />
         </div>
       ),
@@ -447,6 +463,13 @@ export function SourcesScreen() {
               selected={typeFilter}
               onSelect={(t) => setTypeFilter((current) => (current === t ? null : t))}
             />
+            <RelationshipFilterPills
+              counts={relationshipCounts}
+              selected={relationshipFilter}
+              onSelect={(next) =>
+                setRelationshipFilter((current) => (current === next ? null : next))
+              }
+            />
             {brandsList.length > 1 && (
               <ClassifyingBrandPicker
                 brands={brandsList.map((b) => ({ id: b.id, name: b.name }))}
@@ -463,19 +486,21 @@ export function SourcesScreen() {
                   ? "No cited sources match the current filters. Once scans complete with citations, this page populates automatically."
                   : "No cited URLs match the current filters. Mentioned-source citations without a URL still show up under the Domains view."
                 : view === "domain"
-                  ? "No sources match your search / type filter."
-                  : "No URLs match your search / type filter."}
+                  ? "No sources match your search / type / relationship filter."
+                  : "No URLs match your search / type / relationship filter."}
             </p>
           ) : view === "domain" ? (
             <DomainsTable
               rows={filteredRows as readonly WorkspaceDomainRowDto[]}
               classifyingBrandId={effectiveClassifyingBrandId}
+              classifyingBrandName={effectiveClassifyingBrandName}
               sourceTypes={sourceTypes.data ?? []}
             />
           ) : (
             <UrlsTable
               rows={filteredRows as readonly WorkspaceUrlRowDto[]}
               classifyingBrandId={effectiveClassifyingBrandId}
+              classifyingBrandName={effectiveClassifyingBrandName}
               sourceTypes={sourceTypes.data ?? []}
             />
           )}
@@ -543,6 +568,59 @@ export function deriveTypeShares(rows: readonly WorkspaceDomainRowDto[]): Domain
 // ---------------------------------------------------------------------------
 // Authority-band buckets — total citations per authority band.
 // ---------------------------------------------------------------------------
+
+export interface RelationshipShare {
+  relationship: SourceRelationship;
+  citationCount: number;
+  share: number;
+}
+
+export function deriveRelationshipShares(
+  rows: readonly WorkspaceDomainRowDto[],
+  classifyingBrandName: string | null,
+): RelationshipShare[] {
+  const totals = new Map<SourceRelationship, number>();
+  for (const row of rows) {
+    const relationship = classifySourceRelationship(row, classifyingBrandName);
+    totals.set(relationship, (totals.get(relationship) ?? 0) + row.citationCount);
+  }
+
+  const grandTotal = [...totals.values()].reduce((sum, count) => sum + count, 0);
+  if (grandTotal === 0) return [];
+
+  return [...totals.entries()]
+    .map(([relationship, citationCount]) => ({
+      relationship,
+      citationCount,
+      share: citationCount / grandTotal,
+    }))
+    .sort((a, b) => b.citationCount - a.citationCount);
+}
+
+function RelationshipMixCard({ rows }: { rows: readonly RelationshipShare[] }) {
+  const data: BarChartDatum[] = rows.map((row) => ({
+    label: row.relationship,
+    value: row.citationCount,
+  }));
+
+  return (
+    <CollapsibleCard
+      icon={Globe}
+      title="Citation relationship mix"
+      tooltip="Source relationship is inferred from the selected classifying brand and source/domain text until backend-owned relationship labels are available."
+    >
+      {data.length === 0 ? (
+        <p className="text-sm text-neutral-500">No relationship data in this window yet.</p>
+      ) : (
+        <BarChartWrapper
+          data={data}
+          valueAxisLabel="Relationship citations"
+          formatValue={(value) => value.toLocaleString()}
+        />
+      )}
+    </CollapsibleCard>
+  );
+}
 
 export interface AuthorityBucket {
   label: string;
@@ -960,11 +1038,19 @@ export function filterActive(
   view: ActiveView,
   query: string,
   typeFilter: string | null,
+  relationshipFilter: SourceRelationship | null = null,
+  classifyingBrandName: string | null = null,
 ): readonly (WorkspaceDomainRowDto | WorkspaceUrlRowDto)[] {
   const q = query.trim().toLowerCase();
   if (view.kind === "domain") {
     return view.allRows.filter((r) => {
       if (typeFilter && r.sourceType !== typeFilter) return false;
+      if (
+        relationshipFilter &&
+        classifySourceRelationship(r, classifyingBrandName) !== relationshipFilter
+      ) {
+        return false;
+      }
       if (q === "") return true;
       if (r.sourceName.toLowerCase().includes(q)) return true;
       if (r.normalizedDomain && r.normalizedDomain.toLowerCase().includes(q)) return true;
@@ -973,6 +1059,12 @@ export function filterActive(
   }
   return view.allRows.filter((r) => {
     if (typeFilter && r.sourceType !== typeFilter) return false;
+    if (
+      relationshipFilter &&
+      classifySourceRelationship(r, classifyingBrandName) !== relationshipFilter
+    ) {
+      return false;
+    }
     if (q === "") return true;
     if (r.url.toLowerCase().includes(q)) return true;
     if (r.title && r.title.toLowerCase().includes(q)) return true;
@@ -989,6 +1081,38 @@ export function countByType(view: ActiveView): Record<string, number> {
     out[r.sourceType] = (out[r.sourceType] ?? 0) + 1;
   }
   return out;
+}
+
+export function countByRelationship(
+  view: ActiveView,
+  classifyingBrandName: string | null,
+): Record<SourceRelationship, number> {
+  const out: Record<SourceRelationship, number> = {
+    Owned: 0,
+    "Third-party": 0,
+    Unknown: 0,
+  };
+  for (const row of view.allRows) {
+    const relationship = classifySourceRelationship(row, classifyingBrandName);
+    out[relationship] += 1;
+  }
+  return out;
+}
+
+export function classifySourceRelationship(
+  row: Pick<WorkspaceDomainRowDto | WorkspaceUrlRowDto, "sourceName" | "normalizedDomain">,
+  classifyingBrandName: string | null,
+): SourceRelationship {
+  if (classifyingBrandName == null || classifyingBrandName.trim() === "") return "Unknown";
+  const haystack = `${row.sourceName} ${row.normalizedDomain ?? ""}`.toLowerCase();
+  if (haystack.trim() === "") return "Unknown";
+
+  const brandTokens = classifyingBrandName
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+  if (brandTokens.length === 0) return "Unknown";
+  return brandTokens.some((token) => haystack.includes(token)) ? "Owned" : "Third-party";
 }
 
 // ---------------------------------------------------------------------------
@@ -1218,6 +1342,46 @@ function TypeFilterPills({
   );
 }
 
+function RelationshipFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<SourceRelationship, number>;
+  selected: SourceRelationship | null;
+  onSelect: (relationship: SourceRelationship) => void;
+}) {
+  const relationships: readonly SourceRelationship[] = ["Owned", "Third-party", "Unknown"];
+  const entries = relationships
+    .map((relationship) => [relationship, counts[relationship]] as const)
+    .filter(([, count]) => count > 0);
+  if (entries.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {entries.map(([relationship, count]) => {
+        const isSelected = selected === relationship;
+        return (
+          <button
+            key={relationship}
+            type="button"
+            onClick={() => onSelect(relationship)}
+            aria-pressed={isSelected}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+              isSelected
+                ? "border-primary-600 bg-primary-100 text-primary-700"
+                : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+            )}
+          >
+            <span>{relationship}</span>
+            <span className="tabular-nums text-neutral-400">{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
@@ -1225,10 +1389,12 @@ function TypeFilterPills({
 function DomainsTable({
   rows,
   classifyingBrandId,
+  classifyingBrandName,
   sourceTypes,
 }: {
   rows: readonly WorkspaceDomainRowDto[];
   classifyingBrandId: string | null;
+  classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
   const columns = useMemo<ColumnDef<WorkspaceDomainRowDto, unknown>[]>(
@@ -1255,6 +1421,15 @@ function DomainsTable({
             sourceType={row.original.sourceType}
             classifyingBrandId={classifyingBrandId}
             sourceTypes={sourceTypes}
+          />
+        ),
+      },
+      {
+        id: "relationship",
+        header: "Relationship",
+        cell: ({ row }) => (
+          <RelationshipBadge
+            relationship={classifySourceRelationship(row.original, classifyingBrandName)}
           />
         ),
       },
@@ -1295,7 +1470,7 @@ function DomainsTable({
         sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
       },
     ],
-    [classifyingBrandId, sourceTypes],
+    [classifyingBrandId, classifyingBrandName, sourceTypes],
   );
 
   return (
@@ -1312,10 +1487,12 @@ function DomainsTable({
 function UrlsTable({
   rows,
   classifyingBrandId,
+  classifyingBrandName,
   sourceTypes,
 }: {
   rows: readonly WorkspaceUrlRowDto[];
   classifyingBrandId: string | null;
+  classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
   const columns = useMemo<ColumnDef<WorkspaceUrlRowDto, unknown>[]>(
@@ -1365,6 +1542,15 @@ function UrlsTable({
         ),
       },
       {
+        id: "relationship",
+        header: "Relationship",
+        cell: ({ row }) => (
+          <RelationshipBadge
+            relationship={classifySourceRelationship(row.original, classifyingBrandName)}
+          />
+        ),
+      },
+      {
         accessorKey: "citationCount",
         header: "Citations",
         meta: { align: "right" },
@@ -1386,7 +1572,7 @@ function UrlsTable({
         sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
       },
     ],
-    [classifyingBrandId, sourceTypes],
+    [classifyingBrandId, classifyingBrandName, sourceTypes],
   );
 
   return (
@@ -1405,6 +1591,16 @@ function UrlsTable({
 // Owns the classification mutation; the dropdown only renders when the
 // active brand has source-types data loaded.
 // ---------------------------------------------------------------------------
+
+function RelationshipBadge({ relationship }: { relationship: SourceRelationship }) {
+  const variant =
+    relationship === "Owned" ? "success" : relationship === "Third-party" ? "secondary" : "outline";
+  return (
+    <Badge variant={variant} className="whitespace-nowrap text-[10px]">
+      {relationship}
+    </Badge>
+  );
+}
 
 function SourceTypeCell({
   sourceId,

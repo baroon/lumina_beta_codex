@@ -23,6 +23,7 @@ let scopeState: { scope: "all" | string[] };
 let domainsState: { data?: WorkspaceDomainsDto; isLoading: boolean; isError: boolean };
 let urlsState: { data?: WorkspaceUrlsDto; isLoading: boolean; isError: boolean };
 let overviewSeries: EntityTrendSeriesDto[];
+let brandsForClassification: { id: string; name: string }[];
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
@@ -59,7 +60,11 @@ vi.mock("@/features/reports/hooks/useSourceTypes", () => ({
   useSourceTypes: () => ({ data: [], isLoading: false, isError: false }),
 }));
 vi.mock("@/features/reports/hooks/useUpdateWorkspaceSourceClassification", () => ({
-  useWorkspaceBrandsForClassification: () => ({ data: [], isLoading: false, isError: false }),
+  useWorkspaceBrandsForClassification: () => ({
+    data: brandsForClassification,
+    isLoading: false,
+    isError: false,
+  }),
   useUpdateWorkspaceSourceClassification: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -112,10 +117,13 @@ vi.mock("@/components/charts/LineChartWrapper", () => ({
 
 import {
   SourcesScreen,
+  classifySourceRelationship,
+  countByRelationship,
   countByType,
   deriveAuthorityBuckets,
   deriveFreshnessBuckets,
   deriveHero,
+  deriveRelationshipShares,
   deriveScatterPoints,
   deriveSourceMovers,
   deriveTypeShares,
@@ -176,6 +184,7 @@ beforeEach(() => {
   domainsState = { data: domainsPayload([]), isLoading: false, isError: false };
   urlsState = { data: urlsPayload([]), isLoading: false, isError: false };
   overviewSeries = [];
+  brandsForClassification = [{ id: "brand-1", name: "Acme" }];
 });
 
 // ---------------------------------------------------------------------------
@@ -255,6 +264,38 @@ describe("filterActive + countByType (pure)", () => {
       ),
     ).toEqual(["u1"]);
   });
+
+  it("classifies and filters rows by inferred source relationship", () => {
+    expect(
+      classifySourceRelationship(
+        domain({ sourceName: "Acme Blog", normalizedDomain: "acme.com" }),
+        "Acme",
+      ),
+    ).toBe("Owned");
+    expect(
+      classifySourceRelationship(
+        domain({ sourceName: "Reddit", normalizedDomain: "reddit.com" }),
+        "Acme",
+      ),
+    ).toBe("Third-party");
+    expect(
+      classifySourceRelationship(
+        domain({ sourceName: "Acme Blog", normalizedDomain: "acme.com" }),
+        null,
+      ),
+    ).toBe("Unknown");
+
+    expect(countByRelationship({ kind: "domain", allRows: domainRows }, "Acme")).toEqual({
+      Owned: 1,
+      "Third-party": 1,
+      Unknown: 0,
+    });
+    expect(
+      filterActive({ kind: "domain", allRows: domainRows }, "", null, "Owned", "Acme").map(
+        (r) => r.sourceId,
+      ),
+    ).toEqual(["a"]);
+  });
 });
 
 describe("deriveTypeShares (pure)", () => {
@@ -276,6 +317,37 @@ describe("deriveTypeShares (pure)", () => {
 
   it("returns [] when all rows have zero citations", () => {
     expect(deriveTypeShares([domain({ sourceId: "a", citationCount: 0 })])).toEqual([]);
+  });
+});
+
+describe("deriveRelationshipShares (pure)", () => {
+  it("aggregates citations by inferred relationship + sorts by count desc", () => {
+    const shares = deriveRelationshipShares(
+      [
+        domain({
+          sourceId: "a",
+          sourceName: "Acme Blog",
+          normalizedDomain: "acme.com",
+          citationCount: 10,
+        }),
+        domain({
+          sourceId: "b",
+          sourceName: "Reddit",
+          normalizedDomain: "reddit.com",
+          citationCount: 6,
+        }),
+      ],
+      "Acme",
+    );
+    expect(shares.map((s) => s.relationship)).toEqual(["Owned", "Third-party"]);
+    expect(shares[0].citationCount).toBe(10);
+    expect(shares[0].share).toBeCloseTo(10 / 16, 5);
+  });
+
+  it("returns [] when all rows have zero relationship citations", () => {
+    expect(deriveRelationshipShares([domain({ sourceId: "a", citationCount: 0 })], "Acme")).toEqual(
+      [],
+    );
   });
 });
 
@@ -399,6 +471,39 @@ describe("SourcesScreen", () => {
     const table = screen.getByRole("table");
     expect(within(table).getByText("Trustpilot")).toBeInTheDocument();
     expect(within(table).getByText("Reddit")).toBeInTheDocument();
+  });
+
+  it("shows inferred relationship columns and filters the active table by relationship", async () => {
+    domainsState = {
+      data: domainsPayload([
+        domain({
+          sourceId: "a",
+          sourceName: "Acme Blog",
+          normalizedDomain: "acme.com",
+          citationCount: 5,
+        }),
+        domain({
+          sourceId: "b",
+          sourceName: "Reddit",
+          normalizedDomain: "reddit.com",
+          sourceType: "UGC",
+          citationCount: 3,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<SourcesScreen />);
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Relationship")).toBeInTheDocument();
+    expect(within(table).getByText("Owned")).toBeInTheDocument();
+    expect(within(table).getByText("Third-party")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Owned\s+1/i }));
+
+    expect(within(table).getByText("Acme Blog")).toBeInTheDocument();
+    expect(within(table).queryByText("Reddit")).not.toBeInTheDocument();
   });
 
   it("flips to the URLs table when the view toggle is clicked", async () => {
