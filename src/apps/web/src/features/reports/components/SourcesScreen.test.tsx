@@ -473,8 +473,8 @@ describe("SourcesScreen", () => {
     expect(within(table).getByText("Reddit")).toBeInTheDocument();
     expect(within(table).getByText("Actions")).toBeInTheDocument();
     expect(within(table).getAllByRole("button", { name: "View cited answers" })[0]).toBeEnabled();
-    expect(within(table).getAllByRole("button", { name: "Add to report" })[0]).toBeDisabled();
-    expect(within(table).getAllByRole("button", { name: "Ignore" })[0]).toBeDisabled();
+    expect(within(table).getAllByRole("button", { name: "Add to report" })[0]).toBeEnabled();
+    expect(within(table).getAllByRole("button", { name: "Ignore" })[0]).toBeEnabled();
   });
 
   it("opens a cited source drawer from the Domains table", async () => {
@@ -505,8 +505,42 @@ describe("SourcesScreen", () => {
     expect(within(drawer).getByText("2")).toBeInTheDocument();
     expect(within(drawer).getByText("78")).toBeInTheDocument();
     expect(within(drawer).getByText(/cited answer excerpts will appear here/i)).toBeInTheDocument();
-    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
-    expect(within(drawer).getByRole("button", { name: "Ignore" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeEnabled();
+    expect(within(drawer).getByRole("button", { name: "Ignore" })).toBeEnabled();
+  });
+
+  it("adds a source row to the local report queue", async () => {
+    domainsState = {
+      data: domainsPayload([domain({ sourceId: "a", sourceName: "Trustpilot", citationCount: 5 })]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<SourcesScreen />);
+
+    const table = screen.getByRole("table");
+    await userEvent.click(within(table).getByRole("button", { name: "Add to report" }));
+
+    expect(within(table).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("Trustpilot was added to the source report.")).toBeInTheDocument();
+  });
+
+  it("ignores a source row in the active view", async () => {
+    domainsState = {
+      data: domainsPayload([
+        domain({ sourceId: "a", sourceName: "Trustpilot", citationCount: 5 }),
+        domain({ sourceId: "b", sourceName: "Reddit", sourceType: "UGC", citationCount: 3 }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<SourcesScreen />);
+
+    const table = screen.getByRole("table");
+    await userEvent.click(within(table).getAllByRole("button", { name: "Ignore" })[0]);
+
+    expect(within(table).queryByText("Trustpilot")).not.toBeInTheDocument();
+    expect(within(table).getByText("Reddit")).toBeInTheDocument();
+    expect(screen.getByText("Trustpilot was ignored in this view.")).toBeInTheDocument();
   });
 
   it("shows inferred relationship columns and filters the active table by relationship", async () => {

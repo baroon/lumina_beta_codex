@@ -5,7 +5,11 @@ export const WORKSPACE_COPY = {
       "Manage workspace-level defaults, access, usage limits, notifications, and integration readiness.",
     actions: {
       invite: "Invite teammate",
+      invitePrepared: "Invite prepared",
       billing: "Manage billing",
+      billingQueued: "Billing review queued",
+      inviteNotice: "Teammate invite draft prepared for account administration.",
+      billingNotice: "Billing review queued for workspace administration.",
     },
     summary: {
       brands: "Brands",
@@ -68,7 +72,11 @@ export const WORKSPACE_COPY = {
     description: "Your personal preferences, display settings, and account details.",
     actions: {
       save: "Save changes",
+      saved: "Changes saved",
       security: "Security settings",
+      securityOpened: "Security checklist opened",
+      saveNotice: "Profile preferences saved locally.",
+      securityNotice: "Security checklist opened for provider-managed access.",
     },
     readiness: {
       title: "Profile readiness",

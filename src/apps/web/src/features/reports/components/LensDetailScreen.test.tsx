@@ -26,6 +26,8 @@ let overviewState: {
   refetch: ReturnType<typeof vi.fn>;
 };
 const useWorkspaceOverviewMock = vi.fn();
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
@@ -46,6 +48,14 @@ beforeEach(() => {
   };
   useWorkspaceOverviewMock.mockReset();
   useWorkspaceOverviewMock.mockImplementation(() => overviewState);
+  objectUrlSpy = vi.fn(() => "blob:lens-detail");
+  revokeUrlSpy = vi.fn();
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 describe("LensDetailScreen", () => {
@@ -100,10 +110,29 @@ describe("LensDetailScreen", () => {
     expect(screen.getByRole("region", { name: "Lens diagnosis" })).toBeInTheDocument();
     expect(screen.getByText("Maintain current coverage")).toBeInTheDocument();
     expect(screen.getByText("Priority: Low")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View recommendations" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "View recommendations" })).toBeEnabled();
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("Canva")).toBeInTheDocument();
+  });
+
+  it("prepares lens recommendations from the current diagnosis", async () => {
+    render(<LensDetailScreen lensId="discovery" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "View recommendations" }));
+
+    expect(screen.getByRole("button", { name: "Recommendations ready" })).toBeDisabled();
+    expect(screen.getByText("Recommendations prepared for Discovery.")).toBeInTheDocument();
+  });
+
+  it("exports the lens detail brief package", async () => {
+    render(<LensDetailScreen lensId="discovery" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Export lens brief" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:lens-detail");
+    expect(screen.getByText("Discovery lens brief exported.")).toBeInTheDocument();
   });
 
   it("renders a high-priority diagnosis when absence is high", () => {

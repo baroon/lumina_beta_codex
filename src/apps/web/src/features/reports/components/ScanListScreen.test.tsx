@@ -116,7 +116,7 @@ describe("ScanListScreen", () => {
     expect(links.some((l) => l.getAttribute("href") === "/scans/s2/results")).toBe(true);
   });
 
-  it("renders row actions for scan summary and future workflows", () => {
+  it("renders row actions and keeps rerun disabled for healthy completed scans", async () => {
     hookState = {
       data: [row({ scanRunId: "s1" })],
       isLoading: false,
@@ -128,7 +128,27 @@ describe("ScanListScreen", () => {
 
     expect(screen.getByRole("button", { name: "View details" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Rerun" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Add to report" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+    expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(
+      screen.getByText("Brand A / Tracker A was added to the scan report."),
+    ).toBeInTheDocument();
+  });
+
+  it("queues a failed scan rerun from the row action", async () => {
+    hookState = {
+      data: [row({ scanRunId: "s1", scanStatus: "Failed", failedCount: 2, completedCount: 3 })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    render(<ScanListScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Rerun" }));
+
+    expect(screen.getByRole("button", { name: "Rerun queued" })).toBeDisabled();
+    expect(screen.getByText("Brand A / Tracker A was queued for rerun.")).toBeInTheDocument();
   });
 
   it("opens a scan summary drawer with evidence and workflow actions", async () => {
@@ -154,7 +174,29 @@ describe("ScanListScreen", () => {
       "/scans/s1/results",
     );
     expect(within(drawer).getByRole("button", { name: "Rerun" })).toBeDisabled();
-    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
+    expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(
+      screen.getByText("Brand A / Tracker A was added to the scan report."),
+    ).toBeInTheDocument();
+  });
+
+  it("shares failed scan action state between the row and summary drawer", async () => {
+    hookState = {
+      data: [row({ scanRunId: "s1", scanStatus: "Failed", failedCount: 2, completedCount: 3 })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    render(<ScanListScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "View details" }));
+    const drawer = screen.getByRole("dialog", { name: /scan:/i });
+    await userEvent.click(within(drawer).getByRole("button", { name: "Rerun" }));
+
+    expect(within(drawer).getByRole("button", { name: "Rerun queued" })).toBeDisabled();
+    expect(screen.getByText("Brand A / Tracker A was queued for rerun.")).toBeInTheDocument();
   });
 
   it("renders scan attention cards and opens the summary drawer", async () => {

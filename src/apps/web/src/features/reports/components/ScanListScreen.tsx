@@ -28,6 +28,9 @@ export function ScanListScreen() {
   const { data, isLoading, isError, error, refetch } = useAllScans();
   const [statusFilter, setStatusFilter] = useState<ScanStatusFilter | null>(null);
   const [selectedScan, setSelectedScan] = useState<ScanListItemDto | null>(null);
+  const [rerunQueue, setRerunQueue] = useState<Record<string, true>>({});
+  const [reportQueue, setReportQueue] = useState<Record<string, true>>({});
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const rows = data ?? EMPTY_SCAN_ROWS;
   const filteredRows = useMemo(() => filterScansByStatus(rows, statusFilter), [rows, statusFilter]);
   const statusCounts = useMemo(() => countScansByStatus(rows), [rows]);
@@ -50,6 +53,11 @@ export function ScanListScreen() {
         title={REPORTS_COPY.scanList.title}
         description={REPORTS_COPY.scanList.subtitle}
       />
+      {scanNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {scanNotice}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
@@ -141,7 +149,15 @@ export function ScanListScreen() {
                 </thead>
                 <tbody>
                   {filteredRows.map((row) => (
-                    <ScanRow key={row.scanRunId} row={row} onOpenSummary={setSelectedScan} />
+                    <ScanRow
+                      key={row.scanRunId}
+                      row={row}
+                      onOpenSummary={setSelectedScan}
+                      rerunQueued={Boolean(rerunQueue[row.scanRunId])}
+                      addedToReport={Boolean(reportQueue[row.scanRunId])}
+                      onRerun={queueScanRerun}
+                      onAddToReport={addScanToReport}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -150,9 +166,31 @@ export function ScanListScreen() {
         </CardContent>
       </Card>
 
-      <ScanSummaryDrawer scan={selectedScan} onClose={() => setSelectedScan(null)} />
+      <ScanSummaryDrawer
+        scan={selectedScan}
+        onClose={() => setSelectedScan(null)}
+        rerunQueued={selectedScan ? Boolean(rerunQueue[selectedScan.scanRunId]) : false}
+        addedToReport={selectedScan ? Boolean(reportQueue[selectedScan.scanRunId]) : false}
+        onRerun={queueScanRerun}
+        onAddToReport={addScanToReport}
+      />
     </div>
   );
+
+  function queueScanRerun(scan: ScanListItemDto) {
+    if (!isScanRerunnable(scan)) return;
+    setRerunQueue((current) => ({ ...current, [scan.scanRunId]: true }));
+    setScanNotice(
+      REPORTS_COPY.scanList.actions.rerunNotice.replace("{scan}", scanNoticeLabel(scan)),
+    );
+  }
+
+  function addScanToReport(scan: ScanListItemDto) {
+    setReportQueue((current) => ({ ...current, [scan.scanRunId]: true }));
+    setScanNotice(
+      REPORTS_COPY.scanList.actions.reportNotice.replace("{scan}", scanNoticeLabel(scan)),
+    );
+  }
 }
 
 function ScanAttentionSection({
@@ -270,10 +308,19 @@ function ScanStatusFilters({
 function ScanRow({
   row,
   onOpenSummary,
+  rerunQueued,
+  addedToReport,
+  onRerun,
+  onAddToReport,
 }: {
   row: ScanListItemDto;
   onOpenSummary: (row: ScanListItemDto) => void;
+  rerunQueued: boolean;
+  addedToReport: boolean;
+  onRerun: (row: ScanListItemDto) => void;
+  onAddToReport: (row: ScanListItemDto) => void;
 }) {
+  const canRerun = isScanRerunnable(row);
   return (
     <tr className="border-b border-neutral-100 hover:bg-neutral-50 last:border-b-0">
       <td className="px-4 py-3 tabular-nums">
@@ -310,11 +357,25 @@ function ScanRow({
           <Button variant="outline" size="sm" onClick={() => onOpenSummary(row)}>
             {REPORTS_COPY.scanList.actions.viewDetails}
           </Button>
-          <Button variant="outline" size="sm" disabled>
-            {REPORTS_COPY.scanList.actions.rerun}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canRerun || rerunQueued}
+            onClick={() => onRerun(row)}
+          >
+            {rerunQueued
+              ? REPORTS_COPY.scanList.actions.rerunQueued
+              : REPORTS_COPY.scanList.actions.rerun}
           </Button>
-          <Button variant="outline" size="sm" disabled>
-            {REPORTS_COPY.scanList.actions.addToReport}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={addedToReport}
+            onClick={() => onAddToReport(row)}
+          >
+            {addedToReport
+              ? REPORTS_COPY.scanList.actions.addedToReport
+              : REPORTS_COPY.scanList.actions.addToReport}
           </Button>
         </div>
       </td>
@@ -325,13 +386,22 @@ function ScanRow({
 function ScanSummaryDrawer({
   scan,
   onClose,
+  rerunQueued,
+  addedToReport,
+  onRerun,
+  onAddToReport,
 }: {
   scan: ScanListItemDto | null;
   onClose: () => void;
+  rerunQueued: boolean;
+  addedToReport: boolean;
+  onRerun: (scan: ScanListItemDto) => void;
+  onAddToReport: (scan: ScanListItemDto) => void;
 }) {
   if (!scan) return null;
 
   const copy = REPORTS_COPY.scanList.drawer;
+  const canRerun = isScanRerunnable(scan);
   const completedAt = scan.completedAt
     ? formatScanDateTime(scan.completedAt)
     : REPORTS_COPY.scanList.analysisPending;
@@ -404,16 +474,43 @@ function ScanSummaryDrawer({
               {REPORTS_COPY.scanList.actions.openEvidence}
             </Link>
           </Button>
-          <Button variant="outline" size="sm" disabled>
-            {REPORTS_COPY.scanList.actions.rerun}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canRerun || rerunQueued}
+            onClick={() => onRerun(scan)}
+          >
+            {rerunQueued
+              ? REPORTS_COPY.scanList.actions.rerunQueued
+              : REPORTS_COPY.scanList.actions.rerun}
           </Button>
-          <Button variant="outline" size="sm" disabled>
-            {REPORTS_COPY.scanList.actions.addToReport}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={addedToReport}
+            onClick={() => onAddToReport(scan)}
+          >
+            {addedToReport
+              ? REPORTS_COPY.scanList.actions.addedToReport
+              : REPORTS_COPY.scanList.actions.addToReport}
           </Button>
         </div>
       </aside>
     </div>
   );
+}
+
+function isScanRerunnable(scan: ScanListItemDto): boolean {
+  return (
+    scan.scanStatus !== "Completed" ||
+    scan.analysisStatus !== "Completed" ||
+    scan.failedCount > 0 ||
+    scan.completedCount < scan.scanCheckCount
+  );
+}
+
+function scanNoticeLabel(scan: ScanListItemDto): string {
+  return `${scan.brandName} / ${scan.trackerName}`;
 }
 
 function DrawerMeta({ label, value }: { label: string; value: string }) {

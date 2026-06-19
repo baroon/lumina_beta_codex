@@ -46,11 +46,9 @@ export function SourceCitationsDrawer({
               <Dialog.Title className="text-base font-semibold text-neutral-900">
                 {data?.sourceName ?? copy.title}
               </Dialog.Title>
-              {data?.domain && (
-                <Dialog.Description className="mt-0.5 text-xs text-neutral-500">
-                  {data.domain}
-                </Dialog.Description>
-              )}
+              <Dialog.Description className="mt-0.5 text-xs text-neutral-500">
+                {data?.domain ?? copy.description}
+              </Dialog.Description>
             </div>
             <Dialog.Close asChild>
               <button

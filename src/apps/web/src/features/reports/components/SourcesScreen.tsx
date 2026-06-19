@@ -157,6 +157,9 @@ export function SourcesScreen() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [relationshipFilter, setRelationshipFilter] = useState<SourceRelationship | null>(null);
   const [classifyingBrandId, setClassifyingBrandId] = useState<string | null>(null);
+  const [sourceReportQueue, setSourceReportQueue] = useState<Record<string, SourceDetailsRow>>({});
+  const [ignoredSources, setIgnoredSources] = useState<Record<string, true>>({});
+  const [sourceNotice, setSourceNotice] = useState<string | null>(null);
 
   // Pass NO_LENS_FILTER through to the BE when every lens is selected
   // (cross-lens view); narrow when the user picks a subset. Matches
@@ -397,7 +400,21 @@ export function SourcesScreen() {
     typeFilter,
     relationshipFilter,
     effectiveClassifyingBrandName,
-  );
+  ).filter((row) => !ignoredSources[sourceRowKey(row)]);
+
+  function addSourceToReport(row: SourceDetailsRow) {
+    setSourceReportQueue((current) => ({ ...current, [sourceRowKey(row)]: row }));
+    setSourceNotice(
+      REPORTS_COPY.sources.workspace.drawer.reportNotice.replace("{source}", row.sourceName),
+    );
+  }
+
+  function ignoreSource(row: SourceDetailsRow) {
+    setIgnoredSources((current) => ({ ...current, [sourceRowKey(row)]: true }));
+    setSourceNotice(
+      REPORTS_COPY.sources.workspace.drawer.ignoreNotice.replace("{source}", row.sourceName),
+    );
+  }
 
   const sections: MetricCategorySection[] = [
     {
@@ -499,6 +516,9 @@ export function SourcesScreen() {
               classifyingBrandId={effectiveClassifyingBrandId}
               classifyingBrandName={effectiveClassifyingBrandName}
               sourceTypes={sourceTypes.data ?? []}
+              reportQueue={sourceReportQueue}
+              onAddToReport={addSourceToReport}
+              onIgnore={ignoreSource}
             />
           ) : (
             <UrlsTable
@@ -506,6 +526,9 @@ export function SourcesScreen() {
               classifyingBrandId={effectiveClassifyingBrandId}
               classifyingBrandName={effectiveClassifyingBrandName}
               sourceTypes={sourceTypes.data ?? []}
+              reportQueue={sourceReportQueue}
+              onAddToReport={addSourceToReport}
+              onIgnore={ignoreSource}
             />
           )}
         </div>
@@ -518,6 +541,12 @@ export function SourcesScreen() {
   return (
     <div className="space-y-5">
       <PageHeader title="Sources" />
+
+      {sourceNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {sourceNotice}
+        </div>
+      )}
 
       {noDataAtAll ? (
         <>
@@ -1395,11 +1424,17 @@ function DomainsTable({
   classifyingBrandId,
   classifyingBrandName,
   sourceTypes,
+  reportQueue,
+  onAddToReport,
+  onIgnore,
 }: {
   rows: readonly WorkspaceDomainRowDto[];
   classifyingBrandId: string | null;
   classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
+  reportQueue: Record<string, SourceDetailsRow>;
+  onAddToReport: (row: SourceDetailsRow) => void;
+  onIgnore: (row: SourceDetailsRow) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<WorkspaceDomainRowDto | null>(null);
   const columns = useMemo<ColumnDef<WorkspaceDomainRowDto, unknown>[]>(
@@ -1479,10 +1514,18 @@ function DomainsTable({
         header: "Actions",
         enableSorting: false,
         meta: { align: "right", cellClassName: "min-w-64" },
-        cell: ({ row }) => <SourceRowActions onView={() => setSelectedRow(row.original)} />,
+        cell: ({ row }) => (
+          <SourceRowActions
+            row={row.original}
+            addedToReport={Boolean(reportQueue[sourceRowKey(row.original)])}
+            onView={() => setSelectedRow(row.original)}
+            onAddToReport={onAddToReport}
+            onIgnore={onIgnore}
+          />
+        ),
       },
     ],
-    [classifyingBrandId, classifyingBrandName, sourceTypes],
+    [classifyingBrandId, classifyingBrandName, onAddToReport, onIgnore, reportQueue, sourceTypes],
   );
 
   return (
@@ -1499,7 +1542,10 @@ function DomainsTable({
         relationship={
           selectedRow == null ? null : classifySourceRelationship(selectedRow, classifyingBrandName)
         }
+        addedToReport={selectedRow ? Boolean(reportQueue[sourceRowKey(selectedRow)]) : false}
         onClose={() => setSelectedRow(null)}
+        onAddToReport={onAddToReport}
+        onIgnore={onIgnore}
       />
     </>
   );
@@ -1510,11 +1556,17 @@ function UrlsTable({
   classifyingBrandId,
   classifyingBrandName,
   sourceTypes,
+  reportQueue,
+  onAddToReport,
+  onIgnore,
 }: {
   rows: readonly WorkspaceUrlRowDto[];
   classifyingBrandId: string | null;
   classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
+  reportQueue: Record<string, SourceDetailsRow>;
+  onAddToReport: (row: SourceDetailsRow) => void;
+  onIgnore: (row: SourceDetailsRow) => void;
 }) {
   const [selectedRow, setSelectedRow] = useState<WorkspaceUrlRowDto | null>(null);
   const columns = useMemo<ColumnDef<WorkspaceUrlRowDto, unknown>[]>(
@@ -1598,10 +1650,18 @@ function UrlsTable({
         header: "Actions",
         enableSorting: false,
         meta: { align: "right", cellClassName: "min-w-64" },
-        cell: ({ row }) => <SourceRowActions onView={() => setSelectedRow(row.original)} />,
+        cell: ({ row }) => (
+          <SourceRowActions
+            row={row.original}
+            addedToReport={Boolean(reportQueue[sourceRowKey(row.original)])}
+            onView={() => setSelectedRow(row.original)}
+            onAddToReport={onAddToReport}
+            onIgnore={onIgnore}
+          />
+        ),
       },
     ],
-    [classifyingBrandId, classifyingBrandName, sourceTypes],
+    [classifyingBrandId, classifyingBrandName, onAddToReport, onIgnore, reportQueue, sourceTypes],
   );
 
   return (
@@ -1618,7 +1678,10 @@ function UrlsTable({
         relationship={
           selectedRow == null ? null : classifySourceRelationship(selectedRow, classifyingBrandName)
         }
+        addedToReport={selectedRow ? Boolean(reportQueue[sourceRowKey(selectedRow)]) : false}
         onClose={() => setSelectedRow(null)}
+        onAddToReport={onAddToReport}
+        onIgnore={onIgnore}
       />
     </>
   );
@@ -1640,17 +1703,34 @@ function RelationshipBadge({ relationship }: { relationship: SourceRelationship 
   );
 }
 
-function SourceRowActions({ onView }: { onView: () => void }) {
+function SourceRowActions({
+  row,
+  addedToReport,
+  onView,
+  onAddToReport,
+  onIgnore,
+}: {
+  row: SourceDetailsRow;
+  addedToReport: boolean;
+  onView: () => void;
+  onAddToReport: (row: SourceDetailsRow) => void;
+  onIgnore: (row: SourceDetailsRow) => void;
+}) {
   const copy = REPORTS_COPY.sources.workspace.actions;
   return (
     <div className="flex justify-end gap-2">
       <Button variant="outline" size="sm" onClick={onView}>
         {copy.viewCitedAnswers}
       </Button>
-      <Button variant="outline" size="sm" disabled>
-        {copy.addToReport}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onAddToReport(row)}
+        disabled={addedToReport}
+      >
+        {addedToReport ? copy.addedToReport : copy.addToReport}
       </Button>
-      <Button variant="outline" size="sm" disabled>
+      <Button variant="outline" size="sm" onClick={() => onIgnore(row)}>
         {copy.ignore}
       </Button>
     </div>
@@ -1660,11 +1740,17 @@ function SourceRowActions({ onView }: { onView: () => void }) {
 function SourceDetailsDrawer({
   row,
   relationship,
+  addedToReport,
   onClose,
+  onAddToReport,
+  onIgnore,
 }: {
   row: SourceDetailsRow | null;
   relationship: SourceRelationship | null;
+  addedToReport: boolean;
   onClose: () => void;
+  onAddToReport: (row: SourceDetailsRow) => void;
+  onIgnore: (row: SourceDetailsRow) => void;
 }) {
   if (row == null) return null;
 
@@ -1722,15 +1808,24 @@ function SourceDetailsDrawer({
         </div>
       </div>
       <div className="flex justify-end gap-2 border-t border-neutral-200 px-5 py-4">
-        <Button variant="outline" size="sm" disabled>
-          {actions.addToReport}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddToReport(row)}
+          disabled={addedToReport}
+        >
+          {addedToReport ? actions.addedToReport : actions.addToReport}
         </Button>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={() => onIgnore(row)}>
           {actions.ignore}
         </Button>
       </div>
     </div>
   );
+}
+
+function sourceRowKey(row: SourceDetailsRow) {
+  return "sourceUrlId" in row ? `url:${row.sourceUrlId}` : `source:${row.sourceId}`;
 }
 
 function SourceDrawerMeta({ label, value }: { label: string; value: string }) {

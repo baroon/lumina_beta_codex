@@ -455,8 +455,12 @@ export const REPORTS_COPY = {
       viewDetails: "View details",
       openEvidence: "Open evidence",
       rerun: "Rerun",
+      rerunQueued: "Rerun queued",
       addToReport: "Add to report",
+      addedToReport: "Added to report",
       openSummary: "Open summary",
+      rerunNotice: "{scan} was queued for rerun.",
+      reportNotice: "{scan} was added to the scan report.",
     },
     drawer: {
       close: "Close scan summary",
@@ -525,7 +529,9 @@ export const REPORTS_COPY = {
       actions: {
         openDetails: "Open details",
         addToReport: "Add to report",
+        addedToReport: "Added to report",
         trackCompetitor: "Track competitor",
+        trackedCompetitor: "Tracked",
       },
       drawer: {
         title: "Entity details",
@@ -540,6 +546,8 @@ export const REPORTS_COPY = {
         actionCompetitor:
           "Review where this competitor leads and prioritize evidence or content updates.",
         noRecommendationData: "No recommendation data",
+        reportNotice: "{competitor} was added to the competitor report.",
+        trackingNotice: "{competitor} was added to the local tracking list.",
       },
     },
   },
@@ -675,6 +683,7 @@ export const REPORTS_COPY = {
     },
     drawer: {
       title: "Source citations",
+      description: "Prompt and answer evidence for the selected source.",
       close: "Close",
       prompt: "AI Question",
       answerSnippet: "Answer snippet",
@@ -689,7 +698,9 @@ export const REPORTS_COPY = {
       actions: {
         viewCitedAnswers: "View cited answers",
         addToReport: "Add to report",
+        addedToReport: "Added to report",
         ignore: "Ignore",
+        ignored: "Ignored",
       },
       drawer: {
         title: "Cited source",
@@ -704,6 +715,8 @@ export const REPORTS_COPY = {
         authority: "Authority",
         lastSeen: "Last cited",
         noData: "—",
+        reportNotice: "{source} was added to the source report.",
+        ignoreNotice: "{source} was ignored in this view.",
         citedAnswers:
           "Cited answer excerpts will appear here after source-to-answer workflow endpoints land.",
       },
@@ -729,8 +742,15 @@ export const REPORTS_COPY = {
       sectionAnswer: "Answer",
       sectionEvidence: "Evidence",
       addToReport: "Add to report",
+      addedToReport: "Added to report",
       createRecommendation: "Create recommendation",
+      recommendationCreated: "Recommendation created",
       markReviewed: "Mark reviewed",
+      reviewed: "Reviewed",
+      questionFallback: "This AI question",
+      reportNotice: "{question} was added to the answer report.",
+      recommendationNotice: "Recommendation created from {question}.",
+      reviewedNotice: "{question} was marked reviewed.",
       notMentioned: "Brand not mentioned in this answer.",
       mentionedCountLabel: "{count} brand mentions",
       mentionedCountLabelOne: "1 brand mention",
@@ -742,6 +762,8 @@ export const REPORTS_COPY = {
     subtitle:
       "Review factual claims, disputed statements, risky descriptions, and negative themes AI platforms generate about your brand.",
     createReport: "Create report",
+    reportCreated: "Report created",
+    reportNotice: "Claims & risks report created with {claims} claims and {risks} risk themes.",
     filtersUnavailable: "Filters unlock after claim and risk-specific endpoints land.",
     controls: {
       clearFilters: "Clear filters",

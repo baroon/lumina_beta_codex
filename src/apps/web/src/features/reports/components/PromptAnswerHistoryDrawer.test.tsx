@@ -107,13 +107,44 @@ describe("PromptAnswerHistoryDrawer", () => {
     expect(screen.getByText("1 brand mention")).toBeInTheDocument();
   });
 
-  it("renders disabled drawer actions until workflows are wired", () => {
+  it("runs local drawer actions and marks each action complete", async () => {
     hookState = {
       data: payload([answer({})]),
       isLoading: false,
       isError: false,
     };
     render(<PromptAnswerHistoryDrawer promptId="p1" range={range} onClose={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+    expect(screen.getByText("Added to report")).toBeDisabled();
+    expect(
+      screen.getByText("Best resume builder? was added to the answer report."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Create recommendation" }));
+    expect(screen.getByText("Recommendation created")).toBeDisabled();
+    expect(
+      screen.getByText("Recommendation created from Best resume builder?."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mark reviewed" }));
+    expect(screen.getByText("Reviewed")).toBeDisabled();
+    expect(screen.getByText("Best resume builder? was marked reviewed.")).toBeInTheDocument();
+  });
+
+  it("keeps drawer actions disabled when the prompt is outside workspace scope", () => {
+    hookState = {
+      data: {
+        promptId: "p-foreign",
+        promptText: "",
+        from: null,
+        to: "2026-06-09T00:00:00Z",
+        answers: [],
+      },
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptAnswerHistoryDrawer promptId="p-foreign" range={range} onClose={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: "Add to report" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Create recommendation" })).toBeDisabled();

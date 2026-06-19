@@ -971,6 +971,9 @@ function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
   const [recommendationFilter, setRecommendationFilter] =
     useState<CompetitorRecommendationFilter | null>(null);
   const [selectedRow, setSelectedRow] = useState<CompetitorRow | null>(null);
+  const [reportQueue, setReportQueue] = useState<Record<string, CompetitorRow>>({});
+  const [trackedCompetitors, setTrackedCompetitors] = useState<Record<string, true>>({});
+  const [competitorNotice, setCompetitorNotice] = useState<string | null>(null);
   const filteredRows = useMemo(
     () => filterCompetitorRows(rows, relationshipFilter, recommendationFilter),
     [recommendationFilter, relationshipFilter, rows],
@@ -981,8 +984,28 @@ function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
     () => filteredRows.reduce((max, r) => Math.max(max, r.mentionCount), 0),
     [filteredRows],
   );
+
+  function addToReport(row: CompetitorRow) {
+    setReportQueue((current) => ({ ...current, [competitorRowKey(row)]: row }));
+    setCompetitorNotice(
+      REPORTS_COPY.competitors.workspace.drawer.reportNotice.replace("{competitor}", row.name),
+    );
+  }
+
+  function trackCompetitor(row: CompetitorRow) {
+    setTrackedCompetitors((current) => ({ ...current, [competitorRowKey(row)]: true }));
+    setCompetitorNotice(
+      REPORTS_COPY.competitors.workspace.drawer.trackingNotice.replace("{competitor}", row.name),
+    );
+  }
+
   return (
     <div className="space-y-2">
+      {competitorNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {competitorNotice}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-1">
         <CompetitorFilterPills
           counts={relationshipCounts}
@@ -1084,7 +1107,16 @@ function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
       <CompetitorDetailsDrawer
         row={selectedRow}
         rank={selectedRow == null ? null : filteredRows.indexOf(selectedRow) + 1}
+        addedToReport={selectedRow ? Boolean(reportQueue[competitorRowKey(selectedRow)]) : false}
+        tracked={
+          selectedRow
+            ? selectedRow.isTrackedBrand ||
+              Boolean(trackedCompetitors[competitorRowKey(selectedRow)])
+            : false
+        }
         onClose={() => setSelectedRow(null)}
+        onAddToReport={addToReport}
+        onTrackCompetitor={trackCompetitor}
       />
     </div>
   );
@@ -1093,11 +1125,19 @@ function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
 function CompetitorDetailsDrawer({
   row,
   rank,
+  addedToReport,
+  tracked,
   onClose,
+  onAddToReport,
+  onTrackCompetitor,
 }: {
   row: CompetitorRow | null;
   rank: number | null;
+  addedToReport: boolean;
+  tracked: boolean;
   onClose: () => void;
+  onAddToReport: (row: CompetitorRow) => void;
+  onTrackCompetitor: (row: CompetitorRow) => void;
 }) {
   if (!row) return null;
 
@@ -1156,16 +1196,30 @@ function CompetitorDetailsDrawer({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
-          <Button variant="outline" size="sm" disabled>
-            {actions.addToReport}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAddToReport(row)}
+            disabled={addedToReport}
+          >
+            {addedToReport ? actions.addedToReport : actions.addToReport}
           </Button>
-          <Button variant="outline" size="sm" disabled>
-            {actions.trackCompetitor}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onTrackCompetitor(row)}
+            disabled={tracked}
+          >
+            {tracked ? actions.trackedCompetitor : actions.trackCompetitor}
           </Button>
         </div>
       </aside>
     </div>
   );
+}
+
+function competitorRowKey(row: CompetitorRow) {
+  return `${row.entityType}:${row.entityId}`;
 }
 
 function DrawerMeta({ label, value }: { label: string; value: string }) {

@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -42,6 +43,37 @@ export function PromptAnswerHistoryDrawer({
   const notInScope = data !== undefined && data.promptText === "" && data.answers.length === 0;
   const title = data?.promptText ? `${copy.title}: ${data.promptText}` : copy.title;
   const subtitle = data?.promptText ? answerHistorySubtitle(data.answers) : copy.noPromptSubtitle;
+  const actionsEnabled = Boolean(data?.promptText) && !isLoading && !isError && !notInScope;
+  const [addedToReport, setAddedToReport] = useState(false);
+  const [recommendationCreated, setRecommendationCreated] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAddedToReport(false);
+    setRecommendationCreated(false);
+    setReviewed(false);
+    setActionNotice(null);
+  }, [promptId]);
+
+  function promptLabel(): string {
+    return data?.promptText ?? copy.questionFallback;
+  }
+
+  function addToReport() {
+    setAddedToReport(true);
+    setActionNotice(copy.reportNotice.replace("{question}", promptLabel()));
+  }
+
+  function createRecommendation() {
+    setRecommendationCreated(true);
+    setActionNotice(copy.recommendationNotice.replace("{question}", promptLabel()));
+  }
+
+  function markReviewed() {
+    setReviewed(true);
+    setActionNotice(copy.reviewedNotice.replace("{question}", promptLabel()));
+  }
 
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
@@ -95,18 +127,33 @@ export function PromptAnswerHistoryDrawer({
                   ))}
                 </ul>
               )}
+              {actionNotice && (
+                <div className="mt-4 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+                  {actionNotice}
+                </div>
+              )}
             </div>
           </ScrollArea>
 
           <footer className="flex flex-wrap justify-end gap-2 border-t border-neutral-200 px-6 py-4">
-            <Button variant="outline" size="sm" disabled>
-              {copy.addToReport}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!actionsEnabled || addedToReport}
+              onClick={addToReport}
+            >
+              {addedToReport ? copy.addedToReport : copy.addToReport}
             </Button>
-            <Button variant="outline" size="sm" disabled>
-              {copy.createRecommendation}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!actionsEnabled || recommendationCreated}
+              onClick={createRecommendation}
+            >
+              {recommendationCreated ? copy.recommendationCreated : copy.createRecommendation}
             </Button>
-            <Button size="sm" disabled>
-              {copy.markReviewed}
+            <Button size="sm" disabled={!actionsEnabled || reviewed} onClick={markReviewed}>
+              {reviewed ? copy.reviewed : copy.markReviewed}
             </Button>
           </footer>
         </Dialog.Content>

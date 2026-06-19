@@ -27,7 +27,7 @@ import {
   type EntitySentimentFilter,
   type LensDiagnosis,
 } from "@/features/reports/lenses";
-import type { WorkspaceTopEntityRowDto } from "@/types/api";
+import type { WorkspaceOverviewDto, WorkspaceTopEntityRowDto } from "@/types/api";
 
 const LENS_SLUGS: Record<string, string> = {
   Discovery: "discovery",
@@ -54,6 +54,8 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [sentimentFilter, setSentimentFilter] = useState<EntitySentimentFilter | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [recommendationsReady, setRecommendationsReady] = useState(false);
 
   const overview = useWorkspaceOverview(range, lens ? [lens.code] : [], [], [], [], [], trackerIds);
   const filteredEntities = useMemo(
@@ -130,6 +132,18 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
   }
   if (!overview.data) return null;
 
+  function prepareRecommendations() {
+    if (!lens || !diagnosis) return;
+    setRecommendationsReady(true);
+    setActionNotice(copy.notice.recommendations.replace("{lens}", lens.name));
+  }
+
+  function exportLensBrief() {
+    if (!lens || !overview.data) return;
+    exportLensDetailPackage(lens, overview.data, filteredEntities, diagnosis, range);
+    setActionNotice(copy.notice.exported.replace("{lens}", lens.name));
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader title={lens.name} description={lens.description}>
@@ -139,14 +153,25 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
             {copy.actions.back}
           </Link>
         </Button>
-        <Button variant="outline" size="sm" disabled>
-          {copy.actions.recommendations}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={prepareRecommendations}
+          disabled={recommendationsReady}
+        >
+          {recommendationsReady ? copy.actions.recommendationsReady : copy.actions.recommendations}
         </Button>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={exportLensBrief}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.export}
         </Button>
       </PageHeader>
+
+      {actionNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {actionNotice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
@@ -454,4 +479,66 @@ function FilteredLensEntityEmptyState() {
 function formatNullableRate(value: number | null) {
   if (value === null) return LENSES_COPY.detail.table.noData;
   return `${Math.round(value * 100)}%`;
+}
+
+function exportLensDetailPackage(
+  lens: VisibilityLens,
+  overview: WorkspaceOverviewDto,
+  entities: readonly WorkspaceTopEntityRowDto[],
+  diagnosis: LensDiagnosis | null,
+  range: DateRangeSelection,
+) {
+  const payload = JSON.stringify(
+    {
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      lens: {
+        code: lens.code,
+        name: lens.name,
+        description: lens.description,
+      },
+      summary: {
+        queries: overview.hero.queries,
+        mentions: overview.hero.mentions,
+        citations: overview.hero.citations,
+        brandMentionRate: overview.hero.brandMentionRate,
+        brandAbsenceRate: overview.hero.brandAbsenceRate,
+        brandFirstMentionRate: overview.hero.brandFirstMentionRate,
+      },
+      diagnosis,
+      entities: entities.map((entity) => ({
+        entityType: entity.entityType,
+        entityId: entity.entityId,
+        name: entity.name,
+        isTrackedBrand: entity.isTrackedBrand,
+        visibility: entity.visibility,
+        shareOfVoice: entity.shareOfVoice,
+        sentiment: entity.sentiment,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${lens.code.toLowerCase()}-lens-brief-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
+  }
 }

@@ -59,6 +59,9 @@ export const LENSES_COPY = {
       open: "Open lens",
       export: "Export lens brief",
     },
+    notice: {
+      exported: "Lens brief exported with {count} lenses.",
+    },
     controls: {
       countsUnavailable: "Lens counts are unavailable for this range.",
     },
@@ -103,8 +106,13 @@ export const LENSES_COPY = {
     actions: {
       back: "All lenses",
       recommendations: "View recommendations",
+      recommendationsReady: "Recommendations ready",
       export: "Export lens brief",
       clearFilters: "Clear filters",
+    },
+    notice: {
+      exported: "{lens} lens brief exported.",
+      recommendations: "Recommendations prepared for {lens}.",
     },
     summary: {
       questions: "AI questions",

@@ -50,6 +50,8 @@ let lensCountsState: {
   isError: boolean;
   error?: unknown;
 };
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
@@ -84,6 +86,14 @@ beforeEach(() => {
     isLoading: false,
     isError: false,
   };
+  objectUrlSpy = vi.fn(() => "blob:lens-brief");
+  revokeUrlSpy = vi.fn();
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 describe("LensesScreen", () => {
@@ -214,6 +224,17 @@ describe("LensesScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: /clear filters/i }));
 
     expect(within(table).getByText("Discovery")).toBeInTheDocument();
+  });
+
+  it("exports the filtered lens brief package", async () => {
+    render(<LensesScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /sparse\s+2/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Export lens brief" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:lens-brief");
+    expect(screen.getByText("Lens brief exported with 2 lenses.")).toBeInTheDocument();
   });
 
   it("keeps the page visible when lens counts fail", () => {

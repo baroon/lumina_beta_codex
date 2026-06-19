@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSettingsSummary } from "@/features/settings/types";
 import { deriveWorkspaceReadiness } from "@/features/settings/settings";
@@ -96,5 +97,21 @@ describe("WorkspaceSettingsScreen", () => {
     render(<WorkspaceSettingsScreen />);
 
     expect(screen.getByText("Workspace unavailable")).toBeInTheDocument();
+  });
+
+  it("runs workspace header actions locally", async () => {
+    render(<WorkspaceSettingsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Invite teammate/i }));
+    expect(screen.getByRole("button", { name: /Invite prepared/i })).toBeDisabled();
+    expect(
+      screen.getByText("Teammate invite draft prepared for account administration."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Manage billing/i }));
+    expect(screen.getByRole("button", { name: /Billing review queued/i })).toBeDisabled();
+    expect(
+      screen.getByText("Billing review queued for workspace administration."),
+    ).toBeInTheDocument();
   });
 });

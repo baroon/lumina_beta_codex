@@ -30,6 +30,8 @@ let updateState: {
   error?: unknown;
   variables?: { claimId: string; reviewStatus: string };
 };
+const originalCreateElement = document.createElement.bind(document);
+let anchorClick: ReturnType<typeof vi.fn>;
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
@@ -47,6 +49,7 @@ vi.mock("@/features/reports/hooks/useUpdateFactualClaimReviewStatus", () => ({
 }));
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   overviewState = {
     data: overview(),
     isLoading: false,
@@ -55,6 +58,22 @@ beforeEach(() => {
   };
   updateMutate = vi.fn();
   updateState = { isPending: false };
+  anchorClick = vi.fn();
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: vi.fn(() => "blob:claims-risks-report"),
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: vi.fn(),
+  });
+  vi.spyOn(document, "createElement").mockImplementation((tagName, options) => {
+    const element = originalCreateElement(tagName, options);
+    if (tagName.toLowerCase() === "a") {
+      Object.defineProperty(element, "click", { configurable: true, value: anchorClick });
+    }
+    return element;
+  });
 });
 
 describe("deriveClaimsRisksSummary", () => {
@@ -143,6 +162,21 @@ describe("ClaimsRisksScreen", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("outdated info")).toBeInTheDocument();
     expect(screen.getByText("credible")).toBeInTheDocument();
+  });
+
+  it("creates a filtered claims and risks report package", async () => {
+    render(<ClaimsRisksScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /disputed\s+1/i }));
+    await userEvent.click(screen.getByRole("button", { name: /high\s+1/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Report created" })).toBeDisabled();
+    expect(
+      screen.getByText("Claims & risks report created with 1 claims and 1 risk themes."),
+    ).toBeInTheDocument();
   });
 
   it("opens a claim review drawer and submits status changes", async () => {

@@ -46,6 +46,8 @@ export function ClaimsRisksScreen() {
   const [claimTypeFilter, setClaimTypeFilter] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<RiskSeverity | null>(null);
   const [selected, setSelected] = useState<WorkspaceFactualClaimDto | null>(null);
+  const [reportCreated, setReportCreated] = useState(false);
+  const [reportNotice, setReportNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const update = useUpdateFactualClaimReviewStatus();
@@ -136,11 +138,36 @@ export function ClaimsRisksScreen() {
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.subtitle}>
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reportCreated}
+          onClick={() => {
+            createClaimsRisksReportPackage({
+              range,
+              claims: filteredClaims,
+              risks: filteredRisks,
+              knownFor,
+              summary,
+            });
+            setReportCreated(true);
+            setReportNotice(
+              copy.reportNotice
+                .replace("{claims}", filteredClaims.length.toLocaleString())
+                .replace("{risks}", filteredRisks.length.toLocaleString()),
+            );
+          }}
+        >
           <FileText className="h-3.5 w-3.5" aria-hidden />
-          {copy.createReport}
+          {reportCreated ? copy.reportCreated : copy.createReport}
         </Button>
       </PageHeader>
+
+      {reportNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {reportNotice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
@@ -645,6 +672,52 @@ function StatusBadge({ status }: { status: string }) {
   const variant =
     status === "Verified" ? "success" : status === "Disputed" ? "destructive" : "warning";
   return <Badge variant={variant}>{statusLabel(status)}</Badge>;
+}
+
+function createClaimsRisksReportPackage({
+  range,
+  claims,
+  risks,
+  knownFor,
+  summary,
+}: {
+  range: DateRangeSelection;
+  claims: readonly WorkspaceFactualClaimDto[];
+  risks: readonly WorkspaceBrandRiskFlagDto[];
+  knownFor: readonly WorkspaceBrandAttributeDto[];
+  summary: ReturnType<typeof deriveClaimsRisksSummaryFromRows>;
+}) {
+  const payload = {
+    reportType: "claims-risks",
+    createdAt: new Date().toISOString(),
+    dateRange: serializeDateRange(range),
+    summary,
+    claims,
+    risks,
+    knownFor,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "lumina-claims-risks-report.json";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
+  }
 }
 
 function statusLabel(status: string) {

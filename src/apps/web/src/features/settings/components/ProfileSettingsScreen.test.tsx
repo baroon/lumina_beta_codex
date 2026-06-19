@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { deriveProfileReadiness } from "@/features/settings/settings";
 import { ProfileSettingsScreen } from "./ProfileSettingsScreen";
@@ -19,11 +20,18 @@ describe("ProfileSettingsScreen", () => {
     expect(screen.getByText("Security")).toBeInTheDocument();
   });
 
-  it("renders disabled v1 actions", () => {
+  it("runs profile header actions locally", async () => {
     render(<ProfileSettingsScreen />);
 
-    expect(screen.getByRole("button", { name: /Security settings/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Save changes/i })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /Security settings/i }));
+    expect(screen.getByRole("button", { name: /Security checklist opened/i })).toBeDisabled();
+    expect(
+      screen.getByText("Security checklist opened for provider-managed access."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Save changes/i }));
+    expect(screen.getByRole("button", { name: /Changes saved/i })).toBeDisabled();
+    expect(screen.getByText("Profile preferences saved locally.")).toBeInTheDocument();
   });
 
   it("derives profile readiness ownership", () => {

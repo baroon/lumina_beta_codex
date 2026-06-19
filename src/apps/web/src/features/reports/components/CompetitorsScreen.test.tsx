@@ -462,8 +462,32 @@ describe("CompetitorsScreen", () => {
     expect(within(drawer).getByText("40%")).toBeInTheDocument();
     expect(within(drawer).getByText("30%")).toBeInTheDocument();
     expect(within(drawer).getByText("Recommended action")).toBeInTheDocument();
-    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
-    expect(within(drawer).getByRole("button", { name: "Track competitor" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeEnabled();
+    expect(within(drawer).getByRole("button", { name: "Track competitor" })).toBeEnabled();
+  });
+
+  it("adds and tracks a competitor from the details drawer", async () => {
+    competitiveState = {
+      data: competitive(
+        [mention({ entityId: "leader", name: "Canva", mentionCount: 12, share: 0.4 })],
+        [rate({ entityId: "leader", name: "Canva", mentionCount: 12, recommendationRate: 0.3 })],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    render(<CompetitorsScreen />);
+
+    const table = screen.getByRole("table");
+    await userEvent.click(within(table).getByRole("button", { name: "Open details" }));
+    const drawer = screen.getByRole("dialog", { name: "Canva" });
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
+    expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("Canva was added to the competitor report.")).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Track competitor" }));
+    expect(within(drawer).getByRole("button", { name: "Tracked" })).toBeDisabled();
+    expect(screen.getByText("Canva was added to the local tracking list.")).toBeInTheDocument();
   });
 
   it("filters the competitive ranking table locally", async () => {

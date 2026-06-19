@@ -36,6 +36,7 @@ export function LensesScreen() {
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [statusFilter, setStatusFilter] = useState<LensStatus | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const lensCounts = useLensCounts(range);
@@ -126,14 +127,25 @@ export function LensesScreen() {
 
   const totalLensMentions = filteredRows.reduce((sum, row) => sum + row.mentionCount, 0);
 
+  function exportLensBrief() {
+    exportLensRows(filteredRows, range);
+    setExportNotice(copy.notice.exported.replace("{count}", filteredRows.length.toLocaleString()));
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.description}>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={exportLensBrief}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.export}
         </Button>
       </PageHeader>
+
+      {exportNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {exportNotice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
@@ -280,6 +292,49 @@ function LensStatusBadge({ row }: { row: LensRow }) {
   if (row.mentionCount === 0) return <Badge variant="secondary">{copy.empty}</Badge>;
   if (row.share < 0.1) return <Badge variant="warning">{copy.sparse}</Badge>;
   return <Badge variant="success">{copy.healthy}</Badge>;
+}
+
+function exportLensRows(rows: readonly LensRow[], range: DateRangeSelection) {
+  const payload = JSON.stringify(
+    {
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      lensCount: rows.length,
+      lenses: rows.map((row) => ({
+        code: row.code,
+        name: row.name,
+        description: row.description,
+        primaryMetric: row.primaryMetric,
+        mentionCount: row.mentionCount,
+        share: row.share,
+        status: row.status,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `lens-brief-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
+  }
 }
 
 function LensStatusFilterPills({

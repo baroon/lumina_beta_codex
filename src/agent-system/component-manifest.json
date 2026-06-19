@@ -1007,7 +1007,7 @@
             "useBrand",
             "useDiscoveryResults"
           ],
-          "notes": "Read-only brand profile view at /brands/$brandId/profile — the canonical landing page for a single brand. Renders identity fields (description, industry, category, positioning, website), aliases as chips, and one section per dimension (products, audiences, markets, topics, competitors, trust signals) showing the items as chips. Edits route through the existing discovery wizard via a 'Re-run discovery' CTA until proper PATCH endpoints land; an inline notice surfaces that today's edit path is the wizard. Sources data from useBrand + useDiscoveryResults (which returns the full DiscoveryResultsDto)."
+          "notes": "Editable brand profile view at /brands/$brandId/profile — the canonical landing page for a single brand. Renders identity fields (description, industry, category, positioning, website), aliases, and one editable section per dimension (products, audiences, markets, topics, competitors, trust signals). Inline edits route through the brand PATCH hooks and dimension mutations; Re-run discovery remains the path back into the discovery wizard when the user wants the LLM to repopulate everything. Sources data from useBrand + useDiscoveryResults (which returns the full DiscoveryResultsDto)."
         }
       ]
     },
@@ -1230,7 +1230,7 @@
             "useWorkspaceSettingsSummary",
             "lucide-react"
           ],
-          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, readiness cards, read-only profile/team/notification/integration sections, empty usage hint, and disabled v1 account-management actions."
+          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, readiness cards, read-only profile/team/notification/integration sections, empty usage hint, and v1 local account-management actions for invite preparation and billing review queue notices."
         },
         {
           "name": "ProfileSettingsScreen",
@@ -1239,7 +1239,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["PageHeader", "Card", "Badge", "Button", "settings", "lucide-react"],
-          "notes": "Profile settings page at /settings/profile. Renders profile readiness cards, read-only identity, preferences, notification, and access sections plus disabled v1 actions until account/profile endpoints are available."
+          "notes": "Profile settings page at /settings/profile. Renders profile readiness cards, read-only identity, preferences, notification, and access sections plus v1 local actions for opening the security checklist and saving profile preferences until account/profile endpoints are available."
         }
       ]
     },
@@ -1410,7 +1410,7 @@
             "lucide-react",
             "lenses"
           ],
-          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, primary metric badges, health status badges, lens-attention cards for sparse/no-evidence lenses, status filter pills with clear action, filtered empty state, and links into each lens detail route."
+          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, primary metric badges, health status badges, lens-attention cards for sparse/no-evidence lenses, status filter pills with clear action, filtered empty state, and links into each lens detail route. Includes a v1 local export action that downloads the filtered lens brief as JSON and surfaces completion state."
         },
         {
           "name": "LensDetailScreen",
@@ -1433,7 +1433,7 @@
             "lenses",
             "lucide-react"
           ],
-          "notes": "Data-backed /lenses/$lensId detail page. Resolves route slugs to Visibility Lens codes and queries workspace overview with a single lens filter. Renders lens KPIs, derived lens diagnosis card, signal cards, entity-type/sentiment filter pills with clear action, filtered top-entity table, empty states, backlink to /lenses, and disabled v1 View recommendations/export actions until workflow endpoints land."
+          "notes": "Data-backed /lenses/$lensId detail page. Resolves route slugs to Visibility Lens codes and queries workspace overview with a single lens filter. Renders lens KPIs, derived lens diagnosis card, signal cards, entity-type/sentiment filter pills with clear action, filtered top-entity table, empty states, and backlink to /lenses. Includes v1 local actions for preparing lens recommendations from the current diagnosis and exporting a JSON lens brief package."
         },
         {
           "name": "TopicsScreen",
@@ -1477,7 +1477,7 @@
             "useUpdateFactualClaimReviewStatus",
             "claimsRisks"
           ],
-          "notes": "Data-backed /claims-risks page. Uses workspace overview factual claims, risk flags, and known-for attributes to render risk summary tiles, a sortable claim review table with recommended-action column, risk themes, known-for themes, workflow status counts, priority review queue, and a right-side claim review drawer. Includes claim-status, claim-type, and risk-severity filter pills; summary tiles, workflow counts, the claims table, risk themes, and review queue reflect the active filter scope."
+          "notes": "Data-backed /claims-risks page. Uses workspace overview factual claims, risk flags, and known-for attributes to render risk summary tiles, a sortable claim review table with recommended-action column, risk themes, known-for themes, workflow status counts, priority review queue, and a right-side claim review drawer. Includes claim-status, claim-type, and risk-severity filter pills; summary tiles, workflow counts, the claims table, risk themes, and review queue reflect the active filter scope. Create report exports the active claims/risks/known-for scope as a v1 local JSON report package with completion state."
         },
         {
           "name": "ReportsScreen",
@@ -1505,7 +1505,7 @@
             "useWorkspaceCompetitive",
             "competitors"
           ],
-          "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` into one sortable table: columns #, Entity, Relationship, Mentions, Share of voice, Recommendation rate, and Actions. Tracked brands are highlighted with a You relationship badge; the rank-1 non-tracked competitor gets a Leader badge. Leaderboard includes local relationship and recommendation-availability filter pills with clear action plus a row details drawer with disabled v1 Add to report/Track competitor actions. Pure `mergeEntityRows`, `filterCompetitorRows`, and count helpers exported for unit testing. Scope follows the sidebar TrackerSelector."
+          "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` into one sortable table: columns #, Entity, Relationship, Mentions, Share of voice, Recommendation rate, and Actions. Tracked brands are highlighted with a You relationship badge; the rank-1 non-tracked competitor gets a Leader badge. Leaderboard includes local relationship and recommendation-availability filter pills with clear action plus a row details drawer. Drawer includes v1 local actions for Add to report and Track competitor with visible completion state. Pure `mergeEntityRows`, `filterCompetitorRows`, and count helpers exported for unit testing. Scope follows the sidebar TrackerSelector."
         },
         {
           "name": "SourcesScreen",
@@ -1534,7 +1534,7 @@
             "useWorkspaceDomains",
             "useWorkspaceUrls"
           ],
-          "notes": "Workspace-wide citation source view at /sources. Single page with a Domains to URLs view toggle (replaces the prior /sources/domains and /sources/urls split). Canonical page shell: title-only PageHeader, MetricCategoryLayout with Hero KPIs (Citations / Domains / URLs / Top type) + sticky single-row controls strip (lens chips / view toggle / DateRangePicker / FiltersPopover with Topics/Products/Markets/Audiences/Models/Sentiment) + one section that swaps tables on view flip. All seven canonical filter dimensions thread through both useWorkspaceDomains + useWorkspaceUrls; the BE narrows the underlying citation set via PromptRun-level EXISTS subqueries (sentiment narrows via Mention join). Source classification mutates the underlying Source, so a flip on a URL row updates every URL backed by the same Source after the cache invalidates. Citation context includes source-type mix, inferred relationship mix, and owned-share trend; Domains and URLs tables expose relationship badges, relationship filter pills, and a View cited answers drawer backed by local source metadata, while Add to report/Ignore remain disabled v1 workflow actions until source workflow endpoints land. Pure `filterActive`, `countByType`, `countByRelationship`, `deriveRelationshipShares`, and `deriveHero` helpers exported."
+          "notes": "Workspace-wide citation source view at /sources. Single page with a Domains to URLs view toggle (replaces the prior /sources/domains and /sources/urls split). Canonical page shell: title-only PageHeader, MetricCategoryLayout with Hero KPIs (Citations / Domains / URLs / Top type) + sticky single-row controls strip (lens chips / view toggle / DateRangePicker / FiltersPopover with Topics/Products/Markets/Audiences/Models/Sentiment) + one section that swaps tables on view flip. All seven canonical filter dimensions thread through both useWorkspaceDomains + useWorkspaceUrls; the BE narrows the underlying citation set via PromptRun-level EXISTS subqueries (sentiment narrows via Mention join). Source classification mutates the underlying Source, so a flip on a URL row updates every URL backed by the same Source after the cache invalidates. Citation context includes source-type mix, inferred relationship mix, and owned-share trend; Domains and URLs tables expose relationship badges, relationship filter pills, row actions, and a View cited answers drawer backed by local source metadata. Includes v1 local Add to report and Ignore actions with queue/suppression state shared between row actions and drawer. Pure `filterActive`, `countByType`, `countByRelationship`, `deriveRelationshipShares`, and `deriveHero` helpers exported."
         },
         {
           "name": "PromptsScreen",
@@ -1592,7 +1592,7 @@
             "ErrorPage",
             "scanHistory"
           ],
-          "notes": "Reporting Scan History page at /scan-history. Shows operational summary metrics (last completed scan, completed checks, success rate, failed runs), a scan-attention queue for failed, incomplete, running, or analysis-pending scans, plus a cross-tracker scan runs table. Summary and table respond to local scan-status filter pills with clear action. Rows and attention cards include View details opening a scan summary drawer, disabled v1 Rerun/Add to report actions, and an Open evidence link to /scans/{id}/results inside the drawer. Consumes GET /api/scans (capped at 100 rows); /scans redirects here while scan detail routes stay under /scans/{id}."
+          "notes": "Reporting Scan History page at /scan-history. Shows operational summary metrics (last completed scan, completed checks, success rate, failed runs), a scan-attention queue for failed, incomplete, running, or analysis-pending scans, plus a cross-tracker scan runs table. Summary and table respond to local scan-status filter pills with clear action. Rows and attention cards include View details opening a scan summary drawer, v1 local Rerun queue actions for failed/incomplete scans, Add to report actions with shared row/drawer completion state, and an Open evidence link to /scans/{id}/results inside the drawer. Consumes GET /api/scans (capped at 100 rows); /scans redirects here while scan detail routes stay under /scans/{id}."
         },
         {
           "name": "ScanSourcesScreen",
@@ -1635,7 +1635,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "ScrollArea", "Skeleton"],
-          "notes": "Row-click drawer on the AI Questions surface. Drills into one question's AI answer history across in-window scans with title pattern Answer history: {AI question} and a compact answer/platform/brand-mention subtitle. Per-answer cards show platform, scan recency, brand-mentioned state, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Footer includes disabled v1 actions for Add to report, Create recommendation, and Mark reviewed until workflow endpoints land. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated not-in-scope state without branching on errors."
+          "notes": "Row-click drawer on the AI Questions surface. Drills into one question's AI answer history across in-window scans with title pattern Answer history: {AI question} and a compact answer/platform/brand-mention subtitle. Per-answer cards show platform, scan recency, brand-mentioned state, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Footer includes v1 local actions for Add to report, Create recommendation, and Mark reviewed with completion state and notices; actions stay disabled for out-of-scope prompts. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated not-in-scope state without branching on errors."
         },
         {
           "name": "ShareOfVoiceCard",
@@ -1716,7 +1716,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Card", "Badge", "Button", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Phase 4 measurement-model expansion item #14 — factual-claim review inbox at /scans/{id}/claims. Lists every check-able claim the AI made about the brand on this scan with subject/asserted-value, polarity-coded verifiability badge, and a review-status pill (Pending / Verified / Disputed). Filter buttons re-query the BE with `?reviewStatus=` so the list stays cheap; the future Verify/Dispute mutation lives in the same screen but is deferred to a follow-up slice."
+          "notes": "Phase 4 measurement-model expansion item #14 — factual-claim review inbox at /scans/{id}/claims. Lists every check-able claim the AI made about the brand on this scan with subject/asserted-value, polarity-coded verifiability badge, and an inline review verdict toggle (Pending / Verified / Disputed). Filter buttons re-query the BE with `?reviewStatus=` so the list stays cheap; verdict changes call the shared factual-claim review mutation and surface row-scoped errors."
         },
         {
           "name": "TopicsTable",

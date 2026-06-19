@@ -1,4 +1,5 @@
 import { Save, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -9,19 +10,43 @@ import { deriveProfileReadiness, type ProfileReadinessItem } from "@/features/se
 export function ProfileSettingsScreen() {
   const copy = WORKSPACE_COPY.profile;
   const readiness = deriveProfileReadiness();
+  const [securityOpened, setSecurityOpened] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.description}>
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={securityOpened}
+          onClick={() => {
+            setSecurityOpened(true);
+            setNotice(copy.actions.securityNotice);
+          }}
+        >
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-          {copy.actions.security}
+          {securityOpened ? copy.actions.securityOpened : copy.actions.security}
         </Button>
-        <Button size="sm" disabled>
+        <Button
+          size="sm"
+          disabled={saved}
+          onClick={() => {
+            setSaved(true);
+            setNotice(copy.actions.saveNotice);
+          }}
+        >
           <Save className="h-3.5 w-3.5" aria-hidden />
-          {copy.actions.save}
+          {saved ? copy.actions.saved : copy.actions.save}
         </Button>
       </PageHeader>
+
+      {notice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {notice}
+        </div>
+      )}
 
       <ProfileReadinessSection items={readiness} />
 

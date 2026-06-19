@@ -1,4 +1,5 @@
 import { CreditCard, UserPlus } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -16,6 +17,9 @@ export function WorkspaceSettingsScreen() {
   const copy = WORKSPACE_COPY.settings;
   const settings = useWorkspaceSettingsSummary();
   const readiness = deriveWorkspaceReadiness(settings.summary);
+  const [invitePrepared, setInvitePrepared] = useState(false);
+  const [billingQueued, setBillingQueued] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (settings.isLoading) return <LoadingPage />;
   if (settings.isError) {
@@ -30,15 +34,37 @@ export function WorkspaceSettingsScreen() {
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.description}>
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={invitePrepared}
+          onClick={() => {
+            setInvitePrepared(true);
+            setNotice(copy.actions.inviteNotice);
+          }}
+        >
           <UserPlus className="h-3.5 w-3.5" aria-hidden />
-          {copy.actions.invite}
+          {invitePrepared ? copy.actions.invitePrepared : copy.actions.invite}
         </Button>
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={billingQueued}
+          onClick={() => {
+            setBillingQueued(true);
+            setNotice(copy.actions.billingNotice);
+          }}
+        >
           <CreditCard className="h-3.5 w-3.5" aria-hidden />
-          {copy.actions.billing}
+          {billingQueued ? copy.actions.billingQueued : copy.actions.billing}
         </Button>
       </PageHeader>
+
+      {notice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {notice}
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-4">
         <SummaryTile
