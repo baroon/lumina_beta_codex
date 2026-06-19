@@ -20,6 +20,9 @@ let overviewState: {
   refetch: () => Promise<void>;
 };
 
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
+
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
 }));
@@ -35,6 +38,14 @@ beforeEach(() => {
     isError: false,
     refetch: vi.fn(),
   };
+  objectUrlSpy = vi.fn(() => "blob:topic-brief");
+  revokeUrlSpy = vi.fn();
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 describe("deriveTopicOpportunities", () => {
@@ -128,8 +139,19 @@ describe("TopicsScreen", () => {
       within(drawer).getByText(/publish or update a page that directly answers/i),
     ).toBeInTheDocument();
     expect(within(drawer).getByText("Evidence")).toBeInTheDocument();
-    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
-    expect(within(drawer).getByRole("button", { name: "Create content brief" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeEnabled();
+    expect(within(drawer).getByRole("button", { name: "Create content brief" })).toBeEnabled();
+  });
+
+  it("exports the filtered topic brief package", async () => {
+    render(<TopicsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /gap\s+1/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Export brief" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:topic-brief");
+    expect(screen.getByText("Topic brief exported with 1 topics.")).toBeInTheDocument();
   });
 
   it("renders the empty state when no topics are available", () => {
@@ -170,13 +192,44 @@ describe("TopicsScreen", () => {
     expect(within(opportunities).getByText("6 missed AI questions")).toBeInTheDocument();
     expect(
       within(firstOpportunity).getByRole("button", { name: "Generate content brief" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
 
     await userEvent.click(
       within(firstOpportunity).getByRole("button", { name: "Create recommendation" }),
     );
 
     expect(screen.getByRole("dialog", { name: "Political news" })).toBeInTheDocument();
+  });
+
+  it("generates a content brief from an opportunity card", async () => {
+    render(<TopicsScreen />);
+
+    const opportunities = screen.getByRole("region", { name: "Content opportunities" });
+    const firstOpportunity = within(opportunities)
+      .getByText("Political news")
+      .closest("div[class*='min-h-40']") as HTMLElement;
+
+    await userEvent.click(
+      within(firstOpportunity).getByRole("button", { name: "Generate content brief" }),
+    );
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(
+      within(firstOpportunity).getByRole("button", { name: "Brief generated" }),
+    ).toBeDisabled();
+    expect(screen.getByText("Content brief generated for Political news.")).toBeInTheDocument();
+  });
+
+  it("adds a drawer topic to the report queue", async () => {
+    render(<TopicsScreen />);
+
+    await userEvent.click(within(screen.getByRole("table")).getByText("Political news"));
+    const drawer = screen.getByRole("dialog", { name: "Political news" });
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
+
+    expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("Political news was added to the topic report.")).toBeInTheDocument();
   });
 });
 

@@ -37,6 +37,9 @@ export function TopicsScreen() {
   const [bandFilter, setBandFilter] = useState<TopicOwnershipBand | null>(null);
   const [actionFilter, setActionFilter] = useState<TopicAction | null>(null);
   const [selected, setSelected] = useState<TopicOpportunityRow | null>(null);
+  const [reportQueue, setReportQueue] = useState<Record<string, TopicOpportunityRow>>({});
+  const [generatedBriefs, setGeneratedBriefs] = useState<Record<string, true>>({});
+  const [topicNotice, setTopicNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const rows = useMemo(() => deriveTopicOpportunities(overview.data), [overview.data]);
@@ -146,6 +149,25 @@ export function TopicsScreen() {
   const opportunityCount = filteredRows.filter((row) => row.action !== "Defend").length;
   const promptCount = filteredRows.reduce((sum, row) => sum + row.promptCount, 0);
   const hasActiveFilters = bandFilter != null || actionFilter != null;
+  const drawerCopy = REPORTS_COPY.topics.workspace.drawer;
+
+  function exportTopicBrief(rowsToExport = filteredRows) {
+    exportTopicsPackage(rowsToExport, range);
+    setTopicNotice(
+      drawerCopy.exportNotice.replace("{count}", rowsToExport.length.toLocaleString()),
+    );
+  }
+
+  function generateContentBrief(item: TopicOpportunityRow) {
+    exportTopicsPackage([item], range, "content-brief");
+    setGeneratedBriefs((current) => ({ ...current, [item.id]: true }));
+    setTopicNotice(drawerCopy.briefNotice.replace("{topic}", item.topicName));
+  }
+
+  function addTopicToReport(item: TopicOpportunityRow) {
+    setReportQueue((current) => ({ ...current, [item.id]: item }));
+    setTopicNotice(drawerCopy.reportNotice.replace("{topic}", item.topicName));
+  }
 
   return (
     <div className="space-y-5">
@@ -153,11 +175,17 @@ export function TopicsScreen() {
         title="Topics"
         description="Review topic visibility, weak areas, and content opportunities from Brand Discovery."
       >
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={() => exportTopicBrief()}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           Export brief
         </Button>
       </PageHeader>
+
+      {topicNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {topicNotice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
@@ -217,20 +245,36 @@ export function TopicsScreen() {
       />
 
       {contentOpportunities.length > 0 && (
-        <ContentOpportunitiesSection items={contentOpportunities} onOpen={setSelected} />
+        <ContentOpportunitiesSection
+          items={contentOpportunities}
+          generatedBriefs={generatedBriefs}
+          onOpen={setSelected}
+          onGenerateBrief={generateContentBrief}
+        />
       )}
 
-      <TopicDrawer item={selected} onClose={() => setSelected(null)} />
+      <TopicDrawer
+        item={selected}
+        addedToReport={selected ? Boolean(reportQueue[selected.id]) : false}
+        briefGenerated={selected ? Boolean(generatedBriefs[selected.id]) : false}
+        onClose={() => setSelected(null)}
+        onAddToReport={addTopicToReport}
+        onGenerateBrief={generateContentBrief}
+      />
     </div>
   );
 }
 
 function ContentOpportunitiesSection({
   items,
+  generatedBriefs,
   onOpen,
+  onGenerateBrief,
 }: {
   items: readonly TopicOpportunityRow[];
+  generatedBriefs: Record<string, true>;
   onOpen: (item: TopicOpportunityRow) => void;
+  onGenerateBrief: (item: TopicOpportunityRow) => void;
 }) {
   const copy = REPORTS_COPY.topics.workspace.opportunities;
 
@@ -270,8 +314,13 @@ function ContentOpportunitiesSection({
                   <Button variant="ghost" size="sm" onClick={() => onOpen(item)}>
                     {copy.createRecommendation}
                   </Button>
-                  <Button variant="outline" size="sm" disabled>
-                    {copy.generateBrief}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onGenerateBrief(item)}
+                    disabled={Boolean(generatedBriefs[item.id])}
+                  >
+                    {generatedBriefs[item.id] ? copy.briefGenerated : copy.generateBrief}
                   </Button>
                 </div>
               </div>
@@ -407,7 +456,21 @@ function FilteredTopicsEmptyState() {
   );
 }
 
-function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onClose: () => void }) {
+function TopicDrawer({
+  item,
+  addedToReport,
+  briefGenerated,
+  onClose,
+  onAddToReport,
+  onGenerateBrief,
+}: {
+  item: TopicOpportunityRow | null;
+  addedToReport: boolean;
+  briefGenerated: boolean;
+  onClose: () => void;
+  onAddToReport: (item: TopicOpportunityRow) => void;
+  onGenerateBrief: (item: TopicOpportunityRow) => void;
+}) {
   if (!item) return null;
 
   const copy = REPORTS_COPY.topics.workspace.drawer;
@@ -487,11 +550,18 @@ function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onCl
         </div>
 
         <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
-          <Button variant="outline" size="sm" disabled>
-            {copy.addToReport}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAddToReport(item)}
+            disabled={addedToReport}
+          >
+            {addedToReport ? copy.addedToReport : copy.addToReport}
           </Button>
-          <Button size="sm" disabled>
-            {copy.createContentBrief}
+          <Button size="sm" onClick={() => onGenerateBrief(item)} disabled={briefGenerated}>
+            {briefGenerated
+              ? REPORTS_COPY.topics.workspace.opportunities.briefGenerated
+              : copy.createContentBrief}
           </Button>
         </div>
       </aside>
@@ -540,5 +610,58 @@ function actionCopy(row: TopicOpportunityRow) {
       return "Strengthen topic pages, answer common buyer questions, and improve source evidence.";
     case "Create coverage":
       return "Create or update content that directly answers this topic and cites concrete proof points.";
+  }
+}
+
+function exportTopicsPackage(
+  rows: readonly TopicOpportunityRow[],
+  range: DateRangeSelection,
+  packageType = "topic-brief",
+) {
+  const payload = JSON.stringify(
+    {
+      packageType,
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      topicCount: rows.length,
+      topics: rows.map((row) => ({
+        id: row.id,
+        rank: row.rank,
+        topicName: row.topicName,
+        band: row.band,
+        action: row.action,
+        ownershipRate: row.ownershipRate,
+        promptCount: row.promptCount,
+        brandMentionedPromptCount: row.brandMentionedPromptCount,
+        missedPromptCount: row.missedPromptCount,
+        summary: topicSummary(row),
+        recommendation: deriveTopicRecommendationPreview(row),
+        evidence: row.evidence,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${packageType}-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
   }
 }

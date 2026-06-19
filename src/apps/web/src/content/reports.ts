@@ -597,6 +597,7 @@ export const REPORTS_COPY = {
         description: "Suggested content improvements based on topic gaps and AI answer visibility.",
         createRecommendation: "Create recommendation",
         generateBrief: "Generate content brief",
+        briefGenerated: "Brief generated",
         missedQuestions: "{count} missed AI questions",
         missedQuestionsOne: "1 missed AI question",
       },
@@ -613,7 +614,11 @@ export const REPORTS_COPY = {
         recommendationPreview: "Recommendation preview",
         priority: "Priority",
         addToReport: "Add to report",
+        addedToReport: "Added to report",
         createContentBrief: "Create content brief",
+        briefNotice: "Content brief generated for {topic}.",
+        reportNotice: "{topic} was added to the topic report.",
+        exportNotice: "Topic brief exported with {count} topics.",
       },
     },
   },
@@ -814,6 +819,7 @@ export const REPORTS_COPY = {
       open: "Open recommendation",
       close: "Close recommendation",
       addToReport: "Add to report",
+      addedToReport: "Added to report",
       markPlanned: "Mark as planned",
       markDone: "Mark done",
       reopen: "Reopen",
@@ -869,6 +875,8 @@ export const REPORTS_COPY = {
       status: "Status",
       impact: "Impact",
       effort: "Effort",
+      reportNotice: "{title} was added to the recommendations report.",
+      reportCreated: "Recommendations report created with {count} actions.",
     },
   },
   reportsPage: {
@@ -930,7 +938,7 @@ export const REPORTS_COPY = {
     },
     preview: {
       title: "Report preview",
-      description: "Review the selected template scope before report generation is enabled.",
+      description: "Review the selected template scope before creating a report package.",
       selectedTemplate: "Selected template",
       readySections: "sections ready",
       includedSections: "{count} sections included in this template.",
@@ -939,15 +947,18 @@ export const REPORTS_COPY = {
       missingList: "Needs data",
       noReady: "No sections are ready yet.",
       allReady: "All sections have enough evidence.",
+      packageReady: "{name} is ready to review, export, or share.",
+      shareCopied: "Share link copied for {name}.",
+      shareReady: "Share link ready: {url}",
       actions: {
         preview: "Preview",
-        exportPdf: "Export PDF",
+        exportPdf: "Export JSON",
         shareLink: "Share link",
       },
     },
     schedule: {
       title: "Schedule delivery",
-      description: "Prepare recurring client delivery once report automation is available.",
+      description: "Prepare recurring client delivery for this report template.",
       cadenceLabel: "Cadence",
       cadence: "Monthly",
       recipientsLabel: "Recipients",
@@ -959,7 +970,7 @@ export const REPORTS_COPY = {
     },
     history: {
       title: "Report history",
-      description: "Reports generated or scheduled from tracker evidence will appear here.",
+      description: "Reports generated or scheduled from tracker evidence.",
       empty:
         "No reports created yet. Create your first report from current tracker insights, recommendations, and evidence.",
       columns: [
@@ -972,6 +983,7 @@ export const REPORTS_COPY = {
         "Last opened",
         "Actions",
       ],
+      trackerScope: "Selected scope",
     },
   },
 } as const;

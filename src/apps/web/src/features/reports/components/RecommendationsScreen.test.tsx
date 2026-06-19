@@ -24,6 +24,9 @@ let competitiveState: {
   isError: boolean;
 };
 
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
+
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
 }));
@@ -48,6 +51,14 @@ beforeEach(() => {
     isLoading: false,
     isError: false,
   };
+  objectUrlSpy = vi.fn(() => "blob:recommendations-report");
+  revokeUrlSpy = vi.fn();
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 describe("deriveRecommendations", () => {
@@ -224,6 +235,33 @@ describe("RecommendationsScreen", () => {
       within(screen.getByRole("table")).getByText("Review claim about circulation"),
     ).toBeInTheDocument();
     expect(within(drawer).getByText("Done")).toBeInTheDocument();
+  });
+
+  it("exports the filtered recommendation queue as a report package", async () => {
+    render(<RecommendationsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "High" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:recommendations-report");
+    expect(screen.getByText("Recommendations report created with 3 actions.")).toBeInTheDocument();
+  });
+
+  it("adds a drawer recommendation to the report queue", async () => {
+    render(<RecommendationsScreen />);
+
+    await userEvent.click(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    );
+    const drawer = screen.getByRole("dialog", { name: /review claim about circulation/i });
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
+
+    expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(
+      screen.getByText("Review claim about circulation was added to the recommendations report."),
+    ).toBeInTheDocument();
   });
 
   it("renders the empty state when no recommendations are derived", () => {

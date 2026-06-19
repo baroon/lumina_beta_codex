@@ -38,6 +38,8 @@ export function RecommendationsScreen() {
   const [impactFilter, setImpactFilter] = useState<RecommendationImpact | "all">("all");
   const [lensFilter, setLensFilter] = useState<string>("all");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, RecommendationStatus>>({});
+  const [reportQueue, setReportQueue] = useState<Record<string, RecommendationItem>>({});
+  const [reportNotice, setReportNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const competitive = useWorkspaceCompetitive(range, [], [], [], [], [], trackerIds);
@@ -158,14 +160,30 @@ export function RecommendationsScreen() {
   const quickWins = deriveQuickWins(filteredRecommendations);
   const filtersActive = statusFilter !== "all" || impactFilter !== "all" || lensFilter !== "all";
 
+  function createRecommendationsReport(items = filteredRecommendations) {
+    exportRecommendationsReport(items, range);
+    setReportNotice(copy.drawer.reportCreated.replace("{count}", items.length.toLocaleString()));
+  }
+
+  function addRecommendationToReport(item: RecommendationItem) {
+    setReportQueue((current) => ({ ...current, [item.id]: item }));
+    setReportNotice(copy.drawer.reportNotice.replace("{title}", item.title));
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.subtitle}>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={() => createRecommendationsReport()}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.createReport}
         </Button>
       </PageHeader>
+
+      {reportNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {reportNotice}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
@@ -286,6 +304,8 @@ export function RecommendationsScreen() {
         onStatusChange={(id, status) =>
           setStatusOverrides((current) => ({ ...current, [id]: status }))
         }
+        onAddToReport={addRecommendationToReport}
+        addedToReport={selected ? Boolean(reportQueue[selected.id]) : false}
         copy={copy}
       />
     </div>
@@ -446,11 +466,15 @@ function RecommendationDrawer({
   item,
   onClose,
   onStatusChange,
+  onAddToReport,
+  addedToReport,
   copy,
 }: {
   item: RecommendationItem | null;
   onClose: () => void;
   onStatusChange: (id: string, status: RecommendationStatus) => void;
+  onAddToReport: (item: RecommendationItem) => void;
+  addedToReport: boolean;
   copy: typeof REPORTS_COPY.recommendationsPage;
 }) {
   if (!item) return null;
@@ -508,8 +532,13 @@ function RecommendationDrawer({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
-          <Button variant="outline" size="sm" disabled>
-            {copy.actions.addToReport}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onAddToReport(item)}
+            disabled={addedToReport}
+          >
+            {addedToReport ? copy.actions.addedToReport : copy.actions.addToReport}
           </Button>
           {item.status !== "Open" && (
             <Button variant="outline" size="sm" onClick={() => onStatusChange(item.id, "Open")}>
@@ -553,4 +582,55 @@ function DrawerMeta({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-medium text-neutral-900">{value}</p>
     </div>
   );
+}
+
+function exportRecommendationsReport(
+  recommendations: readonly RecommendationItem[],
+  range: DateRangeSelection,
+) {
+  const payload = JSON.stringify(
+    {
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      actionCount: recommendations.length,
+      recommendations: recommendations.map((item) => ({
+        id: item.id,
+        priority: item.priority,
+        title: item.title,
+        summary: item.summary,
+        lens: item.lens,
+        impact: item.impact,
+        effort: item.effort,
+        evidenceCount: item.evidenceCount,
+        evidenceLabel: item.evidenceLabel,
+        status: item.status,
+        action: item.action,
+        evidence: item.evidence,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `recommendations-report-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
+  }
 }

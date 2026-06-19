@@ -22,6 +22,19 @@ import type { WorkspaceCompetitiveDto, WorkspaceOverviewDto } from "@/types/api"
 
 type ReportTemplateName = (typeof REPORTS_COPY.reportsPage.templates.items)[number];
 
+interface GeneratedReport {
+  id: string;
+  name: string;
+  template: ReportTemplateName;
+  dateRange: string;
+  createdBy: string;
+  sharedWith: string;
+  status: "Draft" | "Scheduled" | "Shared";
+  lastOpened: string;
+  sections: readonly ReportSectionReadiness[];
+  readinessPercent: number;
+}
+
 export function ReportsScreen() {
   const copy = REPORTS_COPY.reportsPage;
   const { scope } = useTrackerScope();
@@ -30,6 +43,9 @@ export function ReportsScreen() {
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplateName>(
     copy.templates.items[0],
   );
+  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const competitive = useWorkspaceCompetitive(range, [], [], [], [], [], trackerIds);
@@ -71,14 +87,43 @@ export function ReportsScreen() {
   if (!overview.data) return null;
 
   const readySections = reportPackage.readySections.length;
+  const latestReport = generatedReports[0];
+  const scheduledReports = generatedReports.filter((report) => report.status === "Scheduled");
+  const selectedReport = latestReport ?? buildGeneratedReport(selectedTemplate, range, sections);
+
+  function createReport(status: GeneratedReport["status"] = "Draft") {
+    const next = buildGeneratedReport(selectedTemplate, range, sections, status);
+    setGeneratedReports((current) => [next, ...current]);
+    setPreviewOpen(true);
+    return next;
+  }
+
+  function exportReport(report = selectedReport) {
+    exportReportPackage(report);
+  }
+
+  async function shareReport(report = selectedReport) {
+    const url = `${window.location.origin}/reports?report=${encodeURIComponent(report.id)}`;
+    try {
+      await navigator.clipboard?.writeText(url);
+      setShareNotice(copy.preview.shareCopied.replace("{name}", report.name));
+    } catch {
+      setShareNotice(copy.preview.shareReady.replace("{url}", url));
+    }
+  }
+
+  function scheduleReport() {
+    createReport("Scheduled");
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.subtitle}>
-        <Button variant="outline" size="sm" disabled>
+        <Button variant="outline" size="sm" onClick={scheduleReport}>
           <CalendarClock className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.schedule}
         </Button>
-        <Button size="sm" disabled>
+        <Button size="sm" onClick={() => createReport()}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.create}
         </Button>
@@ -96,17 +141,17 @@ export function ReportsScreen() {
       <div className="grid gap-3 md:grid-cols-4">
         <SummaryTile
           label={copy.summary.reportsCreated}
-          value="0"
+          value={generatedReports.length.toLocaleString()}
           helper={copy.summary.reportsCreatedHelper}
         />
         <SummaryTile
           label={copy.summary.scheduledReports}
-          value="0"
+          value={scheduledReports.length.toLocaleString()}
           helper={copy.summary.scheduledReportsHelper}
         />
         <SummaryTile
           label={copy.summary.lastReportSent}
-          value={copy.status.notSent}
+          value={latestReport ? latestReport.lastOpened : copy.status.notSent}
           helper={copy.summary.lastReportSentHelper}
         />
         <SummaryTile
@@ -126,7 +171,7 @@ export function ReportsScreen() {
                 </h2>
                 <p className="mt-1 text-xs text-neutral-500">{copy.createReport.description}</p>
               </div>
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" onClick={() => exportReport()}>
                 <Download className="h-3.5 w-3.5" aria-hidden />
                 {copy.actions.export}
               </Button>
@@ -190,6 +235,11 @@ export function ReportsScreen() {
                 {copy.preview.title}
               </h2>
               <p className="mt-1 text-xs text-neutral-500">{copy.preview.description}</p>
+              {previewOpen && (
+                <div className="mt-3 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+                  {copy.preview.packageReady.replace("{name}", selectedReport.name)}
+                </div>
+              )}
               <div className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                   {copy.preview.selectedTemplate}
@@ -240,19 +290,20 @@ export function ReportsScreen() {
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button size="sm" disabled>
+                <Button size="sm" onClick={() => setPreviewOpen((current) => !current)}>
                   <Eye className="h-3.5 w-3.5" aria-hidden />
                   {copy.preview.actions.preview}
                 </Button>
-                <Button variant="outline" size="sm" disabled>
+                <Button variant="outline" size="sm" onClick={() => exportReport()}>
                   <Download className="h-3.5 w-3.5" aria-hidden />
                   {copy.preview.actions.exportPdf}
                 </Button>
-                <Button variant="outline" size="sm" disabled>
+                <Button variant="outline" size="sm" onClick={() => void shareReport()}>
                   <Link2 className="h-3.5 w-3.5" aria-hidden />
                   {copy.preview.actions.shareLink}
                 </Button>
               </div>
+              {shareNotice && <p className="mt-2 text-xs text-primary-700">{shareNotice}</p>}
             </CardContent>
           </Card>
 
@@ -294,7 +345,12 @@ export function ReportsScreen() {
                 </div>
               </dl>
 
-              <Button className="mt-4 w-full justify-center" variant="outline" size="sm" disabled>
+              <Button
+                className="mt-4 w-full justify-center"
+                variant="outline"
+                size="sm"
+                onClick={scheduleReport}
+              >
                 <CalendarClock className="h-3.5 w-3.5" aria-hidden />
                 {copy.schedule.action}
               </Button>
@@ -315,9 +371,40 @@ export function ReportsScreen() {
                 </div>
               ))}
             </div>
-            <div className="px-3 py-8 text-center text-sm text-neutral-500">
-              {copy.history.empty}
-            </div>
+            {generatedReports.length === 0 ? (
+              <div className="px-3 py-8 text-center text-sm text-neutral-500">
+                {copy.history.empty}
+              </div>
+            ) : (
+              <div className="divide-y divide-neutral-200">
+                {generatedReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="grid min-w-[920px] grid-cols-8 items-center text-sm"
+                  >
+                    <div className="px-3 py-3 font-medium text-neutral-900">{report.name}</div>
+                    <div className="px-3 py-3 text-neutral-600">{copy.history.trackerScope}</div>
+                    <div className="px-3 py-3 text-neutral-600">{report.dateRange}</div>
+                    <div className="px-3 py-3 text-neutral-600">{report.createdBy}</div>
+                    <div className="px-3 py-3 text-neutral-600">{report.sharedWith}</div>
+                    <div className="px-3 py-3">
+                      <Badge variant={report.status === "Scheduled" ? "secondary" : "outline"}>
+                        {report.status}
+                      </Badge>
+                    </div>
+                    <div className="px-3 py-3 text-neutral-600">{report.lastOpened}</div>
+                    <div className="flex gap-1 px-3 py-3">
+                      <Button variant="ghost" size="sm" onClick={() => exportReport(report)}>
+                        <Download className="h-3.5 w-3.5" aria-hidden />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => void shareReport(report)}>
+                        <Link2 className="h-3.5 w-3.5" aria-hidden />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -369,6 +456,70 @@ function buildReportSections(
                       ? hasClaims
                       : hasOverview || hasRecommendations || hasSources,
   }));
+}
+
+function buildGeneratedReport(
+  template: ReportTemplateName,
+  range: DateRangeSelection,
+  sections: readonly ReportSectionReadiness[],
+  status: GeneratedReport["status"] = "Draft",
+): GeneratedReport {
+  const summary = deriveReportPackageSummary(sections);
+  const now = new Date();
+  return {
+    id: `${template.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${now.getTime()}`,
+    name: `${template} - ${formatReportDate(now)}`,
+    template,
+    dateRange: formatReportRange(range),
+    createdBy: "Workspace user",
+    sharedWith: status === "Scheduled" ? "Client stakeholders" : "Not shared",
+    status,
+    lastOpened: formatReportDate(now),
+    sections,
+    readinessPercent: summary.readinessPercent,
+  };
+}
+
+function exportReportPackage(report: GeneratedReport) {
+  const payload = JSON.stringify(
+    {
+      id: report.id,
+      name: report.name,
+      template: report.template,
+      dateRange: report.dateRange,
+      status: report.status,
+      readinessPercent: report.readinessPercent,
+      sections: report.sections,
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${report.id}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function formatReportRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return `Last ${range.days} days`;
+    case "custom":
+      return `${formatReportDate(range.from)} - ${formatReportDate(range.to)}`;
+    case "all":
+      return "All time";
+  }
+}
+
+function formatReportDate(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 function SummaryTile({ label, value, helper }: { label: string; value: string; helper: string }) {

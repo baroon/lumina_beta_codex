@@ -18,6 +18,9 @@ let competitiveState: {
   isError: boolean;
   error?: unknown;
 };
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
+let clipboardWriteText: ReturnType<typeof vi.fn>;
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => ({ scope: "all" }),
@@ -32,6 +35,19 @@ vi.mock("@/features/reports/hooks/useWorkspaceCompetitive", () => ({
 }));
 
 beforeEach(() => {
+  objectUrlSpy = vi.fn(() => "blob:report");
+  revokeUrlSpy = vi.fn();
+  clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: clipboardWriteText,
+    },
+  });
   overviewState = {
     data: overview(),
     isLoading: false,
@@ -164,7 +180,52 @@ describe("ReportsScreen", () => {
     expect(within(schedule).getByText("Monthly")).toBeInTheDocument();
     expect(within(schedule).getByText("Client stakeholders")).toBeInTheDocument();
     expect(within(schedule).getByText("Planned")).toBeInTheDocument();
-    expect(within(schedule).getByRole("button", { name: "Schedule delivery" })).toBeDisabled();
+    expect(within(schedule).getByRole("button", { name: "Schedule delivery" })).toBeEnabled();
+  });
+
+  it("creates a draft report package and renders it in history", async () => {
+    render(<ReportsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    expect(screen.getByText(/is ready to review, export, or share/i)).toBeInTheDocument();
+    expect(screen.getByText("Reports created").closest("div")).toHaveTextContent("1");
+    expect(screen.getAllByText(/Executive summary -/)).toHaveLength(2);
+    expect(screen.getByText("Draft")).toBeInTheDocument();
+  });
+
+  it("schedules a report package from the delivery card", async () => {
+    render(<ReportsScreen />);
+
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Schedule delivery" })).getByRole("button", {
+        name: "Schedule delivery",
+      }),
+    );
+
+    expect(screen.getByText("Scheduled")).toBeInTheDocument();
+    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("exports the selected report package as JSON", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<ReportsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Export JSON" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(click).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:report");
+    click.mockRestore();
+  });
+
+  it("copies a share link for the current report package", async () => {
+    render(<ReportsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Share link" }));
+
+    expect(clipboardWriteText).toHaveBeenCalledWith(expect.stringContaining("/reports?report="));
+    expect(screen.getByText(/Share link copied/i)).toBeInTheDocument();
   });
 
   it("renders the report history columns from the reporting spec", () => {

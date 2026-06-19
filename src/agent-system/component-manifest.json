@@ -1386,7 +1386,7 @@
             "useWorkspaceCompetitive",
             "recommendations"
           ],
-          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes date range, Status/Impact/Lens filter pills with clear action, summary tiles, action-category cards, quick-win cards, prioritized action table, empty state, and right-side details drawer. Drawer and quick-win cards support in-session status changes for Open, Planned, and Done until persistence endpoints land."
+          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes date range, Status/Impact/Lens filter pills with clear action, summary tiles, action-category cards, quick-win cards, prioritized action table, empty state, and right-side details drawer. Drawer and quick-win cards support in-session status changes for Open, Planned, and Done until persistence endpoints land. Includes v1 local report actions for exporting the filtered recommendation queue as a JSON report package and adding drawer recommendations to a report queue with visible completion state."
         },
         {
           "name": "LensesScreen",
@@ -1455,7 +1455,7 @@
             "useWorkspaceOverview",
             "topics"
           ],
-          "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes spec-aligned topic visibility summary tiles (topics tracked, strong topics, weak topics, content opportunities), date range control, ownership/action filter pills with clear action, sortable DataTable, content opportunity cards with disabled v1 brief generation, filtered and no-data empty states, and a right-side topic opportunity drawer with derived recommendation preview, priority, and next steps."
+          "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes spec-aligned topic visibility summary tiles (topics tracked, strong topics, weak topics, content opportunities), date range control, ownership/action filter pills with clear action, sortable DataTable, content opportunity cards, filtered and no-data empty states, and a right-side topic opportunity drawer with derived recommendation preview, priority, and next steps. Includes v1 local actions for exporting the filtered topic brief as JSON, generating one-topic content brief packages, and adding drawer topics to a report queue with visible completion state."
         },
         {
           "name": "ClaimsRisksScreen",
@@ -1486,7 +1486,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react", "reports"],
-          "notes": "Dedicated /reports page for the agency/client reporting workflow. Renders spec-aligned report summary tiles, template-scoped create-report section checklist, selectable report templates, report preview panel with package readiness score plus ready/missing section lists, planned schedule-delivery readiness card, eight-column report-history empty state, and disabled v1 actions for create/schedule/export until report generation endpoints land."
+          "notes": "Dedicated /reports page for the agency/client reporting workflow. Renders spec-aligned report summary tiles, template-scoped create-report section checklist, selectable report templates, report preview panel with package readiness score plus ready/missing section lists, planned schedule-delivery readiness card, and an eight-column report history. Includes v1 local report-package actions for creating draft reports, scheduling delivery, previewing readiness, exporting JSON packages, copying share links, and adding generated reports to history until report generation endpoints land."
         },
         {
           "name": "CompetitorsScreen",
