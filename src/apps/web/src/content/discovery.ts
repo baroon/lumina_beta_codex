@@ -76,7 +76,6 @@ export const DISCOVERY_COPY = {
     description:
       "We've built a complete profile for {brandName}. You're ready to create your Visibility Tracker.",
     createTracker: "Create Visibility Tracker",
-    comingSoon: "Tracker setup is coming soon.",
   },
   confirmation: {
     title: "Confirm Discovery: {brandName}",

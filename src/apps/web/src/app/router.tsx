@@ -11,6 +11,7 @@ import { BrandsListPage } from "@/routes/brands/list";
 import { NewBrandPage } from "@/routes/brands/new";
 import { DiscoveryPage } from "@/routes/brands/discovery";
 import { BrandProfilePage } from "@/routes/brands/profile";
+import { NewTrackerPage } from "@/routes/brands/tracker-new";
 import { TrackerHubPage } from "@/routes/brands/tracker-hub";
 import { TrackerEditPage } from "@/routes/brands/tracker-edit";
 import { ScanListPage } from "@/routes/scans/list";
@@ -103,6 +104,12 @@ const brandProfileRoute = createRoute({
   component: BrandProfilePage,
 });
 
+const newTrackerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/trackers/new",
+  component: NewTrackerPage,
+});
+
 const trackerHubRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/brands/$brandId/trackers/$trackerId",
@@ -171,9 +178,8 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 });
 
-// New flat analytics routes (placeholders during navigation rollout).
-// Real screens land in steps 11–14 of the migration plan; the routes
-// exist now so direct URLs + sidebar links don't 404.
+// Flat analytics routes. Legacy paths redirect to the current IA labels where
+// the URL changed during the navigation rollout.
 const promptsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/prompts",
@@ -216,6 +222,22 @@ const sourcesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sources",
   component: SourcesPage,
+});
+
+const sourceDomainsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sources/domains",
+  beforeLoad: () => {
+    throw redirect({ to: "/sources", replace: true });
+  },
+});
+
+const sourceUrlsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sources/urls",
+  beforeLoad: () => {
+    throw redirect({ to: "/sources", replace: true });
+  },
 });
 
 const competitorsRoute = createRoute({
@@ -268,8 +290,7 @@ const workspaceRoute = createRoute({
   component: SettingsWorkspacePage,
 });
 
-// Settings stubs — pulled forward from step 15 so the sidebar Settings
-// entries resolve instead of 404-ing when step 3 ships.
+// Settings aliases kept for bookmarked URLs from the earlier nested settings IA.
 const settingsWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/workspace",
@@ -291,6 +312,7 @@ const routeTree = rootRoute.addChildren([
   discoveryRoute,
   brandIndexRoute,
   brandProfileRoute,
+  newTrackerRoute,
   trackerHubRoute,
   trackerEditRoute,
   scansListRoute,
@@ -309,6 +331,8 @@ const routeTree = rootRoute.addChildren([
   recommendationsRoute,
   topicsRoute,
   sourcesRoute,
+  sourceDomainsRoute,
+  sourceUrlsRoute,
   competitorsRoute,
   insightsRoute,
   claimsRisksRoute,

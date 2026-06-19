@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   Activity,
   Calendar,
@@ -32,13 +33,14 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Tabs, type TabItem } from "@/components/molecules/Tabs";
+import { ScanProgressPanel } from "@/features/trackers/components/ScanProgressPanel";
 import {
   useAddCustomPrompt,
   usePrompts,
   useRemovePrompt,
   useUpdatePrompt,
 } from "@/features/trackers/hooks/usePrompts";
-import { useRunScan, useTrackerScans } from "@/features/trackers/hooks/useScans";
+import { useLatestScan, useRunScan, useTrackerScans } from "@/features/trackers/hooks/useScans";
 import { useTrackerSummary } from "@/features/trackers/hooks/useAllTrackers";
 import { useTrackerScheduleSetup } from "@/features/trackers/hooks/useTrackerSchedule";
 import { useTrackerLensesSetup } from "@/features/trackers/hooks/useTrackerLenses";
@@ -50,6 +52,7 @@ import type {
   EntityTrendSeriesDto,
   PromptDto,
   ScanListItemDto,
+  ScanStatus,
   TrackerScheduleSetup,
   WorkspaceTopEntityRowDto,
 } from "@/types/api";
@@ -175,18 +178,82 @@ export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) 
 // ---------------------------------------------------------------------------
 
 function RunScanButton({ trackerId }: { trackerId: string }) {
+  const [open, setOpen] = useState(false);
   const runScan = useRunScan(trackerId);
+  const latest = useLatestScan(trackerId, open && (runScan.isPending || runScan.isSuccess));
   const disabled = runScan.isPending;
   return (
-    <button
-      type="button"
-      onClick={() => runScan.mutate()}
-      disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <Play className="h-3.5 w-3.5" aria-hidden />
-      {disabled ? "Starting…" : runScan.isSuccess ? "Scan started" : "Run scan now"}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+          runScan.mutate();
+        }}
+        disabled={disabled}
+        className="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Play className="h-3.5 w-3.5" aria-hidden />
+        {disabled ? "Starting…" : runScan.isSuccess ? "Scan started" : "Run scan now"}
+      </button>
+      <ScanProgressDrawer
+        open={open}
+        onOpenChange={setOpen}
+        scan={latest.data}
+        isStarting={runScan.isPending}
+        isError={runScan.isError || latest.isError}
+      />
+    </>
+  );
+}
+
+function ScanProgressDrawer({
+  open,
+  onOpenChange,
+  scan,
+  isStarting,
+  isError,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  scan: ScanStatus | undefined;
+  isStarting: boolean;
+  isError: boolean;
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/20" />
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-neutral-200 bg-white shadow-xl">
+          <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-5">
+            <div>
+              <Dialog.Title className="text-sm font-semibold text-neutral-900">
+                Scan progress
+              </Dialog.Title>
+              <Dialog.Description className="mt-1 text-xs text-neutral-500">
+                {scan
+                  ? `${scan.brandName} - ${scan.status}`
+                  : isStarting
+                    ? "Starting the scan and preparing platform checks."
+                    : "Waiting for scan status."}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                aria-label="Close scan progress"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </Dialog.Close>
+          </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            <ScanProgressPanel scan={scan} isStarting={isStarting} isError={isError} />
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import type { WorkspaceOverviewDto } from "@/types/api";
+import { deriveOverviewAttentionItems } from "@/features/reports/overview";
 import { WorkspaceOverviewScreen } from "./WorkspaceOverviewScreen";
 
 type HookReturn = {
@@ -508,11 +509,30 @@ describe("WorkspaceOverviewScreen", () => {
 
     expect(screen.getByText(/claims ai makes about you/i)).toBeInTheDocument();
     expect(screen.getByText("Acme is headquartered in San Francisco.")).toBeInTheDocument();
-    expect(screen.getByText("Acme was founded in 1975.")).toBeInTheDocument();
+    expect(screen.getAllByText("Acme was founded in 1975.").length).toBeGreaterThan(0);
     // Each claim renders a verdict toggle group with 3 buttons (Pending /
     // Verified / Disputed). 2 claims × 3 = 6 verdict buttons total.
     const verdictGroups = screen.getAllByRole("group", { name: /Review verdict for/i });
     expect(verdictGroups).toHaveLength(2);
+  });
+
+  it("renders overview attention cards with links to the follow-up pages", () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    render(<WorkspaceOverviewScreen />);
+
+    const attention = screen.getByRole("region", { name: "Needs attention" });
+    expect(within(attention).getByText("Review layoffs")).toBeInTheDocument();
+    expect(within(attention).getByText("Acme was founded in 1975.")).toBeInTheDocument();
+    expect(within(attention).getByText("Improve Industry news")).toBeInTheDocument();
+    expect(within(attention).getAllByText("High").length).toBeGreaterThanOrEqual(1);
+    expect(within(attention).getByRole("link", { name: "Open claim review" })).toHaveAttribute(
+      "href",
+      "/claims-risks",
+    );
+    expect(within(attention).getByRole("link", { name: "View topics" })).toHaveAttribute(
+      "href",
+      "/topics",
+    );
   });
 
   it("clicking a verdict button fires the mutation with claimId + new status", async () => {
@@ -557,6 +577,32 @@ describe("WorkspaceOverviewScreen", () => {
     // Career advice = 8/10 = 80% (green); Industry news = 1/6 = 17% (red).
     expect(screen.getByText("80%")).toBeInTheDocument();
     expect(screen.getByText("17%")).toBeInTheDocument();
+  });
+
+  it("derives prioritized overview attention items", () => {
+    const items = deriveOverviewAttentionItems(fixture);
+
+    expect(items.map((item) => item.id)).toEqual([
+      "risk-layoffs",
+      "claim-c2",
+      "claims-pending",
+      "topic-Industry news",
+    ]);
+    expect(items[0]).toMatchObject({
+      kind: "Risk",
+      priority: "High",
+      action: "Review claims",
+    });
+    expect(items[1]).toMatchObject({
+      kind: "Claim",
+      priority: "High",
+      action: "Open claim review",
+    });
+    expect(items[3]).toMatchObject({
+      kind: "Topic",
+      priority: "Medium",
+      action: "View topics",
+    });
   });
 
   it("renders the head-to-head card with aspect, wins, losses, and a net column", () => {

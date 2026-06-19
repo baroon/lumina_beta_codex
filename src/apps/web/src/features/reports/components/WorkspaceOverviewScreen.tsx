@@ -74,6 +74,10 @@ import { useProductCounts } from "@/features/reports/hooks/useProductCounts";
 import { useTopicCounts } from "@/features/reports/hooks/useTopicCounts";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceDepth } from "@/features/reports/hooks/useWorkspaceDepth";
+import {
+  deriveOverviewAttentionItems,
+  type OverviewAttentionItem,
+} from "@/features/reports/overview";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
 import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
@@ -547,6 +551,7 @@ function CategorizedOverview({
       </div>
     );
   }
+  const attentionItems = deriveOverviewAttentionItems(data);
 
   // Sections are now keyed by lens code so the lens chip nav (rendered
   // via `renderNav` below) can drive scroll-spy directly. Each section
@@ -679,6 +684,7 @@ function CategorizedOverview({
             {trendCard("mention")}
             {trendCard("sov")}
           </div>
+          <OverviewAttentionSection items={attentionItems} />
         </div>
       }
       // controlsStrip is sticky again — pins below the static top
@@ -690,6 +696,63 @@ function CategorizedOverview({
       // stays suppressed.
       renderNav={() => null}
     />
+  );
+}
+
+function OverviewAttentionSection({ items }: { items: readonly OverviewAttentionItem[] }) {
+  const copy = REPORTS_COPY.overview.attention;
+  return (
+    <section aria-labelledby="overview-attention-title">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="overview-attention-title" className="text-sm font-semibold text-neutral-900">
+                {copy.title}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+            </div>
+            <Badge variant={items.length === 0 ? "success" : "warning"}>
+              {items.length.toLocaleString()}
+            </Badge>
+          </div>
+          {items.length === 0 ? (
+            <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {copy.empty}
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex min-h-32 flex-col rounded-md border border-neutral-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{item.kind}</Badge>
+                        <Badge variant={item.priority === "High" ? "destructive" : "warning"}>
+                          {item.priority}
+                        </Badge>
+                      </div>
+                      <h3 className="mt-2 line-clamp-2 text-sm font-semibold text-neutral-900">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                  </div>
+                  <div className="mt-auto flex justify-end pt-4">
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={item.href}>{item.action}</a>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -1171,6 +1234,21 @@ function HeroRow({
   );
 }
 
+const HERO_TILE_TOOLTIPS: Record<string, string> = {
+  Queries: "Total AI Questions analyzed across tracked brands in the selected date range.",
+  Mentions: "Total answers that mentioned a tracked brand in the selected date range.",
+  Citations: "Total cited sources captured from AI answers in the selected date range.",
+  "Brand mention rate": "Share of AI answers that mentioned a tracked brand.",
+  "Not-mentioned rate":
+    "Share of AI answers where tracked brands were not mentioned. Lower is better.",
+  "First-mention rate":
+    "Share of answers where a tracked brand appeared as the first brand mention.",
+};
+
+function heroTileTooltip(label: string) {
+  return HERO_TILE_TOOLTIPS[label] ?? `Explains how ${label.toLowerCase()} is calculated.`;
+}
+
 function HeroTile({
   label,
   value,
@@ -1193,7 +1271,7 @@ function HeroTile({
     <>
       <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-neutral-500">
         <span className="truncate">{label}</span>
-        <InfoTooltip label={label} iconSize={11} />
+        <InfoTooltip label={label} body={heroTileTooltip(label)} iconSize={11} />
       </div>
       <div className="mt-0.5 flex items-baseline gap-1.5">
         <p className="text-lg font-semibold text-neutral-900">{value}</p>

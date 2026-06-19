@@ -107,9 +107,22 @@ describe("PromptAnswerHistoryDrawer", () => {
     expect(screen.getByText("1 brand mention")).toBeInTheDocument();
   });
 
+  it("renders disabled drawer actions until workflows are wired", () => {
+    hookState = {
+      data: payload([answer({})]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptAnswerHistoryDrawer promptId="p1" range={range} onClose={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Add to report" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create recommendation" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Mark reviewed" })).toBeDisabled();
+  });
+
   it("renders the in-scope empty state when the prompt has no in-window answers", () => {
     hookState = {
-      data: payload([], "Prompt with no in-window scans"),
+      data: payload([], "AI Question with no in-window scans"),
       isLoading: false,
       isError: false,
     };

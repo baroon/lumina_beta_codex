@@ -17,6 +17,10 @@ export const WORKSPACE_COPY = {
       completedScans: "Completed scans",
       completedScansHelper: "Total completed scan runs across trackers.",
     },
+    readiness: {
+      title: "Workspace readiness",
+      description: "Operational setup needed before reporting and collaboration are fully useful.",
+    },
     sections: {
       readOnly: "Read-only",
       profile: {
@@ -65,6 +69,10 @@ export const WORKSPACE_COPY = {
     actions: {
       save: "Save changes",
       security: "Security settings",
+    },
+    readiness: {
+      title: "Profile readiness",
+      description: "Current ownership for personal settings, preferences, and security controls.",
     },
     sections: {
       readOnly: "Read-only",

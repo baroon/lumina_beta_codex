@@ -32,6 +32,76 @@ interface ScanResultsScreenProps {
   scanRunId: string;
 }
 
+const SCAN_RESULT_METRIC_TOOLTIPS: Record<string, string> = {
+  [REPORTS_COPY.scanResults.metrics.brandMentionRate]:
+    "Share of AI answers in this scan that mentioned the brand.",
+  [REPORTS_COPY.scanResults.metrics.brandShareOfVoice]:
+    "The brand's share of all brand and competitor mentions captured in this scan.",
+  [REPORTS_COPY.scanResults.metrics.brandAbsenceRate]:
+    "Share of AI answers where the brand was not mentioned. Lower is better.",
+  [REPORTS_COPY.scanResults.metrics.brandFirstMentionRate]:
+    "Share of answers where the brand was the first brand mentioned.",
+  [REPORTS_COPY.scanResults.metrics.brandRecommendationRate]:
+    "Share of brand mentions where the AI answer recommended the brand.",
+  [REPORTS_COPY.scanResults.metrics.brandRecommendationScore]:
+    "Net recommendation strength for the brand, balancing positive recommendations against caveats.",
+  [REPORTS_COPY.scanResults.metrics.brandRecommendationShare]:
+    "The brand's share of all recommendation events among tracked entities in this scan.",
+  [REPORTS_COPY.scanResults.metrics.brandTopRecommendationShare]:
+    "Share of recommendation answers where the brand appeared as the top recommendation.",
+  [REPORTS_COPY.scanResults.metrics.averageBrandRank]:
+    "Average answer position when the brand appeared, adjusted for the number of ranked entities.",
+  [REPORTS_COPY.scanResults.metrics.averageBrandRecommendationPosition]:
+    "Average position among answers where the brand was recommended.",
+  [REPORTS_COPY.scanResults.metrics.brandRecommendationContext]:
+    "Count of answers that recommended the brand for a use case versus answers that included caveats.",
+  [REPORTS_COPY.scanResults.metrics.brandTopicRecommendations]:
+    "Count of tracked topics where AI answers recommended versus did not recommend the brand.",
+  [REPORTS_COPY.scanResults.metrics.overallSentiment]:
+    "Dominant sentiment across answers that mentioned the brand in this scan.",
+  [REPORTS_COPY.scanResults.metrics.averageAnswerCertainty]:
+    "Average confidence signal extracted from answers in this scan.",
+  [REPORTS_COPY.scanResults.metrics.brandComparisonRecord]:
+    "Head-to-head comparison wins and losses when AI answers compared the brand against competitors.",
+  [REPORTS_COPY.scanResults.metrics.brandRiskFlagCount]:
+    "Number of risk flags extracted from AI answers about the brand.",
+  [REPORTS_COPY.scanResults.metrics.competitorMentionCount]:
+    "Total competitor mentions captured in this scan.",
+  [REPORTS_COPY.scanResults.metrics.productMentionCount]:
+    "Total product or service mentions captured in this scan.",
+  [REPORTS_COPY.scanResults.metrics.citationCount]:
+    "Total cited sources captured across AI answers in this scan.",
+  [REPORTS_COPY.scanResults.metrics.ownedCitationShare]:
+    "Share of citations that point to owned sources, such as your website or controlled profiles.",
+  [REPORTS_COPY.scanResults.metrics.authorityCitations]:
+    "High-authority versus low-authority citation counts in this scan.",
+};
+
+const SCAN_RESULT_CHART_TOOLTIPS: Record<string, string> = {
+  [REPORTS_COPY.scanResults.sections.sentimentDistribution]:
+    "Distribution of positive, neutral, and negative sentiment across brand mentions in this scan.",
+  [REPORTS_COPY.scanResults.sections.brandAttributes]:
+    "Most common attributes AI answers associated with the brand.",
+  [REPORTS_COPY.scanResults.sections.shareOfVoice]:
+    "Share of all brand and competitor mentions captured by each entity in this scan.",
+  [REPORTS_COPY.scanResults.sections.topCitedSources]:
+    "Citation sources AI answers relied on most often in this scan.",
+};
+
+function scanMetricTooltip(label: string) {
+  return (
+    SCAN_RESULT_METRIC_TOOLTIPS[label] ??
+    `Explains how ${label.toLowerCase()} was calculated for this scan.`
+  );
+}
+
+function scanChartTooltip(title: string) {
+  return (
+    SCAN_RESULT_CHART_TOOLTIPS[title] ??
+    `Shows ${title.toLowerCase()} for the selected scan results.`
+  );
+}
+
 /**
  * Slice (d) reporting page. Composes the entire Scan Results view from the
  * single GET /api/scans/{id}/results call. Charts go through the shared
@@ -515,7 +585,7 @@ function MetricTile({
     <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
       <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-neutral-500">
         <span className="truncate">{label}</span>
-        <InfoTooltip label={label} iconSize={11} />
+        <InfoTooltip label={label} body={scanMetricTooltip(label)} iconSize={11} />
       </div>
       <div className="mt-0.5 text-xl font-semibold tabular-nums text-neutral-900">{value}</div>
       {subValue && <div className="mt-0.5 text-[11px] text-neutral-500">{subValue}</div>}
@@ -531,7 +601,7 @@ function ChartTitle({ title }: { title: string }) {
   return (
     <div className="flex items-center gap-1.5">
       <CardTitle>{title}</CardTitle>
-      <InfoTooltip label={title} iconSize={13} />
+      <InfoTooltip label={title} body={scanChartTooltip(title)} iconSize={13} />
     </div>
   );
 }

@@ -26,7 +26,7 @@ export const VISIBILITY_LENSES: ReadonlyArray<VisibilityLens> = [
   {
     code: "BuyingIntent",
     name: "Buying Intent",
-    description: "Is the brand recommended for high-intent, purchase-oriented prompts?",
+    description: "Is the brand recommended for high-intent, purchase-oriented AI questions?",
   },
   {
     code: "CompetitorComparison",
@@ -66,7 +66,7 @@ export const LENSES_COPY = {
       lenses: "Visibility lenses",
       lensesHelper: "Strategic analysis views used across every tracker.",
       questions: "AI questions",
-      questionsHelper: "Tracked prompts evaluated in the selected date range.",
+      questionsHelper: "Tracked AI questions evaluated in the selected date range.",
       mentions: "Brand mentions",
       mentionsHelper: "Tracked-brand mentions found in AI answers.",
       citations: "Citations",
@@ -74,6 +74,7 @@ export const LENSES_COPY = {
     },
     table: {
       lens: "Lens",
+      primaryMetric: "Primary metric",
       mentions: "Mentions",
       mentionUnit: "mentions",
       mentionSummary: "{count} lens mentions in this range",
@@ -81,6 +82,14 @@ export const LENSES_COPY = {
       status: "Status",
       action: "Action",
       empty: "No lens evidence yet. Run scans to populate lens performance.",
+      filteredEmpty: "No lenses match this status filter.",
+    },
+    attention: {
+      title: "Lens attention",
+      description: "Lenses that need more evidence or stronger coverage in this range.",
+      empty: "All visibility lenses have enough current evidence.",
+      priority: "Priority",
+      openLens: "Open lens",
     },
     status: {
       healthy: "Healthy",
@@ -93,11 +102,13 @@ export const LENSES_COPY = {
     fallbackDescription: "Choose a valid Visibility Lens from the lenses overview.",
     actions: {
       back: "All lenses",
+      recommendations: "View recommendations",
       export: "Export lens brief",
+      clearFilters: "Clear filters",
     },
     summary: {
       questions: "AI questions",
-      questionsHelper: "Tracked prompts evaluated for this lens.",
+      questionsHelper: "Tracked AI questions evaluated for this lens.",
       mentionRate: "Mention rate",
       mentionRateHelper: "Share of AI answers that mention a tracked brand.",
       firstMention: "First mention",
@@ -111,6 +122,33 @@ export const LENSES_COPY = {
       signals: "Lens signals",
       signalsDescription: "The core measurement signals available for this lens and date range.",
     },
+    diagnosis: {
+      title: "Lens diagnosis",
+      priority: "Priority",
+      signal: "Signal",
+      states: {
+        NeedsData: {
+          title: "Collect lens evidence",
+          description:
+            "This lens has no AI questions in the selected range. Run scans or broaden the date range before making coverage decisions.",
+        },
+        HighAbsence: {
+          title: "Reduce brand absence",
+          description:
+            "Tracked brands are absent from too many AI answers in this lens. Prioritize content and evidence that directly answers these questions.",
+        },
+        LowMention: {
+          title: "Strengthen lens coverage",
+          description:
+            "The brand is present, but not consistently enough. Improve answer-ready proof points and source coverage for this lens.",
+        },
+        Healthy: {
+          title: "Maintain current coverage",
+          description:
+            "This lens has enough current evidence and a durable mention rate. Monitor movement and keep proof points fresh.",
+        },
+      },
+    },
     table: {
       entity: "Entity",
       visibility: "Visibility",
@@ -118,6 +156,7 @@ export const LENSES_COPY = {
       sentiment: "Sentiment",
       type: "Type",
       empty: "No entity evidence yet. Run scans for this lens to populate visibility.",
+      filteredEmpty: "No entities match these lens filters.",
       youChip: "You",
       unknownSentiment: "Unknown",
       noData: "No data",

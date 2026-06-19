@@ -4,7 +4,7 @@ import { InfoTooltip } from "./InfoTooltip";
 
 describe("InfoTooltip", () => {
   it("renders a focusable trigger with the right aria-label", () => {
-    render(<InfoTooltip label="Mention rate" />);
+    render(<InfoTooltip label="Mention rate" body="Share of answers that mention the brand." />);
     const trigger = screen.getByRole("button", { name: "About Mention rate" });
     expect(trigger).toBeInTheDocument();
     expect(trigger.tagName).toBe("SPAN");
@@ -17,7 +17,7 @@ describe("InfoTooltip", () => {
     render(
       <button type="button" onClick={parentClick}>
         Parent
-        <InfoTooltip label="Stuff" />
+        <InfoTooltip label="Stuff" body="Explains what this metric means." />
       </button>,
     );
     await userEvent.setup().click(screen.getByRole("button", { name: "About Stuff" }));

@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type {
   PromptList,
   ScanListItemDto,
+  ScanStatus,
   TrackerLensesSetupDto,
   TrackerListItemDto,
   TrackerScheduleSetup,
@@ -46,6 +47,7 @@ let scansState: { scans: ScanListItemDto[]; isLoading: boolean; isError: boolean
 let runScanMutate: ReturnType<typeof vi.fn>;
 let runScanIsPending = false;
 let runScanIsSuccess = false;
+let latestScanState: { data?: ScanStatus; isError: boolean };
 let lensesState: { data?: TrackerLensesSetupDto; isLoading: boolean; isError: boolean };
 let overviewState: { data?: WorkspaceOverviewDto; isLoading: boolean; isError: boolean };
 
@@ -73,9 +75,10 @@ vi.mock("@/features/trackers/hooks/useScans", () => ({
     mutate: runScanMutate,
     isPending: runScanIsPending,
     isSuccess: runScanIsSuccess,
+    isError: false,
   }),
   useTrackerScans: () => scansState,
-  useLatestScan: () => ({ data: undefined }),
+  useLatestScan: () => latestScanState,
 }));
 vi.mock("@/features/trackers/hooks/useTrackerLenses", () => ({
   useTrackerLensesSetup: () => lensesState,
@@ -254,6 +257,50 @@ const scansFixture: ScanListItemDto[] = [
   },
 ];
 
+const latestScanFixture: ScanStatus = {
+  scanRunId: "s2",
+  status: "Running",
+  triggerType: "Manual",
+  scanCheckCount: 24,
+  completedCount: 10,
+  failedCount: 2,
+  startedAt: "2026-06-09T09:00:00Z",
+  completedAt: null,
+  brandName: "Acme",
+  platforms: [
+    {
+      platformId: "p1",
+      code: "openai",
+      name: "ChatGPT",
+      completed: 8,
+      failed: 0,
+      total: 12,
+      status: "Running",
+    },
+    {
+      platformId: "p2",
+      code: "perplexity",
+      name: "Perplexity",
+      completed: 2,
+      failed: 2,
+      total: 12,
+      status: "Failed",
+    },
+  ],
+  liveCounters: {
+    mentions: 6,
+    citations: 4,
+    recommended: 3,
+    sentiment: {
+      positive: 2,
+      neutral: 3,
+      negative: 1,
+      mixed: 0,
+      unknown: 0,
+    },
+  },
+};
+
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   summaryState = { tracker: makeTracker(), isLoading: false, isError: false };
@@ -263,6 +310,7 @@ beforeEach(() => {
   runScanMutate = vi.fn();
   runScanIsPending = false;
   runScanIsSuccess = false;
+  latestScanState = { data: latestScanFixture, isError: false };
   lensesState = { data: lensesFixture, isLoading: false, isError: false };
   overviewState = { data: overviewFixture, isLoading: false, isError: false };
   addPromptMutate = vi.fn();
@@ -372,6 +420,20 @@ describe("TrackerHubScreen", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     await userEvent.click(screen.getByRole("button", { name: /Run scan now/i }));
     expect(runScanMutate).toHaveBeenCalledOnce();
+  });
+
+  it("Run scan button opens the progress drawer with latest scan status", async () => {
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("button", { name: /Run scan now/i }));
+
+    const drawer = screen.getByRole("dialog", { name: "Scan progress" });
+    expect(within(drawer).getByText("Acme - Running")).toBeInTheDocument();
+    expect(within(drawer).getByText("12 of 24 checks finished")).toBeInTheDocument();
+    expect(within(drawer).getByText("50%")).toBeInTheDocument();
+    expect(within(drawer).getByText("Mentions")).toBeInTheDocument();
+    expect(within(drawer).getByText("6")).toBeInTheDocument();
+    expect(within(drawer).getByText("Perplexity")).toBeInTheDocument();
+    expect(within(drawer).getByText(/4 of 12 checks finished, 2 failed/i)).toBeInTheDocument();
   });
 
   it("Run scan button shows 'Starting…' while pending", () => {

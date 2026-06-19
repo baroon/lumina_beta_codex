@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { TrackerListItemDto } from "@/types/api";
+import { deriveTrackerAttentionItems } from "@/features/trackers/trackers";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -119,6 +120,51 @@ describe("TrackersScreen", () => {
     expect(within(table).getByText("Paused")).toBeInTheDocument();
     expect(within(table).getByText("Draft")).toBeInTheDocument();
     expect(within(table).getAllByText("Never scanned").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders tracker attention cards with action links", () => {
+    render(<TrackersScreen />);
+
+    const attention = screen.getByRole("region", { name: "Tracker attention" });
+    expect(within(attention).getByText("Acme UK Tracker")).toBeInTheDocument();
+    expect(within(attention).getByText("Bold Docs Tracker")).toBeInTheDocument();
+    expect(within(attention).getByText("Activate tracker")).toHaveAttribute(
+      "href",
+      "/brands/b2/trackers/t3",
+    );
+    expect(within(attention).getByText("Resume tracker")).toHaveAttribute(
+      "href",
+      "/brands/b1/trackers/t2",
+    );
+  });
+
+  it("derives prioritized tracker attention items", () => {
+    const items = deriveTrackerAttentionItems([
+      tracker({ trackerId: "healthy" }),
+      tracker({
+        trackerId: "paused",
+        name: "Paused Tracker",
+        status: "Paused",
+        latestScanCompletedAt: null,
+      }),
+      tracker({
+        trackerId: "draft",
+        name: "Draft Tracker",
+        status: "Draft",
+        scanCount: 0,
+        latestScanCompletedAt: null,
+      }),
+    ]);
+
+    expect(items.map((item) => item.trackerId)).toEqual(["draft", "paused"]);
+    expect(items[0]).toMatchObject({
+      priority: "High",
+      action: "Activate tracker",
+    });
+    expect(items[1]).toMatchObject({
+      priority: "Medium",
+      action: "Resume tracker",
+    });
   });
 
   it("renders the empty state when no trackers exist", () => {

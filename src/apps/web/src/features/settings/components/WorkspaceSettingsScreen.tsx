@@ -7,10 +7,15 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { WORKSPACE_COPY } from "@/content/workspace";
 import { useWorkspaceSettingsSummary } from "@/features/settings/hooks/useWorkspaceSettingsSummary";
+import {
+  deriveWorkspaceReadiness,
+  type WorkspaceReadinessItem,
+} from "@/features/settings/settings";
 
 export function WorkspaceSettingsScreen() {
   const copy = WORKSPACE_COPY.settings;
   const settings = useWorkspaceSettingsSummary();
+  const readiness = deriveWorkspaceReadiness(settings.summary);
 
   if (settings.isLoading) return <LoadingPage />;
   if (settings.isError) {
@@ -64,6 +69,8 @@ export function WorkspaceSettingsScreen() {
         </div>
       )}
 
+      <WorkspaceReadinessSection items={readiness} />
+
       <div className="grid gap-4 xl:grid-cols-2">
         <SettingsSection section={copy.sections.profile} />
         <SettingsSection section={copy.sections.team} />
@@ -72,6 +79,41 @@ export function WorkspaceSettingsScreen() {
       </div>
     </div>
   );
+}
+
+function WorkspaceReadinessSection({ items }: { items: readonly WorkspaceReadinessItem[] }) {
+  const copy = WORKSPACE_COPY.settings.readiness;
+  return (
+    <section aria-labelledby="workspace-readiness-title">
+      <Card>
+        <CardContent className="p-5">
+          <div>
+            <h2 id="workspace-readiness-title" className="text-sm font-semibold text-neutral-900">
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {items.map((item) => (
+              <div key={item.id} className="rounded-md border border-neutral-200 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-neutral-900">{item.label}</h3>
+                  <ReadinessBadge status={item.status} />
+                </div>
+                <p className="mt-2 text-xs text-neutral-500">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function ReadinessBadge({ status }: { status: WorkspaceReadinessItem["status"] }) {
+  if (status === "Ready") return <Badge variant="success">{status}</Badge>;
+  if (status === "Needs setup") return <Badge variant="warning">{status}</Badge>;
+  return <Badge variant="secondary">{status}</Badge>;
 }
 
 function SummaryTile({ label, value, helper }: { label: string; value: string; helper: string }) {

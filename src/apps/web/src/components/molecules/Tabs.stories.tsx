@@ -23,7 +23,7 @@ export const Default: Story = {
     tabs: [
       { id: "overview", label: "Overview", children: <p>Overview content</p> },
       { id: "schedule", label: "Schedule", children: <p>Schedule content</p> },
-      { id: "prompts", label: "Prompts", children: <p>Prompts content</p> },
+      { id: "prompts", label: "AI Questions", children: <p>AI Questions content</p> },
     ],
   },
 };
@@ -45,9 +45,11 @@ export const WithIcons: Story = {
       },
       {
         id: "prompts",
-        label: "Prompts",
+        label: "AI Questions",
         icon: MessageSquare,
-        children: <p className="text-sm text-neutral-700">Prompt set, scoped to this tracker.</p>,
+        children: (
+          <p className="text-sm text-neutral-700">AI question set, scoped to this tracker.</p>
+        ),
       },
       {
         id: "lenses",
@@ -71,7 +73,7 @@ export const DefaultTabOverride: Story = {
     tabs: [
       { id: "overview", label: "Overview", children: <p>Overview</p> },
       { id: "schedule", label: "Schedule", children: <p>Schedule (default)</p> },
-      { id: "prompts", label: "Prompts", children: <p>Prompts</p> },
+      { id: "prompts", label: "AI Questions", children: <p>AI Questions</p> },
     ],
   },
 };

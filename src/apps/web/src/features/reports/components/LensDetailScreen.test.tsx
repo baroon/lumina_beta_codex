@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceOverviewDto } from "@/types/api";
+import {
+  countLensEntitiesBySentiment,
+  countLensEntitiesByType,
+  deriveLensDiagnosis,
+  filterLensEntities,
+} from "@/features/reports/lenses";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => (
@@ -42,6 +49,47 @@ beforeEach(() => {
 });
 
 describe("LensDetailScreen", () => {
+  it("filters and counts lens entities by type and sentiment", () => {
+    const entities = overview().topEntities;
+
+    expect(countLensEntitiesByType(entities)).toEqual({ Brand: 1, Competitor: 1 });
+    expect(countLensEntitiesBySentiment(entities)).toEqual({
+      Positive: 1,
+      Neutral: 1,
+      Negative: 0,
+      Unknown: 0,
+    });
+    expect(filterLensEntities(entities, "Competitor", null).map((entity) => entity.name)).toEqual([
+      "Canva",
+    ]);
+    expect(filterLensEntities(entities, null, "Positive").map((entity) => entity.name)).toEqual([
+      "Acme",
+    ]);
+  });
+
+  it("derives a lens diagnosis from lens-scoped overview metrics", () => {
+    expect(deriveLensDiagnosis(overview({ hero: { ...overview().hero, queries: 0 } }))).toEqual({
+      code: "NeedsData",
+      priority: "High",
+      signal: "0 AI questions",
+    });
+    expect(
+      deriveLensDiagnosis(
+        overview({ hero: { ...overview().hero, brandAbsenceRate: 0.62, brandMentionRate: 0.25 } }),
+      ),
+    ).toMatchObject({ code: "HighAbsence", priority: "High", signal: "62% absence" });
+    expect(
+      deriveLensDiagnosis(
+        overview({ hero: { ...overview().hero, brandAbsenceRate: 0.2, brandMentionRate: 0.25 } }),
+      ),
+    ).toMatchObject({ code: "LowMention", priority: "Medium", signal: "25% mention rate" });
+    expect(deriveLensDiagnosis(overview())).toMatchObject({
+      code: "Healthy",
+      priority: "Low",
+      signal: "40% mention rate",
+    });
+  });
+
   it("renders the selected lens summary and entity table", () => {
     render(<LensDetailScreen lensId="discovery" />);
 
@@ -49,9 +97,27 @@ describe("LensDetailScreen", () => {
     expect(screen.getByText("AI questions")).toBeInTheDocument();
     expect(screen.getByText("Mention rate")).toBeInTheDocument();
     expect(screen.getByText("Lens signals")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Lens diagnosis" })).toBeInTheDocument();
+    expect(screen.getByText("Maintain current coverage")).toBeInTheDocument();
+    expect(screen.getByText("Priority: Low")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View recommendations" })).toBeDisabled();
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("Canva")).toBeInTheDocument();
+  });
+
+  it("renders a high-priority diagnosis when absence is high", () => {
+    overviewState = {
+      ...overviewState,
+      data: overview({ hero: { ...overview().hero, brandAbsenceRate: 0.65 } }),
+    };
+
+    render(<LensDetailScreen lensId="discovery" />);
+
+    const diagnosis = screen.getByRole("region", { name: "Lens diagnosis" });
+    expect(within(diagnosis).getByText("Reduce brand absence")).toBeInTheDocument();
+    expect(within(diagnosis).getByText("Priority: High")).toBeInTheDocument();
+    expect(within(diagnosis).getByText("Signal: 65% absence")).toBeInTheDocument();
   });
 
   it("filters overview data by the selected lens code", () => {
@@ -67,6 +133,22 @@ describe("LensDetailScreen", () => {
 
     const table = screen.getByRole("table");
     expect(within(table).getByText("You")).toBeInTheDocument();
+  });
+
+  it("filters the entity table by type and sentiment", async () => {
+    render(<LensDetailScreen lensId="discovery" />);
+
+    await userEvent.click(screen.getByRole("button", { name: /competitor\s+1/i }));
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Canva")).toBeInTheDocument();
+    expect(within(table).queryByText("Acme")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /clear filters/i }));
+    await userEvent.click(screen.getByRole("button", { name: /positive\s+1/i }));
+
+    expect(within(table).getByText("Acme")).toBeInTheDocument();
+    expect(within(table).queryByText("Canva")).not.toBeInTheDocument();
   });
 
   it("renders the empty entity state when the lens has no entities", () => {

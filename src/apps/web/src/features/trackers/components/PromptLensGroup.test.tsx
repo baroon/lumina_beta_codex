@@ -85,17 +85,19 @@ describe("PromptLensGroup", () => {
     expect(onEdit).toHaveBeenCalledWith("p1", "Edited");
   });
 
-  it("adds a custom prompt from the section", async () => {
+  it("adds a custom AI Question from the section", async () => {
     const { onAdd } = setup();
-    await userEvent.click(screen.getByRole("button", { name: /add custom prompt/i }));
-    await userEvent.type(screen.getByPlaceholderText("Type a prompt..."), "My prompt");
+    await userEvent.click(screen.getByRole("button", { name: /add custom AI question/i }));
+    await userEvent.type(screen.getByPlaceholderText("Type an AI Question..."), "My prompt");
     await userEvent.click(screen.getByRole("button", { name: /^Add$/ }));
     expect(onAdd).toHaveBeenCalledWith("My prompt", null);
   });
 
   it("hides the add control when the tracker is full", () => {
     setup(false);
-    expect(screen.queryByRole("button", { name: /add custom prompt/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /add custom AI question/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a High badge when there is no review reason", () => {

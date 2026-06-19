@@ -17,37 +17,32 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { LENSES_COPY, VISIBILITY_LENSES } from "@/content/lenses";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { cn } from "@/lib/utils";
 import { useLensCounts } from "@/features/reports/hooks/useLensCounts";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
-import type { LensCountDto } from "@/types/api";
-
-interface LensRow {
-  code: string;
-  slug: string;
-  name: string;
-  description: string;
-  mentionCount: number;
-  share: number;
-}
-
-const LENS_SLUGS: Record<string, string> = {
-  Discovery: "discovery",
-  BuyingIntent: "buying-intent",
-  CompetitorComparison: "competitive",
-  SentimentAndTrust: "sentiment",
-  CitationVisibility: "citations",
-  ContentGaps: "content-gaps",
-};
+import {
+  buildLensRows,
+  countLensRowsByStatus,
+  deriveLensAttentionItems,
+  filterLensRows,
+  type LensAttentionItem,
+  type LensRow,
+  type LensStatus,
+} from "@/features/reports/lenses";
 
 export function LensesScreen() {
   const copy = LENSES_COPY.page;
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
+  const [statusFilter, setStatusFilter] = useState<LensStatus | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const lensCounts = useLensCounts(range);
   const rows = useMemo(() => buildLensRows(lensCounts.data ?? []), [lensCounts.data]);
+  const filteredRows = useMemo(() => filterLensRows(rows, statusFilter), [rows, statusFilter]);
+  const statusCounts = useMemo(() => countLensRowsByStatus(rows), [rows]);
+  const attentionItems = useMemo(() => deriveLensAttentionItems(rows), [rows]);
 
   const columns = useMemo<ColumnDef<LensRow, unknown>[]>(
     () => [
@@ -65,6 +60,11 @@ export function LensesScreen() {
           </Link>
         ),
         meta: { cellClassName: "min-w-72" },
+      },
+      {
+        accessorKey: "primaryMetric",
+        header: copy.table.primaryMetric,
+        cell: ({ row }) => <Badge variant="outline">{row.original.primaryMetric}</Badge>,
       },
       {
         accessorKey: "mentionCount",
@@ -124,7 +124,7 @@ export function LensesScreen() {
   }
   if (!overview.data) return null;
 
-  const totalLensMentions = rows.reduce((sum, row) => sum + row.mentionCount, 0);
+  const totalLensMentions = filteredRows.reduce((sum, row) => sum + row.mentionCount, 0);
 
   return (
     <div className="space-y-5">
@@ -137,6 +137,16 @@ export function LensesScreen() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
+        <LensStatusFilterPills
+          counts={statusCounts}
+          selected={statusFilter}
+          onSelect={(status) => setStatusFilter((current) => (current === status ? null : status))}
+        />
+        {statusFilter && (
+          <Button variant="ghost" size="sm" onClick={() => setStatusFilter(null)}>
+            Clear filters
+          </Button>
+        )}
         {lensCounts.isError && (
           <span className="text-xs text-semantic-warning-700">
             {copy.controls.countsUnavailable}
@@ -167,6 +177,8 @@ export function LensesScreen() {
         />
       </div>
 
+      <LensAttentionSection items={attentionItems} />
+
       <Card>
         <CardContent className="p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
@@ -179,14 +191,73 @@ export function LensesScreen() {
           </div>
           <DataTable
             columns={columns}
-            data={rows}
+            data={filteredRows}
             getRowId={(row) => row.code}
             initialSorting={[{ id: "mentionCount", desc: true }]}
-            emptyMessage={<LensesEmptyState />}
+            emptyMessage={statusFilter ? <FilteredLensesEmptyState /> : <LensesEmptyState />}
           />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function LensAttentionSection({ items }: { items: readonly LensAttentionItem[] }) {
+  const copy = LENSES_COPY.page.attention;
+  return (
+    <section aria-labelledby="lens-attention-title">
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="lens-attention-title" className="text-sm font-semibold text-neutral-900">
+                {copy.title}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+            </div>
+            <Badge variant={items.length === 0 ? "success" : "warning"}>
+              {items.length.toLocaleString()}
+            </Badge>
+          </div>
+          {items.length === 0 ? (
+            <p className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {copy.empty}
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {items.map((item) => (
+                <div
+                  key={item.code}
+                  className="flex min-h-36 flex-col rounded-md border border-neutral-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-neutral-900">{item.name}</h3>
+                      <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                    <Badge variant={item.priority === "High" ? "destructive" : "warning"}>
+                      {copy.priority}: {item.priority}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{item.status}</Badge>
+                    <Badge variant="secondary">{item.action}</Badge>
+                  </div>
+                  <div className="mt-auto flex justify-end pt-4">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to="/lenses/$lensId" params={{ lensId: item.slug }}>
+                        {copy.openLens}
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -211,6 +282,61 @@ function LensStatusBadge({ row }: { row: LensRow }) {
   return <Badge variant="success">{copy.healthy}</Badge>;
 }
 
+function LensStatusFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<LensStatus, number>;
+  selected: LensStatus | null;
+  onSelect: (status: LensStatus) => void;
+}) {
+  const statuses: readonly LensStatus[] = ["Healthy", "Sparse", "No evidence"];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {statuses.map((status) => (
+        <FilterPill
+          key={status}
+          label={status}
+          count={counts[status]}
+          selected={selected === status}
+          onClick={() => onSelect(status)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FilterPill({
+  label,
+  count,
+  selected,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+        selected
+          ? "border-primary-600 bg-primary-100 text-primary-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+      )}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums text-neutral-400">{count}</span>
+    </button>
+  );
+}
+
 function LensesEmptyState() {
   return (
     <div className="p-5 text-center">
@@ -222,22 +348,15 @@ function LensesEmptyState() {
   );
 }
 
-function buildLensRows(counts: readonly LensCountDto[]): LensRow[] {
-  const countsByCode = Object.fromEntries(
-    counts.map((count) => [count.lensCode, count.mentionCount]),
+function FilteredLensesEmptyState() {
+  return (
+    <div className="p-5 text-center">
+      <ScanSearch className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
+      <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500">
+        {LENSES_COPY.page.table.filteredEmpty}
+      </p>
+    </div>
   );
-  const total = counts.reduce((sum, count) => sum + count.mentionCount, 0);
-  return VISIBILITY_LENSES.map((lens) => {
-    const mentionCount = countsByCode[lens.code] ?? 0;
-    return {
-      code: lens.code,
-      slug: LENS_SLUGS[lens.code] ?? lens.code,
-      name: lens.name,
-      description: lens.description,
-      mentionCount,
-      share: total > 0 ? mentionCount / total : 0,
-    };
-  });
 }
 
 function formatRate(value: number) {

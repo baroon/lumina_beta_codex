@@ -11,6 +11,10 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { TRACKERS_COPY } from "@/content/trackers";
 import { useAllTrackers } from "@/features/trackers/hooks/useAllTrackers";
+import {
+  deriveTrackerAttentionItems,
+  type TrackerAttentionItem,
+} from "@/features/trackers/trackers";
 import type { TrackerListItemDto } from "@/types/api";
 
 interface BrandTrackerSummary {
@@ -28,6 +32,7 @@ export function TrackersScreen() {
   const trackers = useAllTrackers();
   const rows = trackers.data ?? EMPTY_TRACKER_ROWS;
   const brandSummaries = useMemo(() => summarizeBrands(rows), [rows]);
+  const attentionItems = useMemo(() => deriveTrackerAttentionItems(rows), [rows]);
   const columns = useMemo<ColumnDef<TrackerListItemDto, unknown>[]>(
     () => [
       {
@@ -142,6 +147,8 @@ export function TrackersScreen() {
         />
       </div>
 
+      <TrackerAttentionSection items={attentionItems} />
+
       <Card>
         <CardContent className="p-5">
           <div className="flex items-start justify-between gap-4">
@@ -182,6 +189,66 @@ export function TrackersScreen() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function TrackerAttentionSection({ items }: { items: readonly TrackerAttentionItem[] }) {
+  const copy = TRACKERS_COPY.list;
+  return (
+    <section aria-labelledby="tracker-attention-title">
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="tracker-attention-title" className="text-sm font-semibold text-neutral-900">
+                {copy.sections.attention}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.sections.attentionDescription}</p>
+            </div>
+            <Badge variant={items.length === 0 ? "success" : "warning"}>
+              {items.length.toLocaleString()}
+            </Badge>
+          </div>
+          {items.length === 0 ? (
+            <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {copy.sections.attentionEmpty}
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {items.map((item) => (
+                <div
+                  key={item.trackerId}
+                  className="flex min-h-32 flex-col rounded-md border border-neutral-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-neutral-500">{item.brandName}</p>
+                      <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-900">
+                        {item.trackerName}
+                      </h3>
+                      <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                    <Badge variant={item.priority === "High" ? "destructive" : "warning"}>
+                      {item.priority}
+                    </Badge>
+                  </div>
+                  <div className="mt-auto flex justify-end pt-4">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link
+                        to="/brands/$brandId/trackers/$trackerId"
+                        params={{ brandId: item.brandId, trackerId: item.trackerId }}
+                      >
+                        {item.action}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 

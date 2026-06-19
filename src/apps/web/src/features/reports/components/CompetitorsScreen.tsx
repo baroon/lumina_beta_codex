@@ -8,10 +8,12 @@ import {
   TrendingUp,
   Trophy,
   Users,
+  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { LineChartWrapper, type LineChartSeries } from "@/components/charts/LineChartWrapper";
 import { CollapsibleCard } from "@/components/molecules/CollapsibleCard";
@@ -35,9 +37,17 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
+import { REPORTS_COPY } from "@/content/reports";
 import { BrandVsCompetitorCard } from "@/features/reports/components/BrandVsCompetitorCard";
 import { CoMentionLandscapeCard } from "@/features/reports/components/CoMentionLandscapeCard";
 import { CompetitiveGapGroupsCard } from "@/features/reports/components/CompetitiveGapGroupsCard";
+import {
+  countCompetitorsByRecommendation,
+  countCompetitorsByRelationship,
+  filterCompetitorRows,
+  type CompetitorRecommendationFilter,
+  type CompetitorRelationshipFilter,
+} from "@/features/reports/competitors";
 import {
   InlineChipFilter,
   PLATFORM_LABELS,
@@ -517,7 +527,7 @@ function HeroTile({
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-neutral-500">
           <Icon size={12} className="text-neutral-400" aria-hidden />
           <span className="truncate">{label}</span>
-          <InfoTooltip label={label} body={tooltip} iconSize={11} />
+          {tooltip ? <InfoTooltip label={label} body={tooltip} iconSize={11} /> : null}
         </div>
         <div className="mt-0.5 truncate text-lg font-semibold text-neutral-900">{value}</div>
         <div className="truncate text-[11px] text-neutral-500">{sub}</div>
@@ -953,62 +963,254 @@ export function mergeEntityRows(
 // ---------------------------------------------------------------------------
 
 function CompetitorsTable({ rows }: { rows: readonly CompetitorRow[] }) {
+  const copy = REPORTS_COPY.competitors.workspace.filters;
+  const actionsCopy = REPORTS_COPY.competitors.workspace.actions;
+  const [relationshipFilter, setRelationshipFilter] = useState<CompetitorRelationshipFilter | null>(
+    null,
+  );
+  const [recommendationFilter, setRecommendationFilter] =
+    useState<CompetitorRecommendationFilter | null>(null);
+  const [selectedRow, setSelectedRow] = useState<CompetitorRow | null>(null);
+  const filteredRows = useMemo(
+    () => filterCompetitorRows(rows, relationshipFilter, recommendationFilter),
+    [recommendationFilter, relationshipFilter, rows],
+  );
+  const relationshipCounts = useMemo(() => countCompetitorsByRelationship(rows), [rows]);
+  const recommendationCounts = useMemo(() => countCompetitorsByRecommendation(rows), [rows]);
   const maxMentions = useMemo(
-    () => rows.reduce((max, r) => Math.max(max, r.mentionCount), 0),
-    [rows],
+    () => filteredRows.reduce((max, r) => Math.max(max, r.mentionCount), 0),
+    [filteredRows],
   );
   return (
-    <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
-      <table className="w-full text-xs">
-        <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
-          <tr>
-            <Th className="w-10 text-right">#</Th>
-            <Th>Entity</Th>
-            <Th className="text-right">Mentions</Th>
-            <Th className="text-right">Share of voice</Th>
-            <Th className="text-right">Recommendation rate</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-100">
-          {rows.map((row, index) => {
-            const isTopMover = index === 0 && row.mentionCount > 0;
-            return (
-              <tr
-                key={`${row.entityType}:${row.entityId}`}
-                className={cn(row.isTrackedBrand && "bg-primary-50/40")}
-              >
-                <Td className="w-10 text-right text-neutral-500 tabular-nums">{index + 1}</Td>
-                <Td>
-                  <span className="font-medium text-neutral-900">{row.name}</span>
-                  {row.isTrackedBrand && (
-                    <Badge variant="secondary" className="ml-2 text-[10px]">
-                      You
-                    </Badge>
-                  )}
-                  {isTopMover && !row.isTrackedBrand && (
-                    <Badge variant="outline" className="ml-2 text-[10px]">
-                      Leader
-                    </Badge>
-                  )}
-                </Td>
-                <Td className="text-right tabular-nums">
-                  <MentionBar count={row.mentionCount} max={maxMentions} />
-                </Td>
-                <Td className="text-right tabular-nums text-neutral-900">
-                  {formatPct(row.shareOfVoice)}
-                </Td>
-                <Td className="text-right tabular-nums">
-                  {row.recommendationRate == null ? (
-                    <span className="text-neutral-400">—</span>
-                  ) : (
-                    <span className="text-neutral-900">{formatPct(row.recommendationRate)}</span>
-                  )}
-                </Td>
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1">
+        <CompetitorFilterPills
+          counts={relationshipCounts}
+          selected={relationshipFilter}
+          onSelect={(next) => setRelationshipFilter((current) => (current === next ? null : next))}
+        />
+        <CompetitorFilterPills
+          counts={recommendationCounts}
+          selected={recommendationFilter}
+          onSelect={(next) =>
+            setRecommendationFilter((current) => (current === next ? null : next))
+          }
+        />
+        {(relationshipFilter || recommendationFilter) && (
+          <button
+            type="button"
+            onClick={() => {
+              setRelationshipFilter(null);
+              setRecommendationFilter(null);
+            }}
+            className="rounded-md px-2 py-1 text-[10px] font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+          >
+            {copy.clear}
+          </button>
+        )}
+      </div>
+      {filteredRows.length === 0 ? (
+        <p className="rounded-md border border-dashed border-neutral-200 bg-neutral-50/60 px-4 py-3 text-xs text-neutral-500">
+          {copy.empty}
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-neutral-200 bg-white">
+          <table className="w-full text-xs">
+            <thead className="bg-neutral-50 uppercase tracking-wide text-neutral-500">
+              <tr>
+                <Th className="w-10 text-right">#</Th>
+                <Th>Entity</Th>
+                <Th>Relationship</Th>
+                <Th className="text-right">Mentions</Th>
+                <Th className="text-right">Share of voice</Th>
+                <Th className="text-right">Recommendation rate</Th>
+                <Th className="text-right">Actions</Th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {filteredRows.map((row, index) => {
+                const isTopMover = index === 0 && row.mentionCount > 0;
+                return (
+                  <tr
+                    key={`${row.entityType}:${row.entityId}`}
+                    className={cn(row.isTrackedBrand && "bg-primary-50/40")}
+                  >
+                    <Td className="w-10 text-right text-neutral-500 tabular-nums">{index + 1}</Td>
+                    <Td>
+                      <span className="font-medium text-neutral-900">{row.name}</span>
+                      {row.isTrackedBrand && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          You
+                        </Badge>
+                      )}
+                      {isTopMover && !row.isTrackedBrand && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">
+                          Leader
+                        </Badge>
+                      )}
+                    </Td>
+                    <Td>
+                      <Badge variant={row.isTrackedBrand ? "secondary" : "outline"}>
+                        {row.isTrackedBrand ? "You" : "Competitor"}
+                      </Badge>
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      <MentionBar count={row.mentionCount} max={maxMentions} />
+                    </Td>
+                    <Td className="text-right tabular-nums text-neutral-900">
+                      {formatPct(row.shareOfVoice)}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {row.recommendationRate == null ? (
+                        <span className="text-neutral-400">—</span>
+                      ) : (
+                        <span className="text-neutral-900">
+                          {formatPct(row.recommendationRate)}
+                        </span>
+                      )}
+                    </Td>
+                    <Td className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedRow(row)}>
+                        {actionsCopy.openDetails}
+                      </Button>
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <CompetitorDetailsDrawer
+        row={selectedRow}
+        rank={selectedRow == null ? null : filteredRows.indexOf(selectedRow) + 1}
+        onClose={() => setSelectedRow(null)}
+      />
+    </div>
+  );
+}
+
+function CompetitorDetailsDrawer({
+  row,
+  rank,
+  onClose,
+}: {
+  row: CompetitorRow | null;
+  rank: number | null;
+  onClose: () => void;
+}) {
+  if (!row) return null;
+
+  const copy = REPORTS_COPY.competitors.workspace.drawer;
+  const actions = REPORTS_COPY.competitors.workspace.actions;
+  const relationship = row.isTrackedBrand ? "You" : "Competitor";
+  const recommendationRate =
+    row.recommendationRate == null ? copy.noRecommendationData : formatPct(row.recommendationRate);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/20" role="presentation" onClick={onClose}>
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="competitor-details-title"
+        className="ml-auto flex h-full w-full max-w-xl flex-col border-l border-neutral-200 bg-white shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between border-b border-neutral-200 p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              {copy.title}
+            </p>
+            <h2
+              id="competitor-details-title"
+              className="mt-1 text-lg font-semibold text-neutral-900"
+            >
+              {row.name}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={copy.close}
+            className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <DrawerMeta label={copy.relationship} value={relationship} />
+            <DrawerMeta label={copy.rank} value={rank == null ? "—" : `#${rank}`} />
+            <DrawerMeta label={copy.mentions} value={row.mentionCount.toLocaleString()} />
+            <DrawerMeta label={copy.shareOfVoice} value={formatPct(row.shareOfVoice)} />
+            <DrawerMeta label={copy.recommendationRate} value={recommendationRate} />
+          </div>
+
+          <section>
+            <h3 className="text-sm font-semibold text-neutral-900">{copy.recommendedAction}</h3>
+            <p className="mt-1 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {row.isTrackedBrand ? copy.actionTracked : copy.actionCompetitor}
+            </p>
+          </section>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
+          <Button variant="outline" size="sm" disabled>
+            {actions.addToReport}
+          </Button>
+          <Button variant="outline" size="sm" disabled>
+            {actions.trackCompetitor}
+          </Button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function DrawerMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-neutral-200 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+function CompetitorFilterPills<T extends string>({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<T, number>;
+  selected: T | null;
+  onSelect: (next: T) => void;
+}) {
+  const entries = Object.entries(counts) as [T, number][];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {entries
+        .filter(([, count]) => count > 0)
+        .map(([label, count]) => {
+          const active = selected === label;
+          return (
+            <button
+              key={label}
+              type="button"
+              onClick={() => onSelect(label)}
+              aria-pressed={active}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+                active
+                  ? "border-primary-600 bg-primary-100 text-primary-700"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+              )}
+            >
+              <span>{label}</span>
+              <span className="tabular-nums text-neutral-400">{count}</span>
+            </button>
+          );
+        })}
     </div>
   );
 }

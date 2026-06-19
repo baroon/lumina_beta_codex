@@ -272,8 +272,8 @@ function BrandDangerZoneSection({ brandId, brandName }: { brandId: string; brand
       <CardContent className="space-y-3 p-4">
         <SectionHeader icon={Trash2} title="Danger zone" />
         <p className="text-xs text-neutral-600">
-          Deleting this brand permanently removes every tracker, every scan, every prompt run, every
-          recorded answer, and every dimension row associated with it. This cannot be undone.
+          Deleting this brand permanently removes every tracker, every scan, every AI question run,
+          every recorded answer, and every dimension row associated with it. This cannot be undone.
         </p>
         <div>
           <Button
@@ -290,7 +290,7 @@ function BrandDangerZoneSection({ brandId, brandName }: { brandId: string; brand
           open={open}
           onOpenChange={setOpen}
           title="Delete brand"
-          description="This permanently deletes the brand, every tracker, every scan, every prompt run, every answer, and every dimension row associated with it."
+          description="This permanently deletes the brand, every tracker, every scan, every AI question run, every answer, and every dimension row associated with it."
           expectedConfirmText={brandName}
           confirmLabel="Delete brand"
           onConfirm={() => del.mutate()}

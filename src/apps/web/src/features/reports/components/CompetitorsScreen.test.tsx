@@ -84,6 +84,11 @@ vi.mock("@/components/charts/LineChartWrapper", () => ({
 }));
 
 import {
+  countCompetitorsByRecommendation,
+  countCompetitorsByRelationship,
+  filterCompetitorRows,
+} from "@/features/reports/competitors";
+import {
   CompetitorsScreen,
   deriveHero,
   deriveMovers,
@@ -181,6 +186,36 @@ describe("mergeEntityRows (pure)", () => {
       [],
     );
     expect(rows.map((r) => r.name)).toEqual(["High", "Mid", "Low"]);
+  });
+
+  it("filters and counts leaderboard rows by relationship and recommendation availability", () => {
+    const rows = mergeEntityRows(
+      [
+        mention({ entityId: "you", name: "Acme", isTrackedBrand: true, mentionCount: 8 }),
+        mention({ entityId: "canva", name: "Canva", mentionCount: 12 }),
+        mention({ entityId: "figma", name: "Figma", mentionCount: 4 }),
+      ],
+      [
+        rate({
+          entityId: "you",
+          name: "Acme",
+          isTrackedBrand: true,
+          mentionCount: 8,
+          recommendationRate: 0.5,
+        }),
+        rate({ entityId: "canva", name: "Canva", mentionCount: 12, recommendationRate: 0.3 }),
+      ],
+    );
+
+    expect(countCompetitorsByRelationship(rows)).toEqual({ You: 1, Competitor: 2 });
+    expect(countCompetitorsByRecommendation(rows)).toEqual({
+      Recommended: 2,
+      "No recommendation data": 1,
+    });
+    expect(filterCompetitorRows(rows, "You", null).map((row) => row.name)).toEqual(["Acme"]);
+    expect(filterCompetitorRows(rows, "Competitor", "Recommended").map((row) => row.name)).toEqual([
+      "Canva",
+    ]);
   });
 });
 
@@ -386,12 +421,96 @@ describe("CompetitorsScreen", () => {
 
     // Ranking table renders both rows with the You badge on the tracked brand.
     const table = screen.getByRole("table");
+    expect(within(table).getByText("Relationship")).toBeInTheDocument();
+    expect(within(table).getByText("Actions")).toBeInTheDocument();
     expect(within(table).getByText("Canva")).toBeInTheDocument();
     expect(within(table).getByText("Acme")).toBeInTheDocument();
-    expect(within(table).getByText("You")).toBeInTheDocument();
+    expect(within(table).getAllByText("You").length).toBeGreaterThanOrEqual(1);
+    expect(within(table).getByText("Competitor")).toBeInTheDocument();
     expect(within(table).getByText("Leader")).toBeInTheDocument();
     // Acme's 50% recommendation rate appears in the table cell.
     expect(within(table).getByText("50%")).toBeInTheDocument();
+  });
+
+  it("opens an entity details drawer from the ranking table", async () => {
+    competitiveState = {
+      data: competitive(
+        [
+          mention({ entityId: "leader", name: "Canva", mentionCount: 12, share: 0.4 }),
+          mention({
+            entityId: "you",
+            name: "Acme",
+            isTrackedBrand: true,
+            mentionCount: 8,
+            share: 0.3,
+          }),
+        ],
+        [rate({ entityId: "leader", name: "Canva", mentionCount: 12, recommendationRate: 0.3 })],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    render(<CompetitorsScreen />);
+
+    const table = screen.getByRole("table");
+    await userEvent.click(within(table).getAllByRole("button", { name: "Open details" })[0]);
+
+    const drawer = screen.getByRole("dialog", { name: "Canva" });
+    expect(within(drawer).getByText("Relationship")).toBeInTheDocument();
+    expect(within(drawer).getByText("Competitor")).toBeInTheDocument();
+    expect(within(drawer).getByText("#1")).toBeInTheDocument();
+    expect(within(drawer).getByText("40%")).toBeInTheDocument();
+    expect(within(drawer).getByText("30%")).toBeInTheDocument();
+    expect(within(drawer).getByText("Recommended action")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Track competitor" })).toBeDisabled();
+  });
+
+  it("filters the competitive ranking table locally", async () => {
+    competitiveState = {
+      data: competitive(
+        [
+          mention({ entityId: "leader", name: "Canva", mentionCount: 12, share: 0.4 }),
+          mention({
+            entityId: "you",
+            name: "Acme",
+            isTrackedBrand: true,
+            mentionCount: 8,
+            share: 0.3,
+          }),
+          mention({ entityId: "figma", name: "Figma", mentionCount: 4, share: 0.1 }),
+        ],
+        [
+          rate({ entityId: "leader", name: "Canva", mentionCount: 12, recommendationRate: 0.3 }),
+          rate({
+            entityId: "you",
+            name: "Acme",
+            isTrackedBrand: true,
+            mentionCount: 8,
+            recommendationRate: 0.5,
+          }),
+        ],
+      ),
+      isLoading: false,
+      isError: false,
+    };
+    render(<CompetitorsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /^Competitor\s+2$/i }));
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Canva")).toBeInTheDocument();
+    expect(within(table).getByText("Figma")).toBeInTheDocument();
+    expect(within(table).queryByText("Acme")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Recommended\s+2$/i }));
+
+    expect(within(table).getByText("Canva")).toBeInTheDocument();
+    expect(within(table).queryByText("Figma")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /clear filters/i }));
+
+    expect(within(table).getByText("Acme")).toBeInTheDocument();
   });
 
   it("swaps the trend chart series when the metric toggle flips to Mention rate", async () => {

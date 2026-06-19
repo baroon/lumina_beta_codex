@@ -37,7 +37,6 @@ function Demo({
         expectedConfirmText={expectedConfirmText}
         confirmLabel={confirmLabel}
         onConfirm={() => {
-           
           alert("Deleted!");
           setOpen(false);
         }}
@@ -50,7 +49,7 @@ export const DeleteBrand: Story = {
   render: () => (
     <Demo
       title="Delete brand"
-      description="This permanently deletes the brand, every tracker, every scan, every prompt run, every answer, and all dimension rows. This cannot be undone."
+      description="This permanently deletes the brand, every tracker, every scan, every AI question run, every answer, and all dimension rows. This cannot be undone."
       expectedConfirmText="Acme Corp"
       confirmLabel="Delete brand"
     />
@@ -61,7 +60,7 @@ export const DeleteTracker: Story = {
   render: () => (
     <Demo
       title="Delete tracker"
-      description="This permanently deletes the tracker, every scan run, every prompt run, and every answer recorded for it. The owning brand and its other trackers are not affected."
+      description="This permanently deletes the tracker, every scan run, every AI question run, and every answer recorded for it. The owning brand and its other trackers are not affected."
       expectedConfirmText="Acme · US"
       confirmLabel="Delete tracker"
     />

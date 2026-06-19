@@ -17,6 +17,10 @@ export const TRACKERS_COPY = {
       scansHelper: "All completed scan runs recorded for these trackers.",
     },
     sections: {
+      attention: "Tracker attention",
+      attentionDescription:
+        "Trackers that need activation, resumed monitoring, or a first completed scan.",
+      attentionEmpty: "No trackers need attention.",
       brandHealth: "Brand coverage",
       brandHealthDescription: "See which brands have active monitoring and recent scan history.",
       trackerTable: "Tracker inventory",

@@ -91,7 +91,13 @@ vi.mock("@/components/charts/BarChartWrapper", () => ({
   ),
 }));
 
-import { PromptsScreen, filterRows, sortPrompts, deriveSummary } from "./PromptsScreen";
+import { PromptsScreen, deriveSummary, filterRows, sortPrompts } from "./PromptsScreen";
+import {
+  countQuestionsByStatus,
+  deriveQuestionAttentionItems,
+  deriveQuestionStatus,
+  filterQuestionsByStatus,
+} from "@/features/reports/prompts";
 
 function row(overrides: Partial<WorkspacePromptRowDto>): WorkspacePromptRowDto {
   return {
@@ -255,6 +261,54 @@ describe("deriveSummary (pure)", () => {
   });
 });
 
+describe("question status helpers", () => {
+  const rows = [
+    row({ promptId: "a", visibilityRate: null, scanCount: 0, brandMentionCount: 0 }),
+    row({ promptId: "b", visibilityRate: 0.1, scanCount: 2, brandMentionCount: 1 }),
+    row({ promptId: "c", visibilityRate: 0.4, scanCount: 2, brandMentionCount: 0 }),
+    row({ promptId: "d", visibilityRate: 0.7, scanCount: 2, brandMentionCount: 5 }),
+  ];
+
+  it("derives, counts, and filters question statuses", () => {
+    expect(rows.map(deriveQuestionStatus)).toEqual([
+      "No answers",
+      "Needs attention",
+      "Not visible",
+      "Brand visible",
+    ]);
+    expect(countQuestionsByStatus(rows)).toEqual({
+      "No answers": 1,
+      "Needs attention": 1,
+      "Not visible": 1,
+      "Brand visible": 1,
+    });
+    expect(
+      filterQuestionsByStatus(rows, ["Needs attention", "Not visible"]).map((r) => r.promptId),
+    ).toEqual(["b", "c"]);
+  });
+
+  it("derives prioritized question attention items", () => {
+    const items = deriveQuestionAttentionItems(rows);
+
+    expect(items.map((item) => item.promptId)).toEqual(["a", "b", "c"]);
+    expect(items[0]).toMatchObject({
+      status: "No answers",
+      priority: "High",
+      action: "Run first scan",
+    });
+    expect(items[1]).toMatchObject({
+      status: "Needs attention",
+      priority: "High",
+      action: "Improve answer coverage",
+    });
+    expect(items[2]).toMatchObject({
+      status: "Not visible",
+      priority: "Medium",
+      action: "Close visibility gap",
+    });
+  });
+});
+
 describe("PromptsScreen", () => {
   it("renders the page header", () => {
     render(<PromptsScreen />);
@@ -354,6 +408,41 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("No answers")).toBeInTheDocument();
     expect(within(table).getByText("Needs attention")).toBeInTheDocument();
     expect(within(table).getByText("Not visible")).toBeInTheDocument();
+  });
+
+  it("renders question attention cards and opens history from a card", async () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          text: "No answer question",
+          visibilityRate: null,
+          scanCount: 0,
+          brandMentionCount: 0,
+        }),
+        row({
+          promptId: "b",
+          text: "Healthy question",
+          visibilityRate: 0.8,
+          scanCount: 2,
+          brandMentionCount: 5,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<PromptsScreen />);
+
+    const attention = screen.getByRole("region", { name: "Question attention" });
+    expect(within(attention).getByText("No answer question")).toBeInTheDocument();
+    expect(within(attention).getByText("Priority: High")).toBeInTheDocument();
+    expect(within(attention).getByText("Run first scan")).toBeInTheDocument();
+    expect(within(attention).queryByText("Healthy question")).not.toBeInTheDocument();
+
+    await userEvent.click(within(attention).getByRole("button", { name: "Open history" }));
+
+    expect(screen.getByText("Answer history")).toBeInTheDocument();
   });
 
   it("summarizes questions by lens with mention rate, average position, and open issues", () => {
@@ -651,6 +740,40 @@ describe("PromptsScreen", () => {
     expect(screen.getByText("Positive prompt")).toBeInTheDocument();
     expect(screen.getByText("Negative prompt")).toBeInTheDocument();
     expect(screen.getByText("Unmeasured prompt")).toBeInTheDocument();
+  });
+
+  it("filters the table when a Status chip is selected", async () => {
+    promptsState = {
+      data: payload([
+        row({
+          promptId: "a",
+          text: "Needs attention question",
+          visibilityRate: 0.1,
+          scanCount: 2,
+          brandMentionCount: 1,
+        }),
+        row({
+          promptId: "b",
+          text: "Brand visible question",
+          visibilityRate: 0.8,
+          scanCount: 2,
+          brandMentionCount: 5,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<PromptsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filters$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Filter by Needs attention/i }));
+
+    expect(screen.getAllByText("Needs attention question").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Brand visible question")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Clear all/i }));
+    expect(screen.getAllByText("Needs attention question").length).toBeGreaterThan(0);
+    expect(screen.getByText("Brand visible question")).toBeInTheDocument();
   });
 
   it("inline chip filters accumulate multi-selection and toggle on a second click", async () => {

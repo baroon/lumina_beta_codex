@@ -10,13 +10,20 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { BRANDS_COPY } from "@/content/brands";
+import {
+  deriveBrandDiscoveryAttentionItems,
+  type BrandDiscoveryAttentionItem,
+} from "@/features/brands/brands";
 import { useBrandsList } from "@/features/brands/hooks/useBrands";
 import type { BrandDto, DiscoveryStatus } from "@/types/api";
+
+const EMPTY_BRAND_ROWS: readonly BrandDto[] = [];
 
 export function BrandDiscoveryScreen() {
   const copy = BRANDS_COPY.discoveryHub;
   const brands = useBrandsList();
-  const rows = brands.data ?? [];
+  const rows = brands.data ?? EMPTY_BRAND_ROWS;
+  const attentionItems = useMemo(() => deriveBrandDiscoveryAttentionItems(rows), [rows]);
 
   const columns = useMemo<ColumnDef<BrandDto, unknown>[]>(
     () => [
@@ -134,6 +141,8 @@ export function BrandDiscoveryScreen() {
         />
       </div>
 
+      <DiscoveryAttentionSection items={attentionItems} />
+
       <Card>
         <CardContent className="p-5">
           <DataTable
@@ -146,6 +155,61 @@ export function BrandDiscoveryScreen() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function DiscoveryAttentionSection({ items }: { items: readonly BrandDiscoveryAttentionItem[] }) {
+  const copy = BRANDS_COPY.discoveryHub;
+  return (
+    <section aria-labelledby="discovery-attention-title">
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="discovery-attention-title" className="text-sm font-semibold text-neutral-900">
+                {copy.attention.title}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.attention.description}</p>
+            </div>
+            <Badge variant={items.length === 0 ? "success" : "warning"}>
+              {items.length.toLocaleString()}
+            </Badge>
+          </div>
+          {items.length === 0 ? (
+            <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {copy.attention.empty}
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {items.map((item) => (
+                <div
+                  key={item.brandId}
+                  className="flex min-h-32 flex-col rounded-md border border-neutral-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-semibold text-neutral-900">{item.brandName}</h3>
+                      <p className="mt-1 truncate text-xs text-neutral-500">{item.websiteUrl}</p>
+                      <p className="mt-2 text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                    <Badge variant={item.priority === "High" ? "destructive" : "warning"}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <div className="mt-auto flex justify-end pt-4">
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to="/brands/$brandId/discovery" params={{ brandId: item.brandId }}>
+                        {item.action}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 

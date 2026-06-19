@@ -1,6 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { ScrollArea } from "@/components/atoms/scroll-area";
 import { Skeleton } from "@/components/atoms/skeleton";
 import type { DateRangeSelection } from "@/components/molecules/DateRangePicker";
@@ -96,6 +97,18 @@ export function PromptAnswerHistoryDrawer({
               )}
             </div>
           </ScrollArea>
+
+          <footer className="flex flex-wrap justify-end gap-2 border-t border-neutral-200 px-6 py-4">
+            <Button variant="outline" size="sm" disabled>
+              {copy.addToReport}
+            </Button>
+            <Button variant="outline" size="sm" disabled>
+              {copy.createRecommendation}
+            </Button>
+            <Button size="sm" disabled>
+              {copy.markReviewed}
+            </Button>
+          </footer>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

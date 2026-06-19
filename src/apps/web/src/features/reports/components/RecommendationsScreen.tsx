@@ -19,10 +19,13 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceCompetitive } from "@/features/reports/hooks/useWorkspaceCompetitive";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import {
+  deriveQuickWins,
   deriveRecommendations,
+  summarizeRecommendationCategories,
   type RecommendationImpact,
   type RecommendationItem,
   type RecommendationStatus,
+  type RecommendationCategorySummary,
 } from "@/features/reports/recommendations";
 
 export function RecommendationsScreen() {
@@ -30,17 +33,26 @@ export function RecommendationsScreen() {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
-  const [selected, setSelected] = useState<RecommendationItem | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<RecommendationStatus | "all">("all");
   const [impactFilter, setImpactFilter] = useState<RecommendationImpact | "all">("all");
   const [lensFilter, setLensFilter] = useState<string>("all");
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, RecommendationStatus>>({});
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const competitive = useWorkspaceCompetitive(range, [], [], [], [], [], trackerIds);
 
   const recommendations = useMemo(
-    () => deriveRecommendations(overview.data, competitive.data),
-    [overview.data, competitive.data],
+    () =>
+      deriveRecommendations(overview.data, competitive.data).map((item) => ({
+        ...item,
+        status: statusOverrides[item.id] ?? item.status,
+      })),
+    [competitive.data, overview.data, statusOverrides],
+  );
+  const selected = useMemo(
+    () => recommendations.find((item) => item.id === selectedId) ?? null,
+    [recommendations, selectedId],
   );
   const lensOptions = useMemo(
     () => Array.from(new Set(recommendations.map((item) => item.lens))).sort(),
@@ -72,7 +84,11 @@ export function RecommendationsScreen() {
         accessorKey: "title",
         header: copy.table.action,
         cell: ({ row }) => (
-          <button type="button" onClick={() => setSelected(row.original)} className="text-left">
+          <button
+            type="button"
+            onClick={() => setSelectedId(row.original.id)}
+            className="text-left"
+          >
             <span className="font-medium text-neutral-900 hover:text-primary-700">
               {row.original.title}
             </span>
@@ -114,7 +130,7 @@ export function RecommendationsScreen() {
         header: "",
         enableSorting: false,
         cell: ({ row }) => (
-          <Button variant="ghost" size="sm" onClick={() => setSelected(row.original)}>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedId(row.original.id)}>
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             <span className="sr-only">{copy.actions.open}</span>
           </Button>
@@ -138,6 +154,8 @@ export function RecommendationsScreen() {
 
   const highImpactCount = filteredRecommendations.filter((r) => r.impact === "High").length;
   const evidenceCount = filteredRecommendations.reduce((sum, r) => sum + r.evidenceCount, 0);
+  const categorySummaries = summarizeRecommendationCategories(filteredRecommendations);
+  const quickWins = deriveQuickWins(filteredRecommendations);
   const filtersActive = statusFilter !== "all" || impactFilter !== "all" || lensFilter !== "all";
 
   return (
@@ -230,6 +248,30 @@ export function RecommendationsScreen() {
         />
       </div>
 
+      {categorySummaries.length > 0 && (
+        <Card>
+          <CardContent className="p-5">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">{copy.categories.title}</h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.categories.description}</p>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {categorySummaries.map((summary) => (
+                <RecommendationCategoryCard key={summary.category} summary={summary} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {quickWins.length > 0 && (
+        <QuickWinsSection
+          items={quickWins}
+          onOpen={setSelectedId}
+          onMarkPlanned={(id) => setStatusOverrides((current) => ({ ...current, [id]: "Planned" }))}
+        />
+      )}
+
       <DataTable
         columns={columns}
         data={filteredRecommendations}
@@ -238,7 +280,93 @@ export function RecommendationsScreen() {
         emptyMessage={<RecommendationsEmptyState copy={copy.empty} />}
       />
 
-      <RecommendationDrawer item={selected} onClose={() => setSelected(null)} copy={copy} />
+      <RecommendationDrawer
+        item={selected}
+        onClose={() => setSelectedId(null)}
+        onStatusChange={(id, status) =>
+          setStatusOverrides((current) => ({ ...current, [id]: status }))
+        }
+        copy={copy}
+      />
+    </div>
+  );
+}
+
+function QuickWinsSection({
+  items,
+  onOpen,
+  onMarkPlanned,
+}: {
+  items: readonly RecommendationItem[];
+  onOpen: (id: string) => void;
+  onMarkPlanned: (id: string) => void;
+}) {
+  const copy = REPORTS_COPY.recommendationsPage.quickWins;
+
+  return (
+    <section aria-labelledby="recommendation-quick-wins-title">
+      <Card>
+        <CardContent className="p-5">
+          <div>
+            <h2
+              id="recommendation-quick-wins-title"
+              className="text-sm font-semibold text-neutral-900"
+            >
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex min-h-44 flex-col rounded-md border border-neutral-200 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <Badge variant="outline">#{item.priority}</Badge>
+                  <ImpactBadge impact={item.impact} />
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-neutral-900">{item.title}</h3>
+                <p className="mt-1 line-clamp-2 text-xs text-neutral-500">{item.summary}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                  <Badge variant="secondary">{item.lens}</Badge>
+                  <span>
+                    {item.evidenceCount.toLocaleString()} {item.evidenceLabel}
+                  </span>
+                </div>
+                <div className="mt-auto flex justify-end gap-2 pt-4">
+                  <Button variant="ghost" size="sm" onClick={() => onOpen(item.id)}>
+                    {copy.view}
+                  </Button>
+                  <Button size="sm" onClick={() => onMarkPlanned(item.id)}>
+                    {copy.markPlanned}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function RecommendationCategoryCard({ summary }: { summary: RecommendationCategorySummary }) {
+  const copy = REPORTS_COPY.recommendationsPage.categories;
+  const highImpact =
+    summary.highImpactCount === 1
+      ? copy.highImpactOne
+      : copy.highImpact.replace("{count}", summary.highImpactCount.toLocaleString());
+
+  return (
+    <div className="rounded-md border border-neutral-200 px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-neutral-900">{summary.category}</p>
+        <Badge variant={summary.highImpactCount > 0 ? "warning" : "outline"}>
+          {summary.count.toLocaleString()}
+        </Badge>
+      </div>
+      <p className="mt-1 text-xs text-neutral-500">{highImpact}</p>
     </div>
   );
 }
@@ -317,10 +445,12 @@ function StatusBadge({ status }: { status: RecommendationStatus }) {
 function RecommendationDrawer({
   item,
   onClose,
+  onStatusChange,
   copy,
 }: {
   item: RecommendationItem | null;
   onClose: () => void;
+  onStatusChange: (id: string, status: RecommendationStatus) => void;
   copy: typeof REPORTS_COPY.recommendationsPage;
 }) {
   if (!item) return null;
@@ -381,8 +511,25 @@ function RecommendationDrawer({
           <Button variant="outline" size="sm" disabled>
             {copy.actions.addToReport}
           </Button>
-          <Button size="sm" disabled>
+          {item.status !== "Open" && (
+            <Button variant="outline" size="sm" onClick={() => onStatusChange(item.id, "Open")}>
+              {copy.actions.reopen}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onStatusChange(item.id, "Planned")}
+            disabled={item.status === "Planned"}
+          >
             {copy.actions.markPlanned}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => onStatusChange(item.id, "Done")}
+            disabled={item.status === "Done"}
+          >
+            {copy.actions.markDone}
           </Button>
         </div>
       </aside>

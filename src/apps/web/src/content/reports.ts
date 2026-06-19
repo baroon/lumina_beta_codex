@@ -1,11 +1,40 @@
-/**
- * Placeholder body for chart-card info tooltips while the copy is being
- * authored. Lives in this file (not the component) so swapping it for the
- * real per-card text — eventually per-locale — is a content change, not a
- * code change. Remove this constant once every `tooltip` entry has bespoke
- * copy.
- */
-const TBD_TOOLTIP = "Description coming soon.";
+const OVERVIEW_TOOLTIPS = {
+  trendChart:
+    "Tracks visibility, recommendation, and citation rates over time so you can see whether recent brand work is improving AI answer presence.",
+  topEntities:
+    "Ranks tracked brands and competitors by visibility, share of voice, and sentiment across answers in the selected date range.",
+  sov: "Shows the share of all brand and competitor mentions captured by each entity. Use it to spot who AI platforms surface most often.",
+  mentions:
+    "Compares raw brand and competitor mention volume. This helps separate broad category chatter from true visibility share.",
+  competitiveGap:
+    "Compares each tracked brand against competitors on mentions and recommendations. Positive gaps indicate areas where your brand is ahead.",
+  coMentionLandscape:
+    "Shows competitors that appear in the same AI answers as a tracked brand, revealing the comparison set AI platforms associate with you.",
+  headToHead:
+    "Counts explicit wins and losses in AI comparisons. Ties and unclear judgments are excluded so the net score stays decision-focused.",
+  topicOwnership:
+    "Measures how often tracked brands appear inside each topic's AI Questions. Use it to find topics where visibility is strong or missing.",
+  recommendationRate:
+    "Shows the percentage of entity mentions that were recommendations, based on answers in the selected date range.",
+  topDomains:
+    "Lists the citation domains AI answers rely on most often. Prioritize owned, partner, and authoritative third-party sources here.",
+  domainTypes:
+    "Groups citations by source relationship and type so you can see whether AI is relying on owned, competitor, or neutral evidence.",
+  platforms:
+    "Compares brand mention rate by AI platform. Platform gaps show where answer behavior or source coverage differs.",
+  sentiment:
+    "Breaks brand mentions into positive, neutral, and negative answer sentiment to surface reputation movement.",
+  brandAttributes:
+    "Summarizes attributes AI repeatedly associates with the brand. These phrases shape positioning and message consistency.",
+  brandRiskFlags:
+    "Highlights recurring risk language tied to the brand, grouped by severity so review work can start with the highest-risk themes.",
+  factualClaims:
+    "Lists claims AI makes about tracked brands and their review status. Use it to verify accuracy and correct disputed statements.",
+  topicCoverage:
+    "Shows answer and citation coverage by topic and platform, helping diagnose whether weak topics need more content or better sources.",
+  recentChats:
+    "Shows recent AI answers behind the metrics. Open an answer to inspect mentions, citations, entities, and claims as evidence.",
+};
 
 export const REPORTS_COPY = {
   scanResults: {
@@ -189,7 +218,7 @@ export const REPORTS_COPY = {
       drawer: {
         title: "Answer detail",
         close: "Close",
-        prompt: "Prompt",
+        prompt: "AI Question",
         answer: "Answer",
         platform: "Platform",
         lens: "Visibility lens",
@@ -210,11 +239,17 @@ export const REPORTS_COPY = {
       noTrendData: "No trend data in the selected window yet.",
     },
     trendChart: {
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.trendChart,
+    },
+    attention: {
+      title: "Needs attention",
+      description: "The most important issues to review before turning insights into action.",
+      empty: "No urgent overview issues in the current filter scope.",
+      open: "Open",
     },
     topEntities: {
       title: "Top brands",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.topEntities,
       columns: {
         entity: "Brand",
         visibility: "Visibility",
@@ -227,26 +262,26 @@ export const REPORTS_COPY = {
     },
     sov: {
       title: "Share of voice",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.sov,
       noData: "No brand or competitor mentions in this window.",
     },
     mentions: {
       brandVsCompetitor: "Brand vs competitor mentions",
       distribution: "Mention distribution",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.mentions,
       axisLabel: "Mentions",
       noData: "No mention data in this window.",
     },
     competitiveGap: {
       title: "Competitive gap",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.competitiveGap,
       perBrandLabel: "Gaps for {brandName}",
       noData: "No tracked competitors mentioned in this window.",
       noGroups: "No tracked-brand gap data in this window.",
     },
     coMentionLandscape: {
       title: "Who we appear alongside",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.coMentionLandscape,
       subline:
         "Co-mention count and share of each competitor's mentions where a tracked brand also appeared.",
       noData: "No tracked competitors mentioned alongside any brand in this window.",
@@ -255,7 +290,7 @@ export const REPORTS_COPY = {
     },
     headToHead: {
       title: "Where we win and lose",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.headToHead,
       subline: "Head-to-head dimensions the AI judged. Ties / unclear judgments aren't counted.",
       noData: "No head-to-head comparisons drawn against the brand in this window.",
       winsHeader: "Wins",
@@ -264,10 +299,10 @@ export const REPORTS_COPY = {
     },
     topicOwnership: {
       title: "Topic visibility",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.topicOwnership,
       subline:
-        "Per-topic prompt volume in scope and the share where a tracked brand was mentioned.",
-      noData: "No topics tagged on any in-scope prompt.",
+        "Per-topic AI question volume in scope and the share where a tracked brand was mentioned.",
+      noData: "No topics tagged on any in-scope AI question.",
       topicHeader: "Topic",
       promptsHeader: "AI Questions",
       mentionedHeader: "Brand mentioned",
@@ -275,13 +310,13 @@ export const REPORTS_COPY = {
     },
     recommendationRate: {
       title: "Recommendation rate by entity",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.recommendationRate,
       axisLabel: "Rec. rate",
       noData: "No mentions in this window.",
     },
     topDomains: {
       title: "Top citation domains",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.topDomains,
       columns: {
         source: "Source",
         domain: "Domain",
@@ -292,34 +327,34 @@ export const REPORTS_COPY = {
     },
     domainTypes: {
       title: "Citation source mix",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.domainTypes,
       noData: "No citation data in this window.",
     },
     platforms: {
       title: "Mentions by platform",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.platforms,
       axisLabel: "Brand mention rate",
       noData: "No platform data in this window.",
     },
     sentiment: {
       title: "Brand sentiment distribution",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.sentiment,
       noData: "No brand mentions in this window.",
     },
     brandAttributes: {
       title: "What we're known for",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.brandAttributes,
       noData: "No brand attributes extracted in this window yet.",
     },
     brandRiskFlags: {
       title: "Risk flags",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.brandRiskFlags,
       subline: "Risk language the AI surfaced about our brand. Severity is the dominant level.",
       noData: "No risk flags raised against the brand in this window.",
     },
     factualClaims: {
       title: "Claims AI makes about you",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.factualClaims,
       subline:
         "Recent claims the AI asserted about a tracked brand. Verify against your source of truth.",
       noData: "No factual claims extracted in this window.",
@@ -331,7 +366,7 @@ export const REPORTS_COPY = {
     },
     topicCoverage: {
       title: "Topic coverage",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.topicCoverage,
       subtitle: "Per-topic coverage by platform — toggle to see answers or citations",
       noData: "No topic data in this window.",
       metricLabels: {
@@ -342,14 +377,14 @@ export const REPORTS_COPY = {
     },
     recentChats: {
       title: "Recent chats",
-      tooltip: TBD_TOOLTIP,
+      tooltip: OVERVIEW_TOOLTIPS.recentChats,
       empty: "No answers in this window.",
       mentionsLabel: "mentions",
       citationsLabel: "citations",
       drawer: {
         title: "Answer detail",
         close: "Close",
-        prompt: "Prompt",
+        prompt: "AI Question",
         answer: "Answer",
         platform: "Platform",
         lens: "Visibility lens",
@@ -398,6 +433,10 @@ export const REPORTS_COPY = {
       runs: "Scan runs",
       runsDescription:
         "Open a scan to inspect collected AI answers, sources, topics, competitors, and claims.",
+      attention: "Scan attention",
+      attentionDescription:
+        "Runs that need failure review, progress monitoring, or analysis follow-up.",
+      attentionEmpty: "No scan runs need attention in the current filter scope.",
     },
     columns: {
       startedAt: "Started",
@@ -407,9 +446,41 @@ export const REPORTS_COPY = {
       analysisStatus: "Analysis",
       progress: "Checks",
       failures: "Failures",
+      actions: "Actions",
+    },
+    controls: {
+      clearFilters: "Clear filters",
+    },
+    actions: {
+      viewDetails: "View details",
+      openEvidence: "Open evidence",
+      rerun: "Rerun",
+      addToReport: "Add to report",
+      openSummary: "Open summary",
+    },
+    drawer: {
+      close: "Close scan summary",
+      titlePrefix: "Scan",
+      summary: "Summary",
+      platforms: "Platforms",
+      questions: "AI Questions",
+      failures: "Failures",
+      changes: "Changes",
+      brand: "Brand",
+      tracker: "Tracker",
+      scanStatus: "Scan status",
+      analysisStatus: "Analysis status",
+      started: "Started",
+      completed: "Completed",
+      duration: "Duration",
+      checks: "Checks",
+      failedChecks: "Failed checks",
+      futureDetail:
+        "Detailed platform, question, failure, and change views open from the full scan evidence page.",
     },
     empty:
       "No scans have run yet. Run the first scan to collect AI answers and generate visibility insights.",
+    filteredEmpty: "No scan runs match the selected status filter.",
     analysisPending: "—",
   },
   competitors: {
@@ -445,6 +516,31 @@ export const REPORTS_COPY = {
     },
     empty: {
       notFound: "Competitor data not found for this scan.",
+    },
+    workspace: {
+      filters: {
+        clear: "Clear filters",
+        empty: "No competitors match the leaderboard filters.",
+      },
+      actions: {
+        openDetails: "Open details",
+        addToReport: "Add to report",
+        trackCompetitor: "Track competitor",
+      },
+      drawer: {
+        title: "Entity details",
+        close: "Close entity details",
+        relationship: "Relationship",
+        rank: "Rank",
+        mentions: "Mentions",
+        shareOfVoice: "Share of voice",
+        recommendationRate: "Recommendation rate",
+        recommendedAction: "Recommended action",
+        actionTracked: "Defend your current lead and monitor movement.",
+        actionCompetitor:
+          "Review where this competitor leads and prioritize evidence or content updates.",
+        noRecommendationData: "No recommendation data",
+      },
     },
   },
   topics: {
@@ -494,6 +590,31 @@ export const REPORTS_COPY = {
     },
     empty: {
       notFound: "Topic data not found for this scan.",
+    },
+    workspace: {
+      opportunities: {
+        title: "Content opportunities",
+        description: "Suggested content improvements based on topic gaps and AI answer visibility.",
+        createRecommendation: "Create recommendation",
+        generateBrief: "Generate content brief",
+        missedQuestions: "{count} missed AI questions",
+        missedQuestionsOne: "1 missed AI question",
+      },
+      drawer: {
+        eyebrow: "Topic opportunity",
+        close: "Close topic",
+        ownership: "Ownership",
+        coverage: "Coverage",
+        trackedQuestions: "Tracked AI questions",
+        coverageGaps: "Coverage gaps",
+        recommendedAction: "Recommended action",
+        whyItMatters: "Why this matters",
+        evidence: "Evidence",
+        recommendationPreview: "Recommendation preview",
+        priority: "Priority",
+        addToReport: "Add to report",
+        createContentBrief: "Create content brief",
+      },
     },
   },
   claims: {
@@ -550,7 +671,7 @@ export const REPORTS_COPY = {
     drawer: {
       title: "Source citations",
       close: "Close",
-      prompt: "Prompt",
+      prompt: "AI Question",
       answerSnippet: "Answer snippet",
       openUrl: "Open URL",
       empty: "This source has no citations in this scan.",
@@ -559,8 +680,40 @@ export const REPORTS_COPY = {
     empty: {
       notFound: "Scan not found or analysis hasn't completed yet.",
     },
+    workspace: {
+      actions: {
+        viewCitedAnswers: "View cited answers",
+        addToReport: "Add to report",
+        ignore: "Ignore",
+      },
+      drawer: {
+        title: "Cited source",
+        close: "Close cited source",
+        source: "Source",
+        domain: "Domain",
+        url: "URL",
+        type: "Type",
+        relationship: "Relationship",
+        citations: "Citations",
+        scans: "Scans",
+        authority: "Authority",
+        lastSeen: "Last cited",
+        noData: "—",
+        citedAnswers:
+          "Cited answer excerpts will appear here after source-to-answer workflow endpoints land.",
+      },
+    },
   },
   prompts: {
+    workspace: {
+      attention: {
+        title: "Question attention",
+        description: "AI questions that need scans, stronger visibility, or brand coverage.",
+        empty: "No AI questions need attention in the current view.",
+        priority: "Priority",
+        openHistory: "Open history",
+      },
+    },
     answerDrawer: {
       title: "Answer history",
       close: "Close",
@@ -570,6 +723,9 @@ export const REPORTS_COPY = {
       error: "Couldn't load answer history.",
       sectionAnswer: "Answer",
       sectionEvidence: "Evidence",
+      addToReport: "Add to report",
+      createRecommendation: "Create recommendation",
+      markReviewed: "Mark reviewed",
       notMentioned: "Brand not mentioned in this answer.",
       mentionedCountLabel: "{count} brand mentions",
       mentionedCountLabelOne: "1 brand mention",
@@ -582,6 +738,9 @@ export const REPORTS_COPY = {
       "Review factual claims, disputed statements, risky descriptions, and negative themes AI platforms generate about your brand.",
     createReport: "Create report",
     filtersUnavailable: "Filters unlock after claim and risk-specific endpoints land.",
+    controls: {
+      clearFilters: "Clear filters",
+    },
     summary: {
       openRisks: "Open risks",
       openRisksHelper: "Unresolved risk themes and unreviewed claims.",
@@ -612,7 +771,19 @@ export const REPORTS_COPY = {
       verifiability: "Type",
       date: "First seen",
       subject: "Subject",
+      recommendedAction: "Recommended action",
       empty: "No claims or risks detected yet.",
+    },
+    workflowQueue: {
+      title: "Priority review queue",
+      description: "Disputed and pending claims that need the next human review action.",
+      empty: "No claims need review in the current filter scope.",
+      openReview: "Open review",
+    },
+    empty: {
+      filteredTitle: "No claims match these filters",
+      filteredDescription:
+        "Clear the claim status or risk severity filter to return to the full review queue.",
     },
     statuses: {
       Pending: "Pending review",
@@ -644,6 +815,8 @@ export const REPORTS_COPY = {
       close: "Close recommendation",
       addToReport: "Add to report",
       markPlanned: "Mark as planned",
+      markDone: "Mark done",
+      reopen: "Reopen",
     },
     controls: {
       competitiveUnavailable: "Competitive recommendations are unavailable.",
@@ -660,6 +833,18 @@ export const REPORTS_COPY = {
       evidenceLinks: "Evidence links",
       evidenceLinksHelper:
         "AI answers, claims, topics, risks, or competitor gaps behind the queue.",
+    },
+    categories: {
+      title: "Action categories",
+      description: "Understand what type of work Lumina is recommending.",
+      highImpact: "{count} high impact",
+      highImpactOne: "1 high impact",
+    },
+    quickWins: {
+      title: "Quick wins",
+      description: "High-value actions that should be relatively easy to complete.",
+      view: "View quick win",
+      markPlanned: "Mark planned",
     },
     table: {
       priority: "Priority",
@@ -699,10 +884,10 @@ export const REPORTS_COPY = {
       competitiveUnavailable: "Competitive report sections are unavailable.",
     },
     summary: {
-      reportsCreated: "Report-ready sections",
-      reportsCreatedHelper: "Sections with enough current evidence to include.",
-      scheduledReports: "Evidence links",
-      scheduledReportsHelper: "Questions, mentions, citations, and recommendations available.",
+      reportsCreated: "Reports created",
+      reportsCreatedHelper: "Generated reports for the selected tracker scope.",
+      scheduledReports: "Scheduled reports",
+      scheduledReportsHelper: "Active recurring email or shareable reports.",
       lastReportSent: "Last report sent",
       lastReportSentHelper: "Most recent manual or scheduled delivery.",
       openClientActions: "Open client actions",
@@ -743,12 +928,50 @@ export const REPORTS_COPY = {
         "Risk review report",
       ],
     },
+    preview: {
+      title: "Report preview",
+      description: "Review the selected template scope before report generation is enabled.",
+      selectedTemplate: "Selected template",
+      readySections: "sections ready",
+      includedSections: "{count} sections included in this template.",
+      readinessScore: "Readiness score",
+      readyList: "Ready sections",
+      missingList: "Needs data",
+      noReady: "No sections are ready yet.",
+      allReady: "All sections have enough evidence.",
+      actions: {
+        preview: "Preview",
+        exportPdf: "Export PDF",
+        shareLink: "Share link",
+      },
+    },
+    schedule: {
+      title: "Schedule delivery",
+      description: "Prepare recurring client delivery once report automation is available.",
+      cadenceLabel: "Cadence",
+      cadence: "Monthly",
+      recipientsLabel: "Recipients",
+      recipients: "Client stakeholders",
+      templateLabel: "Template",
+      readinessLabel: "Readiness",
+      readiness: "{ready}/{total} sections ready",
+      action: "Schedule delivery",
+    },
     history: {
       title: "Report history",
       description: "Reports generated or scheduled from tracker evidence will appear here.",
       empty:
         "No reports created yet. Create your first report from current tracker insights, recommendations, and evidence.",
-      columns: ["Report name", "Tracker", "Date range", "Created by", "Status", "Actions"],
+      columns: [
+        "Report name",
+        "Tracker",
+        "Date range",
+        "Created by",
+        "Shared with",
+        "Status",
+        "Last opened",
+        "Actions",
+      ],
     },
   },
 } as const;

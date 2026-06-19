@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrandDto } from "@/types/api";
+import { deriveBrandDiscoveryAttentionItems } from "@/features/brands/brands";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -74,11 +75,12 @@ describe("BrandDiscoveryScreen", () => {
     expect(screen.getByText("Brands")).toBeInTheDocument();
     expect(screen.getByText("Completed discoveries")).toBeInTheDocument();
     expect(screen.getByText("Needs review")).toBeInTheDocument();
-    expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByText("Acme")).toBeInTheDocument();
-    expect(screen.getByText("Bold")).toBeInTheDocument();
-    expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText("AwaitingConfirmation")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    expect(within(table).getByText("Acme")).toBeInTheDocument();
+    expect(within(table).getByText("Bold")).toBeInTheDocument();
+    expect(within(table).getByText("Completed")).toBeInTheDocument();
+    expect(within(table).getByText("AwaitingConfirmation")).toBeInTheDocument();
   });
 
   it("links completed brands to profile and pending brands to discovery", () => {
@@ -92,10 +94,71 @@ describe("BrandDiscoveryScreen", () => {
       "href",
       "/brands/b1/profile",
     );
-    expect(screen.getByRole("link", { name: /Continue discovery/i })).toHaveAttribute(
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("link", { name: /Continue discovery/i })).toHaveAttribute(
       "href",
       "/brands/b2/discovery",
     );
+  });
+
+  it("renders discovery attention cards with action links", () => {
+    render(<BrandDiscoveryScreen />);
+
+    const attention = screen.getByRole("region", { name: "Discovery attention" });
+    expect(screen.getByText("Discovery attention")).toBeInTheDocument();
+    expect(within(attention).getByText("Bold")).toBeInTheDocument();
+    expect(within(attention).getByText("Continue discovery")).toHaveAttribute(
+      "href",
+      "/brands/b2/discovery",
+    );
+    expect(within(attention).queryByText("Acme")).not.toBeInTheDocument();
+  });
+
+  it("derives prioritized brand discovery attention items", () => {
+    const items = deriveBrandDiscoveryAttentionItems([
+      brand(),
+      brand({
+        id: "not-started",
+        name: "No Discovery",
+        latestDiscovery: null,
+      }),
+      brand({
+        id: "failed",
+        name: "Failed Brand",
+        latestDiscovery: {
+          id: "d3",
+          status: "Failed",
+          startedAt: "2026-06-08T00:00:00Z",
+          completedAt: null,
+          pagesCrawled: 2,
+        },
+      }),
+      brand({
+        id: "running",
+        name: "Running Brand",
+        latestDiscovery: {
+          id: "d4",
+          status: "Crawling",
+          startedAt: "2026-06-08T00:00:00Z",
+          completedAt: null,
+          pagesCrawled: 1,
+        },
+      }),
+    ]);
+
+    expect(items.map((item) => item.brandId)).toEqual(["failed", "not-started", "running"]);
+    expect(items[0]).toMatchObject({
+      priority: "High",
+      action: "Retry discovery",
+    });
+    expect(items[1]).toMatchObject({
+      priority: "High",
+      action: "Start discovery",
+    });
+    expect(items[2]).toMatchObject({
+      priority: "Medium",
+      action: "Monitor discovery",
+    });
   });
 
   it("renders an empty state when no brands exist", () => {

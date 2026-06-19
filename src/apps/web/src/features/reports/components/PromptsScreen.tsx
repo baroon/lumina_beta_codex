@@ -35,6 +35,7 @@ import {
 } from "@/components/molecules/MetricCategoryLayout";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
+import { REPORTS_COPY } from "@/content/reports";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
 import {
@@ -44,6 +45,15 @@ import {
   SENTIMENT_ORDER,
 } from "@/features/reports/components/FilterChips";
 import { PromptAnswerHistoryDrawer } from "@/features/reports/components/PromptAnswerHistoryDrawer";
+import {
+  countQuestionsByStatus,
+  deriveQuestionAttentionItems,
+  deriveQuestionStatus,
+  filterQuestionsByStatus,
+  QUESTION_STATUS_ORDER,
+  type QuestionAttentionItem,
+  type QuestionStatus,
+} from "@/features/reports/prompts";
 import { countryCodeToFlagUrl } from "@/lib/flag";
 import { useAudienceCounts } from "@/features/reports/hooks/useAudienceCounts";
 import { useDiscoverySummary } from "@/features/reports/hooks/useDiscoverySummary";
@@ -125,6 +135,7 @@ export function PromptsScreen() {
   const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
   const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
   const [selectedSentiments, setSelectedSentiments] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<QuestionStatus[]>([]);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("default");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -203,6 +214,9 @@ export function PromptsScreen() {
         (r) => r.dominantSentiment != null && sentimentSet.has(r.dominantSentiment),
       );
     }
+    if (selectedStatuses.length > 0) {
+      rows = filterQuestionsByStatus(rows, selectedStatuses);
+    }
     if (query.trim() !== "") {
       rows = filterRows(rows, query);
     }
@@ -216,6 +230,7 @@ export function PromptsScreen() {
     selectedAudienceNames,
     selectedPlatformCodes,
     selectedSentiments,
+    selectedStatuses,
     query,
   ]);
 
@@ -235,6 +250,14 @@ export function PromptsScreen() {
     string,
     number
   > | null>(null);
+  const statusCounts = useMemo(
+    () => countQuestionsByStatus(prompts.data?.prompts ?? []),
+    [prompts.data],
+  );
+  const attentionItems = useMemo(
+    () => deriveQuestionAttentionItems(filteredPrompts),
+    [filteredPrompts],
+  );
   useEffect(() => {
     if (promptCountsByPlatformCode !== null || !prompts.data) return;
     if (prompts.data.prompts.length === 0) return;
@@ -334,7 +357,8 @@ export function PromptsScreen() {
     (selectedMarketNames.length > 0 ? 1 : 0) +
     (selectedAudienceNames.length > 0 ? 1 : 0) +
     (selectedPlatformCodes.length > 0 ? 1 : 0) +
-    (selectedSentiments.length > 0 ? 1 : 0);
+    (selectedSentiments.length > 0 ? 1 : 0) +
+    (selectedStatuses.length > 0 ? 1 : 0);
 
   const controlsStrip = (
     <div className="flex flex-nowrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
@@ -370,6 +394,7 @@ export function PromptsScreen() {
             setSelectedAudienceNames([]);
             setSelectedPlatformCodes([]);
             setSelectedSentiments([]);
+            setSelectedStatuses([]);
           }}
         >
           {/* Trigger-pill selectors live in one flex-wrap group — each
@@ -425,6 +450,15 @@ export function PromptsScreen() {
               onChange={setSelectedSentiments}
               emptyLabel="No sentiments in scope."
               countsByValue={promptCountsBySentiment ?? undefined}
+            />
+          </FiltersPopoverRow>
+          <FiltersPopoverRow label="Status" active={selectedStatuses.length > 0}>
+            <InlineChipFilter
+              available={QUESTION_STATUS_ORDER}
+              selected={selectedStatuses}
+              onChange={(next) => setSelectedStatuses(next as QuestionStatus[])}
+              emptyLabel="No statuses in scope."
+              countsByValue={statusCounts}
             />
           </FiltersPopoverRow>
         </FiltersPopover>
@@ -495,11 +529,17 @@ export function PromptsScreen() {
       ) : (
         <MetricCategoryLayout
           statusStrip={
-            <TopSection
-              prompts={filteredPrompts}
-              totalCount={prompts.data.prompts.length}
-              promptCountsByLensCode={promptCountsByLensCode}
-            />
+            <div className="space-y-3">
+              <TopSection
+                prompts={filteredPrompts}
+                totalCount={prompts.data.prompts.length}
+                promptCountsByLensCode={promptCountsByLensCode}
+              />
+              <QuestionAttentionSection
+                items={attentionItems}
+                onOpenAnswerHistory={setDrawerPromptId}
+              />
+            </div>
           }
           controlsStrip={controlsStrip}
           sections={sections}
@@ -520,6 +560,75 @@ export function PromptsScreen() {
 // Add-prompt dialog — picks tracker → lens → text. Owns its own draft
 // state and resets on close so re-opening doesn't carry stale input.
 // ---------------------------------------------------------------------------
+
+function QuestionAttentionSection({
+  items,
+  onOpenAnswerHistory,
+}: {
+  items: readonly QuestionAttentionItem[];
+  onOpenAnswerHistory: (promptId: string) => void;
+}) {
+  const copy = REPORTS_COPY.prompts.workspace.attention;
+  return (
+    <section aria-labelledby="question-attention-title">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="question-attention-title" className="text-sm font-semibold text-neutral-900">
+                {copy.title}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+            </div>
+            <Badge variant={items.length === 0 ? "success" : "warning"}>
+              {items.length.toLocaleString()}
+            </Badge>
+          </div>
+          {items.length === 0 ? (
+            <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              {copy.empty}
+            </p>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {items.map((item) => (
+                <div
+                  key={item.promptId}
+                  className="flex min-h-36 flex-col rounded-md border border-neutral-200 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-neutral-900">
+                        {item.text}
+                      </h3>
+                      <p className="mt-1 text-xs text-neutral-500">{item.reason}</p>
+                    </div>
+                    <Badge variant={item.priority === "High" ? "destructive" : "warning"}>
+                      {copy.priority}: {item.priority}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{item.lensName}</Badge>
+                    <Badge variant="secondary">{item.status}</Badge>
+                    <Badge variant="outline">{item.action}</Badge>
+                  </div>
+                  <div className="mt-auto flex justify-end pt-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onOpenAnswerHistory(item.promptId)}
+                    >
+                      {copy.openHistory}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
 
 interface AddPromptDialogProps {
   open: boolean;
@@ -875,7 +984,7 @@ function SummaryTile({
   label: string;
   value: string;
   sub: string;
-  /** Optional explanatory copy for the ⓘ. When omitted, the ⓘ still renders with the project default placeholder body so the affordance is consistent across tiles. */
+  /** Optional explanatory copy for the info affordance. */
   tooltip?: string;
 }) {
   return (
@@ -883,7 +992,7 @@ function SummaryTile({
       <CardContent className="p-4">
         <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-neutral-500">
           <span className="truncate">{label}</span>
-          <InfoTooltip label={label} body={tooltip} iconSize={12} />
+          {tooltip ? <InfoTooltip label={label} body={tooltip} iconSize={12} /> : null}
         </div>
         <div className="mt-1 text-2xl font-semibold text-neutral-900">{value}</div>
         <div className="text-[11px] text-neutral-500">{sub}</div>
@@ -1224,33 +1333,35 @@ function PromptRow({
 }
 
 function QuestionStatusBadge({ row }: { row: WorkspacePromptRowDto }) {
-  if (row.scanCount === 0 || row.visibilityRate == null) {
+  const status = deriveQuestionStatus(row);
+
+  if (status === "No answers") {
     return (
       <Badge variant="outline" className="whitespace-nowrap text-[10px]">
-        No answers
+        {status}
       </Badge>
     );
   }
 
-  if (row.visibilityRate < 0.25) {
+  if (status === "Needs attention") {
     return (
       <Badge variant="warning" className="whitespace-nowrap text-[10px]">
-        Needs attention
+        {status}
       </Badge>
     );
   }
 
-  if (row.brandMentionCount === 0) {
+  if (status === "Not visible") {
     return (
       <Badge variant="secondary" className="whitespace-nowrap text-[10px]">
-        Not visible
+        {status}
       </Badge>
     );
   }
 
   return (
     <Badge variant="success" className="whitespace-nowrap text-[10px]">
-      Brand visible
+      {status}
     </Badge>
   );
 }

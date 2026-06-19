@@ -3,6 +3,13 @@ import type { WorkspaceCompetitiveDto, WorkspaceOverviewDto } from "@/types/api"
 export type RecommendationImpact = "High" | "Medium" | "Low";
 export type RecommendationEffort = "Low" | "Medium" | "High";
 export type RecommendationStatus = "Open" | "Planned" | "Done";
+export type RecommendationCategory =
+  | "Claim correction"
+  | "Content improvement"
+  | "New content opportunity"
+  | "Citation improvement"
+  | "Competitive positioning"
+  | "Trust signal improvement";
 
 export interface RecommendationItem {
   id: string;
@@ -18,6 +25,12 @@ export interface RecommendationItem {
   action: string;
   why: string;
   evidence: readonly string[];
+}
+
+export interface RecommendationCategorySummary {
+  category: RecommendationCategory;
+  count: number;
+  highImpactCount: number;
 }
 
 export function deriveRecommendations(
@@ -170,6 +183,50 @@ function impactScore(impact: RecommendationImpact): number {
     case "Low":
       return 1;
   }
+}
+
+export function deriveRecommendationCategory(item: RecommendationItem): RecommendationCategory {
+  if (item.lens === "Claims & Risks") return "Claim correction";
+  if (item.lens === "Competitive") return "Competitive positioning";
+  if (item.lens === "Content Gaps") return "New content opportunity";
+  if (item.lens === "Sentiment") return "Trust signal improvement";
+  if (item.lens === "Discovery") return "Content improvement";
+  return "Citation improvement";
+}
+
+export function summarizeRecommendationCategories(
+  items: readonly RecommendationItem[],
+): RecommendationCategorySummary[] {
+  const summaries = new Map<RecommendationCategory, RecommendationCategorySummary>();
+  for (const item of items) {
+    const category = deriveRecommendationCategory(item);
+    const current = summaries.get(category) ?? { category, count: 0, highImpactCount: 0 };
+    current.count += 1;
+    if (item.impact === "High") current.highImpactCount += 1;
+    summaries.set(category, current);
+  }
+  return Array.from(summaries.values()).sort((a, b) => {
+    if (b.highImpactCount !== a.highImpactCount) return b.highImpactCount - a.highImpactCount;
+    if (b.count !== a.count) return b.count - a.count;
+    return a.category.localeCompare(b.category);
+  });
+}
+
+export function deriveQuickWins(items: readonly RecommendationItem[]): RecommendationItem[] {
+  return items
+    .filter(
+      (item) =>
+        item.status !== "Done" &&
+        item.effort === "Low" &&
+        (item.impact === "High" || item.impact === "Medium"),
+    )
+    .sort((a, b) => {
+      const impactRank = impactScore(b.impact) - impactScore(a.impact);
+      if (impactRank !== 0) return impactRank;
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return b.evidenceCount - a.evidenceCount;
+    })
+    .slice(0, 3);
 }
 
 function humanize(value: string): string {

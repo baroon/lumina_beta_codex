@@ -11,6 +11,7 @@ import {
   ScatterChart as ScatterIcon,
   Tag,
   TrendingUp,
+  X,
   Zap,
 } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ import {
   ZAxis,
 } from "recharts";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
 import { Input } from "@/components/atoms/input";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
@@ -56,6 +58,7 @@ import {
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { ProductSelector } from "@/components/molecules/ProductSelector";
 import { SourceTypeDropdown } from "@/components/molecules/SourceTypeDropdown";
+import { REPORTS_COPY } from "@/content/reports";
 import { TopicSelector } from "@/components/molecules/TopicSelector";
 import { VISIBILITY_LENSES } from "@/content/lenses";
 import {
@@ -115,6 +118,7 @@ const AUTHORITY_BANDS: ReadonlyArray<{ label: string; min: number; max: number }
 
 type SourcesView = "domain" | "url";
 type SourceRelationship = "Owned" | "Third-party" | "Unknown";
+type SourceDetailsRow = WorkspaceDomainRowDto | WorkspaceUrlRowDto;
 
 /**
  * Workspace-wide citation source view at /sources. One screen, two
@@ -1223,7 +1227,7 @@ function HeroTile({
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-neutral-500">
           <Icon size={12} className="text-neutral-400" aria-hidden />
           <span className="truncate">{label}</span>
-          <InfoTooltip label={label} body={tooltip} iconSize={11} />
+          {tooltip ? <InfoTooltip label={label} body={tooltip} iconSize={11} /> : null}
         </div>
         <div className="mt-0.5 truncate text-lg font-semibold text-neutral-900">{value}</div>
         <div className="truncate text-[11px] text-neutral-500">{sub}</div>
@@ -1397,6 +1401,7 @@ function DomainsTable({
   classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
+  const [selectedRow, setSelectedRow] = useState<WorkspaceDomainRowDto | null>(null);
   const columns = useMemo<ColumnDef<WorkspaceDomainRowDto, unknown>[]>(
     () => [
       {
@@ -1469,18 +1474,34 @@ function DomainsTable({
           ),
         sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
       },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        meta: { align: "right", cellClassName: "min-w-64" },
+        cell: ({ row }) => <SourceRowActions onView={() => setSelectedRow(row.original)} />,
+      },
     ],
     [classifyingBrandId, classifyingBrandName, sourceTypes],
   );
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      getRowId={(r) => r.sourceId}
-      initialSorting={[{ id: "citationCount", desc: true }]}
-      emptyMessage="No sources match the current filters."
-    />
+    <>
+      <DataTable
+        data={rows}
+        columns={columns}
+        getRowId={(r) => r.sourceId}
+        initialSorting={[{ id: "citationCount", desc: true }]}
+        emptyMessage="No sources match the current filters."
+      />
+      <SourceDetailsDrawer
+        row={selectedRow}
+        relationship={
+          selectedRow == null ? null : classifySourceRelationship(selectedRow, classifyingBrandName)
+        }
+        onClose={() => setSelectedRow(null)}
+      />
+    </>
   );
 }
 
@@ -1495,6 +1516,7 @@ function UrlsTable({
   classifyingBrandName: string | null;
   sourceTypes: readonly SourceTypeReferenceDto[];
 }) {
+  const [selectedRow, setSelectedRow] = useState<WorkspaceUrlRowDto | null>(null);
   const columns = useMemo<ColumnDef<WorkspaceUrlRowDto, unknown>[]>(
     () => [
       {
@@ -1571,18 +1593,34 @@ function UrlsTable({
           ),
         sortingFn: (a, b) => nullableDateSort(a.original.lastSeenAt, b.original.lastSeenAt),
       },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        meta: { align: "right", cellClassName: "min-w-64" },
+        cell: ({ row }) => <SourceRowActions onView={() => setSelectedRow(row.original)} />,
+      },
     ],
     [classifyingBrandId, classifyingBrandName, sourceTypes],
   );
 
   return (
-    <DataTable
-      data={rows}
-      columns={columns}
-      getRowId={(r) => r.sourceUrlId}
-      initialSorting={[{ id: "citationCount", desc: true }]}
-      emptyMessage="No URLs match the current filters."
-    />
+    <>
+      <DataTable
+        data={rows}
+        columns={columns}
+        getRowId={(r) => r.sourceUrlId}
+        initialSorting={[{ id: "citationCount", desc: true }]}
+        emptyMessage="No URLs match the current filters."
+      />
+      <SourceDetailsDrawer
+        row={selectedRow}
+        relationship={
+          selectedRow == null ? null : classifySourceRelationship(selectedRow, classifyingBrandName)
+        }
+        onClose={() => setSelectedRow(null)}
+      />
+    </>
   );
 }
 
@@ -1599,6 +1637,110 @@ function RelationshipBadge({ relationship }: { relationship: SourceRelationship 
     <Badge variant={variant} className="whitespace-nowrap text-[10px]">
       {relationship}
     </Badge>
+  );
+}
+
+function SourceRowActions({ onView }: { onView: () => void }) {
+  const copy = REPORTS_COPY.sources.workspace.actions;
+  return (
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" size="sm" onClick={onView}>
+        {copy.viewCitedAnswers}
+      </Button>
+      <Button variant="outline" size="sm" disabled>
+        {copy.addToReport}
+      </Button>
+      <Button variant="outline" size="sm" disabled>
+        {copy.ignore}
+      </Button>
+    </div>
+  );
+}
+
+function SourceDetailsDrawer({
+  row,
+  relationship,
+  onClose,
+}: {
+  row: SourceDetailsRow | null;
+  relationship: SourceRelationship | null;
+  onClose: () => void;
+}) {
+  if (row == null) return null;
+
+  const copy = REPORTS_COPY.sources.workspace.drawer;
+  const actions = REPORTS_COPY.sources.workspace.actions;
+  const isUrlRow = "url" in row;
+  const authority =
+    "authorityScore" in row && row.authorityScore != null
+      ? Math.round(row.authorityScore).toString()
+      : copy.noData;
+  const normalizedUrl = isUrlRow ? row.normalizedUrl || row.url : null;
+  const meta = [
+    { label: copy.source, value: row.sourceName },
+    { label: copy.domain, value: row.normalizedDomain ?? copy.noData },
+    ...(isUrlRow ? [{ label: copy.url, value: normalizedUrl ?? copy.noData }] : []),
+    { label: copy.type, value: row.sourceType },
+    { label: copy.relationship, value: relationship ?? copy.noData },
+    { label: copy.citations, value: row.citationCount.toLocaleString() },
+    { label: copy.scans, value: row.retrievedInScans.toLocaleString() },
+    ...(!isUrlRow ? [{ label: copy.authority, value: authority }] : []),
+    {
+      label: copy.lastSeen,
+      value: row.lastSeenAt ? formatRelativeDate(row.lastSeenAt) : copy.noData,
+    },
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="source-details-title"
+      className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-neutral-200 bg-white shadow-xl"
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+            {copy.title}
+          </p>
+          <h2 id="source-details-title" className="truncate text-lg font-semibold text-neutral-900">
+            {row.sourceName}
+          </h2>
+        </div>
+        <Button variant="ghost" size="icon" aria-label={copy.close} onClick={onClose}>
+          <X className="h-4 w-4" aria-hidden />
+        </Button>
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {meta.map((item) => (
+            <SourceDrawerMeta key={item.label} label={item.label} value={item.value} />
+          ))}
+        </div>
+        <div className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-sm text-neutral-600">
+          {copy.citedAnswers}
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 border-t border-neutral-200 px-5 py-4">
+        <Button variant="outline" size="sm" disabled>
+          {actions.addToReport}
+        </Button>
+        <Button variant="outline" size="sm" disabled>
+          {actions.ignore}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SourceDrawerMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-white p-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+        {label}
+      </div>
+      <div className="mt-1 break-words text-sm font-medium text-neutral-900">{value}</div>
+    </div>
   );
 }
 

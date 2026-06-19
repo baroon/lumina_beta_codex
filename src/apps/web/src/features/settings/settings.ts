@@ -1,0 +1,93 @@
+import type { WorkspaceSettingsSummary } from "@/features/settings/types";
+
+export type WorkspaceReadinessStatus = "Ready" | "Needs setup" | "Planned";
+export type ProfileReadinessStatus = "Ready" | "Managed" | "Planned";
+
+export interface WorkspaceReadinessItem {
+  id: "brands" | "trackers" | "evidence" | "team";
+  label: string;
+  status: WorkspaceReadinessStatus;
+  detail: string;
+}
+
+export interface ProfileReadinessItem {
+  id: "identity" | "preferences" | "notifications" | "security";
+  label: string;
+  status: ProfileReadinessStatus;
+  detail: string;
+}
+
+export function deriveWorkspaceReadiness(
+  summary: WorkspaceSettingsSummary,
+): WorkspaceReadinessItem[] {
+  return [
+    {
+      id: "brands",
+      label: "Brand context",
+      status: summary.brandCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.brandCount > 0
+          ? `${summary.brandCount.toLocaleString()} brand${
+              summary.brandCount === 1 ? "" : "s"
+            } configured.`
+          : "Add a brand to establish workspace context.",
+    },
+    {
+      id: "trackers",
+      label: "Monitoring",
+      status: summary.activeTrackerCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.activeTrackerCount > 0
+          ? `${summary.activeTrackerCount.toLocaleString()} active tracker${
+              summary.activeTrackerCount === 1 ? "" : "s"
+            } running.`
+          : "Activate a tracker to start monitoring AI visibility.",
+    },
+    {
+      id: "evidence",
+      label: "Evidence base",
+      status: summary.completedScanCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.completedScanCount > 0
+          ? `${summary.completedScanCount.toLocaleString()} completed scan${
+              summary.completedScanCount === 1 ? "" : "s"
+            } available.`
+          : "Run a scan to populate reports and recommendations.",
+    },
+    {
+      id: "team",
+      label: "Team access",
+      status: "Planned",
+      detail: "Invites and roles are read-only until account administration lands.",
+    },
+  ];
+}
+
+export function deriveProfileReadiness(): ProfileReadinessItem[] {
+  return [
+    {
+      id: "identity",
+      label: "Identity details",
+      status: "Managed",
+      detail: "Display name, email, and role are provided by workspace sign-in.",
+    },
+    {
+      id: "preferences",
+      label: "Preferences",
+      status: "Ready",
+      detail: "Theme, landing page, and report defaults are visible for review.",
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      status: "Planned",
+      detail: "Personal notification controls inherit workspace defaults in v1.",
+    },
+    {
+      id: "security",
+      label: "Security",
+      status: "Managed",
+      detail: "Password, MFA, and sessions are managed by the sign-in provider.",
+    },
+  ];
+}

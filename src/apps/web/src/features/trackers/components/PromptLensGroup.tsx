@@ -29,7 +29,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/atoms/select";
-import { SectionHeader } from "@/components/molecules/SectionHeader";
 import { cn } from "@/lib/utils";
 import { TRACKERS_COPY } from "@/content/trackers";
 import type { PromptDto, PromptOption } from "@/types/api";
@@ -90,69 +89,69 @@ export function PromptLensGroup({
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-surface-card">
-      <button
-        type="button"
-        onClick={() => setExpanded(!expanded)}
-        aria-label={(expanded
-          ? TRACKERS_COPY.review.collapse
-          : TRACKERS_COPY.review.expand
-        ).replace("{check}", title)}
-        className="flex w-full items-center gap-3 p-4 text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
-        ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
-        )}
-        <SectionHeader
-          icon={Icon}
-          title={title}
-          description={description}
-          className="flex-1"
-          meta={
-            <div className="flex items-center gap-2">
-              {reviewReason ? (
-                <button
-                  type="button"
-                  aria-expanded={showReason}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowReason((v) => !v);
-                  }}
-                  className="rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-semantic-warning-400"
-                >
-                  <Badge variant="warning" className="cursor-pointer gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {TRACKERS_COPY.review.needsReview}
-                  </Badge>
-                </button>
-              ) : (
-                <Badge variant="success" className="gap-1">
-                  <SignalHigh className="h-3 w-3" />
-                  {TRACKERS_COPY.review.confidenceHigh}
+      <div className="flex w-full items-center gap-3 p-4 text-left">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          aria-label={(expanded
+            ? TRACKERS_COPY.review.collapse
+            : TRACKERS_COPY.review.expand
+          ).replace("{check}", title)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+          )}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-600">
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-base font-semibold tracking-tight text-neutral-900">
+              {title}
+            </span>
+            {description && (
+              <span className="block truncate text-xs text-neutral-500">{description}</span>
+            )}
+          </span>
+        </button>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2">
+            {reviewReason ? (
+              <button
+                type="button"
+                aria-expanded={showReason}
+                onClick={() => setShowReason((v) => !v)}
+                className="rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-semantic-warning-400"
+              >
+                <Badge variant="warning" className="cursor-pointer gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {TRACKERS_COPY.review.needsReview}
                 </Badge>
-              )}
-              <span className="text-sm tabular-nums text-neutral-500">{prompts.length}</span>
-            </div>
-          }
-          actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 text-xs"
-              disabled={isRegenerating}
-              aria-label={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
-              title={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRegenerate();
-              }}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isRegenerating && "animate-spin")} />
-            </Button>
-          }
-        />
-      </button>
+              </button>
+            ) : (
+              <Badge variant="success" className="gap-1">
+                <SignalHigh className="h-3 w-3" />
+                {TRACKERS_COPY.review.confidenceHigh}
+              </Badge>
+            )}
+            <span className="text-sm tabular-nums text-neutral-500">{prompts.length}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs"
+            disabled={isRegenerating}
+            aria-label={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
+            title={TRACKERS_COPY.review.regenerateCheck.replace("{check}", title)}
+            onClick={onRegenerate}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isRegenerating && "animate-spin")} />
+          </Button>
+        </div>
+      </div>
 
       {showReason && reviewReason && (
         <div className="flex items-start gap-2 border-t border-semantic-warning-100 bg-semantic-warning-50 px-4 py-2 text-xs text-semantic-warning-700">

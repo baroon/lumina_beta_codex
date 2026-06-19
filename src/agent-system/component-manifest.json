@@ -290,7 +290,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "Checkbox", "Input"],
-          "notes": "Phase 4 v3 multi-select dropdown — two sections (Tracked brand[s] / All brands) each with a master checkbox + per-entity rows, client-side substring search, click-outside dismiss. Controlled — caller owns the selectedKeys (formatted as `<entityType>:<id>`). Used by Insights / Trackers / Prompts / Domains / SourceUrls / Competitors screens; the Workspace Overview moved to EntityScopeToggle, deriving selectedKeys from a simpler 3-option scope chip."
+          "notes": "Phase 4 v3 multi-select dropdown — two sections (Tracked brand[s] / All brands) each with a master checkbox + per-entity rows, client-side substring search, click-outside dismiss. Controlled — caller owns the selectedKeys (formatted as `<entityType>:<id>`). Used by Insights / Trackers / AI Questions / Domains / SourceUrls / Competitors screens; the Workspace Overview moved to EntityScopeToggle, deriving selectedKeys from a simpler 3-option scope chip."
         },
         {
           "name": "DateRangePicker",
@@ -539,7 +539,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Tooltip", "lucide-react"],
-          "notes": "Single ⓘ + hover/focus tooltip used by every chart-card title and KPI tile label across the app. Trigger is a focusable `<span role=button>` rather than a real `<button>` so it can be safely nested inside a clickable parent (HeroTile renders as a button when its tile is clickable). Click + keyDown propagation stopped so activating the icon doesn't also fire the parent's onClick. `body` defaults to `INFO_TOOLTIP_PLACEHOLDER` (\"Description coming soon.\") so callers can drop the icon in before real copy is authored. Consumed by ChartCardHeader (renders only when its `tooltip` prop is non-empty), ScanResultsScreen ChartTitle + MetricTile, and WorkspaceOverviewScreen HeroTile."
+          "notes": "Single info icon + hover/focus tooltip used by chart-card titles and KPI tile labels across the app. Trigger is a focusable `<span role=button>` rather than a real `<button>` so it can be safely nested inside a clickable parent (HeroTile renders as a button when its tile is clickable). Click + keyDown propagation stopped so activating the icon does not also fire the parent onClick. `body` is required so placeholder tooltip copy cannot leak into product surfaces. Consumed by ChartCardHeader (renders only when its `tooltip` prop is non-empty), ScanResultsScreen ChartTitle + MetricTile, and WorkspaceOverviewScreen HeroTile."
         },
         {
           "name": "HeroRowCompact",
@@ -596,15 +596,6 @@
           "notes": "Top-of-sidebar analytics scope selector. Multi-select checkbox tree — brands group their trackers; all-on by default. Tri-state master ('All trackers') and per-brand checkboxes with standard semantics (checked → click → uncheck; unchecked or indeterminate → click → select all). Selection state lives in the URL `?trackers=` param via `useTrackerScope` — the molecule itself is stateless w.r.t. URL and accepts `scope` + `onScopeChange` as props for unit-testability. Trackers with `hasScans === false` render greyed with a 'No scans yet' hint and remain checkable. Search filters by brand name OR tracker name; an empty workspace renders a 'No trackers yet · Add a brand' state. Click-outside + Escape close the dropdown. Trigger pill label adapts: 'All trackers (N)' / 'None selected' / single tracker name / 'N of M trackers'. Pure helpers (`allTrackerIds`, `isTrackerSelected`, `computeWorkspaceState`, `computeBrandState`, `toggleTracker`, `toggleBrand`, `toggleWorkspace`, `triggerLabel`) are exported so consumers can test selection math in isolation."
         },
         {
-          "name": "ComingSoon",
-          "category": "Molecules",
-          "path": "src/components/molecules/ComingSoon.tsx",
-          "status": "implemented",
-          "variants": [],
-          "dependencies": ["Badge", "lucide-react"],
-          "notes": "Placeholder body for routes that are reachable but not yet built. Used during the navigation IA rollout (workspace-wide /prompts, /sources/domains, /sources/urls, /competitors, /insights) — routes register before their screens exist so direct URLs + sidebar links don't 404. Consistent visual across the placeholder set so the gap reads as 'in flight' rather than 'broken'. Accepts optional icon (rendered in primary-tinted badge), description, and a `beta` flag that pins a small BETA pill next to the title."
-        },
-        {
           "name": "ConfirmDeleteDialog",
           "category": "Molecules",
           "path": "src/components/molecules/ConfirmDeleteDialog.tsx",
@@ -649,7 +640,7 @@
             "@tanstack/react-router",
             "lucide-react"
           ],
-          "notes": "App-shell left sidebar. Top: app name + TrackerSelector pill (always visible, even on management pages where it's inert). Below: three categorized sections — ANALYTICS (Overview/Prompts/Sources › Domains/Sources › URLs/Competitors/Insights · BETA/Scans), MANAGE (Brands and Trackers — both pointing at the brand list pre-step-6, with Trackers carrying a #trackers hash for the future expand-trackers-on-/brands behavior), and SETTINGS (Workspace, Profile — placeholder routes). Step 3 of the navigation rollout. The TrackerSelector receives empty static fixtures until step 4 wires a real data hook for brand-grouped trackers."
+          "notes": "App-shell left sidebar. Top: app name + TrackerSelector pill (always visible, even on management pages where it's inert). Below: categorized sections for dashboard, strategy, intelligence, reporting, and setup; Intelligence includes AI Questions, Competitors, Sources, and Claims & Risks. MANAGE/SETUP entries point at brand and tracker management, with Trackers carrying a #trackers hash for the future expand-trackers-on-/brands behavior. The TrackerSelector receives empty static fixtures until the real brand-grouped tracker hook is available."
         },
         {
           "name": "ErrorBoundary",
@@ -967,8 +958,18 @@
           "path": "src/features/brands/components/BrandList.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Button", "Badge", "LoadingPage"],
-          "notes": "Brand picker: lists onboarded brands with discovery status, links to each brand's profile page, and an Add Brand action."
+          "dependencies": [
+            "PageHeader",
+            "Card",
+            "Button",
+            "Badge",
+            "LoadingPage",
+            "useBrandsList",
+            "useBrandTrackersList",
+            "brands",
+            "lucide-react"
+          ],
+          "notes": "Manage brands inventory at /brands. Lists onboarded brands with discovery status, workspace summary tiles, per-brand tracker counts, nested tracker links, no-tracker callouts, profile links, and an Add Brand action."
         },
         {
           "name": "BrandDiscoveryScreen",
@@ -985,9 +986,10 @@
             "LoadingPage",
             "ErrorPage",
             "useBrandsList",
+            "brands",
             "lucide-react"
           ],
-          "notes": "Workspace-level /brand-discovery command center. Lists brands with latest discovery status, pages crawled, last run, summary tiles, empty/error states, and CTAs into add-brand, continue-discovery, or brand-profile flows."
+          "notes": "Workspace-level /brand-discovery command center. Lists brands with latest discovery status, pages crawled, last run, summary tiles, discovery-attention cards for failed, pending, running, or not-started discovery work, empty/error states, and CTAs into add-brand, continue-discovery, or brand-profile flows."
         },
         {
           "name": "BrandProfileScreen",
@@ -1022,19 +1024,25 @@
           "dependencies": [
             "Tabs",
             "Breadcrumb",
-            "ComingSoon",
             "PageHeader",
             "Card",
             "Badge",
+            "Button",
             "LoadingPage",
             "ErrorPage",
             "useTrackerSummary",
             "useTrackerScheduleSetup",
+            "useTrackerOverview",
+            "useTrackerLensesSetup",
             "usePrompts",
             "useTrackerScans",
-            "useRunScan"
+            "useRunScan",
+            "useLatestScan",
+            "ScanProgressPanel",
+            "lucide-react",
+            "@radix-ui/react-dialog"
           ],
-          "notes": "Tabbed hub for a single Visibility Tracker at /brands/$brandId/trackers/$trackerId — the one 'hub-with-tabs' survivor in the navigation IA rework (everything else is flattened into the sidebar). Tabs: Overview (placeholder until MetricCategoryLayout is scoped per-tracker) · Schedule (real cadence/timezone/platforms read-only) · Prompts (read-only list, capped at 50 for the hub view) · Lenses (placeholder until a per-tracker lens endpoint lands) · Scans (workspace scan list filtered client-side via useTrackerScans). Header shows breadcrumb (Brands › Brand › Tracker), tracker name, cadence + platform chips, 'Run scan now' button (v1: button + inline status; drawer with live progress is a follow-up polish), and 'Edit' link to the edit route. Tab state synced to ?tab= via the Tabs molecule."
+          "notes": "Tabbed hub for a single Visibility Tracker at /brands/$brandId/trackers/$trackerId. Tabs: Overview scoped to the tracker, Schedule read-only cadence/timezone/platforms, AI Questions inline add/edit/remove, Lenses read-only active-state list with edit link, and Scans filtered via useTrackerScans. Header shows breadcrumb, tracker name, cadence + platform chips, Run scan now with a right-side live progress drawer backed by useLatestScan, and an Edit link. Tab state synced to ?tab= via the Tabs molecule."
         },
         {
           "name": "TrackerEditScreen",
@@ -1044,7 +1052,6 @@
           "variants": [],
           "dependencies": [
             "Breadcrumb",
-            "ComingSoon",
             "PageHeader",
             "SectionHeader",
             "Card",
@@ -1057,9 +1064,20 @@
             "useTrackerSummary",
             "useTrackerScheduleSetup",
             "useConfigureTrackerSchedule",
+            "useTrackerLensesSetup",
+            "useUpdateTrackerLenses",
             "usePrompts"
           ],
-          "notes": "Tracker edit screen at /brands/$brandId/trackers/$trackerId/edit. Schedule section is the only fully-editable surface today (cadence + timezone + platforms via useConfigureTrackerSchedule, saves WITHOUT kicking off a scan — distinct from the create-flow TrackerScheduleScreen which activates + scans). Prompts section renders a count + link to the wizard for actual prompt management. Lenses section is a ComingSoon placeholder pending a per-tracker lens-edit endpoint. Sticky bottom save bar appears only when the schedule form is dirty (compared field-by-field against the setup snapshot); shows 'Saving…' during mutation, 'Saved.' on success, 'Save failed — try again.' on error. Discard reverts local state to the setup snapshot."
+          "notes": "Tracker edit screen at /brands/$brandId/trackers/$trackerId/edit. Schedule section edits cadence, timezone, and platforms via useConfigureTrackerSchedule without kicking off a scan. AI Questions section renders a count + link to the wizard for question management. Lenses section is an editable checkbox picker backed by useTrackerLensesSetup/useUpdateTrackerLenses. Sticky bottom save bar appears only when the schedule form is dirty; shows saving/saved/error states. Danger zone supports type-to-confirm tracker deletion."
+        },
+        {
+          "name": "ScanProgressPanel",
+          "category": "Feature â€” Tracker",
+          "path": "src/features/trackers/components/ScanProgressPanel.tsx",
+          "status": "implemented",
+          "variants": ["starting", "running", "completed", "failed", "error"],
+          "dependencies": ["Badge", "Progress"],
+          "notes": "Reusable tracker scan-progress panel for drawers and embedded progress surfaces. Renders total completed checks, live mention/citation/recommendation counters, per-platform progress cards, preparation state, completed/failed progress variants, and refresh/start error alerts from ScanStatus."
         },
         {
           "name": "TrackersScreen",
@@ -1076,9 +1094,10 @@
             "LoadingPage",
             "ErrorPage",
             "useAllTrackers",
+            "trackers",
             "lucide-react"
           ],
-          "notes": "Workspace-level /trackers page. Replaces the product scaffold with a data-backed tracker inventory using the existing workspace tracker list endpoint. Shows summary tiles, brand coverage cards, an empty state, and a sortable table linking each tracker to its hub and brand profile."
+          "notes": "Workspace-level /trackers page. Replaces the product scaffold with a data-backed tracker inventory using the existing workspace tracker list endpoint. Shows summary tiles, tracker-attention cards for drafts, paused/archived trackers, and trackers without completed scans, brand coverage cards, an empty state, and a sortable table linking each tracker to its hub and brand profile."
         },
         {
           "name": "TrackerNameEditor",
@@ -1113,8 +1132,8 @@
           "path": "src/features/trackers/components/PromptLensGroup.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["SectionHeader", "Button", "Badge", "Input", "Select", "InlineEdit"],
-          "notes": "Collapsible card for one Visibility Lens (description, count, per-check regenerate): tinted prompt rows with AI/human source icon, multi-line inline-editable text, per-prompt remove, and an inline add-custom form."
+          "dependencies": ["Button", "Badge", "Input", "Select", "InlineEdit", "lucide-react"],
+          "notes": "Collapsible card for one Visibility Lens (description, count, per-check regenerate): header uses separate collapse, review, and regenerate buttons to avoid nested interactive controls; tinted AI Question rows show AI/human source icon, multi-line inline-editable text, per-question remove, and an inline add-custom form."
         },
         {
           "name": "PromptGenerationProgress",
@@ -1207,10 +1226,11 @@
             "Button",
             "LoadingPage",
             "ErrorPage",
+            "settings",
             "useWorkspaceSettingsSummary",
             "lucide-react"
           ],
-          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, read-only profile/team/notification/integration sections, empty usage hint, and disabled v1 account-management actions."
+          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, readiness cards, read-only profile/team/notification/integration sections, empty usage hint, and disabled v1 account-management actions."
         },
         {
           "name": "ProfileSettingsScreen",
@@ -1218,8 +1238,8 @@
           "path": "src/features/settings/components/ProfileSettingsScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react"],
-          "notes": "Profile settings page at /settings/profile. Replaces the ComingSoon shell with read-only identity, preferences, notification, and access sections plus disabled v1 actions until account/profile endpoints are available."
+          "dependencies": ["PageHeader", "Card", "Badge", "Button", "settings", "lucide-react"],
+          "notes": "Profile settings page at /settings/profile. Renders profile readiness cards, read-only identity, preferences, notification, and access sections plus disabled v1 actions until account/profile endpoints are available."
         }
       ]
     },
@@ -1366,7 +1386,7 @@
             "useWorkspaceCompetitive",
             "recommendations"
           ],
-          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes date range, Status/Impact/Lens filter pills with clear action, summary tiles that reflect the filtered queue, prioritized action table, empty state, and right-side details drawer."
+          "notes": "Data-backed /recommendations workbench. Derives v1 recommendation rows from existing workspace overview and competitive read models: factual claims, risk flags, weak topic visibility, competitive gaps, not-mentioned rate, and first-mention prominence. Includes date range, Status/Impact/Lens filter pills with clear action, summary tiles, action-category cards, quick-win cards, prioritized action table, empty state, and right-side details drawer. Drawer and quick-win cards support in-session status changes for Open, Planned, and Done until persistence endpoints land."
         },
         {
           "name": "LensesScreen",
@@ -1387,9 +1407,10 @@
             "useTrackerScope",
             "useWorkspaceOverview",
             "useLensCounts",
-            "lucide-react"
+            "lucide-react",
+            "lenses"
           ],
-          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, health status badges, and links into each lens detail route."
+          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, primary metric badges, health status badges, lens-attention cards for sparse/no-evidence lenses, status filter pills with clear action, filtered empty state, and links into each lens detail route."
         },
         {
           "name": "LensDetailScreen",
@@ -1409,9 +1430,10 @@
             "ErrorPage",
             "useTrackerScope",
             "useWorkspaceOverview",
+            "lenses",
             "lucide-react"
           ],
-          "notes": "Data-backed /lenses/$lensId detail page. Resolves route slugs to Visibility Lens codes and queries workspace overview with a single lens filter. Renders lens KPIs, signal cards, top-entity table, empty state, and backlink to /lenses."
+          "notes": "Data-backed /lenses/$lensId detail page. Resolves route slugs to Visibility Lens codes and queries workspace overview with a single lens filter. Renders lens KPIs, derived lens diagnosis card, signal cards, entity-type/sentiment filter pills with clear action, filtered top-entity table, empty states, backlink to /lenses, and disabled v1 View recommendations/export actions until workflow endpoints land."
         },
         {
           "name": "TopicsScreen",
@@ -1433,7 +1455,7 @@
             "useWorkspaceOverview",
             "topics"
           ],
-          "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes summary tiles, date range control, sortable DataTable, empty state, and a right-side topic opportunity drawer."
+          "notes": "Data-backed /topics page. Derives workspace topic opportunity rows from overview.topicOwnership, prioritizing coverage gaps before contested and owned topics. Includes spec-aligned topic visibility summary tiles (topics tracked, strong topics, weak topics, content opportunities), date range control, ownership/action filter pills with clear action, sortable DataTable, content opportunity cards with disabled v1 brief generation, filtered and no-data empty states, and a right-side topic opportunity drawer with derived recommendation preview, priority, and next steps."
         },
         {
           "name": "ClaimsRisksScreen",
@@ -1455,7 +1477,7 @@
             "useUpdateFactualClaimReviewStatus",
             "claimsRisks"
           ],
-          "notes": "Data-backed /claims-risks page. Uses workspace overview factual claims, risk flags, and known-for attributes to render risk summary tiles, a sortable claim review table, risk themes, known-for themes, workflow status counts, and a right-side claim review drawer."
+          "notes": "Data-backed /claims-risks page. Uses workspace overview factual claims, risk flags, and known-for attributes to render risk summary tiles, a sortable claim review table with recommended-action column, risk themes, known-for themes, workflow status counts, priority review queue, and a right-side claim review drawer. Includes claim-status, claim-type, and risk-severity filter pills; summary tiles, workflow counts, the claims table, risk themes, and review queue reflect the active filter scope."
         },
         {
           "name": "ReportsScreen",
@@ -1463,8 +1485,8 @@
           "path": "src/features/reports/components/ReportsScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react"],
-          "notes": "Dedicated /reports page for the agency/client reporting workflow. Renders report summary tiles, create-report section checklist, template chooser, report-history empty state, and disabled v1 actions for create/schedule/export until report generation endpoints land."
+          "dependencies": ["PageHeader", "Card", "Badge", "Button", "lucide-react", "reports"],
+          "notes": "Dedicated /reports page for the agency/client reporting workflow. Renders spec-aligned report summary tiles, template-scoped create-report section checklist, selectable report templates, report preview panel with package readiness score plus ready/missing section lists, planned schedule-delivery readiness card, eight-column report-history empty state, and disabled v1 actions for create/schedule/export until report generation endpoints land."
         },
         {
           "name": "CompetitorsScreen",
@@ -1480,9 +1502,10 @@
             "LoadingPage",
             "ErrorPage",
             "useTrackerScope",
-            "useWorkspaceCompetitive"
+            "useWorkspaceCompetitive",
+            "competitors"
           ],
-          "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` (already scope-aware after step 5) into one sortable table — columns: # · Entity · Mentions (with proportional bar) · Share of voice · Recommendation rate. Tracked brands highlighted with a 'You' badge + soft primary background; the rank-1 non-tracked-brand row gets a 'Leader' badge. Pure `mergeEntityRows` helper exported for unit testing. Scope follows the sidebar's TrackerSelector."
+          "notes": "Workspace-wide competitor ranks at /competitors. Merges `mentionDistribution` + `recommendationRates` from `useWorkspaceCompetitive` into one sortable table: columns #, Entity, Relationship, Mentions, Share of voice, Recommendation rate, and Actions. Tracked brands are highlighted with a You relationship badge; the rank-1 non-tracked competitor gets a Leader badge. Leaderboard includes local relationship and recommendation-availability filter pills with clear action plus a row details drawer with disabled v1 Add to report/Track competitor actions. Pure `mergeEntityRows`, `filterCompetitorRows`, and count helpers exported for unit testing. Scope follows the sidebar TrackerSelector."
         },
         {
           "name": "SourcesScreen",
@@ -1511,7 +1534,7 @@
             "useWorkspaceDomains",
             "useWorkspaceUrls"
           ],
-          "notes": "Workspace-wide citation source view at /sources. Single page with a Domains to URLs view toggle (replaces the prior /sources/domains and /sources/urls split). Canonical page shell: title-only PageHeader, MetricCategoryLayout with Hero KPIs (Citations / Domains / URLs / Top type) + sticky single-row controls strip (lens chips / view toggle / DateRangePicker / FiltersPopover with Topics/Products/Markets/Audiences/Models/Sentiment) + one section that swaps tables on view flip. All seven canonical filter dimensions thread through both useWorkspaceDomains + useWorkspaceUrls; the BE narrows the underlying citation set via PromptRun-level EXISTS subqueries (sentiment narrows via Mention join). Source classification mutates the underlying Source, so a flip on a URL row updates every URL backed by the same Source after the cache invalidates. Citation context includes source-type mix, inferred relationship mix, and owned-share trend; Domains and URLs tables expose relationship badges plus relationship filter pills. Pure `filterActive`, `countByType`, `countByRelationship`, `deriveRelationshipShares`, and `deriveHero` helpers exported."
+          "notes": "Workspace-wide citation source view at /sources. Single page with a Domains to URLs view toggle (replaces the prior /sources/domains and /sources/urls split). Canonical page shell: title-only PageHeader, MetricCategoryLayout with Hero KPIs (Citations / Domains / URLs / Top type) + sticky single-row controls strip (lens chips / view toggle / DateRangePicker / FiltersPopover with Topics/Products/Markets/Audiences/Models/Sentiment) + one section that swaps tables on view flip. All seven canonical filter dimensions thread through both useWorkspaceDomains + useWorkspaceUrls; the BE narrows the underlying citation set via PromptRun-level EXISTS subqueries (sentiment narrows via Mention join). Source classification mutates the underlying Source, so a flip on a URL row updates every URL backed by the same Source after the cache invalidates. Citation context includes source-type mix, inferred relationship mix, and owned-share trend; Domains and URLs tables expose relationship badges, relationship filter pills, and a View cited answers drawer backed by local source metadata, while Add to report/Ignore remain disabled v1 workflow actions until source workflow endpoints land. Pure `filterActive`, `countByType`, `countByRelationship`, `deriveRelationshipShares`, and `deriveHero` helpers exported."
         },
         {
           "name": "PromptsScreen",
@@ -1532,9 +1555,10 @@
             "LensChipRow",
             "PromptAnswerHistoryDrawer",
             "useTrackerScope",
-            "useWorkspacePrompts"
+            "useWorkspacePrompts",
+            "prompts"
           ],
-          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, and Sentiment. Status strip includes KPI tiles, visibility distribution, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, market, country, tracker, platforms, visibility, sentiment, mentions, activity, derived status, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
+          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, Sentiment, and derived Status. Status strip includes KPI tiles, visibility distribution, a question attention queue for weak or unscanned AI questions, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, market, country, tracker, platforms, visibility, sentiment, mentions, activity, derived status, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
         },
         {
           "name": "ScanResultsScreen",
@@ -1549,9 +1573,10 @@
             "LoadingPage",
             "ErrorPage",
             "SentimentDonut",
-            "BarChartWrapper"
+            "BarChartWrapper",
+            "InfoTooltip"
           ],
-          "notes": "Slice (d) reporting page. Composes the full Scan Results view from GET /api/scans/{id}/results — Summary + CoreMetrics + SentimentDonut + top cited sources bar + per-Platform/Lens/Topic/Competitor bar charts. Charts go through the shared /components/charts/ wrappers per ARCH-003 (no direct recharts imports here)."
+          "notes": "Slice (d) reporting page. Composes the full Scan Results view from GET /api/scans/{id}/results: Summary + CoreMetrics + SentimentDonut + top cited sources bar + per-Platform/Lens/Topic/Competitor bar charts. Charts go through the shared /components/charts/ wrappers per ARCH-003 (no direct recharts imports here). Metric tiles and chart titles provide explicit InfoTooltip bodies from local label maps rather than placeholder copy."
         },
         {
           "name": "ScanListScreen",
@@ -1559,8 +1584,15 @@
           "path": "src/features/reports/components/ScanListScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "Badge", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Reporting Scan History page at /scan-history. Shows operational summary metrics (last completed scan, completed checks, success rate, failed runs) plus a cross-tracker scan runs table linking each row to /scans/{id}/results. Consumes GET /api/scans (capped at 100 rows); /scans redirects here while scan detail routes stay under /scans/{id}."
+          "dependencies": [
+            "Card",
+            "Badge",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "scanHistory"
+          ],
+          "notes": "Reporting Scan History page at /scan-history. Shows operational summary metrics (last completed scan, completed checks, success rate, failed runs), a scan-attention queue for failed, incomplete, running, or analysis-pending scans, plus a cross-tracker scan runs table. Summary and table respond to local scan-status filter pills with clear action. Rows and attention cards include View details opening a scan summary drawer, disabled v1 Rerun/Add to report actions, and an Open evidence link to /scans/{id}/results inside the drawer. Consumes GET /api/scans (capped at 100 rows); /scans redirects here while scan detail routes stay under /scans/{id}."
         },
         {
           "name": "ScanSourcesScreen",
@@ -1603,7 +1635,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["Badge", "ScrollArea", "Skeleton"],
-          "notes": "Row-click drawer on the AI Questions surface. Drills into one question's AI answer history across in-window scans with title pattern Answer history: {AI question} and a compact answer/platform/brand-mention subtitle. Per-answer cards show platform, scan recency, brand-mentioned state, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated not-in-scope state without branching on errors."
+          "notes": "Row-click drawer on the AI Questions surface. Drills into one question's AI answer history across in-window scans with title pattern Answer history: {AI question} and a compact answer/platform/brand-mention subtitle. Per-answer cards show platform, scan recency, brand-mentioned state, dominant sentiment, brand mention count, first-mention position, evidence snippet, and full answer text. Footer includes disabled v1 actions for Add to report, Create recommendation, and Mark reviewed until workflow endpoints land. Backed by GET /api/prompts/{promptId}/answers; the BE returns 200 + empty body for prompts outside the caller's workspace so the drawer renders a dedicated not-in-scope state without branching on errors."
         },
         {
           "name": "ShareOfVoiceCard",
@@ -1749,9 +1781,11 @@
             "BarChartWrapper",
             "DonutChartWrapper",
             "RadarChartWrapper",
-            "HeatmapWrapper"
+            "HeatmapWrapper",
+            "overview",
+            "InfoTooltip"
           ],
-          "notes": "Phase 4 v3 default landing surface at /overview. Workspace-scoped: aggregates the last N days of scans across every Brand and TrackerConfiguration. Hero + multi-line trend + Top Entities (Slice A) + competitive sections (Slice B: SoV, gap groups per tracked brand, rec rate, brand-vs-competitor, mention distribution radar, top domains, domain types) + depth sections (Slice C: mentions-by-platform, sentiment, activity heatmap (90d capped), topic coverage, recent chats + drawer). Brand selector multi-select filters every comparison chart; share charts recompute denominators."
+          "notes": "Phase 4 v3 default landing surface at /overview. Workspace-scoped: aggregates the last N days of scans across every Brand and TrackerConfiguration. Hero + multi-line trend + Overview attention cards for risk, claim, topic, and citation gaps + Top Entities (Slice A) + competitive sections (Slice B: SoV, gap groups per tracked brand, rec rate, brand-vs-competitor, mention distribution radar, top domains, domain types) + depth sections (Slice C: mentions-by-platform, sentiment, activity heatmap (90d capped), topic coverage, recent chats + drawer). Entity scope controls comparison charts; share charts recompute denominators. Hero KPI tiles and report content tooltips use explicit business-language bodies aligned to the page spec."
         },
         {
           "name": "CoreMetricsRow",

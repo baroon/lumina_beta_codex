@@ -471,6 +471,42 @@ describe("SourcesScreen", () => {
     const table = screen.getByRole("table");
     expect(within(table).getByText("Trustpilot")).toBeInTheDocument();
     expect(within(table).getByText("Reddit")).toBeInTheDocument();
+    expect(within(table).getByText("Actions")).toBeInTheDocument();
+    expect(within(table).getAllByRole("button", { name: "View cited answers" })[0]).toBeEnabled();
+    expect(within(table).getAllByRole("button", { name: "Add to report" })[0]).toBeDisabled();
+    expect(within(table).getAllByRole("button", { name: "Ignore" })[0]).toBeDisabled();
+  });
+
+  it("opens a cited source drawer from the Domains table", async () => {
+    domainsState = {
+      data: domainsPayload([
+        domain({
+          sourceId: "a",
+          sourceName: "Trustpilot",
+          normalizedDomain: "trustpilot.com",
+          citationCount: 5,
+          retrievedInScans: 2,
+          authorityScore: 78,
+          lastSeenAt: "2026-06-10T00:00:00Z",
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+    render(<SourcesScreen />);
+
+    const table = screen.getByRole("table");
+    await userEvent.click(within(table).getByRole("button", { name: "View cited answers" }));
+
+    const drawer = screen.getByRole("dialog", { name: "Trustpilot" });
+    expect(within(drawer).getByText("trustpilot.com")).toBeInTheDocument();
+    expect(within(drawer).getByText("Third-party")).toBeInTheDocument();
+    expect(within(drawer).getByText("5")).toBeInTheDocument();
+    expect(within(drawer).getByText("2")).toBeInTheDocument();
+    expect(within(drawer).getByText("78")).toBeInTheDocument();
+    expect(within(drawer).getByText(/cited answer excerpts will appear here/i)).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Add to report" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Ignore" })).toBeDisabled();
   });
 
   it("shows inferred relationship columns and filters the active table by relationship", async () => {
@@ -514,7 +550,16 @@ describe("SourcesScreen", () => {
     };
     urlsState = {
       data: urlsPayload([
-        url({ sourceUrlId: "u1", title: "Trustpilot article", url: "https://trustpilot.com/x" }),
+        url({
+          sourceUrlId: "u1",
+          title: "Trustpilot article",
+          sourceName: "Trustpilot",
+          normalizedDomain: "trustpilot.com",
+          normalizedUrl: "trustpilot.com/x",
+          url: "https://trustpilot.com/x",
+          citationCount: 4,
+          retrievedInScans: 1,
+        }),
       ]),
       isLoading: false,
       isError: false,
@@ -527,6 +572,16 @@ describe("SourcesScreen", () => {
 
     // After flip, the URLs table is the active body.
     expect(screen.getByText("Trustpilot article")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Actions")).toBeInTheDocument();
+    const viewButton = within(table).getByRole("button", { name: "View cited answers" });
+    expect(viewButton).toBeEnabled();
+
+    await userEvent.click(viewButton);
+
+    const drawer = screen.getByRole("dialog", { name: "Trustpilot" });
+    expect(within(drawer).getByText("trustpilot.com/x")).toBeInTheDocument();
+    expect(within(drawer).getByText("4")).toBeInTheDocument();
   });
 
   it("renders the canonical controls strip (view toggle + calendar + Filters)", () => {

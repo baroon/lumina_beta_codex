@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSettingsSummary } from "@/features/settings/types";
+import { deriveWorkspaceReadiness } from "@/features/settings/settings";
 
 let settingsState: {
   summary: WorkspaceSettingsSummary;
@@ -40,7 +41,10 @@ describe("WorkspaceSettingsScreen", () => {
     expect(screen.getByText("Active trackers")).toBeInTheDocument();
     expect(screen.getByText("Completed scans")).toBeInTheDocument();
     expect(screen.getByText("Workspace profile")).toBeInTheDocument();
-    expect(screen.getByText("Team access")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Workspace readiness" })).toBeInTheDocument();
+    expect(screen.getByText("Brand context")).toBeInTheDocument();
+    expect(screen.getByText("Evidence base")).toBeInTheDocument();
+    expect(screen.getAllByText("Team access").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Notifications")).toBeInTheDocument();
     expect(screen.getByText("Integrations")).toBeInTheDocument();
   });
@@ -59,6 +63,27 @@ describe("WorkspaceSettingsScreen", () => {
     render(<WorkspaceSettingsScreen />);
 
     expect(screen.getByText(/Add a brand and create a tracker/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Needs setup").length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("derives workspace readiness statuses", () => {
+    expect(
+      deriveWorkspaceReadiness({
+        brandCount: 1,
+        trackerCount: 2,
+        activeTrackerCount: 1,
+        completedScanCount: 3,
+      }).map((item) => item.status),
+    ).toEqual(["Ready", "Ready", "Ready", "Planned"]);
+
+    expect(
+      deriveWorkspaceReadiness({
+        brandCount: 0,
+        trackerCount: 0,
+        activeTrackerCount: 0,
+        completedScanCount: 0,
+      }).map((item) => item.status),
+    ).toEqual(["Needs setup", "Needs setup", "Needs setup", "Planned"]);
   });
 
   it("renders the shared error state when settings summary fails", () => {

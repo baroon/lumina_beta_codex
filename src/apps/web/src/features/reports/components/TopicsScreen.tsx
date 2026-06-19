@@ -14,10 +14,18 @@ import {
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
+import { REPORTS_COPY } from "@/content/reports";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { cn } from "@/lib/utils";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import {
+  countTopicsByAction,
+  countTopicsByBand,
+  deriveContentOpportunityTopics,
+  deriveTopicRecommendationPreview,
   deriveTopicOpportunities,
+  filterTopicOpportunities,
+  type TopicAction,
   type TopicOpportunityRow,
   type TopicOwnershipBand,
 } from "@/features/reports/topics";
@@ -26,10 +34,22 @@ export function TopicsScreen() {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
+  const [bandFilter, setBandFilter] = useState<TopicOwnershipBand | null>(null);
+  const [actionFilter, setActionFilter] = useState<TopicAction | null>(null);
   const [selected, setSelected] = useState<TopicOpportunityRow | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const rows = useMemo(() => deriveTopicOpportunities(overview.data), [overview.data]);
+  const filteredRows = useMemo(
+    () => filterTopicOpportunities(rows, bandFilter, actionFilter),
+    [actionFilter, bandFilter, rows],
+  );
+  const contentOpportunities = useMemo(
+    () => deriveContentOpportunityTopics(filteredRows),
+    [filteredRows],
+  );
+  const bandCounts = useMemo(() => countTopicsByBand(rows), [rows]);
+  const actionCounts = useMemo(() => countTopicsByAction(rows), [rows]);
 
   const columns = useMemo<ColumnDef<TopicOpportunityRow, unknown>[]>(
     () => [
@@ -121,9 +141,11 @@ export function TopicsScreen() {
   }
   if (!overview.data) return null;
 
-  const ownedCount = rows.filter((row) => row.band === "Owned").length;
-  const gapCount = rows.filter((row) => row.band === "Gap").length;
-  const promptCount = rows.reduce((sum, row) => sum + row.promptCount, 0);
+  const ownedCount = filteredRows.filter((row) => row.band === "Owned").length;
+  const weakCount = filteredRows.filter((row) => row.band !== "Owned").length;
+  const opportunityCount = filteredRows.filter((row) => row.action !== "Defend").length;
+  const promptCount = filteredRows.reduce((sum, row) => sum + row.promptCount, 0);
+  const hasActiveFilters = bandFilter != null || actionFilter != null;
 
   return (
     <div className="space-y-5">
@@ -139,36 +161,125 @@ export function TopicsScreen() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
+        <BandFilterPills
+          counts={bandCounts}
+          selected={bandFilter}
+          onSelect={(band) => setBandFilter((current) => (current === band ? null : band))}
+        />
+        <ActionFilterPills
+          counts={actionCounts}
+          selected={actionFilter}
+          onSelect={(action) => setActionFilter((current) => (current === action ? null : action))}
+        />
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setBandFilter(null);
+              setActionFilter(null);
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <SummaryTile
-          label="Tracked topics"
-          value={rows.length.toLocaleString()}
+          label="Topics tracked"
+          value={filteredRows.length.toLocaleString()}
           helper="Topics with tracked AI questions in the selected scope."
         />
         <SummaryTile
-          label="Owned topics"
+          label="Strong topics"
           value={ownedCount.toLocaleString()}
           helper="Topics where tracked brands appear in most AI answers."
         />
         <SummaryTile
-          label="Coverage gaps"
-          value={gapCount.toLocaleString()}
+          label="Weak topics"
+          value={weakCount.toLocaleString()}
+          helper="Topics with contested or missing brand visibility."
+        />
+        <SummaryTile
+          label="Content opportunities"
+          value={opportunityCount.toLocaleString()}
           helper={`${promptCount.toLocaleString()} tracked AI questions evaluated.`}
         />
       </div>
 
       <DataTable
         columns={columns}
-        data={rows}
+        data={filteredRows}
         getRowId={(row) => row.id}
         initialSorting={[{ id: "rank", desc: false }]}
-        emptyMessage={<TopicsEmptyState />}
+        emptyMessage={hasActiveFilters ? <FilteredTopicsEmptyState /> : <TopicsEmptyState />}
       />
+
+      {contentOpportunities.length > 0 && (
+        <ContentOpportunitiesSection items={contentOpportunities} onOpen={setSelected} />
+      )}
 
       <TopicDrawer item={selected} onClose={() => setSelected(null)} />
     </div>
+  );
+}
+
+function ContentOpportunitiesSection({
+  items,
+  onOpen,
+}: {
+  items: readonly TopicOpportunityRow[];
+  onOpen: (item: TopicOpportunityRow) => void;
+}) {
+  const copy = REPORTS_COPY.topics.workspace.opportunities;
+
+  return (
+    <section aria-labelledby="topic-content-opportunities-title">
+      <Card>
+        <CardContent className="p-5">
+          <div>
+            <h2
+              id="topic-content-opportunities-title"
+              className="text-sm font-semibold text-neutral-900"
+            >
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex min-h-40 flex-col rounded-md border border-neutral-200 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-neutral-900">{item.topicName}</h3>
+                    <p className="mt-1 text-xs text-neutral-500">{topicSummary(item)}</p>
+                  </div>
+                  <OwnershipBadge band={item.band} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{item.action}</Badge>
+                  <span className="text-xs text-neutral-500">
+                    {formatMissedQuestions(item.missedPromptCount)}
+                  </span>
+                </div>
+                <div className="mt-auto flex justify-end gap-2 pt-4">
+                  <Button variant="ghost" size="sm" onClick={() => onOpen(item)}>
+                    {copy.createRecommendation}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled>
+                    {copy.generateBrief}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -191,6 +302,86 @@ function OwnershipBadge({ band }: { band: TopicOwnershipBand }) {
   return <Badge variant={variant}>{band}</Badge>;
 }
 
+function BandFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<TopicOwnershipBand, number>;
+  selected: TopicOwnershipBand | null;
+  onSelect: (band: TopicOwnershipBand) => void;
+}) {
+  const bands: readonly TopicOwnershipBand[] = ["Gap", "Contested", "Owned"];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {bands.map((band) => (
+        <FilterPill
+          key={band}
+          label={band}
+          count={counts[band]}
+          selected={selected === band}
+          onClick={() => onSelect(band)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ActionFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<TopicAction, number>;
+  selected: TopicAction | null;
+  onSelect: (action: TopicAction) => void;
+}) {
+  const actions: readonly TopicAction[] = ["Create coverage", "Build authority", "Defend"];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {actions.map((action) => (
+        <FilterPill
+          key={action}
+          label={action}
+          count={counts[action]}
+          selected={selected === action}
+          onClick={() => onSelect(action)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FilterPill({
+  label,
+  count,
+  selected,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+        selected
+          ? "border-primary-600 bg-primary-100 text-primary-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+      )}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums text-neutral-400">{count}</span>
+    </button>
+  );
+}
+
 function TopicsEmptyState() {
   return (
     <div className="p-5 text-center">
@@ -204,8 +395,23 @@ function TopicsEmptyState() {
   );
 }
 
+function FilteredTopicsEmptyState() {
+  return (
+    <div className="p-5 text-center">
+      <Tags className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
+      <h2 className="mt-3 text-sm font-semibold text-neutral-900">No topics match these filters</h2>
+      <p className="mx-auto mt-1 max-w-xl text-sm text-neutral-500">
+        Clear the ownership or action filter to return to the full topic opportunity list.
+      </p>
+    </div>
+  );
+}
+
 function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onClose: () => void }) {
   if (!item) return null;
+
+  const copy = REPORTS_COPY.topics.workspace.drawer;
+  const recommendation = deriveTopicRecommendationPreview(item);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/20" role="presentation" onClick={onClose}>
@@ -219,7 +425,7 @@ function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onCl
         <div className="flex items-start justify-between border-b border-neutral-200 p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              Topic opportunity
+              {copy.eyebrow}
             </p>
             <h2 id="topic-drawer-title" className="mt-1 text-lg font-semibold">
               {item.topicName}
@@ -228,7 +434,7 @@ function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onCl
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close topic"
+            aria-label={copy.close}
             className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -237,17 +443,36 @@ function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onCl
 
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
           <div className="grid grid-cols-2 gap-3">
-            <DrawerMeta label="Ownership" value={item.band} />
-            <DrawerMeta label="Coverage" value={formatRate(item.ownershipRate)} />
-            <DrawerMeta label="Tracked AI questions" value={item.promptCount.toLocaleString()} />
-            <DrawerMeta label="Coverage gaps" value={item.missedPromptCount.toLocaleString()} />
+            <DrawerMeta label={copy.ownership} value={item.band} />
+            <DrawerMeta label={copy.coverage} value={formatRate(item.ownershipRate)} />
+            <DrawerMeta label={copy.trackedQuestions} value={item.promptCount.toLocaleString()} />
+            <DrawerMeta label={copy.coverageGaps} value={item.missedPromptCount.toLocaleString()} />
           </div>
 
-          <DrawerSection title="Recommended action">{actionCopy(item)}</DrawerSection>
-          <DrawerSection title="Why this matters">{topicSummary(item)}</DrawerSection>
+          <DrawerSection title={copy.recommendedAction}>{actionCopy(item)}</DrawerSection>
+          <DrawerSection title={copy.whyItMatters}>{topicSummary(item)}</DrawerSection>
+
+          <div className="rounded-md border border-primary-200 bg-primary-50 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-900">
+                  {copy.recommendationPreview}
+                </h3>
+                <p className="mt-1 text-sm font-medium text-primary-800">{recommendation.title}</p>
+              </div>
+              <Badge variant="outline">
+                {copy.priority}: {recommendation.priority}
+              </Badge>
+            </div>
+            <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm text-neutral-700">
+              {recommendation.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-neutral-900">Evidence</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{copy.evidence}</h3>
             <ul className="mt-2 space-y-2">
               {item.evidence.map((evidence) => (
                 <li
@@ -263,10 +488,10 @@ function TopicDrawer({ item, onClose }: { item: TopicOpportunityRow | null; onCl
 
         <div className="flex justify-end gap-2 border-t border-neutral-200 p-4">
           <Button variant="outline" size="sm" disabled>
-            Add to report
+            {copy.addToReport}
           </Button>
           <Button size="sm" disabled>
-            Create content brief
+            {copy.createContentBrief}
           </Button>
         </div>
       </aside>
@@ -294,6 +519,13 @@ function DrawerMeta({ label, value }: { label: string; value: string }) {
 
 function formatRate(value: number) {
   return `${Math.round(value * 100)}%`;
+}
+
+function formatMissedQuestions(count: number) {
+  const copy = REPORTS_COPY.topics.workspace.opportunities;
+  return count === 1
+    ? copy.missedQuestionsOne
+    : copy.missedQuestions.replace("{count}", count.toLocaleString());
 }
 
 function topicSummary(row: TopicOpportunityRow) {

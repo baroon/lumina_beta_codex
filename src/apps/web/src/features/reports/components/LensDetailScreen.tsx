@@ -17,7 +17,16 @@ import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { LENSES_COPY, VISIBILITY_LENSES, type VisibilityLens } from "@/content/lenses";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { cn } from "@/lib/utils";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
+import {
+  countLensEntitiesBySentiment,
+  countLensEntitiesByType,
+  deriveLensDiagnosis,
+  filterLensEntities,
+  type EntitySentimentFilter,
+  type LensDiagnosis,
+} from "@/features/reports/lenses";
 import type { WorkspaceTopEntityRowDto } from "@/types/api";
 
 const LENS_SLUGS: Record<string, string> = {
@@ -43,8 +52,26 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [sentimentFilter, setSentimentFilter] = useState<EntitySentimentFilter | null>(null);
 
   const overview = useWorkspaceOverview(range, lens ? [lens.code] : [], [], [], [], [], trackerIds);
+  const filteredEntities = useMemo(
+    () => filterLensEntities(overview.data?.topEntities ?? [], typeFilter, sentimentFilter),
+    [overview.data?.topEntities, sentimentFilter, typeFilter],
+  );
+  const entityTypeCounts = useMemo(
+    () => countLensEntitiesByType(overview.data?.topEntities ?? []),
+    [overview.data?.topEntities],
+  );
+  const sentimentCounts = useMemo(
+    () => countLensEntitiesBySentiment(overview.data?.topEntities ?? []),
+    [overview.data?.topEntities],
+  );
+  const diagnosis = useMemo(
+    () => (overview.data ? deriveLensDiagnosis(overview.data) : null),
+    [overview.data],
+  );
 
   const columns = useMemo<ColumnDef<WorkspaceTopEntityRowDto, unknown>[]>(
     () => [
@@ -113,6 +140,9 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
           </Link>
         </Button>
         <Button variant="outline" size="sm" disabled>
+          {copy.actions.recommendations}
+        </Button>
+        <Button variant="outline" size="sm" disabled>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.export}
         </Button>
@@ -120,6 +150,30 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
+        <EntityTypeFilterPills
+          counts={entityTypeCounts}
+          selected={typeFilter}
+          onSelect={(type) => setTypeFilter((current) => (current === type ? null : type))}
+        />
+        <SentimentFilterPills
+          counts={sentimentCounts}
+          selected={sentimentFilter}
+          onSelect={(sentiment) =>
+            setSentimentFilter((current) => (current === sentiment ? null : sentiment))
+          }
+        />
+        {(typeFilter || sentimentFilter) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setTypeFilter(null);
+              setSentimentFilter(null);
+            }}
+          >
+            {copy.actions.clearFilters}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -144,6 +198,8 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
           helper={copy.summary.citationsHelper}
         />
       </div>
+
+      {diagnosis && <LensDiagnosisCard diagnosis={diagnosis} />}
 
       <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
         <Card>
@@ -181,15 +237,49 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
             </div>
             <DataTable
               columns={columns}
-              data={overview.data.topEntities}
+              data={filteredEntities}
               getRowId={(row) => `${row.entityType}-${row.entityId}`}
               initialSorting={[{ id: "visibility", desc: true }]}
-              emptyMessage={<LensEntityEmptyState />}
+              emptyMessage={
+                typeFilter || sentimentFilter ? (
+                  <FilteredLensEntityEmptyState />
+                ) : (
+                  <LensEntityEmptyState />
+                )
+              }
             />
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+function LensDiagnosisCard({ diagnosis }: { diagnosis: LensDiagnosis }) {
+  const copy = LENSES_COPY.detail.diagnosis;
+  const state = copy.states[diagnosis.code];
+  return (
+    <Card>
+      <CardContent className="p-5" role="region" aria-labelledby="lens-diagnosis-title">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 id="lens-diagnosis-title" className="text-sm font-semibold text-neutral-900">
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-neutral-900">{state.title}</p>
+            <p className="mt-1 max-w-3xl text-xs text-neutral-500">{state.description}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={diagnosis.priority === "High" ? "destructive" : "outline"}>
+              {copy.priority}: {diagnosis.priority}
+            </Badge>
+            <Badge variant="secondary">
+              {copy.signal}: {diagnosis.signal}
+            </Badge>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -253,12 +343,109 @@ function SignalMeta({ label, value }: { label: string; value: string }) {
   );
 }
 
+function EntityTypeFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<string, number>;
+  selected: string | null;
+  onSelect: (type: string) => void;
+}) {
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {entries.map(([type, count]) => (
+        <FilterPill
+          key={type}
+          label={type}
+          count={count}
+          selected={selected === type}
+          onClick={() => onSelect(type)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SentimentFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<EntitySentimentFilter, number>;
+  selected: EntitySentimentFilter | null;
+  onSelect: (sentiment: EntitySentimentFilter) => void;
+}) {
+  const sentiments: readonly EntitySentimentFilter[] = [
+    "Positive",
+    "Neutral",
+    "Negative",
+    "Unknown",
+  ];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {sentiments.map((sentiment) => (
+        <FilterPill
+          key={sentiment}
+          label={sentiment}
+          count={counts[sentiment]}
+          selected={selected === sentiment}
+          onClick={() => onSelect(sentiment)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FilterPill({
+  label,
+  count,
+  selected,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+        selected
+          ? "border-primary-600 bg-primary-100 text-primary-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+      )}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums text-neutral-400">{count}</span>
+    </button>
+  );
+}
+
 function LensEntityEmptyState() {
   return (
     <div className="p-5 text-center">
       <ScanSearch className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
       <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500">
         {LENSES_COPY.detail.table.empty}
+      </p>
+    </div>
+  );
+}
+
+function FilteredLensEntityEmptyState() {
+  return (
+    <div className="p-5 text-center">
+      <ScanSearch className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
+      <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500">
+        {LENSES_COPY.detail.table.filteredEmpty}
       </p>
     </div>
   );

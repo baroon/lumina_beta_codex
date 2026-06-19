@@ -2,7 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { WorkspaceCompetitiveDto, WorkspaceOverviewDto } from "@/types/api";
-import { deriveRecommendations } from "@/features/reports/recommendations";
+import {
+  deriveQuickWins,
+  deriveRecommendationCategory,
+  deriveRecommendations,
+  summarizeRecommendationCategories,
+} from "@/features/reports/recommendations";
 import { RecommendationsScreen } from "./RecommendationsScreen";
 
 let overviewState: {
@@ -83,6 +88,33 @@ describe("deriveRecommendations", () => {
 
     expect(items).toEqual([]);
   });
+
+  it("derives and summarizes action categories", () => {
+    const items = deriveRecommendations(overview(), competitive());
+
+    expect(
+      deriveRecommendationCategory(items.find((item) => item.lens === "Claims & Risks")!),
+    ).toBe("Claim correction");
+    expect(summarizeRecommendationCategories(items).map((summary) => summary.category)).toEqual(
+      expect.arrayContaining([
+        "Claim correction",
+        "Competitive positioning",
+        "New content opportunity",
+        "Trust signal improvement",
+      ]),
+    );
+  });
+
+  it("derives quick wins from open low-effort medium or high impact items", () => {
+    const items = deriveRecommendations(overview(), competitive());
+
+    expect(deriveQuickWins(items).map((item) => item.title)).toEqual([
+      "Review claim about circulation",
+    ]);
+    expect(deriveQuickWins(items.map((item) => ({ ...item, status: "Done" as const })))).toEqual(
+      [],
+    );
+  });
 });
 
 describe("RecommendationsScreen", () => {
@@ -92,20 +124,48 @@ describe("RecommendationsScreen", () => {
     expect(screen.getByRole("heading", { name: "Recommendations" })).toBeInTheDocument();
     expect(screen.getByText("Open recommendations")).toBeInTheDocument();
     expect(screen.getByText("High impact")).toBeInTheDocument();
+    expect(screen.getByText("Action categories")).toBeInTheDocument();
+    expect(screen.getByText("Competitive positioning")).toBeInTheDocument();
+    expect(screen.getByText("Quick wins")).toBeInTheDocument();
     expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByText("Review claim about circulation")).toBeInTheDocument();
-    expect(screen.getByText("Close the gap with Rival News")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("Close the gap with Rival News"),
+    ).toBeInTheDocument();
   });
 
   it("opens a details drawer from a row", async () => {
     render(<RecommendationsScreen />);
 
-    await userEvent.click(screen.getByText("Review claim about circulation"));
+    await userEvent.click(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    );
 
     const drawer = screen.getByRole("dialog", { name: /review claim about circulation/i });
     expect(within(drawer).getByText("Why this matters")).toBeInTheDocument();
     expect(within(drawer).getByText("Suggested implementation")).toBeInTheDocument();
     expect(within(drawer).getByText("Evidence")).toBeInTheDocument();
+  });
+
+  it("opens and plans quick wins from the card section", async () => {
+    render(<RecommendationsScreen />);
+
+    const quickWins = screen.getByRole("region", { name: "Quick wins" });
+
+    await userEvent.click(within(quickWins).getByRole("button", { name: "View quick win" }));
+
+    expect(
+      screen.getByRole("dialog", { name: /review claim about circulation/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(quickWins).getByRole("button", { name: "Mark planned" }));
+    await userEvent.click(screen.getByRole("button", { name: "Planned" }));
+
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
   });
 
   it("filters the action queue by impact and lens", async () => {
@@ -119,13 +179,51 @@ describe("RecommendationsScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: "All impacts" }));
     await userEvent.click(screen.getByRole("button", { name: "Claims & Risks" }));
 
-    expect(screen.getByText("Review claim about circulation")).toBeInTheDocument();
-    expect(screen.queryByText("Close the gap with Rival News")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).queryByText("Close the gap with Rival News"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
 
-    expect(screen.getByText("Review claim about circulation")).toBeInTheDocument();
-    expect(screen.getByText("Close the gap with Rival News")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).getByText("Close the gap with Rival News"),
+    ).toBeInTheDocument();
+  });
+
+  it("updates recommendation status locally and filters by status", async () => {
+    render(<RecommendationsScreen />);
+
+    await userEvent.click(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    );
+    const drawer = screen.getByRole("dialog", { name: /review claim about circulation/i });
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Mark as planned" }));
+
+    expect(within(drawer).getByText("Planned")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Planned" }));
+
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("table")).queryByText("Close the gap with Rival News"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Mark done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    ).toBeInTheDocument();
+    expect(within(drawer).getByText("Done")).toBeInTheDocument();
   });
 
   it("renders the empty state when no recommendations are derived", () => {

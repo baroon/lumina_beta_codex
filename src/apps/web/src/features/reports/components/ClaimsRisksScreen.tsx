@@ -14,8 +14,21 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
-import { deriveClaimsRisksSummary } from "@/features/reports/claimsRisks";
+import {
+  countClaimsByStatus,
+  countClaimsByType,
+  countRisksBySeverity,
+  deriveClaimRecommendedAction,
+  deriveClaimsRisksSummaryFromRows,
+  deriveReviewWorkflowClaims,
+  filterClaimsByStatus,
+  filterClaimsByType,
+  filterRisksBySeverity,
+  type ClaimStatus,
+  type RiskSeverity,
+} from "@/features/reports/claimsRisks";
 import { useTrackerScope } from "@/hooks/useTrackerScope";
+import { cn } from "@/lib/utils";
 import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverview";
 import type {
@@ -24,19 +37,19 @@ import type {
   WorkspaceFactualClaimDto,
 } from "@/types/api";
 
-type ClaimStatus = "Pending" | "Verified" | "Disputed";
-
 export function ClaimsRisksScreen() {
   const copy = REPORTS_COPY.claimsRisks;
   const { scope } = useTrackerScope();
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
+  const [statusFilter, setStatusFilter] = useState<ClaimStatus | null>(null);
+  const [claimTypeFilter, setClaimTypeFilter] = useState<string | null>(null);
+  const [severityFilter, setSeverityFilter] = useState<RiskSeverity | null>(null);
   const [selected, setSelected] = useState<WorkspaceFactualClaimDto | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const update = useUpdateFactualClaimReviewStatus();
 
-  const summary = useMemo(() => deriveClaimsRisksSummary(overview.data), [overview.data]);
   const columns = useMemo<ColumnDef<WorkspaceFactualClaimDto, unknown>[]>(
     () => [
       {
@@ -73,11 +86,19 @@ export function ClaimsRisksScreen() {
         header: copy.claimsTable.date,
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
+      {
+        id: "recommendedAction",
+        header: copy.claimsTable.recommendedAction,
+        cell: ({ row }) => (
+          <Badge variant="outline">{deriveClaimRecommendedAction(row.original)}</Badge>
+        ),
+      },
     ],
     [
       copy.claimsTable.brand,
       copy.claimsTable.claim,
       copy.claimsTable.date,
+      copy.claimsTable.recommendedAction,
       copy.claimsTable.status,
       copy.claimsTable.verifiability,
     ],
@@ -97,6 +118,20 @@ export function ClaimsRisksScreen() {
   const claims = overview.data.recentFactualClaims;
   const risks = overview.data.topBrandRiskFlags;
   const knownFor = overview.data.topBrandAttributes;
+  const filteredClaims = filterClaimsByType(
+    filterClaimsByStatus(claims, statusFilter),
+    claimTypeFilter,
+  );
+  const filteredRisks = filterRisksBySeverity(risks, severityFilter);
+  const summary = deriveClaimsRisksSummaryFromRows(filteredClaims, filteredRisks);
+  const workflowClaims = deriveReviewWorkflowClaims(filteredClaims).filter(
+    (claim) => claim.reviewStatus !== "Verified",
+  );
+  const statusCounts = countClaimsByStatus(claims);
+  const typeCounts = countClaimsByType(claims);
+  const severityCounts = countRisksBySeverity(risks);
+  const hasActiveFilters =
+    statusFilter != null || claimTypeFilter != null || severityFilter != null;
 
   return (
     <div className="space-y-5">
@@ -109,7 +144,38 @@ export function ClaimsRisksScreen() {
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
         <DateRangePicker value={range} onChange={setRange} />
-        <span className="text-xs text-neutral-500">{copy.filtersUnavailable}</span>
+        <StatusFilterPills
+          counts={statusCounts}
+          selected={statusFilter}
+          onSelect={(status) => setStatusFilter((current) => (current === status ? null : status))}
+        />
+        <ClaimTypeFilterPills
+          counts={typeCounts}
+          selected={claimTypeFilter}
+          onSelect={(claimType) =>
+            setClaimTypeFilter((current) => (current === claimType ? null : claimType))
+          }
+        />
+        <SeverityFilterPills
+          counts={severityCounts}
+          selected={severityFilter}
+          onSelect={(severity) =>
+            setSeverityFilter((current) => (current === severity ? null : severity))
+          }
+        />
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setStatusFilter(null);
+              setClaimTypeFilter(null);
+              setSeverityFilter(null);
+            }}
+          >
+            {copy.controls.clearFilters}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -139,10 +205,10 @@ export function ClaimsRisksScreen() {
         <SectionHeader title={copy.sections.claims} description={copy.sections.claimsDescription} />
         <DataTable
           columns={columns}
-          data={claims}
+          data={filteredClaims}
           getRowId={(claim) => claim.claimId}
           initialSorting={[{ id: "createdAt", desc: true }]}
-          emptyMessage={<ClaimsEmptyState />}
+          emptyMessage={hasActiveFilters ? <FilteredEmptyState /> : <ClaimsEmptyState />}
         />
       </section>
 
@@ -153,7 +219,7 @@ export function ClaimsRisksScreen() {
           description={copy.sections.risksDescription}
           empty="No risk themes detected in this period."
         >
-          {risks.map((risk) => (
+          {filteredRisks.map((risk) => (
             <RiskThemeRow key={`${risk.rank}:${risk.flagType}`} risk={risk} />
           ))}
         </ThemeCard>
@@ -181,13 +247,14 @@ export function ClaimsRisksScreen() {
               <SummaryTile
                 key={status}
                 label={copy.statuses[status]}
-                value={claims
+                value={filteredClaims
                   .filter((claim) => claim.reviewStatus === status)
                   .length.toLocaleString()}
                 helper={workflowHelper(status)}
               />
             ))}
           </div>
+          <ReviewWorkflowQueue claims={workflowClaims} onOpen={setSelected} />
         </CardContent>
       </Card>
 
@@ -200,6 +267,52 @@ export function ClaimsRisksScreen() {
         onStatusChange={(claimId, reviewStatus) => update.mutate({ claimId, reviewStatus })}
       />
     </div>
+  );
+}
+
+function ReviewWorkflowQueue({
+  claims,
+  onOpen,
+}: {
+  claims: readonly WorkspaceFactualClaimDto[];
+  onOpen: (claim: WorkspaceFactualClaimDto) => void;
+}) {
+  const copy = REPORTS_COPY.claimsRisks.workflowQueue;
+
+  return (
+    <section className="mt-5" aria-labelledby="claims-workflow-queue-title">
+      <div>
+        <h3 id="claims-workflow-queue-title" className="text-sm font-semibold text-neutral-900">
+          {copy.title}
+        </h3>
+        <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+      </div>
+      {claims.length === 0 ? (
+        <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
+          {copy.empty}
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {claims.slice(0, 4).map((claim) => (
+            <div
+              key={claim.claimId}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-neutral-200 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-neutral-900">{claim.claimText}</p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <StatusBadge status={claim.reviewStatus} />
+                  <Badge variant="outline">{deriveClaimRecommendedAction(claim)}</Badge>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => onOpen(claim)}>
+                {copy.openReview}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -236,6 +349,123 @@ function ClaimsEmptyState() {
         recurring brand descriptions.
       </p>
     </div>
+  );
+}
+
+function FilteredEmptyState() {
+  const copy = REPORTS_COPY.claimsRisks.empty;
+  return (
+    <div className="p-5 text-center">
+      <Quote className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
+      <h2 className="mt-3 text-sm font-semibold text-neutral-900">{copy.filteredTitle}</h2>
+      <p className="mx-auto mt-1 max-w-xl text-sm text-neutral-500">{copy.filteredDescription}</p>
+    </div>
+  );
+}
+
+function StatusFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<ClaimStatus, number>;
+  selected: ClaimStatus | null;
+  onSelect: (status: ClaimStatus) => void;
+}) {
+  const copy = REPORTS_COPY.claimsRisks;
+  const statuses: readonly ClaimStatus[] = ["Pending", "Verified", "Disputed"];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {statuses.map((status) => (
+        <FilterPill
+          key={status}
+          label={copy.statuses[status]}
+          count={counts[status]}
+          selected={selected === status}
+          onClick={() => onSelect(status)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SeverityFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<RiskSeverity, number>;
+  selected: RiskSeverity | null;
+  onSelect: (severity: RiskSeverity) => void;
+}) {
+  const severities: readonly RiskSeverity[] = ["High", "Medium", "Low"];
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {severities.map((severity) => (
+        <FilterPill
+          key={severity}
+          label={severity}
+          count={counts[severity]}
+          selected={selected === severity}
+          onClick={() => onSelect(severity)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ClaimTypeFilterPills({
+  counts,
+  selected,
+  onSelect,
+}: {
+  counts: Record<string, number>;
+  selected: string | null;
+  onSelect: (claimType: string) => void;
+}) {
+  const claimTypes = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {claimTypes.map((claimType) => (
+        <FilterPill
+          key={claimType}
+          label={claimType}
+          count={counts[claimType] ?? 0}
+          selected={selected === claimType}
+          onClick={() => onSelect(claimType)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FilterPill({
+  label,
+  count,
+  selected,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition",
+        selected
+          ? "border-primary-600 bg-primary-100 text-primary-700"
+          : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50",
+      )}
+    >
+      <span>{label}</span>
+      <span className="tabular-nums text-neutral-400">{count}</span>
+    </button>
   );
 }
 
