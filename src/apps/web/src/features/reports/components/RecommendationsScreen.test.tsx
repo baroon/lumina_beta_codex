@@ -264,6 +264,24 @@ describe("RecommendationsScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("creates an implementation brief from a drawer recommendation", async () => {
+    render(<RecommendationsScreen />);
+
+    await userEvent.click(
+      within(screen.getByRole("table")).getByText("Review claim about circulation"),
+    );
+    const drawer = screen.getByRole("dialog", { name: /review claim about circulation/i });
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Create brief" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:recommendations-report");
+    expect(within(drawer).getByRole("button", { name: "Brief created" })).toBeDisabled();
+    expect(
+      screen.getByText("Implementation brief created for Review claim about circulation."),
+    ).toBeInTheDocument();
+  });
+
   it("renders the empty state when no recommendations are derived", () => {
     overviewState = {
       ...overviewState,

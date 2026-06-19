@@ -162,9 +162,9 @@ describe("ScanClaimsScreen", () => {
 
     const verdictGroup = screen.getByRole("group", { name: /Review verdict for/i });
     const buttons = verdictGroup.querySelectorAll("button");
-    // Order: Pending / Verified / Disputed.
-    expect(buttons).toHaveLength(3);
-    await userEvent.click(buttons[1]);
+    // Order: Pending / Needs context / Verified / Disputed / Ignored.
+    expect(buttons).toHaveLength(5);
+    await userEvent.click(buttons[2]);
     expect(updateReviewMutate).toHaveBeenCalledOnce();
     const [args] = updateReviewMutate.mock.calls[0];
     expect(args.claimId).toBe("c1");

@@ -54,6 +54,11 @@ export const WORKSPACE_COPY = {
           { label: "Weekly digest", value: "Planned" },
         ],
       },
+      plan: {
+        title: "Plan and limits",
+        description: "Current v1 usage against the workspace limits that will gate billing.",
+        helper: "{used} of {limit} used",
+      },
       integrations: {
         title: "Integrations",
         description: "External connections used for exports, reporting, and source monitoring.",

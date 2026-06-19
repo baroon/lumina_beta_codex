@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowRight, Plus, Radar } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   deriveTrackerAttentionItems,
   type TrackerAttentionItem,
 } from "@/features/trackers/trackers";
+import { cn } from "@/lib/utils";
 import type { TrackerListItemDto } from "@/types/api";
 
 interface BrandTrackerSummary {
@@ -31,8 +32,15 @@ export function TrackersScreen() {
   const copy = TRACKERS_COPY.list;
   const trackers = useAllTrackers();
   const rows = trackers.data ?? EMPTY_TRACKER_ROWS;
-  const brandSummaries = useMemo(() => summarizeBrands(rows), [rows]);
-  const attentionItems = useMemo(() => deriveTrackerAttentionItems(rows), [rows]);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const statusCounts = useMemo(() => countTrackerStatuses(rows), [rows]);
+  const statusOptions = useMemo(() => Array.from(statusCounts.keys()).sort(), [statusCounts]);
+  const filteredRows = useMemo(
+    () => rows.filter((tracker) => statusFilter === null || tracker.status === statusFilter),
+    [rows, statusFilter],
+  );
+  const brandSummaries = useMemo(() => summarizeBrands(filteredRows), [filteredRows]);
+  const attentionItems = useMemo(() => deriveTrackerAttentionItems(filteredRows), [filteredRows]);
   const columns = useMemo<ColumnDef<TrackerListItemDto, unknown>[]>(
     () => [
       {
@@ -110,8 +118,9 @@ export function TrackersScreen() {
     );
   }
 
-  const activeCount = rows.filter((tracker) => isActiveTracker(tracker.status)).length;
-  const totalScans = rows.reduce((sum, tracker) => sum + tracker.scanCount, 0);
+  const activeCount = filteredRows.filter((tracker) => isActiveTracker(tracker.status)).length;
+  const totalScans = filteredRows.reduce((sum, tracker) => sum + tracker.scanCount, 0);
+  const emptyMessage = statusFilter === null ? copy.empty : copy.emptyFiltered;
 
   return (
     <div className="space-y-5">
@@ -127,7 +136,7 @@ export function TrackersScreen() {
       <div className="grid gap-3 md:grid-cols-4">
         <SummaryTile
           label={copy.summary.total}
-          value={rows.length.toLocaleString()}
+          value={filteredRows.length.toLocaleString()}
           helper={copy.summary.totalHelper}
         />
         <SummaryTile
@@ -145,6 +154,29 @@ export function TrackersScreen() {
           value={totalScans.toLocaleString()}
           helper={copy.summary.scansHelper}
         />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+        <StatusFilterPill
+          label={copy.filters.allStatuses}
+          count={rows.length}
+          active={statusFilter === null}
+          onClick={() => setStatusFilter(null)}
+        />
+        {statusOptions.map((status) => (
+          <StatusFilterPill
+            key={status}
+            label={status}
+            count={statusCounts.get(status) ?? 0}
+            active={statusFilter === status}
+            onClick={() => setStatusFilter((current) => (current === status ? null : status))}
+          />
+        ))}
+        {statusFilter !== null && (
+          <Button variant="ghost" size="sm" onClick={() => setStatusFilter(null)}>
+            {copy.filters.clear}
+          </Button>
+        )}
       </div>
 
       <TrackerAttentionSection items={attentionItems} />
@@ -168,7 +200,7 @@ export function TrackersScreen() {
               ))}
             </div>
           ) : (
-            <EmptyState message={copy.empty} />
+            <EmptyState message={emptyMessage} />
           )}
         </CardContent>
       </Card>
@@ -181,14 +213,45 @@ export function TrackersScreen() {
           </div>
           <DataTable
             columns={columns}
-            data={rows}
+            data={filteredRows}
             getRowId={(tracker) => tracker.trackerId}
             initialSorting={[{ id: "latestScanCompletedAt", desc: true }]}
-            emptyMessage={<EmptyState message={copy.empty} />}
+            emptyMessage={<EmptyState message={emptyMessage} />}
           />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function StatusFilterPill({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition",
+        active
+          ? "border-primary-300 bg-primary-50 text-primary-800"
+          : "border-neutral-200 bg-white text-neutral-600 hover:border-primary-200 hover:text-primary-700",
+      )}
+    >
+      <span>{label}</span>
+      <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-neutral-500">
+        {count.toLocaleString()}
+      </span>
+    </button>
   );
 }
 
@@ -325,6 +388,14 @@ function summarizeBrands(trackers: readonly TrackerListItemDto[]): BrandTrackerS
     byBrand.set(tracker.brandId, summary);
   }
   return Array.from(byBrand.values()).sort((a, b) => a.brandName.localeCompare(b.brandName));
+}
+
+function countTrackerStatuses(trackers: readonly TrackerListItemDto[]) {
+  const counts = new Map<string, number>();
+  for (const tracker of trackers) {
+    counts.set(tracker.status, (counts.get(tracker.status) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function isActiveTracker(status: string) {

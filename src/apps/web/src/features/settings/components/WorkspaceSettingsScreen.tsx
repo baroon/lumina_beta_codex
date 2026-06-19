@@ -9,7 +9,9 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { WORKSPACE_COPY } from "@/content/workspace";
 import { useWorkspaceSettingsSummary } from "@/features/settings/hooks/useWorkspaceSettingsSummary";
 import {
+  deriveWorkspaceLimits,
   deriveWorkspaceReadiness,
+  type WorkspaceLimitItem,
   type WorkspaceReadinessItem,
 } from "@/features/settings/settings";
 
@@ -17,6 +19,7 @@ export function WorkspaceSettingsScreen() {
   const copy = WORKSPACE_COPY.settings;
   const settings = useWorkspaceSettingsSummary();
   const readiness = deriveWorkspaceReadiness(settings.summary);
+  const limits = deriveWorkspaceLimits(settings.summary);
   const [invitePrepared, setInvitePrepared] = useState(false);
   const [billingQueued, setBillingQueued] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -101,6 +104,7 @@ export function WorkspaceSettingsScreen() {
         <SettingsSection section={copy.sections.profile} />
         <SettingsSection section={copy.sections.team} />
         <SettingsSection section={copy.sections.notifications} />
+        <WorkspaceLimitsSection items={limits} />
         <SettingsSection section={copy.sections.integrations} />
       </div>
     </div>
@@ -154,6 +158,52 @@ function SummaryTile({ label, value, helper }: { label: string; value: string; h
       </CardContent>
     </Card>
   );
+}
+
+function WorkspaceLimitsSection({ items }: { items: readonly WorkspaceLimitItem[] }) {
+  const copy = WORKSPACE_COPY.settings.sections.plan;
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-900">{copy.title}</h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <Badge variant="secondary">{WORKSPACE_COPY.settings.sections.readOnly}</Badge>
+        </div>
+        <div className="mt-4 space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-md border border-neutral-200 px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{item.label}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">
+                    {copy.helper
+                      .replace("{used}", item.used.toLocaleString())
+                      .replace("{limit}", item.limit.toLocaleString())}
+                  </p>
+                </div>
+                <LimitBadge status={item.status} />
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                <div
+                  className="h-full rounded-full bg-primary-600"
+                  style={{ width: `${Math.min(100, Math.round((item.used / item.limit) * 100))}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LimitBadge({ status }: { status: WorkspaceLimitItem["status"] }) {
+  if (status === "Near limit") return <Badge variant="warning">{status}</Badge>;
+  if (status === "Planned") return <Badge variant="secondary">{status}</Badge>;
+  return <Badge variant="success">{status}</Badge>;
 }
 
 function SettingsSection({

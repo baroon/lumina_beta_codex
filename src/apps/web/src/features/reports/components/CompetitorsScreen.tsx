@@ -44,7 +44,9 @@ import { CompetitiveGapGroupsCard } from "@/features/reports/components/Competit
 import {
   countCompetitorsByRecommendation,
   countCompetitorsByRelationship,
+  deriveCompetitorLeadRows,
   filterCompetitorRows,
+  type CompetitorLeadRow,
   type CompetitorRecommendationFilter,
   type CompetitorRelationshipFilter,
 } from "@/features/reports/competitors";
@@ -188,6 +190,7 @@ export function CompetitorsScreen() {
     competitive.data.mentionDistribution,
     competitive.data.recommendationRates,
   );
+  const competitorLeads = deriveCompetitorLeadRows(competitive.data.competitiveGaps);
   const previousRows = previousCompetitive.data
     ? mergeEntityRows(
         previousCompetitive.data.mentionDistribution,
@@ -313,7 +316,12 @@ export function CompetitorsScreen() {
     {
       id: "CompetitiveGaps",
       label: "Competitive gaps",
-      children: <CompetitiveGapGroupsCard groups={competitive.data.competitiveGaps} />,
+      children: (
+        <div className="space-y-3">
+          <CompetitorLeadsSection items={competitorLeads} range={range} />
+          <CompetitiveGapGroupsCard groups={competitive.data.competitiveGaps} />
+        </div>
+      ),
     },
     {
       id: "CoMentionLandscape",
@@ -378,6 +386,129 @@ export function CompetitorsScreen() {
           renderNav={() => null}
         />
       )}
+    </div>
+  );
+}
+
+function CompetitorLeadsSection({
+  items,
+  range,
+}: {
+  items: readonly CompetitorLeadRow[];
+  range: DateRangeSelection;
+}) {
+  const copy = REPORTS_COPY.competitors.workspace.leads;
+  const [reportQueue, setReportQueue] = useState<Record<string, CompetitorLeadRow>>({});
+  const [actionPlans, setActionPlans] = useState<Record<string, true>>({});
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function addToReport(item: CompetitorLeadRow) {
+    setReportQueue((current) => ({ ...current, [item.id]: item }));
+    setNotice(copy.reportNotice.replace("{competitor}", item.competitorName));
+  }
+
+  function createActionPlan(item: CompetitorLeadRow) {
+    exportCompetitorLeadPlan([item], range);
+    setActionPlans((current) => ({ ...current, [item.id]: true }));
+    setNotice(copy.planNotice.replace("{competitor}", item.competitorName));
+  }
+
+  if (items.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <h3 className="text-sm font-semibold text-neutral-900">{copy.title}</h3>
+          <p className="mt-1 text-sm text-neutral-500">{copy.empty}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <section aria-labelledby="competitor-leads-title">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 id="competitor-leads-title" className="text-sm font-semibold text-neutral-900">
+                {copy.title}
+              </h3>
+              <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+            </div>
+            <Badge variant="warning">{items.length.toLocaleString()}</Badge>
+          </div>
+          {notice && (
+            <div className="mt-3 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+              {notice}
+            </div>
+          )}
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {items.map((item) => (
+              <div key={item.id} className="flex min-h-40 flex-col rounded-md border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold text-neutral-900">
+                      {item.competitorName}
+                    </h4>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {copy.beating.replace("{brand}", item.trackedBrandName)}
+                    </p>
+                  </div>
+                  <Badge variant="outline">{item.leadType}</Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <LeadMetric label={copy.brandValue} value={item.brandValue} />
+                  <LeadMetric label={copy.competitorValue} value={item.competitorValue} />
+                  <LeadMetric label={copy.gap} value={item.gap} emphasized />
+                </div>
+                <p className="mt-3 text-xs text-neutral-600">{item.recommendedAction}</p>
+                <div className="mt-auto flex justify-end gap-2 pt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addToReport(item)}
+                    disabled={Boolean(reportQueue[item.id])}
+                  >
+                    {reportQueue[item.id] ? copy.addedToReport : copy.addToReport}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => createActionPlan(item)}
+                    disabled={Boolean(actionPlans[item.id])}
+                  >
+                    {actionPlans[item.id] ? copy.planCreated : copy.createPlan}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function LeadMetric({
+  label,
+  value,
+  emphasized = false,
+}: {
+  label: string;
+  value: number;
+  emphasized?: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1.5">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">{label}</p>
+      <p
+        className={cn(
+          "mt-0.5 text-sm font-semibold tabular-nums",
+          emphasized ? "text-semantic-warning-800" : "text-neutral-900",
+        )}
+      >
+        {value.toLocaleString()}
+      </p>
     </div>
   );
 }
@@ -1220,6 +1351,52 @@ function CompetitorDetailsDrawer({
 
 function competitorRowKey(row: CompetitorRow) {
   return `${row.entityType}:${row.entityId}`;
+}
+
+function exportCompetitorLeadPlan(rows: readonly CompetitorLeadRow[], range: DateRangeSelection) {
+  const payload = JSON.stringify(
+    {
+      packageType: "competitor-lead-action-plan",
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      leadCount: rows.length,
+      leads: rows.map((row) => ({
+        id: row.id,
+        trackedBrandName: row.trackedBrandName,
+        competitorId: row.competitorId,
+        competitorName: row.competitorName,
+        leadType: row.leadType,
+        gap: row.gap,
+        brandValue: row.brandValue,
+        competitorValue: row.competitorValue,
+        recommendedAction: row.recommendedAction,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `competitor-lead-action-plan-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function serializeDateRange(range: DateRangeSelection) {
+  switch (range.kind) {
+    case "preset":
+      return { kind: "preset", days: range.days };
+    case "custom":
+      return {
+        kind: "custom",
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+    case "all":
+      return { kind: "all" };
+  }
 }
 
 function DrawerMeta({ label, value }: { label: string; value: string }) {

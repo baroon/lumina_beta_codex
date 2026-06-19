@@ -46,6 +46,20 @@ describe("TrackerScheduleScreen", () => {
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
     expect(screen.getByText("Gemini")).toBeInTheDocument();
     expect(screen.getByText(/20 scan checks/)).toBeInTheDocument();
+    expect(screen.getByText("Report delivery")).toBeInTheDocument();
+    expect(screen.getByText("Weekly AI visibility summary")).toBeInTheDocument();
+    expect(screen.getByText("Workspace admins")).toBeInTheDocument();
+  });
+
+  it("prepares local report delivery defaults", async () => {
+    render(<TrackerScheduleScreen trackerId="tr1" />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Prepare report defaults/i }));
+
+    expect(screen.getByRole("button", { name: /Report defaults prepared/i })).toBeDisabled();
+    expect(
+      screen.getByText("Report defaults prepared for Weekly tracker delivery."),
+    ).toBeInTheDocument();
   });
 
   it("activates, runs the first scan, and shows scan progress", async () => {

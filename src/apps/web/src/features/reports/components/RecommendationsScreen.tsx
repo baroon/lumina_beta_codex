@@ -39,6 +39,7 @@ export function RecommendationsScreen() {
   const [lensFilter, setLensFilter] = useState<string>("all");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, RecommendationStatus>>({});
   const [reportQueue, setReportQueue] = useState<Record<string, RecommendationItem>>({});
+  const [briefQueue, setBriefQueue] = useState<Record<string, true>>({});
   const [reportNotice, setReportNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
@@ -168,6 +169,12 @@ export function RecommendationsScreen() {
   function addRecommendationToReport(item: RecommendationItem) {
     setReportQueue((current) => ({ ...current, [item.id]: item }));
     setReportNotice(copy.drawer.reportNotice.replace("{title}", item.title));
+  }
+
+  function createRecommendationBrief(item: RecommendationItem) {
+    exportRecommendationBrief(item, range);
+    setBriefQueue((current) => ({ ...current, [item.id]: true }));
+    setReportNotice(copy.drawer.briefNotice.replace("{title}", item.title));
   }
 
   return (
@@ -305,7 +312,9 @@ export function RecommendationsScreen() {
           setStatusOverrides((current) => ({ ...current, [id]: status }))
         }
         onAddToReport={addRecommendationToReport}
+        onCreateBrief={createRecommendationBrief}
         addedToReport={selected ? Boolean(reportQueue[selected.id]) : false}
+        briefCreated={selected ? Boolean(briefQueue[selected.id]) : false}
         copy={copy}
       />
     </div>
@@ -467,14 +476,18 @@ function RecommendationDrawer({
   onClose,
   onStatusChange,
   onAddToReport,
+  onCreateBrief,
   addedToReport,
+  briefCreated,
   copy,
 }: {
   item: RecommendationItem | null;
   onClose: () => void;
   onStatusChange: (id: string, status: RecommendationStatus) => void;
   onAddToReport: (item: RecommendationItem) => void;
+  onCreateBrief: (item: RecommendationItem) => void;
   addedToReport: boolean;
+  briefCreated: boolean;
   copy: typeof REPORTS_COPY.recommendationsPage;
 }) {
   if (!item) return null;
@@ -539,6 +552,14 @@ function RecommendationDrawer({
             disabled={addedToReport}
           >
             {addedToReport ? copy.actions.addedToReport : copy.actions.addToReport}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCreateBrief(item)}
+            disabled={briefCreated}
+          >
+            {briefCreated ? copy.actions.briefCreated : copy.actions.createBrief}
           </Button>
           {item.status !== "Open" && (
             <Button variant="outline" size="sm" onClick={() => onStatusChange(item.id, "Open")}>
@@ -616,6 +637,46 @@ function exportRecommendationsReport(
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = `recommendations-report-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportRecommendationBrief(item: RecommendationItem, range: DateRangeSelection) {
+  const payload = JSON.stringify(
+    {
+      packageType: "recommendation-implementation-brief",
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      recommendation: {
+        id: item.id,
+        priority: item.priority,
+        title: item.title,
+        summary: item.summary,
+        lens: item.lens,
+        impact: item.impact,
+        effort: item.effort,
+        status: item.status,
+        why: item.why,
+        suggestedImplementation: item.action,
+        evidenceCount: item.evidenceCount,
+        evidenceLabel: item.evidenceLabel,
+        evidence: item.evidence,
+      },
+      nextSteps: [
+        "Review the evidence and confirm the business context.",
+        "Assign an owner and due date in the team's execution system.",
+        "Publish or update the relevant content, proof point, citation source, or claim correction.",
+        "Run the next scan and compare the affected lens and evidence count.",
+      ],
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `recommendation-brief-${item.id}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

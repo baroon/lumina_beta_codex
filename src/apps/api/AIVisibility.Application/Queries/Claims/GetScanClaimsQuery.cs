@@ -27,7 +27,7 @@ public sealed record FactualClaimDto(
     string EvidenceSnippet,
     /// <summary><c>Verifiable</c> / <c>Subjective</c> / <c>Unverifiable</c>.</summary>
     string Verifiability,
-    /// <summary><c>Pending</c> / <c>Verified</c> / <c>Disputed</c>.</summary>
+    /// <summary><c>Pending</c> / <c>Verified</c> / <c>Disputed</c> / <c>NeedsContext</c> / <c>Ignored</c>.</summary>
     string ReviewStatus,
     double ConfidenceScore,
     DateTime CreatedAt);

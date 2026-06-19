@@ -110,10 +110,25 @@ export function ReportsScreen() {
     } catch {
       setShareNotice(copy.preview.shareReady.replace("{url}", url));
     }
+    recordSharedReport(report);
   }
 
   function scheduleReport() {
     createReport("Scheduled");
+  }
+
+  function recordSharedReport(report: GeneratedReport) {
+    const sharedReport: GeneratedReport = {
+      ...report,
+      status: "Shared",
+      sharedWith: "Share link",
+      lastOpened: formatReportDate(new Date()),
+    };
+    setGeneratedReports((current) => {
+      const existingIndex = current.findIndex((item) => item.id === report.id);
+      if (existingIndex === -1) return [sharedReport, ...current];
+      return current.map((item, index) => (index === existingIndex ? sharedReport : item));
+    });
   }
 
   return (
@@ -360,8 +375,10 @@ export function ReportsScreen() {
       </div>
 
       <Card>
-        <CardContent className="p-5">
-          <h2 className="text-sm font-semibold text-neutral-900">{copy.history.title}</h2>
+        <CardContent className="p-5" role="region" aria-labelledby="report-history-title">
+          <h2 id="report-history-title" className="text-sm font-semibold text-neutral-900">
+            {copy.history.title}
+          </h2>
           <p className="mt-1 text-xs text-neutral-500">{copy.history.description}</p>
           <div className="mt-4 overflow-hidden rounded-md border border-neutral-200">
             <div className="grid min-w-[920px] grid-cols-8 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">

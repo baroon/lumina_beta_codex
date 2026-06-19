@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { TrackerListItemDto } from "@/types/api";
 import { deriveTrackerAttentionItems } from "@/features/trackers/trackers";
@@ -120,6 +121,25 @@ describe("TrackersScreen", () => {
     expect(within(table).getByText("Paused")).toBeInTheDocument();
     expect(within(table).getByText("Draft")).toBeInTheDocument();
     expect(within(table).getAllByText("Never scanned").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("filters trackers by status and clears the filter", async () => {
+    render(<TrackersScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /paused 1/i }));
+
+    const table = screen.getByRole("table");
+    expect(screen.getByRole("button", { name: /paused 1/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(table).getByText("Acme UK Tracker")).toBeInTheDocument();
+    expect(within(table).queryByText("Acme US Tracker")).not.toBeInTheDocument();
+    expect(within(table).queryByText("Bold Docs Tracker")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /clear status filter/i }));
+    expect(within(table).getByText("Acme US Tracker")).toBeInTheDocument();
+    expect(within(table).getByText("Bold Docs Tracker")).toBeInTheDocument();
   });
 
   it("renders tracker attention cards with action links", () => {

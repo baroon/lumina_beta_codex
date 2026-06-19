@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { deriveBrandTrackerInventory } from "@/features/brands/brands";
@@ -70,7 +70,7 @@ describe("BrandList", () => {
 
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("https://acme.com")).toBeInTheDocument();
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("region", { name: "Brand inventory" })).toBeInTheDocument();
     expect(screen.getByText("Acme US")).toBeInTheDocument();
     expect(screen.getByText(/7 scans - last 15 Jun/i)).toBeInTheDocument();
@@ -87,6 +87,53 @@ describe("BrandList", () => {
 
     expect(screen.getByText("No trackers yet")).toBeInTheDocument();
     expect(screen.getByText("Create tracker")).toBeInTheDocument();
+  });
+
+  it("filters brand inventory by search text and discovery status", async () => {
+    listState = {
+      isLoading: false,
+      data: [
+        brand({ id: "b1", name: "Acme", websiteUrl: "https://acme.com" }),
+        brand({
+          id: "b2",
+          name: "Bold",
+          websiteUrl: "https://bold.example",
+          latestDiscovery: {
+            id: "r2",
+            status: "Pending",
+            pagesCrawled: 2,
+            startedAt: "2026-06-01T00:00:00Z",
+            completedAt: null,
+          },
+        }),
+      ] as unknown as BrandDto[],
+    };
+    trackersState = {
+      isLoading: false,
+      data: [
+        tracker({ brandId: "b1", brandName: "Acme", name: "Acme US", status: "Active" }),
+        tracker({ trackerId: "t2", brandId: "b2", brandName: "Bold", name: "Bold Draft" }),
+      ],
+    };
+    render(<BrandList />);
+
+    await userEvent.type(screen.getByRole("textbox", { name: /search brands/i }), "bold");
+    const inventory = screen.getByRole("region", { name: "Brand inventory" });
+    expect(within(inventory).getByText("Bold")).toBeInTheDocument();
+    expect(within(inventory).queryByText("Acme")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /clear filters/i }));
+    await userEvent.click(screen.getByRole("button", { name: /pending 1/i }));
+    expect(screen.getByRole("button", { name: /pending 1/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(inventory).getByText("Bold")).toBeInTheDocument();
+    expect(within(inventory).queryByText("Acme")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /clear filters/i }));
+    expect(within(inventory).getByText("Acme")).toBeInTheDocument();
+    expect(within(inventory).getByText("Bold")).toBeInTheDocument();
   });
 
   it("navigates to add-brand when the button is clicked", async () => {

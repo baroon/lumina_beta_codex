@@ -205,6 +205,21 @@ describe("TrackerEditScreen", () => {
     expect(screen.getByRole("checkbox", { name: "Perplexity" })).not.toBeChecked();
   });
 
+  it("renders and prepares report delivery defaults", async () => {
+    render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
+
+    expect(screen.getByText("Report delivery")).toBeInTheDocument();
+    expect(screen.getByText("Weekly AI visibility summary")).toBeInTheDocument();
+    expect(screen.getByText("Workspace admins")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Prepare report defaults/i }));
+
+    expect(screen.getByRole("button", { name: /Report defaults prepared/i })).toBeDisabled();
+    expect(
+      screen.getByText("Report defaults prepared for Daily tracker delivery."),
+    ).toBeInTheDocument();
+  });
+
   it("Prompts section renders the count from the prompts hook", () => {
     render(<TrackerEditScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByText(/12 active AI Question/i)).toBeInTheDocument();

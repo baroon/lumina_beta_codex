@@ -107,12 +107,15 @@ export const LENSES_COPY = {
       back: "All lenses",
       recommendations: "View recommendations",
       recommendationsReady: "Recommendations ready",
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
       export: "Export lens brief",
       clearFilters: "Clear filters",
     },
     notice: {
       exported: "{lens} lens brief exported.",
       recommendations: "Recommendations prepared for {lens}.",
+      report: "{lens} diagnosis added to the lens report.",
     },
     summary: {
       questions: "AI questions",

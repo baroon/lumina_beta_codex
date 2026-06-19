@@ -226,6 +226,27 @@ describe("ReportsScreen", () => {
 
     expect(clipboardWriteText).toHaveBeenCalledWith(expect.stringContaining("/reports?report="));
     expect(screen.getByText(/Share link copied/i)).toBeInTheDocument();
+    const history = screen.getByRole("region", { name: "Report history" });
+    expect(within(history).getByText("Shared")).toBeInTheDocument();
+    expect(within(history).getByText("Share link")).toBeInTheDocument();
+    expect(screen.getByText("Reports created").closest("div")).toHaveTextContent("1");
+  });
+
+  it("updates an existing draft report to shared when its history action is shared", async () => {
+    render(<ReportsScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Create report" }));
+
+    const history = screen.getByRole("region", { name: "Report history" });
+    expect(within(history).getByText("Draft")).toBeInTheDocument();
+
+    const historyShareButtons = within(history).getAllByRole("button");
+    await userEvent.click(historyShareButtons[1]);
+
+    expect(within(history).queryByText("Draft")).not.toBeInTheDocument();
+    expect(within(history).getByText("Shared")).toBeInTheDocument();
+    expect(within(history).getByText("Share link")).toBeInTheDocument();
+    expect(screen.getByText("Reports created").closest("div")).toHaveTextContent("1");
   });
 
   it("renders the report history columns from the reporting spec", () => {

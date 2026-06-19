@@ -817,7 +817,7 @@ export interface FactualClaimDto {
   evidenceSnippet: string;
   /** 'Verifiable' | 'Subjective' | 'Unverifiable'. */
   verifiability: string;
-  /** 'Pending' | 'Verified' | 'Disputed'. */
+  /** 'Pending' | 'Verified' | 'Disputed' | 'NeedsContext' | 'Ignored'. */
   reviewStatus: string;
   confidenceScore: number;
   createdAt: string;
@@ -1419,13 +1419,13 @@ export interface WorkspaceFactualClaimDto {
   evidenceSnippet: string;
   /** "Verifiable" | "Subjective" | etc. */
   verifiability: string;
-  /** "Pending" | "Verified" | "Disputed". */
+  /** "Pending" | "Verified" | "Disputed" | "NeedsContext" | "Ignored". */
   reviewStatus: string;
   createdAt: string;
 }
 
 export interface UpdateFactualClaimReviewStatusRequest {
-  /** Enum name: "Pending" | "Verified" | "Disputed". Server parses case-insensitively. */
+  /** Enum name: "Pending" | "Verified" | "Disputed" | "NeedsContext" | "Ignored". Server parses case-insensitively. */
   reviewStatus: string;
 }
 

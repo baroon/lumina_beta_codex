@@ -103,6 +103,8 @@ describe("claim and risk filters", () => {
       Pending: 1,
       Verified: 0,
       Disputed: 1,
+      NeedsContext: 0,
+      Ignored: 0,
     });
     expect(filterClaimsByStatus(claims, "Disputed").map((claim) => claim.claimId)).toEqual([
       "claim-2",
@@ -191,6 +193,22 @@ describe("ClaimsRisksScreen", () => {
     });
     expect(within(drawer).getByText("Evidence")).toBeInTheDocument();
     expect(within(drawer).getByText("circulation leadership snippet")).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
+
+    expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(
+      screen.getByText("Added to claims report: India Today is the largest news magazine."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByRole("button", { name: "Create recommendation" }));
+
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(within(drawer).getByRole("button", { name: "Recommendation created" })).toBeDisabled();
+    expect(
+      screen.getByText("Recommendation created: India Today is the largest news magazine."),
+    ).toBeInTheDocument();
 
     await userEvent.click(within(drawer).getByRole("button", { name: /mark verified/i }));
 

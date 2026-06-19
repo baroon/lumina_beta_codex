@@ -96,6 +96,7 @@ import {
   countQuestionsByStatus,
   deriveQuestionAttentionItems,
   deriveQuestionStatus,
+  deriveVisibilityDistribution,
   filterQuestionsByStatus,
 } from "@/features/reports/prompts";
 
@@ -258,6 +259,27 @@ describe("deriveSummary (pure)", () => {
     expect(out.avgVisibility).toBeCloseTo(0.6, 5);
     expect(out.totalMentions).toBe(14);
     expect(out.avgMentions).toBeCloseTo(14 / 3, 5);
+  });
+});
+
+describe("deriveVisibilityDistribution (pure)", () => {
+  it("buckets measured questions into the product visibility taxonomy", () => {
+    expect(
+      deriveVisibilityDistribution([
+        row({ promptId: "a", visibilityRate: 0 }),
+        row({ promptId: "b", visibilityRate: 0.25 }),
+        row({ promptId: "c", visibilityRate: 0.5 }),
+        row({ promptId: "d", visibilityRate: 0.75 }),
+        row({ promptId: "e", visibilityRate: 1 }),
+        row({ promptId: "f", visibilityRate: null }),
+      ]),
+    ).toEqual([
+      { label: "Not visible", value: 1 },
+      { label: "Weak", value: 1 },
+      { label: "Moderate", value: 1 },
+      { label: "Strong", value: 1 },
+      { label: "Dominant", value: 1 },
+    ]);
   });
 });
 
@@ -481,6 +503,29 @@ describe("PromptsScreen", () => {
     expect(within(discoveryRow as HTMLElement).getByText("50%")).toBeInTheDocument();
     expect(within(discoveryRow as HTMLElement).getByText("1.0")).toBeInTheDocument();
     expect(within(discoveryRow as HTMLElement).getByText("1")).toBeInTheDocument();
+  });
+
+  it("renders the spec visibility distribution buckets", () => {
+    promptsState = {
+      data: payload([
+        row({ promptId: "a", visibilityRate: 0 }),
+        row({ promptId: "b", visibilityRate: 0.2 }),
+        row({ promptId: "c", visibilityRate: 0.4 }),
+        row({ promptId: "d", visibilityRate: 0.7 }),
+        row({ promptId: "e", visibilityRate: 0.9 }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<PromptsScreen />);
+
+    const histogram = screen.getByTestId("histogram");
+    expect(within(histogram).getByText("Not visible:1")).toBeInTheDocument();
+    expect(within(histogram).getByText("Weak:1")).toBeInTheDocument();
+    expect(within(histogram).getByText("Moderate:1")).toBeInTheDocument();
+    expect(within(histogram).getByText("Strong:1")).toBeInTheDocument();
+    expect(within(histogram).getByText("Dominant:1")).toBeInTheDocument();
   });
 
   it("renders em-dash fallbacks when analytical columns are null", () => {

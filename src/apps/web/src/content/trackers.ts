@@ -6,6 +6,10 @@ export const TRACKERS_COPY = {
     actions: {
       newBrand: "Add brand",
     },
+    filters: {
+      allStatuses: "All statuses",
+      clear: "Clear status filter",
+    },
     summary: {
       total: "Total trackers",
       totalHelper: "Monitoring setups across every brand in this workspace.",
@@ -39,6 +43,7 @@ export const TRACKERS_COPY = {
     },
     empty:
       "No trackers yet. Add a brand, run discovery, and create a tracker to start monitoring AI visibility.",
+    emptyFiltered: "No trackers match the selected status.",
     error: "Failed to load trackers.",
   },
   ready: {
@@ -138,6 +143,18 @@ export const TRACKERS_COPY = {
     },
     estimate: "{prompts} AI Questions × {platforms} platforms = {checks} scan checks",
     noPlatforms: "Select at least one platform.",
+    reportDefaultsLabel: "Report delivery",
+    reportDefaultsDescription:
+      "Prepare the client-ready summary settings that will be used once scheduled report delivery is available.",
+    reportFormatLabel: "Format",
+    reportCadenceLabel: "Cadence",
+    reportRecipientsLabel: "Recipients",
+    reportFormat: "Weekly AI visibility summary",
+    reportAudience: "Client-ready",
+    reportRecipients: "Workspace admins",
+    prepareReport: "Prepare report defaults",
+    reportPrepared: "Report defaults prepared",
+    reportNotice: "Report defaults prepared for {cadence} tracker delivery.",
     activate: "Activate tracker",
     activating: "Activating...",
     activatedTitle: "Tracker is active",
@@ -187,5 +204,12 @@ export const TRACKERS_COPY = {
       Mixed: "Mixed",
       Unknown: "Pending",
     } as Record<string, string>,
+  },
+  hub: {
+    overview: {
+      createReport: "Create report",
+      reportCreated: "Tracker report package created from {count} AI answers.",
+      scope: "{brandName} tracker overview for the last 30 days.",
+    },
   },
 } as const;

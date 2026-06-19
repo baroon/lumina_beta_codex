@@ -6,8 +6,10 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
+  FileText,
   Globe,
   Grid3X3,
+  Lightbulb,
   Loader2,
   MessageSquare,
   Minus,
@@ -229,6 +231,7 @@ export function WorkspaceOverviewScreen() {
   const [selectedAudienceNames, setSelectedAudienceNames] = useState<string[]>([]);
   const [selectedSentiments, setSelectedSentiments] = useState<string[]>([]);
   const [selectedPlatformCodes, setSelectedPlatformCodes] = useState<string[]>([]);
+  const [overviewNotice, setOverviewNotice] = useState<string | null>(null);
   // Chart-granularity toggle (D/W/M). The BE returns per-scan points;
   // we re-bucket them FE-side in `TrendCard` via `bucketTrendPoints` so
   // flipping D/W/M is instant and doesn't refetch. Default = Week: the
@@ -409,6 +412,24 @@ export function WorkspaceOverviewScreen() {
     );
   }
   if (!data) return null;
+  const overviewData = data;
+
+  function createOverviewReport() {
+    exportOverviewReportPackage(overviewData, {
+      range,
+      trackerScope,
+      selectedLensCodes: selectedLenses,
+      selectedTopicNames,
+      selectedProductNames,
+      selectedMarketNames,
+      selectedAudienceNames,
+      selectedSentiments,
+      selectedPlatformCodes,
+    });
+    setOverviewNotice(
+      copy.actions.reportCreated.replace("{count}", overviewData.hero.queries.toLocaleString()),
+    );
+  }
 
   const controlsStrip = (
     <ComparisonControlsRow
@@ -455,7 +476,24 @@ export function WorkspaceOverviewScreen() {
       {/* PageHeader is title-only now — the calendar lives in the
           filter bar (ComparisonControlsRow), matching /prompts so the
           control layout is consistent across pages. */}
-      <PageHeader title={copy.title} />
+      <PageHeader title={copy.title}>
+        <Button variant="outline" size="sm" asChild>
+          <a href="/recommendations">
+            <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
+            {copy.actions.viewRecommendations}
+          </a>
+        </Button>
+        <Button variant="outline" size="sm" onClick={createOverviewReport}>
+          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+          {copy.actions.createReport}
+        </Button>
+      </PageHeader>
+
+      {overviewNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {overviewNotice}
+        </div>
+      )}
 
       {data.trackedBrands.length === 0 ? (
         <>
@@ -1949,8 +1987,8 @@ function riskSeverityVariant(
 /**
  * Factual-claims feed (item #14). Each claim is a checkable assertion
  * the AI made about a tracked brand — subject + asserted value plus
- * the supporting snippet. Each row carries a 3-button verdict toggle
- * (Pending / Verified / Disputed); clicking fires the only allowed
+ * the supporting snippet. Each row carries a verdict toggle
+ * (Pending / NeedsContext / Verified / Disputed / Ignored); clicking fires the only allowed
  * write on the otherwise append-only FactualClaim table. Workspace
  * ownership is enforced server-side; the FE just fires the new value.
  */
@@ -2005,7 +2043,7 @@ function FactualClaimsCard({ claims }: { claims: readonly WorkspaceFactualClaimD
 }
 
 /**
- * 3-button verdict toggle for a single factual claim. The active
+ * Verdict toggle for a single factual claim. The active
  * status is styled as a colored chip; the other two read as muted
  * buttons. Clicking the currently-active one is a no-op (the BE
  * short-circuits same-value writes) but the user can revise back to
@@ -2022,8 +2060,10 @@ function VerdictToggle({
   current: string;
   copy: {
     statusPending: string;
+    statusNeedsContext: string;
     statusVerified: string;
     statusDisputed: string;
+    statusIgnored: string;
     verdictGroupLabel: string;
   };
   onChange: (next: string) => void;
@@ -2031,8 +2071,10 @@ function VerdictToggle({
 }) {
   const options: Array<{ value: string; label: string }> = [
     { value: "Pending", label: copy.statusPending },
+    { value: "NeedsContext", label: copy.statusNeedsContext },
     { value: "Verified", label: copy.statusVerified },
     { value: "Disputed", label: copy.statusDisputed },
+    { value: "Ignored", label: copy.statusIgnored },
   ];
   return (
     <div
@@ -2069,6 +2111,10 @@ function verdictActiveClass(status: string): string {
       return "bg-semantic-success-100 text-semantic-success-700";
     case "Disputed":
       return "bg-semantic-error-100 text-semantic-error-700";
+    case "NeedsContext":
+      return "bg-primary-100 text-primary-700";
+    case "Ignored":
+      return "bg-neutral-100 text-neutral-600";
     case "Pending":
     default:
       return "bg-semantic-warning-100 text-semantic-warning-700";
@@ -2276,6 +2322,63 @@ function DetailField({ label, value }: { label: string; value: string }) {
       <p className="mt-0.5 text-sm text-neutral-900">{value}</p>
     </div>
   );
+}
+
+interface OverviewReportFilters {
+  range: DateRangeSelection;
+  trackerScope: readonly string[] | "all";
+  selectedLensCodes: readonly string[];
+  selectedTopicNames: readonly string[];
+  selectedProductNames: readonly string[];
+  selectedMarketNames: readonly string[];
+  selectedAudienceNames: readonly string[];
+  selectedSentiments: readonly string[];
+  selectedPlatformCodes: readonly string[];
+}
+
+function exportOverviewReportPackage(data: WorkspaceOverviewDto, filters: OverviewReportFilters) {
+  const packageData = {
+    packageType: "overview-report",
+    exportedAt: new Date().toISOString(),
+    workspaceId: data.workspaceId,
+    period: {
+      from: data.from,
+      to: data.to,
+      selectedRange: filters.range,
+    },
+    filters: {
+      trackerScope: filters.trackerScope,
+      selectedLensCodes: filters.selectedLensCodes,
+      selectedTopicNames: filters.selectedTopicNames,
+      selectedProductNames: filters.selectedProductNames,
+      selectedMarketNames: filters.selectedMarketNames,
+      selectedAudienceNames: filters.selectedAudienceNames,
+      selectedSentiments: filters.selectedSentiments,
+      selectedPlatformCodes: filters.selectedPlatformCodes,
+    },
+    hero: data.hero,
+    trackedBrands: data.trackedBrands,
+    competitors: data.competitors,
+    attentionItems: deriveOverviewAttentionItems(data),
+    topEntities: data.topEntities.slice(0, 10),
+    topRiskFlags: data.topBrandRiskFlags,
+    recentFactualClaims: data.recentFactualClaims,
+    weakTopics: data.topicOwnership
+      .filter((topic) => {
+        if (topic.promptCount === 0) return false;
+        return topic.brandMentionedPromptCount / topic.promptCount < 0.35;
+      })
+      .slice(0, 10),
+  };
+  const blob = new Blob([JSON.stringify(packageData, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `overview-report-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function formatRelativeTime(iso: string): string {

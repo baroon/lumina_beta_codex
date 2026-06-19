@@ -48,6 +48,10 @@ export function ClaimsRisksScreen() {
   const [selected, setSelected] = useState<WorkspaceFactualClaimDto | null>(null);
   const [reportCreated, setReportCreated] = useState(false);
   const [reportNotice, setReportNotice] = useState<string | null>(null);
+  const [claimReportQueue, setClaimReportQueue] = useState<Record<string, true>>({});
+  const [claimRecommendationQueue, setClaimRecommendationQueue] = useState<Record<string, true>>(
+    {},
+  );
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
   const update = useUpdateFactualClaimReviewStatus();
@@ -127,13 +131,24 @@ export function ClaimsRisksScreen() {
   const filteredRisks = filterRisksBySeverity(risks, severityFilter);
   const summary = deriveClaimsRisksSummaryFromRows(filteredClaims, filteredRisks);
   const workflowClaims = deriveReviewWorkflowClaims(filteredClaims).filter(
-    (claim) => claim.reviewStatus !== "Verified",
+    (claim) => claim.reviewStatus !== "Verified" && claim.reviewStatus !== "Ignored",
   );
   const statusCounts = countClaimsByStatus(claims);
   const typeCounts = countClaimsByType(claims);
   const severityCounts = countRisksBySeverity(risks);
   const hasActiveFilters =
     statusFilter != null || claimTypeFilter != null || severityFilter != null;
+
+  function addClaimToReport(claim: WorkspaceFactualClaimDto) {
+    setClaimReportQueue((current) => ({ ...current, [claim.claimId]: true }));
+    setReportNotice(copy.drawer.reportNotice.replace("{claim}", claim.claimText));
+  }
+
+  function createClaimRecommendation(claim: WorkspaceFactualClaimDto) {
+    exportClaimRecommendationPackage(claim, range);
+    setClaimRecommendationQueue((current) => ({ ...current, [claim.claimId]: true }));
+    setReportNotice(copy.drawer.recommendationNotice.replace("{claim}", claim.claimText));
+  }
 
   return (
     <div className="space-y-5">
@@ -270,16 +285,18 @@ export function ClaimsRisksScreen() {
             description={copy.sections.workflowDescription}
           />
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {(["Pending", "Verified", "Disputed"] as const).map((status) => (
-              <SummaryTile
-                key={status}
-                label={copy.statuses[status]}
-                value={filteredClaims
-                  .filter((claim) => claim.reviewStatus === status)
-                  .length.toLocaleString()}
-                helper={workflowHelper(status)}
-              />
-            ))}
+            {(["Pending", "NeedsContext", "Verified", "Disputed", "Ignored"] as const).map(
+              (status) => (
+                <SummaryTile
+                  key={status}
+                  label={copy.statuses[status]}
+                  value={filteredClaims
+                    .filter((claim) => claim.reviewStatus === status)
+                    .length.toLocaleString()}
+                  helper={workflowHelper(status)}
+                />
+              ),
+            )}
           </div>
           <ReviewWorkflowQueue claims={workflowClaims} onOpen={setSelected} />
         </CardContent>
@@ -290,8 +307,14 @@ export function ClaimsRisksScreen() {
         isSaving={update.isPending}
         error={update.error}
         failedClaimId={update.variables?.claimId}
+        addedToReport={selected ? Boolean(claimReportQueue[selected.claimId]) : false}
+        recommendationCreated={
+          selected ? Boolean(claimRecommendationQueue[selected.claimId]) : false
+        }
         onClose={() => setSelected(null)}
         onStatusChange={(claimId, reviewStatus) => update.mutate({ claimId, reviewStatus })}
+        onAddToReport={addClaimToReport}
+        onCreateRecommendation={createClaimRecommendation}
       />
     </div>
   );
@@ -400,7 +423,13 @@ function StatusFilterPills({
   onSelect: (status: ClaimStatus) => void;
 }) {
   const copy = REPORTS_COPY.claimsRisks;
-  const statuses: readonly ClaimStatus[] = ["Pending", "Verified", "Disputed"];
+  const statuses: readonly ClaimStatus[] = [
+    "Pending",
+    "NeedsContext",
+    "Verified",
+    "Disputed",
+    "Ignored",
+  ];
   return (
     <div className="flex flex-wrap items-center gap-1">
       {statuses.map((status) => (
@@ -557,15 +586,23 @@ function ClaimReviewDrawer({
   isSaving,
   error,
   failedClaimId,
+  addedToReport,
+  recommendationCreated,
   onClose,
   onStatusChange,
+  onAddToReport,
+  onCreateRecommendation,
 }: {
   claim: WorkspaceFactualClaimDto | null;
   isSaving: boolean;
   error: unknown;
   failedClaimId?: string;
+  addedToReport: boolean;
+  recommendationCreated: boolean;
   onClose: () => void;
   onStatusChange: (claimId: string, reviewStatus: ClaimStatus) => void;
+  onAddToReport: (claim: WorkspaceFactualClaimDto) => void;
+  onCreateRecommendation: (claim: WorkspaceFactualClaimDto) => void;
 }) {
   const copy = REPORTS_COPY.claimsRisks.drawer;
   if (!claim) return null;
@@ -623,10 +660,42 @@ function ClaimReviewDrawer({
           <Button
             variant="outline"
             size="sm"
+            disabled={addedToReport}
+            onClick={() => onAddToReport(claim)}
+          >
+            {addedToReport ? copy.addedToReport : copy.addToReport}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={recommendationCreated}
+            onClick={() => onCreateRecommendation(claim)}
+          >
+            {recommendationCreated ? copy.recommendationCreated : copy.createRecommendation}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={isSaving}
             onClick={() => onStatusChange(claim.claimId, "Pending")}
           >
             {copy.resetPending}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isSaving}
+            onClick={() => onStatusChange(claim.claimId, "NeedsContext")}
+          >
+            {copy.markNeedsContext}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isSaving}
+            onClick={() => onStatusChange(claim.claimId, "Ignored")}
+          >
+            {copy.markIgnored}
           </Button>
           <Button
             variant="outline"
@@ -670,7 +739,13 @@ function DrawerMeta({ label, value }: { label: string; value: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const variant =
-    status === "Verified" ? "success" : status === "Disputed" ? "destructive" : "warning";
+    status === "Verified"
+      ? "success"
+      : status === "Disputed"
+        ? "destructive"
+        : status === "Ignored"
+          ? "secondary"
+          : "warning";
   return <Badge variant={variant}>{statusLabel(status)}</Badge>;
 }
 
@@ -701,6 +776,39 @@ function createClaimsRisksReportPackage({
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = "lumina-claims-risks-report.json";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportClaimRecommendationPackage(
+  claim: WorkspaceFactualClaimDto,
+  range: DateRangeSelection,
+) {
+  const payload = {
+    recommendationType: "claim-review",
+    createdAt: new Date().toISOString(),
+    dateRange: serializeDateRange(range),
+    title: deriveClaimRecommendedAction(claim),
+    lens: "Claims & Risks",
+    impact: claim.reviewStatus === "Disputed" ? "High" : "Medium",
+    effort: "Low",
+    status: "Open",
+    evidence: {
+      claimId: claim.claimId,
+      brandName: claim.brandName,
+      claimText: claim.claimText,
+      evidenceSnippet: claim.evidenceSnippet,
+      subject: claim.subject,
+      assertedValue: claim.assertedValue,
+      verifiability: claim.verifiability,
+      reviewStatus: claim.reviewStatus,
+    },
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `claim-recommendation-${claim.claimId}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -742,6 +850,10 @@ function workflowHelper(status: ClaimStatus) {
   switch (status) {
     case "Pending":
       return "Needs a human review decision.";
+    case "NeedsContext":
+      return "Needs added source context or qualifiers.";
+    case "Ignored":
+      return "Removed from the active review queue.";
     case "Verified":
       return "Confirmed accurate against source of truth.";
     case "Disputed":

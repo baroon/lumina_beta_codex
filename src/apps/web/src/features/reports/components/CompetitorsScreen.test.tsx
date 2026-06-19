@@ -22,6 +22,8 @@ let competitiveState: {
 // the Nth payload — first = current window, second = previous window.
 let previousCompetitiveState: WorkspaceCompetitiveDto | null;
 let overviewState: { data?: Partial<WorkspaceOverviewDto> };
+let objectUrlSpy: ReturnType<typeof vi.fn>;
+let revokeUrlSpy: ReturnType<typeof vi.fn>;
 
 vi.mock("@/hooks/useTrackerScope", () => ({
   useTrackerScope: () => scopeState,
@@ -86,6 +88,7 @@ vi.mock("@/components/charts/LineChartWrapper", () => ({
 import {
   countCompetitorsByRecommendation,
   countCompetitorsByRelationship,
+  deriveCompetitorLeadRows,
   filterCompetitorRows,
 } from "@/features/reports/competitors";
 import {
@@ -141,6 +144,14 @@ beforeEach(() => {
   competitiveState = { data: competitive([], []), isLoading: false, isError: false };
   previousCompetitiveState = null;
   overviewState = { data: { series: [] } };
+  objectUrlSpy = vi.fn(() => "blob:competitor-lead-plan");
+  revokeUrlSpy = vi.fn();
+  vi.stubGlobal("URL", {
+    ...URL,
+    createObjectURL: objectUrlSpy,
+    revokeObjectURL: revokeUrlSpy,
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 });
 
 // ---------------------------------------------------------------------------
@@ -363,6 +374,56 @@ describe("deriveMovers (pure)", () => {
     // Highest deltas should win the cap — last two entries (largest)
     // are kept.
     expect(gainers[0].name).toBe("Prev7");
+  });
+});
+
+describe("deriveCompetitorLeadRows (pure)", () => {
+  it("derives ranked competitor lead rows from negative mention and recommendation gaps", () => {
+    const rows = deriveCompetitorLeadRows([
+      {
+        trackedBrandId: "b1",
+        trackedBrandName: "Acme",
+        gaps: [
+          {
+            competitorId: "c1",
+            competitorName: "Canva",
+            brandMentions: 8,
+            competitorMentions: 14,
+            mentionsGap: -6,
+            brandRecommendations: 1,
+            competitorRecommendations: 4,
+            recommendationsGap: -3,
+          },
+          {
+            competitorId: "c2",
+            competitorName: "Figma",
+            brandMentions: 12,
+            competitorMentions: 6,
+            mentionsGap: 6,
+            brandRecommendations: 2,
+            competitorRecommendations: 2,
+            recommendationsGap: 0,
+          },
+        ],
+      },
+    ]);
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        competitorName: "Canva",
+        leadType: "More mentions",
+        gap: 6,
+        brandValue: 8,
+        competitorValue: 14,
+      }),
+      expect.objectContaining({
+        competitorName: "Canva",
+        leadType: "Higher recommendation rate",
+        gap: 3,
+        brandValue: 1,
+        competitorValue: 4,
+      }),
+    ]);
   });
 });
 
@@ -768,7 +829,7 @@ describe("CompetitorsScreen", () => {
     expect(screen.getByText(/of competitor's mentions/i)).toBeInTheDocument();
   });
 
-  it("renders Recommendation rate + Competitive gap sections below the table", () => {
+  it("renders Recommendation rate, competitor leads, and Competitive gap sections below the table", () => {
     competitiveState = {
       data: {
         ...competitive(
@@ -813,6 +874,66 @@ describe("CompetitorsScreen", () => {
     expect(
       screen.getByRole("heading", { name: /Competitive gaps/i, level: 2 }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Where competitors lead" })).toBeInTheDocument();
+    const leads = screen.getByRole("region", { name: "Where competitors lead" });
+    expect(within(leads).getByText("Canva")).toBeInTheDocument();
+    expect(within(leads).getByText("More mentions")).toBeInTheDocument();
+    expect(
+      within(leads).getByText("Review competitor evidence and strengthen answer coverage."),
+    ).toBeInTheDocument();
+  });
+
+  it("adds a competitor lead to the report and creates an action plan", async () => {
+    competitiveState = {
+      data: {
+        ...competitive(
+          [
+            mention({ entityId: "a", name: "Acme", isTrackedBrand: true, mentionCount: 8 }),
+            mention({ entityId: "c", name: "Canva", mentionCount: 12 }),
+          ],
+          [],
+        ),
+        competitiveGaps: [
+          {
+            trackedBrandId: "a",
+            trackedBrandName: "Acme",
+            gaps: [
+              {
+                competitorId: "c",
+                competitorName: "Canva",
+                brandMentions: 8,
+                competitorMentions: 12,
+                mentionsGap: -4,
+                brandRecommendations: 1,
+                competitorRecommendations: 1,
+                recommendationsGap: 0,
+              },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    };
+
+    render(<CompetitorsScreen />);
+
+    const leads = screen.getByRole("region", { name: "Where competitors lead" });
+    const leadCard = within(leads)
+      .getByText("Canva")
+      .closest("div[class*='min-h-40']") as HTMLElement;
+
+    await userEvent.click(within(leadCard).getByRole("button", { name: "Add to report" }));
+
+    expect(within(leadCard).getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("Canva lead was added to the competitor report.")).toBeInTheDocument();
+
+    await userEvent.click(within(leadCard).getByRole("button", { name: "Create action plan" }));
+
+    expect(objectUrlSpy).toHaveBeenCalled();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:competitor-lead-plan");
+    expect(within(leadCard).getByRole("button", { name: "Plan created" })).toBeDisabled();
+    expect(screen.getByText("Action plan created for Canva.")).toBeInTheDocument();
   });
 
   it("collapses the section message when filters hide every entity", async () => {

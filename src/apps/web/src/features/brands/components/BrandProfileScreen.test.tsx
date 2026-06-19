@@ -387,6 +387,52 @@ describe("BrandProfileScreen", () => {
     expect(screen.getByText("Trustpilot reviews")).toBeInTheDocument();
   });
 
+  it("renders discovery evidence rollups for the confirmed profile", () => {
+    discoveryState = {
+      data: {
+        ...discoveryFixture,
+        brandProfile: {
+          ...discoveryFixture.brandProfile!,
+          shortDescriptionSource: "WebsiteCrawl",
+        },
+        products: [{ ...discoveryFixture.products[0], source: "WebsiteCrawl", confidence: 0.8 }],
+      },
+      isLoading: false,
+    };
+
+    render(<BrandProfileScreen brandId="b1" />);
+    expect(screen.getByRole("heading", { name: /discovery evidence/i })).toBeInTheDocument();
+    expect(screen.getByText("Website crawl")).toBeInTheDocument();
+    expect(screen.getByText("AI suggested")).toBeInTheDocument();
+    expect(screen.getByText("Identity fields")).toBeInTheDocument();
+    expect(screen.getByText("Dimensions")).toBeInTheDocument();
+  });
+
+  it("exports the brand discovery evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:brand-evidence");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+
+    render(<BrandProfileScreen brandId="b1" />);
+    await userEvent.click(screen.getByRole("button", { name: /export evidence/i }));
+
+    expect(objectUrlSpy).toHaveBeenCalledOnce();
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:brand-evidence");
+    expect(screen.getByText(/discovery evidence package created/i)).toBeInTheDocument();
+
+    clickSpy.mockRestore();
+  });
+
   it("renders an empty hint when a dimension list is empty", () => {
     discoveryState = {
       data: { ...discoveryFixture, products: [] },

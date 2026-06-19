@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanResultsDto } from "@/types/api";
@@ -249,6 +250,45 @@ describe("ScanResultsScreen", () => {
     // 4 breakdown bar charts (Platform/Lens/Topic/Competitor) + 1 TopCitedSources
     // bar chart + 1 Share-of-Voice bar chart = 6 BarChartWrapper renders.
     expect(screen.getAllByTestId("bar-chart").length).toBe(6);
+  });
+
+  it("queues the scan for reporting and exports a scan results package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-results");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+
+    try {
+      hookState = {
+        data: makeResults(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+      render(<ScanResultsScreen scanRunId="s1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(
+        screen.getByText("Nostri Tracker scan was added to the report queue."),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-results");
+      expect(screen.getByText("Nostri Tracker scan results package exported.")).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
   });
 
   it("renders OwnedCitationShare + OverallSentiment tiles (Slice 5)", () => {

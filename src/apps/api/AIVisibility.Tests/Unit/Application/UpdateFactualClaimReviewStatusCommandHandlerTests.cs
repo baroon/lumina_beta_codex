@@ -182,6 +182,38 @@ public class UpdateFactualClaimReviewStatusCommandHandlerTests
     }
 
     [Fact]
+    public async Task PersistsNeedsContextStatus()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+        var ws = new StubWorkspaceContext { WorkspaceId = seed.WorkspaceId };
+
+        var result = await new UpdateFactualClaimReviewStatusCommandHandler(ctx, ws).Handle(
+            new UpdateFactualClaimReviewStatusCommand(seed.ClaimId, ClaimReviewStatus.NeedsContext),
+            CancellationToken.None);
+
+        result.ReviewStatus.Should().Be(ClaimReviewStatus.NeedsContext);
+        ctx.FactualClaims.Single(c => c.Id == seed.ClaimId).ReviewStatus
+            .Should().Be(ClaimReviewStatus.NeedsContext);
+    }
+
+    [Fact]
+    public async Task PersistsIgnoredStatus()
+    {
+        using var ctx = NewContext();
+        var seed = Build(ctx);
+        var ws = new StubWorkspaceContext { WorkspaceId = seed.WorkspaceId };
+
+        var result = await new UpdateFactualClaimReviewStatusCommandHandler(ctx, ws).Handle(
+            new UpdateFactualClaimReviewStatusCommand(seed.ClaimId, ClaimReviewStatus.Ignored),
+            CancellationToken.None);
+
+        result.ReviewStatus.Should().Be(ClaimReviewStatus.Ignored);
+        ctx.FactualClaims.Single(c => c.Id == seed.ClaimId).ReviewStatus
+            .Should().Be(ClaimReviewStatus.Ignored);
+    }
+
+    [Fact]
     public async Task SettingSameStatus_IsANoOpButReturnsCurrent()
     {
         using var ctx = NewContext();

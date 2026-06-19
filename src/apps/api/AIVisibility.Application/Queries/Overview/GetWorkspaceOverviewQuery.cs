@@ -237,7 +237,7 @@ public sealed record WorkspaceFactualClaimDto(
     string EvidenceSnippet,
     /// <summary>"Verifiable" / "Subjective" / etc.</summary>
     string Verifiability,
-    /// <summary>"Pending" / "Verified" / "Disputed".</summary>
+    /// <summary>"Pending" / "Verified" / "Disputed" / "NeedsContext" / "Ignored".</summary>
     string ReviewStatus,
     DateTime CreatedAt);
 

@@ -501,6 +501,33 @@ describe("TrackerHubScreen", () => {
     expect(screen.getAllByText("50%").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("Overview tab creates a local tracker report package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:tracker-report");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+
+    render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
+    await userEvent.click(screen.getByRole("button", { name: /create report/i }));
+
+    expect(objectUrlSpy).toHaveBeenCalledOnce();
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(revokeUrlSpy).toHaveBeenCalledWith("blob:tracker-report");
+    expect(
+      screen.getByText(/Tracker report package created from 96 AI answers/i),
+    ).toBeInTheDocument();
+
+    clickSpy.mockRestore();
+  });
+
   it("Overview tab renders the top entities table with the tracked brand highlighted", () => {
     render(<TrackerHubScreen brandId="b1" trackerId="t1" />);
     expect(screen.getByText(/Top entities by visibility/i)).toBeInTheDocument();

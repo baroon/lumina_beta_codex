@@ -19,14 +19,21 @@ interface ScanClaimsScreenProps {
   scanRunId: string;
 }
 
-const REVIEW_STATUS_FILTERS = ["All", "Pending", "Verified", "Disputed"] as const;
+const REVIEW_STATUS_FILTERS = [
+  "All",
+  "Pending",
+  "NeedsContext",
+  "Verified",
+  "Disputed",
+  "Ignored",
+] as const;
 type ReviewFilter = (typeof REVIEW_STATUS_FILTERS)[number];
 
 /**
  * Scan-scoped factual-claims inbox (Phase 4 measurement-model expansion,
  * item #14). Lets a reviewer skim every check-able claim the AI made
  * about the brand on this scan, filter by review status, and flip the
- * verdict (Pending / Verified / Disputed) on each one inline.
+ * verdict (Pending / NeedsContext / Verified / Disputed / Ignored) on each one inline.
  */
 export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
   const [filter, setFilter] = useState<ReviewFilter>("All");
@@ -175,8 +182,10 @@ function ClaimVerdictToggle({
   const copy = REPORTS_COPY.claims;
   const options: Array<{ value: string; label: string }> = [
     { value: "Pending", label: copy.statusLabels.Pending ?? "Pending" },
+    { value: "NeedsContext", label: copy.statusLabels.NeedsContext ?? "Needs context" },
     { value: "Verified", label: copy.statusLabels.Verified ?? "Verified" },
     { value: "Disputed", label: copy.statusLabels.Disputed ?? "Disputed" },
+    { value: "Ignored", label: copy.statusLabels.Ignored ?? "Ignored" },
   ];
   return (
     <div
@@ -213,6 +222,10 @@ function verdictActiveClass(status: string): string {
       return "bg-semantic-success-100 text-semantic-success-700";
     case "Disputed":
       return "bg-semantic-error-100 text-semantic-error-700";
+    case "NeedsContext":
+      return "bg-primary-100 text-primary-700";
+    case "Ignored":
+      return "bg-neutral-100 text-neutral-600";
     case "Pending":
     default:
       return "bg-semantic-warning-100 text-semantic-warning-700";

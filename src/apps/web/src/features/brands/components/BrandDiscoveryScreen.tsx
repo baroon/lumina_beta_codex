@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowRight, Compass, Plus } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   type BrandDiscoveryAttentionItem,
 } from "@/features/brands/brands";
 import { useBrandsList } from "@/features/brands/hooks/useBrands";
+import { cn } from "@/lib/utils";
 import type { BrandDto, DiscoveryStatus } from "@/types/api";
 
 const EMPTY_BRAND_ROWS: readonly BrandDto[] = [];
@@ -23,7 +24,18 @@ export function BrandDiscoveryScreen() {
   const copy = BRANDS_COPY.discoveryHub;
   const brands = useBrandsList();
   const rows = brands.data ?? EMPTY_BRAND_ROWS;
-  const attentionItems = useMemo(() => deriveBrandDiscoveryAttentionItems(rows), [rows]);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const statusCounts = useMemo(() => countDiscoveryStatuses(rows), [rows]);
+  const statusOptions = useMemo(() => Array.from(statusCounts.keys()).sort(), [statusCounts]);
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((brand) => statusFilter === null || discoveryStatusLabel(brand) === statusFilter),
+    [rows, statusFilter],
+  );
+  const attentionItems = useMemo(
+    () => deriveBrandDiscoveryAttentionItems(filteredRows),
+    [filteredRows],
+  );
 
   const columns = useMemo<ColumnDef<BrandDto, unknown>[]>(
     () => [
@@ -101,11 +113,17 @@ export function BrandDiscoveryScreen() {
     );
   }
 
-  const completed = rows.filter((brand) => brand.latestDiscovery?.status === "Completed").length;
-  const pending = rows.filter(
+  const completed = filteredRows.filter(
+    (brand) => brand.latestDiscovery?.status === "Completed",
+  ).length;
+  const pending = filteredRows.filter(
     (brand) => brand.latestDiscovery?.status === "AwaitingConfirmation",
   ).length;
-  const pages = rows.reduce((sum, brand) => sum + (brand.latestDiscovery?.pagesCrawled ?? 0), 0);
+  const pages = filteredRows.reduce(
+    (sum, brand) => sum + (brand.latestDiscovery?.pagesCrawled ?? 0),
+    0,
+  );
+  const emptyMessage = statusFilter === null ? copy.table.empty : copy.filters.empty;
 
   return (
     <div className="space-y-5">
@@ -121,7 +139,7 @@ export function BrandDiscoveryScreen() {
       <div className="grid gap-3 md:grid-cols-4">
         <SummaryTile
           label={copy.summary.brands}
-          value={rows.length.toLocaleString()}
+          value={filteredRows.length.toLocaleString()}
           helper={copy.summary.brandsHelper}
         />
         <SummaryTile
@@ -141,20 +159,74 @@ export function BrandDiscoveryScreen() {
         />
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+        <DiscoveryStatusFilterPill
+          label={copy.filters.allStatuses}
+          count={rows.length}
+          active={statusFilter === null}
+          onClick={() => setStatusFilter(null)}
+        />
+        {statusOptions.map((status) => (
+          <DiscoveryStatusFilterPill
+            key={status}
+            label={status}
+            count={statusCounts.get(status) ?? 0}
+            active={statusFilter === status}
+            onClick={() => setStatusFilter((current) => (current === status ? null : status))}
+          />
+        ))}
+        {statusFilter !== null && (
+          <Button variant="ghost" size="sm" onClick={() => setStatusFilter(null)}>
+            {copy.filters.clear}
+          </Button>
+        )}
+      </div>
+
       <DiscoveryAttentionSection items={attentionItems} />
 
       <Card>
         <CardContent className="p-5">
           <DataTable
             columns={columns}
-            data={rows}
+            data={filteredRows}
             getRowId={(row) => row.id}
             initialSorting={[{ id: "name", desc: false }]}
-            emptyMessage={<BrandDiscoveryEmptyState />}
+            emptyMessage={<BrandDiscoveryEmptyState message={emptyMessage} />}
           />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function DiscoveryStatusFilterPill({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition",
+        active
+          ? "border-primary-300 bg-primary-50 text-primary-800"
+          : "border-neutral-200 bg-white text-neutral-600 hover:border-primary-200 hover:text-primary-700",
+      )}
+    >
+      <span>{label}</span>
+      <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-neutral-500">
+        {count.toLocaleString()}
+      </span>
+    </button>
   );
 }
 
@@ -235,15 +307,30 @@ function DiscoveryStatusBadge({ status }: { status?: DiscoveryStatus }) {
   return <Badge variant="secondary">{label}</Badge>;
 }
 
-function BrandDiscoveryEmptyState() {
+function BrandDiscoveryEmptyState({
+  message = BRANDS_COPY.discoveryHub.table.empty,
+}: {
+  message?: string;
+}) {
   return (
     <div className="px-3 py-8 text-center">
       <Compass className="mx-auto h-8 w-8 text-neutral-400" aria-hidden />
-      <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500">
-        {BRANDS_COPY.discoveryHub.table.empty}
-      </p>
+      <p className="mx-auto mt-3 max-w-xl text-sm text-neutral-500">{message}</p>
     </div>
   );
+}
+
+function countDiscoveryStatuses(rows: readonly BrandDto[]) {
+  const counts = new Map<string, number>();
+  for (const brand of rows) {
+    const status = discoveryStatusLabel(brand);
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function discoveryStatusLabel(brand: BrandDto) {
+  return brand.latestDiscovery?.status ?? BRANDS_COPY.discoveryHub.table.notStarted;
 }
 
 function formatDate(value: string | null | undefined) {

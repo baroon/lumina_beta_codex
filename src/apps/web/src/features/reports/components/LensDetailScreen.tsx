@@ -46,6 +46,26 @@ interface LensDetailScreenProps {
   lensId: string;
 }
 
+interface LensReportItem {
+  kind: "lens-diagnosis";
+  createdAt: string;
+  dateRange: ReturnType<typeof serializeDateRange>;
+  lens: Pick<VisibilityLens, "code" | "name" | "description">;
+  diagnosis: LensDiagnosis;
+  summary: {
+    queries: number;
+    mentions: number;
+    citations: number;
+    brandMentionRate: number | null;
+    brandAbsenceRate: number | null;
+    brandFirstMentionRate: number | null;
+  };
+  evidence: {
+    entityCount: number;
+    topEntities: Array<Pick<WorkspaceTopEntityRowDto, "entityType" | "name" | "visibility">>;
+  };
+}
+
 export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
   const copy = LENSES_COPY.detail;
   const lens = LENS_BY_SLUG[lensId];
@@ -56,6 +76,7 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
   const [sentimentFilter, setSentimentFilter] = useState<EntitySentimentFilter | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [recommendationsReady, setRecommendationsReady] = useState(false);
+  const [reportItem, setReportItem] = useState<LensReportItem | null>(null);
 
   const overview = useWorkspaceOverview(range, lens ? [lens.code] : [], [], [], [], [], trackerIds);
   const filteredEntities = useMemo(
@@ -138,6 +159,12 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
     setActionNotice(copy.notice.recommendations.replace("{lens}", lens.name));
   }
 
+  function addLensToReport() {
+    if (!lens || !overview.data || !diagnosis) return;
+    setReportItem(createLensReportItem(lens, overview.data, diagnosis, filteredEntities, range));
+    setActionNotice(copy.notice.report.replace("{lens}", lens.name));
+  }
+
   function exportLensBrief() {
     if (!lens || !overview.data) return;
     exportLensDetailPackage(lens, overview.data, filteredEntities, diagnosis, range);
@@ -160,6 +187,9 @@ export function LensDetailScreen({ lensId }: LensDetailScreenProps) {
           disabled={recommendationsReady}
         >
           {recommendationsReady ? copy.actions.recommendationsReady : copy.actions.recommendations}
+        </Button>
+        <Button variant="outline" size="sm" onClick={addLensToReport} disabled={reportItem != null}>
+          {reportItem ? copy.actions.addedToReport : copy.actions.addToReport}
         </Button>
         <Button variant="outline" size="sm" onClick={exportLensBrief}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
@@ -526,6 +556,42 @@ function exportLensDetailPackage(
   anchor.download = `${lens.code.toLowerCase()}-lens-brief-${Date.now()}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function createLensReportItem(
+  lens: VisibilityLens,
+  overview: WorkspaceOverviewDto,
+  diagnosis: LensDiagnosis,
+  entities: readonly WorkspaceTopEntityRowDto[],
+  range: DateRangeSelection,
+): LensReportItem {
+  return {
+    kind: "lens-diagnosis",
+    createdAt: new Date().toISOString(),
+    dateRange: serializeDateRange(range),
+    lens: {
+      code: lens.code,
+      name: lens.name,
+      description: lens.description,
+    },
+    diagnosis,
+    summary: {
+      queries: overview.hero.queries,
+      mentions: overview.hero.mentions,
+      citations: overview.hero.citations,
+      brandMentionRate: overview.hero.brandMentionRate,
+      brandAbsenceRate: overview.hero.brandAbsenceRate,
+      brandFirstMentionRate: overview.hero.brandFirstMentionRate,
+    },
+    evidence: {
+      entityCount: entities.length,
+      topEntities: entities.slice(0, 5).map((entity) => ({
+        entityType: entity.entityType,
+        name: entity.name,
+        visibility: entity.visibility,
+      })),
+    },
+  };
 }
 
 function serializeDateRange(range: DateRangeSelection) {

@@ -21,10 +21,12 @@ import { useWorkspaceOverview } from "@/features/reports/hooks/useWorkspaceOverv
 import {
   countTopicsByAction,
   countTopicsByBand,
+  deriveCompetitiveTopicRisks,
   deriveContentOpportunityTopics,
   deriveTopicRecommendationPreview,
   deriveTopicOpportunities,
   filterTopicOpportunities,
+  type CompetitiveTopicRiskRow,
   type TopicAction,
   type TopicOpportunityRow,
   type TopicOwnershipBand,
@@ -38,7 +40,11 @@ export function TopicsScreen() {
   const [actionFilter, setActionFilter] = useState<TopicAction | null>(null);
   const [selected, setSelected] = useState<TopicOpportunityRow | null>(null);
   const [reportQueue, setReportQueue] = useState<Record<string, TopicOpportunityRow>>({});
+  const [riskReportQueue, setRiskReportQueue] = useState<Record<string, CompetitiveTopicRiskRow>>(
+    {},
+  );
   const [generatedBriefs, setGeneratedBriefs] = useState<Record<string, true>>({});
+  const [recoveryPlans, setRecoveryPlans] = useState<Record<string, true>>({});
   const [topicNotice, setTopicNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
@@ -51,6 +57,7 @@ export function TopicsScreen() {
     () => deriveContentOpportunityTopics(filteredRows),
     [filteredRows],
   );
+  const competitiveRisks = useMemo(() => deriveCompetitiveTopicRisks(filteredRows), [filteredRows]);
   const bandCounts = useMemo(() => countTopicsByBand(rows), [rows]);
   const actionCounts = useMemo(() => countTopicsByAction(rows), [rows]);
 
@@ -164,9 +171,27 @@ export function TopicsScreen() {
     setTopicNotice(drawerCopy.briefNotice.replace("{topic}", item.topicName));
   }
 
+  function createRecoveryPlan(item: CompetitiveTopicRiskRow) {
+    exportTopicRiskPackage([item], range);
+    setRecoveryPlans((current) => ({ ...current, [item.id]: true }));
+    setTopicNotice(
+      REPORTS_COPY.topics.workspace.competitiveRisks.planNotice.replace("{topic}", item.topicName),
+    );
+  }
+
   function addTopicToReport(item: TopicOpportunityRow) {
     setReportQueue((current) => ({ ...current, [item.id]: item }));
     setTopicNotice(drawerCopy.reportNotice.replace("{topic}", item.topicName));
+  }
+
+  function addRiskToReport(item: CompetitiveTopicRiskRow) {
+    setRiskReportQueue((current) => ({ ...current, [item.id]: item }));
+    setTopicNotice(
+      REPORTS_COPY.topics.workspace.competitiveRisks.reportNotice.replace(
+        "{topic}",
+        item.topicName,
+      ),
+    );
   }
 
   return (
@@ -244,6 +269,16 @@ export function TopicsScreen() {
         emptyMessage={hasActiveFilters ? <FilteredTopicsEmptyState /> : <TopicsEmptyState />}
       />
 
+      {competitiveRisks.length > 0 && (
+        <CompetitiveRisksSection
+          items={competitiveRisks}
+          reportQueue={riskReportQueue}
+          recoveryPlans={recoveryPlans}
+          onAddToReport={addRiskToReport}
+          onCreatePlan={createRecoveryPlan}
+        />
+      )}
+
       {contentOpportunities.length > 0 && (
         <ContentOpportunitiesSection
           items={contentOpportunities}
@@ -262,6 +297,103 @@ export function TopicsScreen() {
         onGenerateBrief={generateContentBrief}
       />
     </div>
+  );
+}
+
+function CompetitiveRisksSection({
+  items,
+  reportQueue,
+  recoveryPlans,
+  onAddToReport,
+  onCreatePlan,
+}: {
+  items: readonly CompetitiveTopicRiskRow[];
+  reportQueue: Record<string, CompetitiveTopicRiskRow>;
+  recoveryPlans: Record<string, true>;
+  onAddToReport: (item: CompetitiveTopicRiskRow) => void;
+  onCreatePlan: (item: CompetitiveTopicRiskRow) => void;
+}) {
+  const copy = REPORTS_COPY.topics.workspace.competitiveRisks;
+
+  return (
+    <section aria-labelledby="topic-competitive-risks-title">
+      <Card>
+        <CardContent className="p-5">
+          <div>
+            <h2
+              id="topic-competitive-risks-title"
+              className="text-sm font-semibold text-neutral-900"
+            >
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-md border border-neutral-200">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-neutral-50 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-3 py-2">{copy.headers.topic}</th>
+                  <th className="px-3 py-2">{copy.headers.yourRate}</th>
+                  <th className="px-3 py-2">{copy.headers.gap}</th>
+                  <th className="px-3 py-2">{copy.headers.risk}</th>
+                  <th className="px-3 py-2">{copy.headers.action}</th>
+                  <th className="px-3 py-2 text-right">{copy.headers.workflow}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {items.map((item) => (
+                  <tr key={item.id} className="align-top">
+                    <td className="px-3 py-3">
+                      <p className="font-medium text-neutral-900">{item.topicName}</p>
+                      <p className="mt-0.5 text-xs text-neutral-500">
+                        {copy.missedQuestions.replace(
+                          "{count}",
+                          item.missedPromptCount.toLocaleString(),
+                        )}
+                      </p>
+                    </td>
+                    <td className="px-3 py-3 font-medium tabular-nums text-neutral-900">
+                      {formatRate(item.ownershipRate)}
+                    </td>
+                    <td className="px-3 py-3 tabular-nums text-neutral-600">
+                      {formatRate(item.gapRate)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <Badge variant={item.riskLevel === "High" ? "destructive" : "warning"}>
+                        {item.riskLevel}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Badge variant="outline">{item.recommendedAction}</Badge>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onAddToReport(item)}
+                          disabled={Boolean(reportQueue[item.id])}
+                        >
+                          {reportQueue[item.id] ? copy.addedToReport : copy.addToReport}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onCreatePlan(item)}
+                          disabled={Boolean(recoveryPlans[item.id])}
+                        >
+                          {recoveryPlans[item.id] ? copy.planCreated : copy.createPlan}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -611,6 +743,39 @@ function actionCopy(row: TopicOpportunityRow) {
     case "Create coverage":
       return "Create or update content that directly answers this topic and cites concrete proof points.";
   }
+}
+
+function exportTopicRiskPackage(
+  rows: readonly CompetitiveTopicRiskRow[],
+  range: DateRangeSelection,
+) {
+  const payload = JSON.stringify(
+    {
+      packageType: "topic-recovery-plan",
+      createdAt: new Date().toISOString(),
+      dateRange: serializeDateRange(range),
+      topicCount: rows.length,
+      topics: rows.map((row) => ({
+        id: row.id,
+        topicName: row.topicName,
+        ownershipRate: row.ownershipRate,
+        gapRate: row.gapRate,
+        missedPromptCount: row.missedPromptCount,
+        promptCount: row.promptCount,
+        riskLevel: row.riskLevel,
+        recommendedAction: row.recommendedAction,
+      })),
+    },
+    null,
+    2,
+  );
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `topic-recovery-plan-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportTopicsPackage(

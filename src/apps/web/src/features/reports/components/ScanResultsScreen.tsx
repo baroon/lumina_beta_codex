@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Database,
+  Download,
   Eye,
+  FilePlus,
   Heart,
   Quote,
   ShieldAlert,
@@ -12,6 +15,7 @@ import {
 } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
 import { BarChartWrapper, type BarChartDatum } from "@/components/charts/BarChartWrapper";
 import { SentimentDonut } from "@/components/charts/SentimentDonut";
@@ -26,7 +30,7 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { REPORTS_COPY } from "@/content/reports";
 import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { useScanResults } from "@/features/reports/hooks/useScanResults";
-import type { BreakdownsDto, CoreMetricsDto, ScanSummaryDto } from "@/types/api";
+import type { BreakdownsDto, CoreMetricsDto, ScanResultsDto, ScanSummaryDto } from "@/types/api";
 
 interface ScanResultsScreenProps {
   scanRunId: string;
@@ -114,6 +118,8 @@ function scanChartTooltip(title: string) {
  */
 export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
   const { data, isLoading, isError, error, refetch } = useScanResults(scanRunId);
+  const [reportQueued, setReportQueued] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (isLoading) return <LoadingPage />;
 
@@ -178,7 +184,48 @@ export function ScanResultsScreen({ scanRunId }: ScanResultsScreenProps) {
         description={REPORTS_COPY.scanResults.subtitle
           .replace("{brandName}", data.summary.brandName)
           .replace("{trackerName}", data.summary.trackerName)}
-      />
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reportQueued}
+          onClick={() => {
+            setReportQueued(true);
+            setNotice(
+              REPORTS_COPY.scanResults.actions.reportNotice.replace(
+                "{trackerName}",
+                data.summary.trackerName,
+              ),
+            );
+          }}
+        >
+          <FilePlus className="h-3.5 w-3.5" aria-hidden />
+          {reportQueued
+            ? REPORTS_COPY.scanResults.actions.addedToReport
+            : REPORTS_COPY.scanResults.actions.addToReport}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            exportScanResultsPackage(data);
+            setNotice(
+              REPORTS_COPY.scanResults.actions.exportNotice.replace(
+                "{trackerName}",
+                data.summary.trackerName,
+              ),
+            );
+          }}
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {REPORTS_COPY.scanResults.actions.exportPackage}
+        </Button>
+      </PageHeader>
+      {notice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {notice}
+        </div>
+      )}
       <CrossLinkBar scanRunId={scanRunId} />
       <MetricCategoryLayout
         statusStrip={<SummarySection summary={data.summary} />}
@@ -756,4 +803,40 @@ function formatDateTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function exportScanResultsPackage(data: ScanResultsDto) {
+  const payload = {
+    packageType: "scan-results-report",
+    createdAt: new Date().toISOString(),
+    scanRunId: data.scanRunId,
+    summary: data.summary,
+    coreMetrics: data.coreMetrics,
+    breakdowns: data.breakdowns,
+    followUps: [
+      {
+        label: REPORTS_COPY.sources.viewSources,
+        route: `/scans/${data.scanRunId}/sources`,
+      },
+      {
+        label: REPORTS_COPY.topics.viewTopics,
+        route: `/scans/${data.scanRunId}/topics`,
+      },
+      {
+        label: REPORTS_COPY.competitors.viewCompetitors,
+        route: `/scans/${data.scanRunId}/competitors`,
+      },
+      {
+        label: REPORTS_COPY.scanResults.viewClaims,
+        route: `/scans/${data.scanRunId}/claims`,
+      },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `scan-results-${data.scanRunId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

@@ -152,6 +152,14 @@ describe("ScanListScreen", () => {
   });
 
   it("opens a scan summary drawer with evidence and workflow actions", async () => {
+    const createObjectURL = vi.fn(() => "blob:scan-log");
+    const revokeObjectURL = vi.fn();
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+      revokeObjectURL,
+    });
     hookState = {
       data: [row({ scanRunId: "s1" })],
       isLoading: false,
@@ -173,12 +181,18 @@ describe("ScanListScreen", () => {
       "href",
       "/scans/s1/results",
     );
+    await userEvent.click(within(drawer).getByRole("button", { name: "Export scan log" }));
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:scan-log");
+    expect(screen.getByText("Scan log exported for Brand A / Tracker A.")).toBeInTheDocument();
     expect(within(drawer).getByRole("button", { name: "Rerun" })).toBeDisabled();
     await userEvent.click(within(drawer).getByRole("button", { name: "Add to report" }));
     expect(within(drawer).getByRole("button", { name: "Added to report" })).toBeDisabled();
     expect(
       screen.getByText("Brand A / Tracker A was added to the scan report."),
     ).toBeInTheDocument();
+    anchorClick.mockRestore();
   });
 
   it("shares failed scan action state between the row and summary drawer", async () => {

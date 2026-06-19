@@ -173,6 +173,7 @@ export function ScanListScreen() {
         addedToReport={selectedScan ? Boolean(reportQueue[selectedScan.scanRunId]) : false}
         onRerun={queueScanRerun}
         onAddToReport={addScanToReport}
+        onExport={exportScanLog}
       />
     </div>
   );
@@ -189,6 +190,13 @@ export function ScanListScreen() {
     setReportQueue((current) => ({ ...current, [scan.scanRunId]: true }));
     setScanNotice(
       REPORTS_COPY.scanList.actions.reportNotice.replace("{scan}", scanNoticeLabel(scan)),
+    );
+  }
+
+  function exportScanLog(scan: ScanListItemDto) {
+    exportScanLogPackage(scan);
+    setScanNotice(
+      REPORTS_COPY.scanList.actions.exportNotice.replace("{scan}", scanNoticeLabel(scan)),
     );
   }
 }
@@ -390,6 +398,7 @@ function ScanSummaryDrawer({
   addedToReport,
   onRerun,
   onAddToReport,
+  onExport,
 }: {
   scan: ScanListItemDto | null;
   onClose: () => void;
@@ -397,6 +406,7 @@ function ScanSummaryDrawer({
   addedToReport: boolean;
   onRerun: (scan: ScanListItemDto) => void;
   onAddToReport: (scan: ScanListItemDto) => void;
+  onExport: (scan: ScanListItemDto) => void;
 }) {
   if (!scan) return null;
 
@@ -474,6 +484,9 @@ function ScanSummaryDrawer({
               {REPORTS_COPY.scanList.actions.openEvidence}
             </Link>
           </Button>
+          <Button variant="outline" size="sm" onClick={() => onExport(scan)}>
+            {REPORTS_COPY.scanList.actions.exportScanLog}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -511,6 +524,31 @@ function isScanRerunnable(scan: ScanListItemDto): boolean {
 
 function scanNoticeLabel(scan: ScanListItemDto): string {
   return `${scan.brandName} / ${scan.trackerName}`;
+}
+
+function exportScanLogPackage(scan: ScanListItemDto) {
+  const payload = {
+    exportType: "scan-log",
+    exportedAt: new Date().toISOString(),
+    scanRunId: scan.scanRunId,
+    brandName: scan.brandName,
+    trackerName: scan.trackerName,
+    scanStatus: scan.scanStatus,
+    analysisStatus: scan.analysisStatus,
+    startedAt: scan.startedAt,
+    completedAt: scan.completedAt,
+    duration: formatScanDuration(scan),
+    scanCheckCount: scan.scanCheckCount,
+    completedCount: scan.completedCount,
+    failedCount: scan.failedCount,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `scan-log-${scan.scanRunId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function DrawerMeta({ label, value }: { label: string; value: string }) {

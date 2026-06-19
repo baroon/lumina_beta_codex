@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  Download,
   ExternalLink,
   Globe,
   type LucideIcon,
@@ -74,7 +75,7 @@ import {
   useUpdateBrandProfile,
   useUpdateBrandWebsiteUrl,
 } from "@/features/brands/hooks/useBrands";
-import type { CandidateDto } from "@/types/api";
+import type { CandidateDto, CandidateSource, DiscoveryResultsDto } from "@/types/api";
 
 // Section icons inlined here (rather than imported from
 // `@/features/discovery/sectionIcons`) because the cross-feature lint
@@ -191,6 +192,8 @@ export function BrandProfileScreen({ brandId }: BrandProfileScreenProps) {
             positioning={profile?.positioning ?? null}
             hasProfile={!!profile}
           />
+
+          <DiscoveryEvidenceSection brandName={brand.name} discovery={discovery} />
 
           <AliasesSection brandId={brandId} brandName={brand.name} aliases={discovery.aliases} />
 
@@ -487,6 +490,100 @@ interface AliasesSectionProps {
   brandId: string;
   brandName: string;
   aliases: readonly string[];
+}
+
+interface DiscoveryEvidenceSectionProps {
+  brandName: string;
+  discovery: DiscoveryResultsDto;
+}
+
+function DiscoveryEvidenceSection({ brandName, discovery }: DiscoveryEvidenceSectionProps) {
+  const copy = BRANDS_COPY.profile.evidence;
+  const [notice, setNotice] = useState<string | null>(null);
+  const rows = useMemo(() => deriveDiscoveryEvidenceRows(discovery), [discovery]);
+
+  function exportEvidence() {
+    exportDiscoveryEvidence(brandName, discovery, rows);
+    setNotice(copy.exported);
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionHeader
+            icon={SECTION_ICON.brandProfile}
+            title={copy.title}
+            description={copy.description}
+          />
+          <Button variant="outline" size="sm" onClick={exportEvidence} disabled={rows.length === 0}>
+            <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            {copy.export}
+          </Button>
+        </div>
+
+        {notice && (
+          <div
+            role="status"
+            className="rounded-md border border-semantic-success-200 bg-semantic-success-50 px-3 py-2 text-xs text-semantic-success-700"
+          >
+            {notice}
+          </div>
+        )}
+
+        {rows.length === 0 ? (
+          <p className="text-xs text-neutral-500">{copy.empty}</p>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-neutral-200">
+            <table className="min-w-full divide-y divide-neutral-200 text-left text-xs">
+              <thead className="bg-neutral-50 text-[10px] uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    {copy.source}
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    {copy.items}
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-medium">
+                    {copy.averageConfidence}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 bg-white">
+                {rows.map((row) => (
+                  <tr key={row.source}>
+                    <td className="px-3 py-2 font-medium text-neutral-900">
+                      {sourceLabel(row.source)}
+                    </td>
+                    <td className="px-3 py-2 text-neutral-600">{row.count}</td>
+                    <td className="px-3 py-2 text-neutral-600">
+                      {formatPercent(row.averageConfidence)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <EvidenceSummaryCard label={copy.identity} value={identityEvidenceCount(discovery)} />
+          <EvidenceSummaryCard label={copy.dimensions} value={dimensionEvidenceCount(discovery)} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EvidenceSummaryCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-semibold text-neutral-900">{value.toLocaleString()}</div>
+    </div>
+  );
 }
 
 /**
@@ -1776,6 +1873,148 @@ function CompetitorDetailsDialog({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+interface DiscoveryEvidenceRow {
+  source: CandidateSource;
+  count: number;
+  averageConfidence: number;
+}
+
+interface DiscoveryEvidenceEntry {
+  source: CandidateSource;
+  confidence: number;
+}
+
+function deriveDiscoveryEvidenceRows(discovery: DiscoveryResultsDto): DiscoveryEvidenceRow[] {
+  const grouped = new Map<CandidateSource, { count: number; confidenceTotal: number }>();
+
+  for (const entry of discoveryEvidenceEntries(discovery)) {
+    const existing = grouped.get(entry.source) ?? { count: 0, confidenceTotal: 0 };
+    grouped.set(entry.source, {
+      count: existing.count + 1,
+      confidenceTotal: existing.confidenceTotal + entry.confidence,
+    });
+  }
+
+  return SOURCE_ORDER.flatMap((source) => {
+    const row = grouped.get(source);
+    if (!row) return [];
+    return {
+      source,
+      count: row.count,
+      averageConfidence: row.confidenceTotal / row.count,
+    };
+  });
+}
+
+function discoveryEvidenceEntries(discovery: DiscoveryResultsDto): DiscoveryEvidenceEntry[] {
+  const entries: DiscoveryEvidenceEntry[] = [];
+  const profile = discovery.brandProfile;
+
+  if (profile) {
+    const fields = [
+      { value: profile.shortDescription, source: profile.shortDescriptionSource },
+      { value: profile.industry, source: profile.industrySource },
+      { value: profile.category, source: profile.categorySource },
+      { value: profile.positioning, source: profile.positioningSource },
+    ];
+
+    for (const field of fields) {
+      if (field.value) {
+        entries.push({
+          source: field.source ?? profile.source,
+          confidence: profile.confidence,
+        });
+      }
+    }
+  }
+
+  for (const candidate of [
+    ...discovery.products,
+    ...discovery.audiences,
+    ...discovery.markets,
+    ...discovery.topics,
+    ...discovery.competitors,
+    ...discovery.trustSignals,
+  ]) {
+    entries.push({ source: candidate.source, confidence: candidate.confidence });
+  }
+
+  return entries;
+}
+
+function identityEvidenceCount(discovery: DiscoveryResultsDto): number {
+  const profile = discovery.brandProfile;
+  if (!profile) return 0;
+  return [profile.shortDescription, profile.industry, profile.category, profile.positioning].filter(
+    Boolean,
+  ).length;
+}
+
+function dimensionEvidenceCount(discovery: DiscoveryResultsDto): number {
+  return (
+    discovery.products.length +
+    discovery.audiences.length +
+    discovery.markets.length +
+    discovery.topics.length +
+    discovery.competitors.length +
+    discovery.trustSignals.length
+  );
+}
+
+const SOURCE_ORDER: CandidateSource[] = ["WebsiteCrawl", "LLMSuggested", "UserAdded"];
+
+function sourceLabel(source: CandidateSource): string {
+  if (source === "WebsiteCrawl") return "Website crawl";
+  if (source === "LLMSuggested") return "AI suggested";
+  return "User added";
+}
+
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function exportDiscoveryEvidence(
+  brandName: string,
+  discovery: DiscoveryResultsDto,
+  rows: DiscoveryEvidenceRow[],
+) {
+  const payload = {
+    packageType: "brand-discovery-evidence",
+    exportedAt: new Date().toISOString(),
+    brandId: discovery.brandId,
+    brandName,
+    status: discovery.status,
+    summary: {
+      identityFields: identityEvidenceCount(discovery),
+      dimensionItems: dimensionEvidenceCount(discovery),
+      sources: rows.map((row) => ({
+        source: row.source,
+        label: sourceLabel(row.source),
+        items: row.count,
+        averageConfidence: row.averageConfidence,
+      })),
+    },
+    brandProfile: discovery.brandProfile,
+    dimensions: {
+      aliases: discovery.aliases,
+      products: discovery.products,
+      audiences: discovery.audiences,
+      markets: discovery.markets,
+      topics: discovery.topics,
+      competitors: discovery.competitors,
+      trustSignals: discovery.trustSignals,
+    },
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `brand-discovery-evidence-${discovery.brandId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function formatDialogError(error: unknown): string | null {

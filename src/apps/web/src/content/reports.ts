@@ -53,6 +53,13 @@ export const REPORTS_COPY = {
       byCompetitor: "By Competitor",
     },
     viewClaims: "Review factual claims",
+    actions: {
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{trackerName} scan was added to the report queue.",
+      exportNotice: "{trackerName} scan results package exported.",
+    },
     summary: {
       scanStatus: "Scan status",
       analysisStatus: "Analysis status",
@@ -229,6 +236,11 @@ export const REPORTS_COPY = {
   overview: {
     title: "Workspace Overview",
     subtitle: "Across all your tracked brands.",
+    actions: {
+      viewRecommendations: "View recommendations",
+      createReport: "Create report",
+      reportCreated: "Overview report package created from {count} AI answers.",
+    },
     error: {
       title: "Couldn't load the overview",
       description: "Something went wrong fetching the workspace overview.",
@@ -359,8 +371,10 @@ export const REPORTS_COPY = {
         "Recent claims the AI asserted about a tracked brand. Verify against your source of truth.",
       noData: "No factual claims extracted in this window.",
       statusPending: "Pending",
+      statusNeedsContext: "Needs context",
       statusVerified: "Verified",
       statusDisputed: "Disputed",
+      statusIgnored: "Ignored",
       verdictGroupLabel: "Review verdict",
       verdictError: "Save failed — try again.",
     },
@@ -454,6 +468,7 @@ export const REPORTS_COPY = {
     actions: {
       viewDetails: "View details",
       openEvidence: "Open evidence",
+      exportScanLog: "Export scan log",
       rerun: "Rerun",
       rerunQueued: "Rerun queued",
       addToReport: "Add to report",
@@ -461,6 +476,7 @@ export const REPORTS_COPY = {
       openSummary: "Open summary",
       rerunNotice: "{scan} was queued for rerun.",
       reportNotice: "{scan} was added to the scan report.",
+      exportNotice: "Scan log exported for {scan}.",
     },
     drawer: {
       close: "Close scan summary",
@@ -533,6 +549,22 @@ export const REPORTS_COPY = {
         trackCompetitor: "Track competitor",
         trackedCompetitor: "Tracked",
       },
+      leads: {
+        title: "Where competitors lead",
+        description:
+          "Highest-priority competitor gaps where another entity is ahead of a tracked brand.",
+        empty: "No competitor leads in the current scope.",
+        beating: "Ahead of {brand}",
+        brandValue: "You",
+        competitorValue: "Competitor",
+        gap: "Gap",
+        addToReport: "Add to report",
+        addedToReport: "Added to report",
+        createPlan: "Create action plan",
+        planCreated: "Plan created",
+        reportNotice: "{competitor} lead was added to the competitor report.",
+        planNotice: "Action plan created for {competitor}.",
+      },
       drawer: {
         title: "Entity details",
         close: "Close entity details",
@@ -600,6 +632,26 @@ export const REPORTS_COPY = {
       notFound: "Topic data not found for this scan.",
     },
     workspace: {
+      competitiveRisks: {
+        title: "Competitive risk topics",
+        description:
+          "Topics where tracked-brand visibility is absent or contested and should be recovered first.",
+        headers: {
+          topic: "Topic",
+          yourRate: "Your mention rate",
+          gap: "Visibility gap",
+          risk: "Risk",
+          action: "Recommended action",
+          workflow: "Workflow",
+        },
+        missedQuestions: "{count} missed AI questions",
+        addToReport: "Add to report",
+        addedToReport: "Added to report",
+        createPlan: "Create recovery plan",
+        planCreated: "Plan created",
+        reportNotice: "{topic} was added to the competitive topic report.",
+        planNotice: "Recovery plan created for {topic}.",
+      },
       opportunities: {
         title: "Content opportunities",
         description: "Suggested content improvements based on topic gaps and AI answer visibility.",
@@ -639,8 +691,10 @@ export const REPORTS_COPY = {
     statusLabels: {
       All: "All",
       Pending: "Pending review",
+      NeedsContext: "Needs context",
       Verified: "Verified",
       Disputed: "Disputed",
+      Ignored: "Ignored",
     } as Record<string, string>,
     verifiabilityLabels: {
       Verifiable: "Verifiable",
@@ -814,8 +868,10 @@ export const REPORTS_COPY = {
     },
     statuses: {
       Pending: "Pending review",
+      NeedsContext: "Needs context",
       Verified: "Verified true",
       Disputed: "Disputed",
+      Ignored: "Ignored",
     } as Record<string, string>,
     drawer: {
       title: "Claim review",
@@ -828,7 +884,15 @@ export const REPORTS_COPY = {
       close: "Close claim review",
       markVerified: "Mark verified",
       markDisputed: "Mark disputed",
+      markNeedsContext: "Needs context",
+      markIgnored: "Ignore",
       resetPending: "Reset to pending",
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      createRecommendation: "Create recommendation",
+      recommendationCreated: "Recommendation created",
+      reportNotice: "Added to claims report: {claim}",
+      recommendationNotice: "Recommendation created: {claim}",
       saveError: "Save failed — try again.",
     },
   },
@@ -842,6 +906,8 @@ export const REPORTS_COPY = {
       close: "Close recommendation",
       addToReport: "Add to report",
       addedToReport: "Added to report",
+      createBrief: "Create brief",
+      briefCreated: "Brief created",
       markPlanned: "Mark as planned",
       markDone: "Mark done",
       reopen: "Reopen",
@@ -897,6 +963,7 @@ export const REPORTS_COPY = {
       status: "Status",
       impact: "Impact",
       effort: "Effort",
+      briefNotice: "Implementation brief created for {title}.",
       reportNotice: "{title} was added to the recommendations report.",
       reportCreated: "Recommendations report created with {count} actions.",
     },

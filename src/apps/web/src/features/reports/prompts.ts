@@ -7,6 +7,11 @@ export type QuestionAttentionAction =
   | "Improve answer coverage"
   | "Close visibility gap";
 
+export interface VisibilityDistributionBucket {
+  label: string;
+  value: number;
+}
+
 export interface QuestionAttentionItem {
   promptId: string;
   text: string;
@@ -22,6 +27,16 @@ export const QUESTION_STATUS_ORDER: readonly QuestionStatus[] = [
   "Needs attention",
   "Not visible",
   "Brand visible",
+];
+
+// Product visibility buckets from the AI Questions spec. Null visibility
+// means no in-window answers and is excluded from the distribution.
+const VISIBILITY_BUCKETS: ReadonlyArray<{ label: string; minExclusive: number; max: number }> = [
+  { label: "Not visible", minExclusive: -1, max: 0 },
+  { label: "Weak", minExclusive: 0, max: 0.25 },
+  { label: "Moderate", minExclusive: 0.25, max: 0.5 },
+  { label: "Strong", minExclusive: 0.5, max: 0.75 },
+  { label: "Dominant", minExclusive: 0.75, max: 1 },
 ];
 
 export function deriveQuestionStatus(row: WorkspacePromptRowDto): QuestionStatus {
@@ -52,6 +67,20 @@ export function countQuestionsByStatus(
     counts[status] += 1;
   }
   return counts;
+}
+
+export function deriveVisibilityDistribution(
+  prompts: readonly WorkspacePromptRowDto[],
+): VisibilityDistributionBucket[] {
+  return VISIBILITY_BUCKETS.map((bucket) => ({
+    label: bucket.label,
+    value: prompts.filter(
+      (prompt) =>
+        prompt.visibilityRate != null &&
+        prompt.visibilityRate > bucket.minExclusive &&
+        prompt.visibilityRate <= bucket.max,
+    ).length,
+  }));
 }
 
 export function deriveQuestionAttentionItems(

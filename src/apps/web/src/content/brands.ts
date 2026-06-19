@@ -15,6 +15,14 @@ export const BRANDS_COPY = {
     description: "Manage brand profiles and the trackers attached to each brand.",
     addBrand: "Add Brand",
     empty: "No brands yet. Add your first brand to get started.",
+    emptyFiltered: "No brands match the current search or status filter.",
+    filters: {
+      searchLabel: "Search brands",
+      searchPlaceholder: "Search brand, website, or tracker",
+      allStatuses: "All statuses",
+      noDiscovery: "No discovery",
+      clear: "Clear filters",
+    },
     summary: {
       brands: "Brands",
       brandsHelper: "Configured brand profiles.",
@@ -47,6 +55,11 @@ export const BRANDS_COPY = {
       addBrand: "Add brand",
       continueDiscovery: "Continue discovery",
       openProfile: "Open profile",
+    },
+    filters: {
+      allStatuses: "All statuses",
+      clear: "Clear status filter",
+      empty: "No brand discoveries match the selected status.",
     },
     summary: {
       brands: "Brands",
@@ -88,6 +101,19 @@ export const BRANDS_COPY = {
       category: "Category",
       positioning: "Positioning",
       websiteUrl: "Website",
+    },
+    evidence: {
+      title: "Discovery evidence",
+      description:
+        "Review the provenance behind the confirmed profile before it feeds trackers and reports.",
+      export: "Export evidence",
+      exported: "Discovery evidence package created.",
+      identity: "Identity fields",
+      dimensions: "Dimensions",
+      source: "Source",
+      items: "Items",
+      averageConfidence: "Avg. confidence",
+      empty: "No discovery evidence is available yet.",
     },
     empty: {
       noDiscovery:

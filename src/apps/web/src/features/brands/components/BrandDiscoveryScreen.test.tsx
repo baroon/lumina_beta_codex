@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrandDto } from "@/types/api";
 import { deriveBrandDiscoveryAttentionItems } from "@/features/brands/brands";
@@ -112,6 +113,26 @@ describe("BrandDiscoveryScreen", () => {
       "/brands/b2/discovery",
     );
     expect(within(attention).queryByText("Acme")).not.toBeInTheDocument();
+  });
+
+  it("filters discovery rows and attention cards by status", async () => {
+    render(<BrandDiscoveryScreen />);
+
+    await userEvent.click(screen.getByRole("button", { name: /AwaitingConfirmation 1/i }));
+
+    const table = screen.getByRole("table");
+    const attention = screen.getByRole("region", { name: "Discovery attention" });
+    expect(screen.getByRole("button", { name: /AwaitingConfirmation 1/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(table).getByText("Bold")).toBeInTheDocument();
+    expect(within(table).queryByText("Acme")).not.toBeInTheDocument();
+    expect(within(attention).getByText("Bold")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Clear status filter/i }));
+    expect(within(table).getByText("Acme")).toBeInTheDocument();
+    expect(within(table).getByText("Bold")).toBeInTheDocument();
   });
 
   it("derives prioritized brand discovery attention items", () => {

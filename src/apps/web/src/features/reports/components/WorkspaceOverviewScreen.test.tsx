@@ -535,6 +535,38 @@ describe("WorkspaceOverviewScreen", () => {
     );
   });
 
+  it("exports an overview report package from the page header", async () => {
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+    const objectUrlSpy = vi.fn(() => "blob:overview-report");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: objectUrlSpy,
+      revokeObjectURL: revokeUrlSpy,
+    });
+
+    try {
+      render(<WorkspaceOverviewScreen />);
+
+      expect(screen.getByRole("link", { name: /view recommendations/i })).toHaveAttribute(
+        "href",
+        "/recommendations",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /create report/i }));
+
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:overview-report");
+      expect(
+        screen.getByText("Overview report package created from 100 AI answers."),
+      ).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+      clickSpy.mockRestore();
+    }
+  });
+
   it("clicking a verdict button fires the mutation with claimId + new status", async () => {
     updateClaimReviewMutate = vi.fn();
     updateClaimReviewState = { isPending: false, isError: false };

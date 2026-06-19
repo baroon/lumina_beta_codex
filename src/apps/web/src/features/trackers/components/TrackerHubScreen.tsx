@@ -6,6 +6,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  Download,
   Eye,
   MessageSquare,
   Play,
@@ -33,6 +34,7 @@ import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { Tabs, type TabItem } from "@/components/molecules/Tabs";
+import { TRACKERS_COPY } from "@/content/trackers";
 import { ScanProgressPanel } from "@/features/trackers/components/ScanProgressPanel";
 import {
   useAddCustomPrompt,
@@ -50,10 +52,13 @@ import { buildSignalHighlights } from "@/lib/signalHighlights";
 import { cn } from "@/lib/utils";
 import type {
   EntityTrendSeriesDto,
+  PromptList,
   PromptDto,
   ScanListItemDto,
   ScanStatus,
+  TrackerLensesSetupDto,
   TrackerScheduleSetup,
+  WorkspaceOverviewDto,
   WorkspaceTopEntityRowDto,
 } from "@/types/api";
 
@@ -100,7 +105,14 @@ export function TrackerHubScreen({ brandId, trackerId }: TrackerHubScreenProps) 
       id: "overview",
       label: "Overview",
       icon: Eye,
-      children: <OverviewTab trackerId={trackerId} />,
+      children: (
+        <OverviewTab
+          trackerId={trackerId}
+          trackerName={tracker.name}
+          brandName={tracker.brandName}
+          schedule={schedule.data ?? null}
+        />
+      ),
     },
     {
       id: "schedule",
@@ -264,9 +276,23 @@ function ScanProgressDrawer({
 // compact summary a user lands on when they open the tracker hub.
 // ---------------------------------------------------------------------------
 
-function OverviewTab({ trackerId }: { trackerId: string }) {
+function OverviewTab({
+  trackerId,
+  trackerName,
+  brandName,
+  schedule,
+}: {
+  trackerId: string;
+  trackerName: string;
+  brandName: string;
+  schedule: TrackerScheduleSetup | null;
+}) {
   const selection = defaultDateRangeSelection();
   const overview = useTrackerOverview(selection, trackerId);
+  const prompts = usePrompts(trackerId);
+  const lenses = useTrackerLensesSetup(trackerId);
+  const { scans } = useTrackerScans(trackerId);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (overview.isLoading) {
     return (
@@ -307,9 +333,43 @@ function OverviewTab({ trackerId }: { trackerId: string }) {
     .sort((a, b) => (b.visibility ?? -1) - (a.visibility ?? -1))
     .slice(0, 6);
   const highlights = buildSignalHighlights(data);
+  const copy = TRACKERS_COPY.hub.overview;
+
+  function createReport() {
+    exportTrackerReportPackage({
+      trackerId,
+      trackerName,
+      brandName,
+      overview: data,
+      highlights,
+      schedule,
+      prompts: prompts.data ?? null,
+      lenses: lenses.data ?? null,
+      scans,
+    });
+    setNotice(copy.reportCreated.replace("{count}", data.hero.queries.toLocaleString()));
+  }
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {notice ? (
+          <div
+            role="status"
+            className="rounded-md border border-semantic-success-200 bg-semantic-success-50 px-3 py-2 text-xs text-semantic-success-700"
+          >
+            {notice}
+          </div>
+        ) : (
+          <span className="text-xs text-neutral-500">
+            {copy.scope.replace("{brandName}", brandName)}
+          </span>
+        )}
+        <Button variant="outline" size="sm" onClick={createReport}>
+          <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          {copy.createReport}
+        </Button>
+      </div>
       <HeroRowCompact hero={data.hero} previousHero={data.previousHero} />
       {highlights.length > 0 && (
         <Card>
@@ -832,6 +892,72 @@ function LensesTab({ trackerId, brandId }: { trackerId: string; brandId: string 
 // ---------------------------------------------------------------------------
 // Tiny shared field row
 // ---------------------------------------------------------------------------
+
+interface TrackerReportPackageInput {
+  trackerId: string;
+  trackerName: string;
+  brandName: string;
+  overview: WorkspaceOverviewDto;
+  highlights: readonly { id: string; text: string }[];
+  schedule: TrackerScheduleSetup | null;
+  prompts: PromptList | null;
+  lenses: TrackerLensesSetupDto | null;
+  scans: readonly ScanListItemDto[];
+}
+
+function exportTrackerReportPackage(input: TrackerReportPackageInput) {
+  const payload = {
+    packageType: "tracker-overview-report",
+    exportedAt: new Date().toISOString(),
+    tracker: {
+      trackerId: input.trackerId,
+      trackerName: input.trackerName,
+      brandName: input.brandName,
+    },
+    schedule: input.schedule
+      ? {
+          cadence: input.schedule.cadence,
+          timezone: input.schedule.timezone,
+          activePromptCount: input.schedule.activePromptCount,
+          platforms: input.schedule.platforms.filter((platform) =>
+            input.schedule?.selectedPlatformIds.includes(platform.id),
+          ),
+        }
+      : null,
+    overview: {
+      from: input.overview.from,
+      to: input.overview.to,
+      scanCount: input.overview.scanCount,
+      hero: input.overview.hero,
+      previousHero: input.overview.previousHero,
+      topEntities: input.overview.topEntities.slice(0, 10),
+      signalHighlights: input.highlights,
+    },
+    lenses: input.lenses
+      ? input.lenses.lenses
+          .filter((lens) => input.lenses?.selectedLensIds.includes(lens.id))
+          .map((lens) => ({ id: lens.id, code: lens.code, name: lens.name }))
+      : [],
+    aiQuestions: input.prompts
+      ? input.prompts.prompts.map((prompt) => ({
+          id: prompt.id,
+          text: prompt.text,
+          status: prompt.status,
+          lensName: prompt.lensName,
+          topics: prompt.topics,
+        }))
+      : [],
+    recentScans: input.scans.slice(0, 10),
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `tracker-report-${input.trackerId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

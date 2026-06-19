@@ -111,6 +111,7 @@ describe("LensDetailScreen", () => {
     expect(screen.getByText("Maintain current coverage")).toBeInTheDocument();
     expect(screen.getByText("Priority: Low")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View recommendations" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add to report" })).toBeEnabled();
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getByText("Acme")).toBeInTheDocument();
     expect(screen.getByText("Canva")).toBeInTheDocument();
@@ -123,6 +124,15 @@ describe("LensDetailScreen", () => {
 
     expect(screen.getByRole("button", { name: "Recommendations ready" })).toBeDisabled();
     expect(screen.getByText("Recommendations prepared for Discovery.")).toBeInTheDocument();
+  });
+
+  it("adds the current lens diagnosis to the local report queue", async () => {
+    render(<LensDetailScreen lensId="discovery" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+
+    expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("Discovery diagnosis added to the lens report.")).toBeInTheDocument();
   });
 
   it("exports the lens detail brief package", async () => {

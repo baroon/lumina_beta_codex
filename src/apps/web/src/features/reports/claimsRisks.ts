@@ -4,7 +4,7 @@ import type {
   WorkspaceOverviewDto,
 } from "@/types/api";
 
-export type ClaimStatus = "Pending" | "Verified" | "Disputed";
+export type ClaimStatus = "Pending" | "Verified" | "Disputed" | "NeedsContext" | "Ignored";
 export type RiskSeverity = "High" | "Medium" | "Low";
 
 export function deriveClaimsRisksSummary(overview: WorkspaceOverviewDto | undefined) {
@@ -17,7 +17,9 @@ export function deriveClaimsRisksSummaryFromRows(
   claims: readonly WorkspaceFactualClaimDto[],
   risks: readonly WorkspaceBrandRiskFlagDto[],
 ) {
-  const claimsToReview = claims.filter((claim) => claim.reviewStatus === "Pending").length;
+  const claimsToReview = claims.filter(
+    (claim) => claim.reviewStatus === "Pending" || claim.reviewStatus === "NeedsContext",
+  ).length;
   const disputedClaims = claims.filter((claim) => claim.reviewStatus === "Disputed").length;
   const highSeverity = risks.filter((risk) => risk.severity === "High").length;
 
@@ -60,6 +62,8 @@ export function countClaimsByStatus(
     Pending: claims.filter((claim) => claim.reviewStatus === "Pending").length,
     Verified: claims.filter((claim) => claim.reviewStatus === "Verified").length,
     Disputed: claims.filter((claim) => claim.reviewStatus === "Disputed").length,
+    NeedsContext: claims.filter((claim) => claim.reviewStatus === "NeedsContext").length,
+    Ignored: claims.filter((claim) => claim.reviewStatus === "Ignored").length,
   };
 }
 
@@ -84,6 +88,8 @@ export function countClaimsByType(
 
 export function deriveClaimRecommendedAction(claim: WorkspaceFactualClaimDto): string {
   if (claim.reviewStatus === "Disputed") return "Correct or add context";
+  if (claim.reviewStatus === "NeedsContext") return "Add context";
+  if (claim.reviewStatus === "Ignored") return "Ignored";
   if (claim.reviewStatus === "Verified") return "Monitor";
   if (claim.verifiability === "Verifiable") return "Verify against source";
   if (claim.verifiability === "Subjective") return "Needs context";
@@ -102,6 +108,8 @@ export function deriveReviewWorkflowClaims(
 
 function claimWorkflowPriority(claim: WorkspaceFactualClaimDto): number {
   if (claim.reviewStatus === "Disputed") return 0;
-  if (claim.reviewStatus === "Pending") return 1;
-  return 2;
+  if (claim.reviewStatus === "NeedsContext") return 1;
+  if (claim.reviewStatus === "Pending") return 2;
+  if (claim.reviewStatus === "Verified") return 3;
+  return 4;
 }

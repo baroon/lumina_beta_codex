@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSettingsSummary } from "@/features/settings/types";
-import { deriveWorkspaceReadiness } from "@/features/settings/settings";
+import { deriveWorkspaceLimits, deriveWorkspaceReadiness } from "@/features/settings/settings";
 
 let settingsState: {
   summary: WorkspaceSettingsSummary;
@@ -37,16 +37,20 @@ describe("WorkspaceSettingsScreen", () => {
     render(<WorkspaceSettingsScreen />);
 
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeInTheDocument();
-    expect(screen.getByText("Brands")).toBeInTheDocument();
-    expect(screen.getByText("Trackers")).toBeInTheDocument();
-    expect(screen.getByText("Active trackers")).toBeInTheDocument();
-    expect(screen.getByText("Completed scans")).toBeInTheDocument();
+    expect(screen.getAllByText("Brands").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Trackers").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Active trackers").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Completed scans").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Workspace profile")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Workspace readiness" })).toBeInTheDocument();
     expect(screen.getByText("Brand context")).toBeInTheDocument();
     expect(screen.getByText("Evidence base")).toBeInTheDocument();
     expect(screen.getAllByText("Team access").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Notifications")).toBeInTheDocument();
+    expect(screen.getByText("Plan and limits")).toBeInTheDocument();
+    expect(screen.getByText("3 of 10 used")).toBeInTheDocument();
+    expect(screen.getByText("5 of 25 used")).toBeInTheDocument();
+    expect(screen.getByText("22 of 500 used")).toBeInTheDocument();
     expect(screen.getByText("Integrations")).toBeInTheDocument();
   });
 
@@ -85,6 +89,30 @@ describe("WorkspaceSettingsScreen", () => {
         completedScanCount: 0,
       }).map((item) => item.status),
     ).toEqual(["Needs setup", "Needs setup", "Needs setup", "Planned"]);
+  });
+
+  it("derives workspace plan limits and flags near-limit usage", () => {
+    const limits = deriveWorkspaceLimits({
+      brandCount: 8,
+      trackerCount: 25,
+      activeTrackerCount: 4,
+      completedScanCount: 401,
+    });
+
+    expect(limits.map((item) => [item.label, item.used, item.limit])).toEqual([
+      ["Brands", 8, 10],
+      ["Trackers", 25, 25],
+      ["Active trackers", 4, 20],
+      ["Completed scans", 401, 500],
+      ["Seats", 1, 5],
+    ]);
+    expect(limits.map((item) => item.status)).toEqual([
+      "Near limit",
+      "Near limit",
+      "Available",
+      "Near limit",
+      "Planned",
+    ]);
   });
 
   it("renders the shared error state when settings summary fails", () => {

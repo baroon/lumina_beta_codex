@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, Search } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Badge } from "@/components/atoms/badge";
 import { Card, CardContent } from "@/components/atoms/card";
+import { Input } from "@/components/atoms/input";
 import { PageHeader } from "@/components/molecules/PageHeader";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
 import { BRANDS_COPY } from "@/content/brands";
@@ -11,6 +13,7 @@ import {
   type BrandTrackerInventoryItem,
 } from "@/features/brands/brands";
 import { useBrandTrackersList } from "@/features/brands/hooks/useBrandTrackersList";
+import { cn } from "@/lib/utils";
 import type { TrackerListItemDto } from "@/types/api";
 import { useBrandsList } from "../hooks/useBrands";
 
@@ -18,18 +21,30 @@ export function BrandList() {
   const navigate = useNavigate();
   const brands = useBrandsList();
   const trackers = useBrandTrackersList();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   if (brands.isLoading || trackers.isLoading) return <LoadingPage />;
 
   const items = brands.data ?? [];
   const trackerRows = trackers.data ?? [];
   const inventory = deriveBrandTrackerInventory(items, trackerRows);
+  const statusCounts = countBrandStatuses(inventory);
+  const statusOptions = Array.from(statusCounts.keys()).sort();
+  const filteredInventory = filterBrandInventory(
+    inventory,
+    searchQuery,
+    statusFilter,
+    BRANDS_COPY.list.filters.noDiscovery,
+  );
+  const filteredTrackerRows = filteredInventory.flatMap((item) => item.trackers);
   const summary = {
-    brands: items.length,
-    trackers: trackerRows.length,
-    activeTrackers: trackerRows.filter((tracker) => tracker.status === "Active").length,
-    scans: trackerRows.reduce((sum, tracker) => sum + tracker.scanCount, 0),
+    brands: filteredInventory.length,
+    trackers: filteredTrackerRows.length,
+    activeTrackers: filteredTrackerRows.filter((tracker) => tracker.status === "Active").length,
+    scans: filteredTrackerRows.reduce((sum, tracker) => sum + tracker.scanCount, 0),
   };
+  const filtersActive = searchQuery.trim().length > 0 || statusFilter !== null;
 
   return (
     <div className="mx-auto max-w-6xl p-4">
@@ -46,6 +61,50 @@ export function BrandList() {
         </div>
       ) : (
         <div className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+            <div className="relative min-w-60 flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-400"
+                aria-hidden="true"
+              />
+              <Input
+                aria-label={BRANDS_COPY.list.filters.searchLabel}
+                inputSize="sm"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={BRANDS_COPY.list.filters.searchPlaceholder}
+                className="pl-8"
+              />
+            </div>
+            <BrandStatusFilterPill
+              label={BRANDS_COPY.list.filters.allStatuses}
+              count={inventory.length}
+              active={statusFilter === null}
+              onClick={() => setStatusFilter(null)}
+            />
+            {statusOptions.map((status) => (
+              <BrandStatusFilterPill
+                key={status}
+                label={status}
+                count={statusCounts.get(status) ?? 0}
+                active={statusFilter === status}
+                onClick={() => setStatusFilter((current) => (current === status ? null : status))}
+              />
+            ))}
+            {filtersActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter(null);
+                }}
+              >
+                {BRANDS_COPY.list.filters.clear}
+              </Button>
+            )}
+          </div>
+
           <div className="grid gap-3 md:grid-cols-4">
             <SummaryTile
               label={BRANDS_COPY.list.summary.brands}
@@ -80,17 +139,54 @@ export function BrandList() {
                     {BRANDS_COPY.list.inventory.description}
                   </p>
                 </div>
-                <div className="mt-4 divide-y divide-neutral-100 rounded-md border border-neutral-200">
-                  {inventory.map((item) => (
-                    <BrandInventoryRow key={item.brand.id} item={item} />
-                  ))}
-                </div>
+                {filteredInventory.length > 0 ? (
+                  <div className="mt-4 divide-y divide-neutral-100 rounded-md border border-neutral-200">
+                    {filteredInventory.map((item) => (
+                      <BrandInventoryRow key={item.brand.id} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-md border border-dashed border-neutral-300 px-3 py-8 text-center text-sm text-neutral-500">
+                    {BRANDS_COPY.list.emptyFiltered}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </section>
         </div>
       )}
     </div>
+  );
+}
+
+function BrandStatusFilterPill({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition",
+        active
+          ? "border-primary-300 bg-primary-50 text-primary-800"
+          : "border-neutral-200 bg-white text-neutral-600 hover:border-primary-200 hover:text-primary-700",
+      )}
+    >
+      <span>{label}</span>
+      <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-neutral-500">
+        {count.toLocaleString()}
+      </span>
+    </button>
   );
 }
 
@@ -204,6 +300,45 @@ function Metric({ label, value }: { label: string; value: string }) {
       <div>{label}</div>
     </div>
   );
+}
+
+function countBrandStatuses(items: readonly BrandTrackerInventoryItem[]) {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const status = brandStatusLabel(item, BRANDS_COPY.list.filters.noDiscovery);
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function filterBrandInventory(
+  items: readonly BrandTrackerInventoryItem[],
+  query: string,
+  statusFilter: string | null,
+  noDiscoveryLabel: string,
+) {
+  const normalizedQuery = query.trim().toLowerCase();
+  return items.filter((item) => {
+    if (statusFilter !== null && brandStatusLabel(item, noDiscoveryLabel) !== statusFilter) {
+      return false;
+    }
+    if (!normalizedQuery) return true;
+    const searchable = [
+      item.brand.name,
+      item.brand.websiteUrl,
+      item.brand.latestDiscovery?.status ?? noDiscoveryLabel,
+      ...item.trackers.map((tracker) => tracker.name),
+      ...item.trackers.map((tracker) => tracker.status),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(normalizedQuery);
+  });
+}
+
+function brandStatusLabel(item: BrandTrackerInventoryItem, noDiscoveryLabel: string) {
+  return item.brand.latestDiscovery?.status ?? noDiscoveryLabel;
 }
 
 function formatShortDate(value: string) {

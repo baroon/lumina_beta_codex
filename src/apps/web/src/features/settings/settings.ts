@@ -3,6 +3,14 @@ import type { WorkspaceSettingsSummary } from "@/features/settings/types";
 export type WorkspaceReadinessStatus = "Ready" | "Needs setup" | "Planned";
 export type ProfileReadinessStatus = "Ready" | "Managed" | "Planned";
 
+export interface WorkspaceLimitItem {
+  id: "brands" | "trackers" | "active-trackers" | "completed-scans" | "seats";
+  label: string;
+  used: number;
+  limit: number;
+  status: "Available" | "Near limit" | "Planned";
+}
+
 export interface WorkspaceReadinessItem {
   id: "brands" | "trackers" | "evidence" | "team";
   label: string;
@@ -15,6 +23,46 @@ export interface ProfileReadinessItem {
   label: string;
   status: ProfileReadinessStatus;
   detail: string;
+}
+
+export function deriveWorkspaceLimits(summary: WorkspaceSettingsSummary): WorkspaceLimitItem[] {
+  return [
+    {
+      id: "brands",
+      label: "Brands",
+      used: summary.brandCount,
+      limit: 10,
+      status: limitStatus(summary.brandCount, 10),
+    },
+    {
+      id: "trackers",
+      label: "Trackers",
+      used: summary.trackerCount,
+      limit: 25,
+      status: limitStatus(summary.trackerCount, 25),
+    },
+    {
+      id: "active-trackers",
+      label: "Active trackers",
+      used: summary.activeTrackerCount,
+      limit: 20,
+      status: limitStatus(summary.activeTrackerCount, 20),
+    },
+    {
+      id: "completed-scans",
+      label: "Completed scans",
+      used: summary.completedScanCount,
+      limit: 500,
+      status: limitStatus(summary.completedScanCount, 500),
+    },
+    {
+      id: "seats",
+      label: "Seats",
+      used: 1,
+      limit: 5,
+      status: "Planned",
+    },
+  ];
 }
 
 export function deriveWorkspaceReadiness(
@@ -90,4 +138,8 @@ export function deriveProfileReadiness(): ProfileReadinessItem[] {
       detail: "Password, MFA, and sessions are managed by the sign-in provider.",
     },
   ];
+}
+
+function limitStatus(used: number, limit: number): WorkspaceLimitItem["status"] {
+  return used / limit >= 0.8 ? "Near limit" : "Available";
 }

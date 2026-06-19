@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bot, Calendar, CalendarClock, Globe, MessageSquare, Sliders, Trash2 } from "lucide-react";
+import {
+  Bot,
+  Calendar,
+  CalendarClock,
+  FileText,
+  Globe,
+  Mail,
+  MessageSquare,
+  Sliders,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -131,6 +142,8 @@ export function TrackerEditScreen({ brandId, trackerId }: TrackerEditScreenProps
           </CardContent>
         </Card>
       )}
+
+      {data && <ReportSettingsSection cadence={data.cadence} />}
 
       <PromptsSection trackerId={trackerId} brandId={brandId} />
 
@@ -380,6 +393,79 @@ function ScheduleSection({ trackerId, setup }: ScheduleSectionProps) {
 // ---------------------------------------------------------------------------
 // AI Questions section — read-only summary, defers actual edits
 // ---------------------------------------------------------------------------
+
+function ReportSettingsSection({ cadence }: { cadence: string }) {
+  const [prepared, setPrepared] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const cadenceLabel = CADENCE_LABELS[cadence] ?? cadence;
+
+  function prepareReportDefaults() {
+    setPrepared(true);
+    setNotice(TRACKERS_COPY.schedule.reportNotice.replace("{cadence}", cadenceLabel));
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <SectionHeader icon={FileText} title={TRACKERS_COPY.schedule.reportDefaultsLabel} />
+            <p className="mt-1 text-xs text-neutral-500">
+              {TRACKERS_COPY.schedule.reportDefaultsDescription}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" disabled={prepared} onClick={prepareReportDefaults}>
+            {prepared
+              ? TRACKERS_COPY.schedule.reportPrepared
+              : TRACKERS_COPY.schedule.prepareReport}
+          </Button>
+        </div>
+
+        {notice && (
+          <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+            {notice}
+          </div>
+        )}
+
+        <div className="grid gap-2 text-sm sm:grid-cols-3">
+          <ReportDefaultItem
+            label={TRACKERS_COPY.schedule.reportFormatLabel}
+            value={TRACKERS_COPY.schedule.reportFormat}
+          />
+          <ReportDefaultItem
+            label={TRACKERS_COPY.schedule.reportCadenceLabel}
+            value={cadenceLabel}
+          />
+          <ReportDefaultItem
+            label={TRACKERS_COPY.schedule.reportRecipientsLabel}
+            value={TRACKERS_COPY.schedule.reportRecipients}
+            icon={Mail}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReportDefaultItem({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon?: LucideIcon;
+}) {
+  return (
+    <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+        {Icon && <Icon className="h-3.5 w-3.5" aria-hidden="true" />}
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-medium text-neutral-900">{value}</div>
+    </div>
+  );
+}
 
 function PromptsSection({ trackerId, brandId }: { trackerId: string; brandId: string }) {
   const prompts = usePrompts(trackerId);

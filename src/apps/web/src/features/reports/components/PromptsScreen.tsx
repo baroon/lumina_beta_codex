@@ -49,6 +49,7 @@ import {
   countQuestionsByStatus,
   deriveQuestionAttentionItems,
   deriveQuestionStatus,
+  deriveVisibilityDistribution,
   filterQuestionsByStatus,
   QUESTION_STATUS_ORDER,
   type QuestionAttentionItem,
@@ -87,16 +88,6 @@ const LENS_NAME_TO_CODE: Record<string, string> = Object.fromEntries(
 // the overview's ENTITY_PALETTE so the visual vocabulary across reports
 // stays consistent.
 const LENS_PALETTE = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#06b6d4", "#a855f7"];
-
-// Visibility-rate buckets, in ascending order. The "no data" bucket is
-// rendered last so it does not interrupt the gradient.
-const VISIBILITY_BUCKETS: ReadonlyArray<{ label: string; min: number; max: number }> = [
-  { label: "0–20%", min: 0, max: 0.2 },
-  { label: "20–40%", min: 0.2, max: 0.4 },
-  { label: "40–60%", min: 0.4, max: 0.6 },
-  { label: "60–80%", min: 0.6, max: 0.8 },
-  { label: "80–100%", min: 0.8, max: 1.0001 },
-];
 
 const EMPTY_GROUPS: readonly BrandedDimensionGroupDto[] = [];
 
@@ -848,12 +839,7 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
   }, [promptCountsByLensCode]);
 
   const histogramData: BarChartDatum[] = useMemo(() => {
-    return VISIBILITY_BUCKETS.map((b) => ({
-      label: b.label,
-      value: prompts.filter(
-        (p) => p.visibilityRate != null && p.visibilityRate >= b.min && p.visibilityRate < b.max,
-      ).length,
-    }));
+    return deriveVisibilityDistribution(prompts);
   }, [prompts]);
 
   return (
@@ -962,7 +948,7 @@ function TopSection({ prompts, totalCount, promptCountsByLensCode }: TopSectionP
         <CollapsibleCard
           icon={BarChart3}
           title="Visibility distribution"
-          tooltip="In-view AI questions bucketed by visibility rate. Counts only questions with at least one in-window answer."
+          tooltip="In-view AI questions grouped as not visible, weak, moderate, strong, or dominant based on brand visibility rate. Counts only questions with at least one in-window answer."
         >
           {prompts.length === 0 ? (
             <p className="text-sm text-neutral-500">No AI questions in scope.</p>

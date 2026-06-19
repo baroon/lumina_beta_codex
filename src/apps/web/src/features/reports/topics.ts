@@ -22,6 +22,17 @@ export interface TopicRecommendationPreview {
   steps: string[];
 }
 
+export interface CompetitiveTopicRiskRow {
+  id: string;
+  topicName: string;
+  ownershipRate: number;
+  gapRate: number;
+  missedPromptCount: number;
+  promptCount: number;
+  riskLevel: "High" | "Medium";
+  recommendedAction: TopicAction;
+}
+
 export function deriveTopicOpportunities(
   overview: WorkspaceOverviewDto | undefined,
 ): TopicOpportunityRow[] {
@@ -81,6 +92,30 @@ export function deriveContentOpportunityTopics(
       return a.rank - b.rank;
     })
     .slice(0, 4);
+}
+
+export function deriveCompetitiveTopicRisks(
+  rows: readonly TopicOpportunityRow[],
+): CompetitiveTopicRiskRow[] {
+  return rows
+    .filter((row) => row.band !== "Owned")
+    .sort((a, b) => {
+      if (b.missedPromptCount !== a.missedPromptCount) {
+        return b.missedPromptCount - a.missedPromptCount;
+      }
+      return a.rank - b.rank;
+    })
+    .slice(0, 5)
+    .map((row) => ({
+      id: row.id,
+      topicName: row.topicName,
+      ownershipRate: row.ownershipRate,
+      gapRate: 1 - row.ownershipRate,
+      missedPromptCount: row.missedPromptCount,
+      promptCount: row.promptCount,
+      riskLevel: row.band === "Gap" ? "High" : "Medium",
+      recommendedAction: row.action,
+    }));
 }
 
 export function deriveTopicRecommendationPreview(
