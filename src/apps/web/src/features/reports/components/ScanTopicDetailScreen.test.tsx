@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanTopicDetailDto } from "@/types/api";
@@ -94,6 +95,41 @@ describe("ScanTopicDetailScreen", () => {
     expect(screen.getByText("45.0%")).toBeInTheDocument(); // brand mention rate
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
     expect(screen.getByText("ASLA")).toBeInTheDocument();
+  });
+
+  it("queues the topic detail for reporting and exports an evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-topic-detail");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+
+    try {
+      render(<ScanTopicDetailScreen scanRunId="scan-1" topicId="t1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(
+        screen.getByText("Sustainable Design was added to the scan topic report."),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-topic-detail");
+      expect(
+        screen.getByText("Sustainable Design topic detail package exported."),
+      ).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
   });
 
   it("renders the section empty-states when by-platform and top-cited are empty", () => {

@@ -226,10 +226,15 @@ describe("LensesScreen", () => {
     expect(within(table).getByText("Discovery")).toBeInTheDocument();
   });
 
-  it("exports the filtered lens brief package", async () => {
+  it("queues and exports the filtered lens brief package", async () => {
     render(<LensesScreen />);
 
     await userEvent.click(screen.getByRole("button", { name: /sparse\s+2/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+
+    expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+    expect(screen.getByText("2 lenses were added to the lens report.")).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Export lens brief" }));
 
     expect(objectUrlSpy).toHaveBeenCalled();

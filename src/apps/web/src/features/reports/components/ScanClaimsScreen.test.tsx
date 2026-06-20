@@ -171,6 +171,52 @@ describe("ScanClaimsScreen", () => {
     expect(args.reviewStatus).toBe("Verified");
   });
 
+  it("queues visible claims for reporting and exports an evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-claims");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    hookState = {
+      isLoading: false,
+      isError: false,
+      data: {
+        scanRunId: "scan-1",
+        claims: [
+          claim({ id: "c1", reviewStatus: "Pending" }),
+          claim({ id: "c2", reviewStatus: "Disputed" }),
+        ],
+      },
+      refetch: vi.fn(),
+    };
+
+    try {
+      render(<ScanClaimsScreen scanRunId="scan-1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(
+        screen.getByText("2 factual claims were added to the scan report."),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-claims");
+      expect(
+        screen.getByText("Claim evidence package exported with 2 factual claims."),
+      ).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
+  });
+
   it("renders a server-error message on the row whose claimId matches the failure", () => {
     updateReviewState = {
       isPending: false,

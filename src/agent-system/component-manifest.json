@@ -1413,7 +1413,7 @@
             "lucide-react",
             "lenses"
           ],
-          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, primary metric badges, health status badges, lens-attention cards for sparse/no-evidence lenses, status filter pills with clear action, filtered empty state, and links into each lens detail route. Includes a v1 local export action that downloads the filtered lens brief as JSON and surfaces completion state."
+          "notes": "Data-backed /lenses page. Replaces the product scaffold with the six Visibility Lenses, summary tiles from workspace overview, per-lens mention counts from /api/overview/lens-counts, primary metric badges, health status badges, lens-attention cards for sparse/no-evidence lenses, status filter pills with clear action, filtered empty state, and links into each lens detail route. Includes v1 local report actions for adding the filtered lens set to the lens report queue and exporting the filtered lens brief as JSON with visible completion state."
         },
         {
           "name": "LensDetailScreen",
@@ -1548,6 +1548,7 @@
           "dependencies": [
             "PageHeader",
             "Card",
+            "Button",
             "Input",
             "Badge",
             "LoadingPage",
@@ -1561,7 +1562,7 @@
             "useWorkspacePrompts",
             "prompts"
           ],
-          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, Sentiment, and derived Status. Status strip includes KPI tiles, spec-named visibility distribution buckets (Not visible, Weak, Moderate, Strong, Dominant), a question attention queue for weak or unscanned AI questions, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, market, country, tracker, platforms, visibility, sentiment, mentions, activity, derived status, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
+          "notes": "Workspace-wide AI Questions surface at /ai-questions (legacy /prompts redirects). Lists active AI questions across selected trackers with quota badge, v1 local Add to report and Export package actions for the filtered AI question set, add-question dialog, search, date range, lens chips, and FiltersPopover dimensions for Topics, Products & Services, Markets, Audiences, Models, Sentiment, and derived Status. Status strip includes KPI tiles, spec-named visibility distribution buckets (Not visible, Weak, Moderate, Strong, Dominant), a question attention queue for weak or unscanned AI questions, and a compact questions-by-lens summary with count, mention rate, average position, and weak or missing visibility issues. Lens sections render tracked-question tables with AI question, topics, audience, market, country, tracker, platforms, visibility, sentiment, mentions, activity, derived status, inline edit/remove, and row-click PromptAnswerHistoryDrawer."
         },
         {
           "name": "ScanResultsScreen",
@@ -1591,6 +1592,7 @@
           "dependencies": [
             "Card",
             "Badge",
+            "Button",
             "PageHeader",
             "LoadingPage",
             "ErrorPage",
@@ -1609,10 +1611,11 @@
             "PageHeader",
             "LoadingPage",
             "ErrorPage",
+            "Button",
             "SourcesTable",
             "SourceCitationsDrawer"
           ],
-          "notes": "Phase 4 Slice 2 Source/Citation view at /scans/{id}/sources. Composes the SourcesTable (editable type dropdown + provenance icon) with the SourceCitationsDrawer drill-down. Wires user-correction mutation via useUpdateSourceClassification."
+          "notes": "Phase 4 Slice 2 Source/Citation view at /scans/{id}/sources. Composes the SourcesTable (editable type dropdown + provenance icon) with the SourceCitationsDrawer drill-down. Wires user-correction mutation via useUpdateSourceClassification. Includes v1 local report actions for adding cited sources to the scan report queue and exporting a scan-sources JSON evidence package with type labels and follow-up routes."
         },
         {
           "name": "SourcesTable",
@@ -1710,8 +1713,15 @@
           "path": "src/features/reports/components/ScanTopicsScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage", "TopicsTable"],
-          "notes": "Phase 4 Slice 3 Topic view list at /scans/{id}/topics. Pivots Topic-scope ScanMetric rows into per-topic table; row click navigates to topic detail route."
+          "dependencies": [
+            "Card",
+            "Button",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "TopicsTable"
+          ],
+          "notes": "Phase 4 Slice 3 Topic view list at /scans/{id}/topics. Pivots Topic-scope ScanMetric rows into per-topic table; row click navigates to topic detail route. Includes v1 local report actions for adding scan topics to the scan report queue and exporting a scan-topics JSON evidence package with detail follow-up routes."
         },
         {
           "name": "ScanClaimsScreen",
@@ -1737,7 +1747,7 @@
           "path": "src/features/reports/components/ScanTopicDetailScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Badge", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
+          "dependencies": ["Badge", "Button", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
           "notes": "Phase 4 Slice 3 Topic detail at /scans/{id}/topics/{topicId}. Three sections: topic metrics card (8 metric tiles + sentiment badges), per-platform breakdown table (runtime Topic×Platform sub-aggregation from backend), top cited sources within the topic."
         },
         {
@@ -1746,8 +1756,15 @@
           "path": "src/features/reports/components/ScanCompetitorsScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage", "CompetitorsTable"],
-          "notes": "Phase 4 Slice 4 Competitor view list at /scans/{id}/competitors. Pivots Competitor-scope ScanMetric rows into per-competitor table; row click drills into detail."
+          "dependencies": [
+            "Card",
+            "Button",
+            "PageHeader",
+            "LoadingPage",
+            "ErrorPage",
+            "CompetitorsTable"
+          ],
+          "notes": "Phase 4 Slice 4 Competitor view list at /scans/{id}/competitors. Pivots Competitor-scope ScanMetric rows into per-competitor table; row click drills into detail. Includes v1 local report actions for adding the competitor set to the scan report queue and exporting a scan-competitors JSON evidence package with detail follow-up routes."
         },
         {
           "name": "CompetitorsTable",
@@ -1764,8 +1781,8 @@
           "path": "src/features/reports/components/ScanCompetitorDetailScreen.tsx",
           "status": "implemented",
           "variants": [],
-          "dependencies": ["Card", "PageHeader", "LoadingPage", "ErrorPage"],
-          "notes": "Phase 4 Slice 4 Competitor detail at /scans/{id}/competitors/{competitorId}. Metric tile section (mentions, rec rate) plus a table of sources cited on answers that mentioned this competitor (citations joined with answers carrying the competitor mention)."
+          "dependencies": ["Button", "Card", "PageHeader", "LoadingPage", "ErrorPage"],
+          "notes": "Phase 4 Slice 4 Competitor detail at /scans/{id}/competitors/{competitorId}. Metric tile section (mentions, rec rate) plus a table of sources cited on answers that mentioned this competitor (citations joined with answers carrying the competitor mention). Includes v1 local report actions for adding the competitor detail to the scan competitor report and exporting a single-competitor JSON evidence package."
         },
         {
           "name": "WorkspaceOverviewScreen",

@@ -375,6 +375,53 @@ describe("PromptsScreen", () => {
     expect(within(table).getByText("Brand visible")).toBeInTheDocument();
   });
 
+  it("queues filtered AI questions for reporting and exports the package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:ai-questions-report");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    promptsState = {
+      data: payload([
+        row({ promptId: "a", text: "Best resume builder?", lensName: "Discovery" }),
+        row({
+          promptId: "b",
+          text: "How do I write a CV?",
+          lensName: "Comparison",
+          visibilityRate: 0.2,
+        }),
+      ]),
+      isLoading: false,
+      isError: false,
+    };
+
+    try {
+      render(<PromptsScreen />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(
+        screen.getByText("2 AI questions were added to the prompts report."),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:ai-questions-report");
+      expect(
+        screen.getByText("AI question package exported with 2 questions."),
+      ).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
+  });
+
   it("renders analytical columns (visibility, sentiment, mentions)", () => {
     promptsState = {
       data: payload([

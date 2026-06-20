@@ -435,10 +435,21 @@ const meta: Meta<typeof WorkspaceOverviewScreen> = {
   tags: ["autodocs"],
   decorators: [
     (Story) => {
-      const queryClient = new QueryClient();
-      queryClient.setQueryData(["workspace-overview", 30], overviewFixture);
-      queryClient.setQueryData(["workspace-competitive", 30], competitiveFixture);
-      queryClient.setQueryData(["workspace-depth", 30], depthFixture);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+      });
+      queryClient.setQueryData(
+        ["workspace-overview", "preset:30", "", "", "", "", "", "", "", ""],
+        overviewFixture,
+      );
+      queryClient.setQueryData(
+        ["workspace-competitive", "preset:30", "", "", "", "", "", "", "", ""],
+        competitiveFixture,
+      );
+      queryClient.setQueryData(
+        ["workspace-depth", "preset:30", "", "", "", "", "", "", "", ""],
+        depthFixture,
+      );
       return (
         <QueryClientProvider client={queryClient}>
           <Story />
@@ -456,30 +467,48 @@ export const Default: Story = {};
 export const EmptyWorkspace: Story = {
   decorators: [
     (Story) => {
-      const queryClient = new QueryClient();
-      queryClient.setQueryData(["workspace-overview", 30], {
-        ...overviewFixture,
-        trackedBrands: [],
-        competitors: [],
-        scanCount: 0,
-        hero: {
-          queries: 0,
-          mentions: 0,
-          citations: 0,
-          brandMentionRate: null,
-          brandAbsenceRate: null,
-          brandFirstMentionRate: null,
-        },
-        previousHero: null,
-        series: [],
-        topEntities: [],
-        topBrandAttributes: [],
-        coMentions: [],
-        topBrandRiskFlags: [],
-        topBrandComparisons: [],
-        topicOwnership: [],
-        recentFactualClaims: [],
-      } satisfies WorkspaceOverviewDto);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+      });
+      queryClient.setQueryData(
+        ["workspace-overview", "preset:30", "", "", "", "", "", "", "", ""],
+        {
+          ...overviewFixture,
+          trackedBrands: [],
+          competitors: [],
+          scanCount: 0,
+          hero: {
+            queries: 0,
+            mentions: 0,
+            citations: 0,
+            brandMentionRate: null,
+            brandAbsenceRate: null,
+            brandFirstMentionRate: null,
+          },
+          previousHero: null,
+          series: [],
+          topEntities: [],
+          topBrandAttributes: [],
+          coMentions: [],
+          topBrandRiskFlags: [],
+          topBrandComparisons: [],
+          topicOwnership: [],
+          recentFactualClaims: [],
+        } satisfies WorkspaceOverviewDto,
+      );
+      queryClient.setQueryData(
+        ["workspace-competitive", "preset:30", "", "", "", "", "", "", "", ""],
+        {
+          ...competitiveFixture,
+          mentionDistribution: [],
+          competitiveGaps: [],
+          recommendationRates: [],
+        } satisfies WorkspaceCompetitiveDto,
+      );
+      queryClient.setQueryData(
+        ["workspace-depth", "preset:30", "", "", "", "", "", "", "", ""],
+        depthFixture,
+      );
       return (
         <QueryClientProvider client={queryClient}>
           <Story />

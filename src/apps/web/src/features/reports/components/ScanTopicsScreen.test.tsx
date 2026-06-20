@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanTopicsDto } from "@/types/api";
@@ -81,5 +82,38 @@ describe("ScanTopicsScreen", () => {
     render(<ScanTopicsScreen scanRunId="scan-1" />);
     expect(screen.getByText("Sustainability")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to scan results/i })).toBeInTheDocument();
+  });
+
+  it("queues topics for reporting and exports an evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-topics");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+
+    try {
+      render(<ScanTopicsScreen scanRunId="scan-1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(screen.getByText("1 scan topics were added to the scan report.")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-topics");
+      expect(
+        screen.getByText("Topic evidence package exported with 1 scan topics."),
+      ).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
   });
 });

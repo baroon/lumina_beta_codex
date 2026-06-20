@@ -57,9 +57,12 @@ export const LENSES_COPY = {
       "Analyze AI visibility through the six business-intent lenses that shape discovery, buying decisions, comparisons, trust, citations, and content gaps.",
     actions: {
       open: "Open lens",
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
       export: "Export lens brief",
     },
     notice: {
+      report: "{count} lenses were added to the lens report.",
       exported: "Lens brief exported with {count} lenses.",
     },
     controls: {

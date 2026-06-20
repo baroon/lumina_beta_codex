@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Globe } from "lucide-react";
+import { ArrowLeft, Download, FilePlus, Globe } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
+import { Button } from "@/components/atoms/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/atoms/card";
 import { ErrorPage } from "@/components/molecules/ErrorPage";
 import { LoadingPage } from "@/components/molecules/LoadingPage";
@@ -9,7 +11,11 @@ import { REPORTS_COPY } from "@/content/reports";
 import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
 import { useScanCompetitor } from "@/features/reports/hooks/useScanCompetitor";
 import { cn } from "@/lib/utils";
-import type { CompetitorMentionSourceDto, CompetitorMetricsDto } from "@/types/api";
+import type {
+  CompetitorMentionSourceDto,
+  CompetitorMetricsDto,
+  ScanCompetitorDetailDto,
+} from "@/types/api";
 
 interface ScanCompetitorDetailScreenProps {
   scanRunId: string;
@@ -27,6 +33,8 @@ export function ScanCompetitorDetailScreen({
   competitorId,
 }: ScanCompetitorDetailScreenProps) {
   const { data, isLoading, isError, error, refetch } = useScanCompetitor(scanRunId, competitorId);
+  const [reportQueued, setReportQueued] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const copy = REPORTS_COPY.competitors;
 
   if (isLoading) return <LoadingPage />;
@@ -54,7 +62,37 @@ export function ScanCompetitorDetailScreen({
   return (
     <div className="space-y-6">
       <ScanBreadcrumb scanRunId={scanRunId} currentLabel={data.name} />
-      <PageHeader title={data.name} description={data.domain ?? copy.subtitle} />
+      <PageHeader title={data.name} description={data.domain ?? copy.subtitle}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reportQueued}
+          onClick={() => {
+            setReportQueued(true);
+            setNotice(copy.detail.reportNotice.replace("{competitor}", data.name));
+          }}
+        >
+          <FilePlus className="h-3.5 w-3.5" aria-hidden />
+          {reportQueued ? copy.detail.addedToReport : copy.detail.addToReport}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            exportScanCompetitorDetailPackage(data);
+            setNotice(copy.detail.exportNotice.replace("{competitor}", data.name));
+          }}
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {copy.detail.exportPackage}
+        </Button>
+      </PageHeader>
+
+      {notice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {notice}
+        </div>
+      )}
 
       <Link
         to="/scans/$scanRunId/competitors"
@@ -69,6 +107,36 @@ export function ScanCompetitorDetailScreen({
       <SourcesSection sources={data.sourcesMentioningCompetitor} />
     </div>
   );
+}
+
+function exportScanCompetitorDetailPackage(data: ScanCompetitorDetailDto) {
+  const payload = {
+    packageType: "scan-competitor-detail-report",
+    createdAt: new Date().toISOString(),
+    scanRunId: data.scanRunId,
+    competitorId: data.competitorId,
+    name: data.name,
+    domain: data.domain,
+    metrics: data.metrics,
+    sourcesMentioningCompetitor: data.sourcesMentioningCompetitor,
+    followUps: [
+      {
+        label: REPORTS_COPY.competitors.backToResults,
+        route: `/scans/${data.scanRunId}/results`,
+      },
+      {
+        label: REPORTS_COPY.competitors.title,
+        route: `/scans/${data.scanRunId}/competitors`,
+      },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `scan-competitor-${data.competitorId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 // ---------------------------------------------------------------------------

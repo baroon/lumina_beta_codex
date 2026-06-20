@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanSourcesDto, SourceTypeReferenceDto } from "@/types/api";
@@ -129,5 +130,42 @@ describe("ScanSourcesScreen", () => {
     render(<ScanSourcesScreen scanRunId="scan-1" />);
     expect(screen.getByText("ASLA")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to scan results/i })).toBeInTheDocument();
+  });
+
+  it("queues cited sources for reporting and exports an evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-sources");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    sourcesState = { isLoading: false, isError: false, data: sourcesFixture, refetch: vi.fn() };
+    typesState = { isLoading: false, data: typesFixture };
+    mutationState = { mutate: vi.fn(), isPending: false };
+
+    try {
+      render(<ScanSourcesScreen scanRunId="scan-1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(
+        screen.getByText("1 cited sources were added to the scan report."),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-sources");
+      expect(
+        screen.getByText("Source evidence package exported with 1 cited sources."),
+      ).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
   });
 });

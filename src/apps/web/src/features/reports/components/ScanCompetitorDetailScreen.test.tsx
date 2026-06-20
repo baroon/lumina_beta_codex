@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { ApiError } from "@/api/apiClient";
 import type { ScanCompetitorDetailDto } from "@/types/api";
@@ -87,6 +88,37 @@ describe("ScanCompetitorDetailScreen", () => {
     expect(screen.getByText("40.0%")).toBeInTheDocument(); // mention rate
     expect(screen.getByText("Trustpilot")).toBeInTheDocument();
     expect(screen.getByText("trustpilot.com")).toBeInTheDocument();
+  });
+
+  it("queues the competitor detail for reporting and exports an evidence package", async () => {
+    const objectUrlSpy = vi.fn(() => "blob:scan-competitor-detail");
+    const revokeUrlSpy = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: objectUrlSpy,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeUrlSpy,
+    });
+    hookState = { isLoading: false, isError: false, data: fixture, refetch: vi.fn() };
+
+    try {
+      render(<ScanCompetitorDetailScreen scanRunId="scan-1" competitorId="c1" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Add to report" }));
+      expect(screen.getByRole("button", { name: "Added to report" })).toBeDisabled();
+      expect(screen.getByText("Acme was added to the scan competitor report.")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Export package" }));
+      expect(objectUrlSpy).toHaveBeenCalledOnce();
+      expect(clickSpy).toHaveBeenCalledOnce();
+      expect(revokeUrlSpy).toHaveBeenCalledWith("blob:scan-competitor-detail");
+      expect(screen.getByText("Acme competitor detail package exported.")).toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+    }
   });
 
   it("renders the sources empty-state when the competitor has no associated sources", () => {

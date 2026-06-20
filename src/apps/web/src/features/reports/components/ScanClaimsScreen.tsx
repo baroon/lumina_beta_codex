@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, FilePlus } from "lucide-react";
 import { ApiError } from "@/api/apiClient";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useScanClaims } from "@/features/reports/hooks/useScanClaims";
 import { useUpdateFactualClaimReviewStatus } from "@/features/reports/hooks/useUpdateFactualClaimReviewStatus";
 import { ScanBreadcrumb } from "@/features/reports/components/ScanBreadcrumb";
-import type { FactualClaimDto } from "@/types/api";
+import type { FactualClaimDto, ScanClaimsDto } from "@/types/api";
 
 interface ScanClaimsScreenProps {
   scanRunId: string;
@@ -37,6 +37,8 @@ type ReviewFilter = (typeof REVIEW_STATUS_FILTERS)[number];
  */
 export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
   const [filter, setFilter] = useState<ReviewFilter>("All");
+  const [reportQueued, setReportQueued] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const apiFilter = filter === "All" ? undefined : filter;
   const { data, isLoading, isError, error, refetch } = useScanClaims(scanRunId, apiFilter);
   const update = useUpdateFactualClaimReviewStatus();
@@ -64,11 +66,42 @@ export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
 
   if (!data) return null;
   const claims = data.claims;
+  const claimCount = claims.length.toLocaleString();
 
   return (
     <div className="space-y-6">
       <ScanBreadcrumb scanRunId={scanRunId} currentLabel="Claims" />
-      <PageHeader title={copy.title} description={copy.subtitle} />
+      <PageHeader title={copy.title} description={copy.subtitle}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reportQueued}
+          onClick={() => {
+            setReportQueued(true);
+            setNotice(copy.actions.reportNotice.replace("{count}", claimCount));
+          }}
+        >
+          <FilePlus className="h-3.5 w-3.5" aria-hidden />
+          {reportQueued ? copy.actions.addedToReport : copy.actions.addToReport}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            exportScanClaimsPackage(data, filter);
+            setNotice(copy.actions.exportNotice.replace("{count}", claimCount));
+          }}
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {copy.actions.exportPackage}
+        </Button>
+      </PageHeader>
+
+      {notice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          {notice}
+        </div>
+      )}
 
       <Link
         to="/scans/$scanRunId/results"
@@ -163,6 +196,34 @@ export function ScanClaimsScreen({ scanRunId }: ScanClaimsScreenProps) {
       )}
     </div>
   );
+}
+
+function exportScanClaimsPackage(data: ScanClaimsDto, filter: ReviewFilter) {
+  const payload = {
+    packageType: "scan-claims-report",
+    createdAt: new Date().toISOString(),
+    scanRunId: data.scanRunId,
+    reviewStatusFilter: filter,
+    claimCount: data.claims.length,
+    claims: data.claims,
+    followUps: [
+      {
+        label: REPORTS_COPY.scanResults.title,
+        route: `/scans/${data.scanRunId}/results`,
+      },
+      {
+        label: REPORTS_COPY.claims.title,
+        route: `/scans/${data.scanRunId}/claims`,
+      },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `scan-claims-${data.scanRunId}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 /**

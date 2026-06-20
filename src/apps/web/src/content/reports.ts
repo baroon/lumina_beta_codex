@@ -508,6 +508,13 @@ export const REPORTS_COPY = {
     subtitle: "How often each tracked competitor was mentioned and recommended in this scan.",
     backToResults: "Back to scan results",
     viewCompetitors: "View competitors",
+    actions: {
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{count} competitors were added to the scan report.",
+      exportNotice: "Competitor evidence package exported with {count} competitors.",
+    },
     table: {
       headers: {
         competitor: "Competitor",
@@ -528,6 +535,11 @@ export const REPORTS_COPY = {
         sources: "Sources cited alongside this competitor",
       },
       noSources: "No sources were cited on answers that mentioned this competitor.",
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{competitor} was added to the scan competitor report.",
+      exportNotice: "{competitor} competitor detail package exported.",
       tableHeaders: {
         source: "Source",
         domain: "Domain",
@@ -588,6 +600,13 @@ export const REPORTS_COPY = {
     subtitle: "Per-topic visibility metrics for this scan.",
     backToResults: "Back to scan results",
     viewTopics: "View topics",
+    actions: {
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{count} scan topics were added to the scan report.",
+      exportNotice: "Topic evidence package exported with {count} scan topics.",
+    },
     table: {
       headers: {
         topic: "Topic",
@@ -617,6 +636,11 @@ export const REPORTS_COPY = {
       },
       noPlatformData: "No per-platform answers landed in this topic.",
       noCitedSources: "No sources were cited within this topic.",
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{topic} was added to the scan topic report.",
+      exportNotice: "{topic} topic detail package exported.",
       tableHeaders: {
         platform: "Platform",
         answers: "Answers",
@@ -706,6 +730,13 @@ export const REPORTS_COPY = {
       subject: "Subject",
       value: "Value",
     },
+    actions: {
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{count} factual claims were added to the scan report.",
+      exportNotice: "Claim evidence package exported with {count} factual claims.",
+    },
     empty: {
       noClaims: "No factual claims were extracted on this scan.",
       noClaimsForFilter: "No claims match the current filter.",
@@ -718,6 +749,13 @@ export const REPORTS_COPY = {
     subtitle: "Every source cited in this scan, with classification and citation count.",
     backToResults: "Back to scan results",
     viewSources: "View sources",
+    actions: {
+      addToReport: "Add to report",
+      addedToReport: "Added to report",
+      exportPackage: "Export package",
+      reportNotice: "{count} cited sources were added to the scan report.",
+      exportNotice: "Source evidence package exported with {count} cited sources.",
+    },
     table: {
       headers: {
         source: "Source",
@@ -778,6 +816,13 @@ export const REPORTS_COPY = {
   },
   prompts: {
     workspace: {
+      actions: {
+        addToReport: "Add to report",
+        addedToReport: "Added to report",
+        exportPackage: "Export package",
+        reportNotice: "{count} AI questions were added to the prompts report.",
+        exportNotice: "AI question package exported with {count} questions.",
+      },
       attention: {
         title: "Question attention",
         description: "AI questions that need scans, stronger visibility, or brand coverage.",

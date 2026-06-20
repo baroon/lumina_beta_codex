@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowDown, ArrowDownUp, ArrowUp, BarChart3, PieChart, Plus, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowDownUp,
+  ArrowUp,
+  BarChart3,
+  Download,
+  FilePlus,
+  PieChart,
+  Plus,
+  X,
+} from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -132,6 +142,8 @@ export function PromptsScreen() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   // Prompt whose row-click drawer is open. null = no drawer.
   const [drawerPromptId, setDrawerPromptId] = useState<string | null>(null);
+  const [reportQueued, setReportQueued] = useState(false);
+  const [reportNotice, setReportNotice] = useState<string | null>(null);
   // Add-prompt dialog open state. We don't keep form state here — the
   // dialog component owns its own draft and resets on close.
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -298,6 +310,7 @@ export function PromptsScreen() {
     );
   }
   if (!prompts.data) return null;
+  const promptData = prompts.data;
 
   // Build sections only for selected lenses. A lens with NO in-scope
   // prompts at all is dropped (no header, no empty state — the lens
@@ -462,6 +475,32 @@ export function PromptsScreen() {
   const totalUsed = prompts.data.totalUsed;
   const hasAllocationData = trackerOptions.length > 0 && totalAllocation > 0;
   const atOrOverQuota = hasAllocationData && totalUsed >= totalAllocation;
+  const promptActionCopy = REPORTS_COPY.prompts.workspace.actions;
+  const filteredPromptCount = filteredPrompts.length.toLocaleString();
+
+  function addFilteredQuestionsToReport() {
+    setReportQueued(true);
+    setReportNotice(promptActionCopy.reportNotice.replace("{count}", filteredPromptCount));
+  }
+
+  function exportFilteredQuestionsPackage() {
+    exportPromptReportPackage(filteredPrompts, {
+      dateRange: range,
+      totalInScope: promptData.prompts.length,
+      selectedLenses,
+      selectedTopicNames,
+      selectedProductNames,
+      selectedMarketNames,
+      selectedAudienceNames,
+      selectedPlatformCodes,
+      selectedSentiments,
+      selectedStatuses,
+      query,
+      sortBy,
+      sortDir,
+    });
+    setReportNotice(promptActionCopy.exportNotice.replace("{count}", filteredPromptCount));
+  }
 
   return (
     <div className="space-y-5">
@@ -491,6 +530,19 @@ export function PromptsScreen() {
             a glyph rather than the whole affordance. Pairs with the
             quota badge so the header carries the workspace-wide
             "what / how much / add" cluster. */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reportQueued}
+          onClick={addFilteredQuestionsToReport}
+        >
+          <FilePlus className="h-3.5 w-3.5" aria-hidden />
+          {reportQueued ? promptActionCopy.addedToReport : promptActionCopy.addToReport}
+        </Button>
+        <Button variant="outline" size="sm" onClick={exportFilteredQuestionsPackage}>
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {promptActionCopy.exportPackage}
+        </Button>
         <button
           type="button"
           onClick={() => setIsAddOpen(true)}
@@ -506,6 +558,12 @@ export function PromptsScreen() {
           <span>Add AI question</span>
         </button>
       </PageHeader>
+
+      {reportNotice && (
+        <div className="rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          {reportNotice}
+        </div>
+      )}
 
       {prompts.data.prompts.length === 0 ? (
         <>
@@ -551,6 +609,76 @@ export function PromptsScreen() {
 // Add-prompt dialog — picks tracker → lens → text. Owns its own draft
 // state and resets on close so re-opening doesn't carry stale input.
 // ---------------------------------------------------------------------------
+
+interface PromptReportPackageOptions {
+  dateRange: DateRangeSelection;
+  totalInScope: number;
+  selectedLenses: readonly string[];
+  selectedTopicNames: readonly string[];
+  selectedProductNames: readonly string[];
+  selectedMarketNames: readonly string[];
+  selectedAudienceNames: readonly string[];
+  selectedPlatformCodes: readonly string[];
+  selectedSentiments: readonly string[];
+  selectedStatuses: readonly QuestionStatus[];
+  query: string;
+  sortBy: SortKey;
+  sortDir: SortDir;
+}
+
+function exportPromptReportPackage(
+  rows: readonly WorkspacePromptRowDto[],
+  options: PromptReportPackageOptions,
+) {
+  const payload = {
+    packageType: "ai-questions-report",
+    createdAt: new Date().toISOString(),
+    dateRange: options.dateRange,
+    totalInScope: options.totalInScope,
+    filteredCount: rows.length,
+    filters: {
+      lenses: options.selectedLenses,
+      topics: options.selectedTopicNames,
+      products: options.selectedProductNames,
+      markets: options.selectedMarketNames,
+      audiences: options.selectedAudienceNames,
+      platforms: options.selectedPlatformCodes,
+      sentiments: options.selectedSentiments,
+      statuses: options.selectedStatuses,
+      query: options.query,
+      sortBy: options.sortBy,
+      sortDir: options.sortDir,
+    },
+    summary: deriveSummary(rows),
+    attentionItems: deriveQuestionAttentionItems(rows),
+    prompts: rows.map((row) => ({
+      promptId: row.promptId,
+      text: row.text,
+      lensName: row.lensName,
+      brandName: row.brandName,
+      trackerName: row.trackerName,
+      topics: row.topics,
+      products: row.products,
+      markets: row.markets,
+      audiences: row.audiences,
+      platformCodes: row.platformCodes,
+      visibilityRate: row.visibilityRate,
+      brandMentionCount: row.brandMentionCount,
+      dominantSentiment: row.dominantSentiment,
+      averageFirstMentionPosition: row.averageFirstMentionPosition,
+      scanCount: row.scanCount,
+      lastScanAt: row.lastScanAt,
+      status: deriveQuestionStatus(row),
+    })),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `ai-questions-report-${Date.now()}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function QuestionAttentionSection({
   items,

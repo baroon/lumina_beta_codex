@@ -32,8 +32,8 @@ const fixture: ScanTopicDetailDto = {
     },
     {
       platformId: "p2",
-      platformCode: "claude",
-      platformName: "Claude",
+      platformCode: "gemini",
+      platformName: "Gemini",
       answerCount: 6,
       brandMentionRate: 0.33,
       brandRecommendationRate: 0.0,

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowRight, FileText, ScanSearch } from "lucide-react";
+import { ArrowRight, FilePlus, FileText, ScanSearch } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card, CardContent } from "@/components/atoms/card";
@@ -36,6 +36,7 @@ export function LensesScreen() {
   const trackerIds = scope === "all" ? [] : scope;
   const [range, setRange] = useState<DateRangeSelection>(defaultDateRangeSelection);
   const [statusFilter, setStatusFilter] = useState<LensStatus | null>(null);
+  const [reportQueued, setReportQueued] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const overview = useWorkspaceOverview(range, [], [], [], [], [], trackerIds);
@@ -126,15 +127,25 @@ export function LensesScreen() {
   if (!overview.data) return null;
 
   const totalLensMentions = filteredRows.reduce((sum, row) => sum + row.mentionCount, 0);
+  const filteredLensCount = filteredRows.length.toLocaleString();
+
+  function addLensBriefToReport() {
+    setReportQueued(true);
+    setExportNotice(copy.notice.report.replace("{count}", filteredLensCount));
+  }
 
   function exportLensBrief() {
     exportLensRows(filteredRows, range);
-    setExportNotice(copy.notice.exported.replace("{count}", filteredRows.length.toLocaleString()));
+    setExportNotice(copy.notice.exported.replace("{count}", filteredLensCount));
   }
 
   return (
     <div className="space-y-5">
       <PageHeader title={copy.title} description={copy.description}>
+        <Button variant="outline" size="sm" disabled={reportQueued} onClick={addLensBriefToReport}>
+          <FilePlus className="h-3.5 w-3.5" aria-hidden />
+          {reportQueued ? copy.actions.addedToReport : copy.actions.addToReport}
+        </Button>
         <Button variant="outline" size="sm" onClick={exportLensBrief}>
           <FileText className="h-3.5 w-3.5" aria-hidden />
           {copy.actions.export}
