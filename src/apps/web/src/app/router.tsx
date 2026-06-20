@@ -305,7 +305,7 @@ const settingsProfileRoute = createRoute({
   component: SettingsProfilePage,
 });
 
-const routeTree = rootRoute.addChildren([
+export const routeTree = rootRoute.addChildren([
   indexRoute,
   brandsListRoute,
   newBrandRoute,

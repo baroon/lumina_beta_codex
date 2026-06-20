@@ -1233,7 +1233,7 @@
             "useWorkspaceSettingsSummary",
             "lucide-react"
           ],
-          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, readiness cards, read-only profile/team/notification/plan-limits/integration sections, empty usage hint, and v1 local account-management actions for invite preparation and billing review queue notices."
+          "notes": "Workspace settings overview at /workspace. Uses a local settings hook backed by brandsApi and trackersApi to show workspace usage summary, readiness cards, derived activity signals, a read-only v1 team members table with prepared invite state, read-only profile/team/notification/plan-limits/integration sections, empty usage hint, and v1 local account-management actions for invite preparation and billing review queue notices."
         },
         {
           "name": "ProfileSettingsScreen",

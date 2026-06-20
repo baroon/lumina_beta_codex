@@ -9,8 +9,10 @@ import { PageHeader } from "@/components/molecules/PageHeader";
 import { WORKSPACE_COPY } from "@/content/workspace";
 import { useWorkspaceSettingsSummary } from "@/features/settings/hooks/useWorkspaceSettingsSummary";
 import {
+  deriveWorkspaceActivity,
   deriveWorkspaceLimits,
   deriveWorkspaceReadiness,
+  type WorkspaceActivityItem,
   type WorkspaceLimitItem,
   type WorkspaceReadinessItem,
 } from "@/features/settings/settings";
@@ -20,6 +22,7 @@ export function WorkspaceSettingsScreen() {
   const settings = useWorkspaceSettingsSummary();
   const readiness = deriveWorkspaceReadiness(settings.summary);
   const limits = deriveWorkspaceLimits(settings.summary);
+  const activity = deriveWorkspaceActivity(settings.summary);
   const [invitePrepared, setInvitePrepared] = useState(false);
   const [billingQueued, setBillingQueued] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -100,6 +103,10 @@ export function WorkspaceSettingsScreen() {
 
       <WorkspaceReadinessSection items={readiness} />
 
+      <WorkspaceActivitySection items={activity} />
+
+      <WorkspaceTeamMembersSection invitePrepared={invitePrepared} />
+
       <div className="grid gap-4 xl:grid-cols-2">
         <SettingsSection section={copy.sections.profile} />
         <SettingsSection section={copy.sections.team} />
@@ -108,6 +115,133 @@ export function WorkspaceSettingsScreen() {
         <SettingsSection section={copy.sections.integrations} />
       </div>
     </div>
+  );
+}
+
+function WorkspaceTeamMembersSection({ invitePrepared }: { invitePrepared: boolean }) {
+  const copy = WORKSPACE_COPY.settings.members;
+  const rows = [
+    {
+      id: "current-user",
+      user: copy.rows.currentUser,
+      email: copy.rows.currentEmail,
+      role: copy.rows.currentRole,
+      lastActive: copy.rows.currentLastActive,
+      status: copy.rows.currentStatus,
+      action: copy.rows.currentAction,
+    },
+    ...(invitePrepared
+      ? [
+          {
+            id: "prepared-invite",
+            user: copy.rows.pendingUser,
+            email: copy.rows.pendingEmail,
+            role: copy.rows.pendingRole,
+            lastActive: copy.rows.pendingLastActive,
+            status: copy.rows.pendingStatus,
+            action: copy.rows.pendingAction,
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <section aria-labelledby="workspace-members-title">
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="workspace-members-title" className="text-sm font-semibold text-neutral-900">
+                {copy.title}
+              </h2>
+              <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+            </div>
+            <Badge variant="secondary">{copy.readOnly}</Badge>
+          </div>
+
+          <div className="mt-4 overflow-x-auto rounded-md border border-neutral-200">
+            <table className="min-w-full divide-y divide-neutral-100 text-left text-sm">
+              <thead className="bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th scope="col" className="px-3 py-2">
+                    {copy.columns.user}
+                  </th>
+                  <th scope="col" className="px-3 py-2">
+                    {copy.columns.role}
+                  </th>
+                  <th scope="col" className="px-3 py-2">
+                    {copy.columns.lastActive}
+                  </th>
+                  <th scope="col" className="px-3 py-2">
+                    {copy.columns.status}
+                  </th>
+                  <th scope="col" className="px-3 py-2">
+                    {copy.columns.action}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 bg-white">
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-neutral-900">{row.user}</p>
+                      <p className="text-xs text-neutral-500">{row.email}</p>
+                    </td>
+                    <td className="px-3 py-2 text-neutral-700">{row.role}</td>
+                    <td className="px-3 py-2 text-neutral-700">{row.lastActive}</td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        variant={row.status === copy.rows.currentStatus ? "success" : "warning"}
+                      >
+                        {row.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-neutral-500">{row.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!invitePrepared && <p className="mt-3 text-xs text-neutral-500">{copy.empty}</p>}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function WorkspaceActivitySection({ items }: { items: readonly WorkspaceActivityItem[] }) {
+  const copy = WORKSPACE_COPY.settings.activity;
+  return (
+    <section aria-labelledby="workspace-activity-title">
+      <Card>
+        <CardContent className="p-5">
+          <div>
+            <h2 id="workspace-activity-title" className="text-sm font-semibold text-neutral-900">
+              {copy.title}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">{copy.description}</p>
+          </div>
+          <div className="mt-4 divide-y divide-neutral-100 rounded-md border border-neutral-200">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.7fr)] sm:items-center"
+              >
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{item.label}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">{item.detail}</p>
+                </div>
+                <p className="text-sm font-semibold text-neutral-900">{item.value}</p>
+                <div className="sm:justify-self-end">
+                  <ReadinessBadge status={item.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 

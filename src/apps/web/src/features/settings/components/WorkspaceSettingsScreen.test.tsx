@@ -2,7 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceSettingsSummary } from "@/features/settings/types";
-import { deriveWorkspaceLimits, deriveWorkspaceReadiness } from "@/features/settings/settings";
+import {
+  deriveWorkspaceActivity,
+  deriveWorkspaceLimits,
+  deriveWorkspaceReadiness,
+} from "@/features/settings/settings";
 
 let settingsState: {
   summary: WorkspaceSettingsSummary;
@@ -43,8 +47,18 @@ describe("WorkspaceSettingsScreen", () => {
     expect(screen.getAllByText("Completed scans").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Workspace profile")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Workspace readiness" })).toBeInTheDocument();
-    expect(screen.getByText("Brand context")).toBeInTheDocument();
+    expect(screen.getAllByText("Brand context").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Evidence base")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Workspace activity" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Active trackers can generate fresh visibility evidence."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Team members" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "User" })).toBeInTheDocument();
+    expect(screen.getAllByText("Current user").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText("Use Invite teammate to prepare the next workspace invite."),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Team access").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Notifications")).toBeInTheDocument();
     expect(screen.getByText("Plan and limits")).toBeInTheDocument();
@@ -83,6 +97,31 @@ describe("WorkspaceSettingsScreen", () => {
 
     expect(
       deriveWorkspaceReadiness({
+        brandCount: 0,
+        trackerCount: 0,
+        activeTrackerCount: 0,
+        completedScanCount: 0,
+      }).map((item) => item.status),
+    ).toEqual(["Needs setup", "Needs setup", "Needs setup", "Planned"]);
+  });
+
+  it("derives workspace activity from current usage", () => {
+    expect(
+      deriveWorkspaceActivity({
+        brandCount: 2,
+        trackerCount: 3,
+        activeTrackerCount: 1,
+        completedScanCount: 9,
+      }).map((item) => [item.label, item.value, item.status]),
+    ).toEqual([
+      ["Brand context", "2", "Ready"],
+      ["Monitoring", "1", "Ready"],
+      ["Evidence", "9", "Ready"],
+      ["Administration", "v1", "Planned"],
+    ]);
+
+    expect(
+      deriveWorkspaceActivity({
         brandCount: 0,
         trackerCount: 0,
         activeTrackerCount: 0,
@@ -135,6 +174,11 @@ describe("WorkspaceSettingsScreen", () => {
     expect(
       screen.getByText("Teammate invite draft prepared for account administration."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Prepared teammate")).toBeInTheDocument();
+    expect(screen.getByText("Invite draft")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Use Invite teammate to prepare the next workspace invite."),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Manage billing/i }));
     expect(screen.getByRole("button", { name: /Billing review queued/i })).toBeDisabled();

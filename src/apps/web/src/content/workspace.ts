@@ -25,6 +25,39 @@ export const WORKSPACE_COPY = {
       title: "Workspace readiness",
       description: "Operational setup needed before reporting and collaboration are fully useful.",
     },
+    activity: {
+      title: "Workspace activity",
+      description:
+        "Current operational signals that explain whether the workspace is ready for reporting and account administration.",
+    },
+    members: {
+      title: "Team members",
+      description:
+        "Workspace access overview for v1. Role editing and real invite delivery attach here when account administration endpoints land.",
+      readOnly: "Read-only",
+      columns: {
+        user: "User",
+        role: "Role",
+        lastActive: "Last active",
+        status: "Status",
+        action: "Action",
+      },
+      rows: {
+        currentUser: "Current user",
+        currentEmail: "Signed-in account",
+        currentRole: "Owner",
+        currentLastActive: "Current session",
+        currentStatus: "Active",
+        currentAction: "Managed externally",
+        pendingUser: "Prepared teammate",
+        pendingEmail: "Invite draft",
+        pendingRole: "Viewer",
+        pendingLastActive: "Not active",
+        pendingStatus: "Prepared",
+        pendingAction: "Send when invitations are connected",
+      },
+      empty: "Use Invite teammate to prepare the next workspace invite.",
+    },
     sections: {
       readOnly: "Read-only",
       profile: {

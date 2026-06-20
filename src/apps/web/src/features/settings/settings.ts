@@ -18,6 +18,14 @@ export interface WorkspaceReadinessItem {
   detail: string;
 }
 
+export interface WorkspaceActivityItem {
+  id: "brand-context" | "monitoring" | "evidence" | "administration";
+  label: string;
+  value: string;
+  status: WorkspaceReadinessStatus;
+  detail: string;
+}
+
 export interface ProfileReadinessItem {
   id: "identity" | "preferences" | "notifications" | "security";
   label: string;
@@ -107,6 +115,50 @@ export function deriveWorkspaceReadiness(
       label: "Team access",
       status: "Planned",
       detail: "Invites and roles are read-only until account administration lands.",
+    },
+  ];
+}
+
+export function deriveWorkspaceActivity(
+  summary: WorkspaceSettingsSummary,
+): WorkspaceActivityItem[] {
+  return [
+    {
+      id: "brand-context",
+      label: "Brand context",
+      value: summary.brandCount.toLocaleString(),
+      status: summary.brandCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.brandCount > 0
+          ? "Brand inventory is available for reporting scopes."
+          : "Add the first brand before workspace reporting is useful.",
+    },
+    {
+      id: "monitoring",
+      label: "Monitoring",
+      value: summary.activeTrackerCount.toLocaleString(),
+      status: summary.activeTrackerCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.activeTrackerCount > 0
+          ? "Active trackers can generate fresh visibility evidence."
+          : "Activate a tracker to start scheduled monitoring.",
+    },
+    {
+      id: "evidence",
+      label: "Evidence",
+      value: summary.completedScanCount.toLocaleString(),
+      status: summary.completedScanCount > 0 ? "Ready" : "Needs setup",
+      detail:
+        summary.completedScanCount > 0
+          ? "Completed scans are available for reports and recommendations."
+          : "Run a scan to populate claims, sources, topics, and reports.",
+    },
+    {
+      id: "administration",
+      label: "Administration",
+      value: "v1",
+      status: "Planned",
+      detail: "Member audit logs and role history will attach to this surface later.",
     },
   ];
 }
