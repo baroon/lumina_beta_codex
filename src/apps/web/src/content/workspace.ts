@@ -120,6 +120,18 @@ export const WORKSPACE_COPY = {
       title: "Profile readiness",
       description: "Current ownership for personal settings, preferences, and security controls.",
     },
+    controls: {
+      title: "Profile controls",
+      description:
+        "Where each personal setting is owned today and what can be changed in Lumina v1.",
+      readOnly: "Read-only",
+      columns: {
+        area: "Area",
+        owner: "Owner",
+        currentSetting: "Current setting",
+        status: "Status",
+      },
+    },
     sections: {
       readOnly: "Read-only",
       identity: {

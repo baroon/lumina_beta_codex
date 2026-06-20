@@ -33,6 +33,15 @@ export interface ProfileReadinessItem {
   detail: string;
 }
 
+export interface ProfileControlItem {
+  id: "identity" | "preferences" | "notifications" | "security";
+  area: string;
+  owner: string;
+  currentSetting: string;
+  status: ProfileReadinessStatus;
+  detail: string;
+}
+
 export function deriveWorkspaceLimits(summary: WorkspaceSettingsSummary): WorkspaceLimitItem[] {
   return [
     {
@@ -188,6 +197,43 @@ export function deriveProfileReadiness(): ProfileReadinessItem[] {
       label: "Security",
       status: "Managed",
       detail: "Password, MFA, and sessions are managed by the sign-in provider.",
+    },
+  ];
+}
+
+export function deriveProfileControls(): ProfileControlItem[] {
+  return [
+    {
+      id: "identity",
+      area: "Identity",
+      owner: "Sign-in provider",
+      currentSetting: "Managed account",
+      status: "Managed",
+      detail: "Name, email, and role are read from workspace authentication.",
+    },
+    {
+      id: "preferences",
+      area: "Preferences",
+      owner: "Lumina",
+      currentSetting: "Overview / Last 30 days",
+      status: "Ready",
+      detail: "Local defaults are visible and can be saved in v1.",
+    },
+    {
+      id: "notifications",
+      area: "Notifications",
+      owner: "Workspace defaults",
+      currentSetting: "Inherited",
+      status: "Planned",
+      detail: "Personal delivery controls will override workspace defaults later.",
+    },
+    {
+      id: "security",
+      area: "Security",
+      owner: "Sign-in provider",
+      currentSetting: "Provider managed",
+      status: "Managed",
+      detail: "Password, MFA, and sessions are managed outside Lumina.",
     },
   ];
 }

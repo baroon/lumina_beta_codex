@@ -1242,7 +1242,7 @@
           "status": "implemented",
           "variants": [],
           "dependencies": ["PageHeader", "Card", "Badge", "Button", "settings", "lucide-react"],
-          "notes": "Profile settings page at /settings/profile. Renders profile readiness cards, read-only identity, preferences, notification, and access sections plus v1 local actions for opening the security checklist and saving profile preferences until account/profile endpoints are available."
+          "notes": "Profile settings page at /settings/profile. Renders profile readiness cards, a read-only profile controls ownership table, read-only identity, preferences, notification, and access sections plus v1 local actions for opening the security checklist and saving profile preferences until account/profile endpoints are available."
         }
       ]
     },
