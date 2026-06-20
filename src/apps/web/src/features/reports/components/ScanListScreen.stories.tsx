@@ -48,29 +48,62 @@ const scans: ScanListItemDto[] = [
   },
 ];
 
+const attentionScans: ScanListItemDto[] = [
+  {
+    scanRunId: "scan-failed",
+    trackerId: "tracker-1",
+    trackerName: "India Today / News discovery",
+    brandId: "brand-1",
+    brandName: "India Today",
+    startedAt: "2026-06-19T09:00:00.000Z",
+    completedAt: "2026-06-19T09:03:00.000Z",
+    scanStatus: "Failed",
+    analysisStatus: "Failed",
+    scanCheckCount: 24,
+    completedCount: 15,
+    failedCount: 9,
+  },
+  {
+    scanRunId: "scan-running",
+    trackerId: "tracker-2",
+    trackerName: "Business Today / Source authority",
+    brandId: "brand-2",
+    brandName: "Business Today",
+    startedAt: "2026-06-19T10:00:00.000Z",
+    completedAt: null,
+    scanStatus: "Running",
+    analysisStatus: null,
+    scanCheckCount: 18,
+    completedCount: 9,
+    failedCount: 0,
+  },
+  {
+    scanRunId: "scan-analysis",
+    trackerId: "tracker-3",
+    trackerName: "Aaj Tak / Competitive watch",
+    brandId: "brand-3",
+    brandName: "Aaj Tak",
+    startedAt: "2026-06-18T15:00:00.000Z",
+    completedAt: "2026-06-18T15:05:00.000Z",
+    scanStatus: "Completed",
+    analysisStatus: null,
+    scanCheckCount: 20,
+    completedCount: 20,
+    failedCount: 0,
+  },
+];
+
 const meta: Meta<typeof ScanListScreen> = {
   title: "Features/Reports/ScanListScreen",
   component: ScanListScreen,
   tags: ["autodocs"],
-  decorators: [
-    (Story) => {
-      const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-      });
-      queryClient.setQueryData(["all-scans"], scans);
-      return (
-        <QueryClientProvider client={queryClient}>
-          <Story />
-        </QueryClientProvider>
-      );
-    },
-  ],
 };
 
 export default meta;
 type Story = StoryObj<typeof ScanListScreen>;
 
 export const Default: Story = {
+  ...withScans(scans),
   parameters: {
     docs: {
       description: {
@@ -80,3 +113,25 @@ export const Default: Story = {
     },
   },
 };
+
+export const EmptyHistory: Story = withScans([]);
+
+export const NeedsAttention: Story = withScans(attentionScans);
+
+function withScans(rows: ScanListItemDto[]): Story {
+  return {
+    decorators: [
+      (StoryComponent) => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+        });
+        queryClient.setQueryData(["all-scans"], rows);
+        return (
+          <QueryClientProvider client={queryClient}>
+            <StoryComponent />
+          </QueryClientProvider>
+        );
+      },
+    ],
+  };
+}

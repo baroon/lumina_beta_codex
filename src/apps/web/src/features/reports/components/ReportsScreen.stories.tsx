@@ -86,29 +86,62 @@ const meta: Meta<typeof ReportsScreen> = {
   title: "Features/Reports/ReportsScreen",
   component: ReportsScreen,
   tags: ["autodocs"],
-  decorators: [
-    (Story) => {
-      const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-      });
-      queryClient.setQueryData(
-        ["workspace-overview", "preset:30", "", "", "", "", "", "", "", ""],
-        overview,
-      );
-      queryClient.setQueryData(
-        ["workspace-competitive", "preset:30", "", "", "", "", "", "", "", ""],
-        competitive,
-      );
-      return (
-        <QueryClientProvider client={queryClient}>
-          <Story />
-        </QueryClientProvider>
-      );
-    },
-  ],
 };
 
 export default meta;
 type Story = StoryObj<typeof ReportsScreen>;
 
-export const Default: Story = {};
+export const Default: Story = withReportData(overview, competitive);
+
+export const MissingEvidence: Story = withReportData(
+  {
+    ...overview,
+    scanCount: 1,
+    hero: {
+      ...overview.hero,
+      mentions: 0,
+      citations: 0,
+      brandMentionRate: 0,
+      brandAbsenceRate: 1,
+      brandFirstMentionRate: 0,
+    },
+    topEntities: [],
+    topBrandRiskFlags: [],
+    topicOwnership: [],
+    recentFactualClaims: [],
+  },
+  {
+    ...competitive,
+    mentionDistribution: [],
+    competitiveGaps: [],
+    recommendationRates: [],
+  },
+);
+
+function withReportData(
+  overviewData: WorkspaceOverviewDto,
+  competitiveData: WorkspaceCompetitiveDto,
+): Story {
+  return {
+    decorators: [
+      (StoryComponent) => {
+        const queryClient = new QueryClient({
+          defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+        });
+        queryClient.setQueryData(
+          ["workspace-overview", "preset:30", "", "", "", "", "", "", "", ""],
+          overviewData,
+        );
+        queryClient.setQueryData(
+          ["workspace-competitive", "preset:30", "", "", "", "", "", "", "", ""],
+          competitiveData,
+        );
+        return (
+          <QueryClientProvider client={queryClient}>
+            <StoryComponent />
+          </QueryClientProvider>
+        );
+      },
+    ],
+  };
+}
